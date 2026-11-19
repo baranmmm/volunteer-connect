@@ -8,6 +8,7 @@ import { Logo } from "@/components/app/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput, MIN_PASSWORD_LENGTH } from "@/components/app/PasswordInput";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -82,7 +83,10 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
         <p className="mt-1 text-muted-foreground">Sign in to your volunteer account.</p>
       </div>
       <Field id="email" name="email" type="email" label="Email" autoComplete="email" required />
-      <Field id="password" name="password" type="password" label="Password" autoComplete="current-password" required />
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <PasswordInput id="password" name="password" autoComplete="current-password" required className="h-12 rounded-xl" />
+      </div>
       <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy}>
         {busy ? "Signing in…" : "Sign in"}
       </Button>
@@ -102,6 +106,9 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
   const [groups, setGroups] = useState<RegionGroup[]>([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const mismatch = confirm.length > 0 && password !== confirm;
   useEffect(() => {
     fetchRegionGroups().then(setGroups).catch(() => toast.error("Could not load branches"));
   }, []);
@@ -110,6 +117,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const branch_id = String(f.get("branch") || "");
+    if (password !== confirm) return;
     if (!branch_id) { toast.error("Please choose your branch"); return; }
     setBusy(true);
     const { data, error } = await supabase.auth.signUp({
@@ -144,7 +152,16 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
       <Field id="full_name" name="full_name" label="Full name" autoComplete="name" required />
       <Field id="email" name="email" type="email" label="Email" autoComplete="email" required />
       <Field id="phone" name="phone" type="tel" label="Phone" autoComplete="tel" required />
-      <Field id="password" name="password" type="password" label="Password" autoComplete="new-password" minLength={8} required />
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <PasswordInput id="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required aria-describedby="password-help" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl" />
+        <p id="password-help" className="text-sm text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="confirm">Confirm password</Label>
+        <PasswordInput id="confirm" name="confirm" autoComplete="new-password" required aria-invalid={mismatch} aria-describedby={mismatch ? "confirm-error" : undefined} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-12 rounded-xl" />
+        {mismatch && <p id="confirm-error" role="alert" className="text-sm font-medium text-destructive">Passwords do not match</p>}
+      </div>
       <div className="space-y-2">
         <Label htmlFor="branch">Branch</Label>
         <select id="branch" name="branch" required defaultValue="" className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
@@ -156,7 +173,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
           ))}
         </select>
       </div>
-      <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy}>
+      <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy || password !== confirm}>
         {busy ? "Creating account…" : "Create account"}
       </Button>
       <button type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
