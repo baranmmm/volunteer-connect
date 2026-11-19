@@ -35,3 +35,4 @@ use the editor.
 - Role and branch mutations use permission-checked database RPCs with atomic audit inserts; history names come from a scoped RPC so profile access is not widened.
 - Account permissions refresh on page navigation and token refresh outside the synchronous auth listener to avoid Supabase auth deadlocks.
 - User lists and history paginate before filtering or displaying to avoid silently missing members and last-manager warnings.
+- User deletion runs in a requireSupabaseAuth server function: service-role-only DB functions authorize (can_manage_user, inactive unless from a request) and record the audit entry, then the auth user is deleted (profiles/roles cascade, audit log has no FK). Edge Functions are not used on this stack; future user-referencing tables use ON DELETE SET NULL.

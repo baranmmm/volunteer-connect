@@ -24,3 +24,18 @@ describe("Member filters", () => {
   it("searches email", () => expect(filterMembers([volunteer], { ...all, search: "example.org" })).toEqual([volunteer]));
   it("combines filters", () => expect(filterMembers([volunteer, manager], { search: "Mehmet", status: "pending", role: "branch_manager", branch: "medway" })).toEqual([]));
 });
+import { deleteBlockReason, deletionDaysRemaining } from "@/lib/member-rules";
+describe("deletion rules", () => {
+  it("only inactive users can be deleted directly", () => {
+    expect(deleteBlockReason("active")).toBe("Deactivate the user first");
+    expect(deleteBlockReason("pending")).toBe("Deactivate the user first");
+    expect(deleteBlockReason("inactive")).toBeNull();
+  });
+  it("deletion requests do not need the user to be inactive", () => {
+    expect(deleteBlockReason("active", true)).toBeNull();
+  });
+  it("counts days remaining out of 30", () => {
+    expect(deletionDaysRemaining("2026-11-01T00:00:00Z", new Date("2026-11-11T12:00:00Z"))).toBe(20);
+    expect(deletionDaysRemaining("2026-09-01T00:00:00Z", new Date("2026-11-11T00:00:00Z"))).toBe(0);
+  });
+});

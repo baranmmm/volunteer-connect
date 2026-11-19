@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { History, ArrowRightLeft, UserCog, Search } from "lucide-react";
@@ -88,7 +88,7 @@ function UsersPage() {
     {members.isLoading ? <p className="text-muted-foreground">Loading…</p> : members.isError ? <div role="alert"><p className="text-destructive">Users could not be loaded.</p><Button variant="outline" onClick={() => members.refetch()}>Retry</Button></div> : !filtered.length ? <p className="border-y py-10 text-center text-muted-foreground">{all.length ? "No users match these filters." : "No users yet."}</p> : <ul className="divide-y border-y">
       {filtered.map((m) => <li key={m.id} className="flex flex-col gap-4 py-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0"><p className="font-semibold break-words">{m.full_name || "Unnamed"}</p><p className="text-sm text-muted-foreground break-all">{m.email}</p><p className="text-sm text-muted-foreground">{m.branches?.name ?? "No branch"}</p></div>
+          <div className="min-w-0"><Link to="/users/$id" params={{ id: m.id }} className="font-semibold break-words underline-offset-4 hover:underline">{m.full_name || "Unnamed"}</Link><p className="text-sm text-muted-foreground break-all">{m.email}</p><p className="text-sm text-muted-foreground">{m.branches?.name ?? "No branch"}</p></div>
           <div className="flex flex-wrap gap-2"><Badge variant="outline">{ROLE_LABELS[primaryRole(m.roles)]}</Badge><Badge variant={m.status === "active" ? "default" : "secondary"}>{STATUS_LABEL[m.status]}</Badge></div>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -23,6 +23,7 @@ import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTrainingRouteImport } from './routes/_app/training'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
+import { Route as AppUsersIdRouteImport } from './routes/_app/users_.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -93,6 +94,11 @@ const AppUsersRoute = AppUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppUsersIdRoute = AppUsersIdRouteImport.update({
+  id: '/users_/$id',
+  path: '/users/$id',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
   '/users': typeof AppUsersRoute
+  '/users/$id': typeof AppUsersIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
   '/users': typeof AppUsersRoute
+  '/users/$id': typeof AppUsersIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/_app/tasks': typeof AppTasksRoute
   '/_app/training': typeof AppTrainingRoute
   '/_app/users': typeof AppUsersRoute
+  '/_app/users_/$id': typeof AppUsersIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/training'
     | '/users'
+    | '/users/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/training'
     | '/users'
+    | '/users/$id'
   id:
     | '__root__'
     | '/'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/_app/tasks'
     | '/_app/training'
     | '/_app/users'
+    | '/_app/users_/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -297,6 +309,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUsersRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/users_/$id': {
+      id: '/_app/users_/$id'
+      path: '/users/$id'
+      fullPath: '/users/$id'
+      preLoaderRoute: typeof AppUsersIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
@@ -311,6 +330,7 @@ interface AppRouteRouteChildren {
   AppTasksRoute: typeof AppTasksRoute
   AppTrainingRoute: typeof AppTrainingRoute
   AppUsersRoute: typeof AppUsersRoute
+  AppUsersIdRoute: typeof AppUsersIdRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -324,6 +344,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTasksRoute: AppTasksRoute,
   AppTrainingRoute: AppTrainingRoute,
   AppUsersRoute: AppUsersRoute,
+  AppUsersIdRoute: AppUsersIdRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

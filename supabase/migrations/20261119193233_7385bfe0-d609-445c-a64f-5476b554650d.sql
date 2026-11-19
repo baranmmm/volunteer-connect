@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS account_deletion_requests_handled_by_idx ON public.account_deletion_requests(handled_by);

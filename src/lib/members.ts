@@ -51,3 +51,38 @@ export async function fetchHistory(userId: string, offset = 0) {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function fetchMember(id: string): Promise<Member | null> {
+  const [p, r] = await Promise.all([
+    supabase.from("profiles").select("*, branches(name, regions(name))").eq("id", id).maybeSingle(),
+    supabase.from("user_roles").select("role").eq("user_id", id),
+  ]);
+  if (p.error) throw p.error;
+  if (r.error) throw r.error;
+  return p.data ? { ...(p.data as Profile), roles: (r.data ?? []).map((x) => x.role) } : null;
+}
+
+export type DeletionRequest = { id: string; user_id: string | null; requested_at: string; status: "pending" | "cancelled" | "completed"; profiles: { full_name: string; email: string | null; branches: { name: string } | null } | null };
+
+// RLS returns only requests from users the caller can manage (plus the caller's own).
+export async function fetchPendingDeletionRequests(selfId: string): Promise<DeletionRequest[]> {
+  const { data, error } = await supabase.from("account_deletion_requests").select("id, user_id, requested_at, status, profiles!account_deletion_requests_user_id_fkey(full_name, email, branches(name))").eq("status", "pending").neq("user_id", selfId).order("requested_at");
+  if (error) throw error;
+  return (data ?? []) as DeletionRequest[];
+}
+
+export async function fetchMyDeletionRequest(selfId: string) {
+  const { data, error } = await supabase.from("account_deletion_requests").select("id, requested_at").eq("user_id", selfId).eq("status", "pending").maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function requestAccountDeletion() {
+  const { error } = await supabase.rpc("request_account_deletion");
+  if (error) throw error;
+}
+
+export async function cancelAccountDeletion() {
+  const { error } = await supabase.rpc("cancel_account_deletion");
+  if (error) throw error;
+}
