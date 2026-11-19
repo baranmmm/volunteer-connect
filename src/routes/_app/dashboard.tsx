@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarDays, ListChecks } from "lucide-react";
-import { useAuth, primaryRole, ROLE_LABELS } from "@/lib/auth";
+import { useAuth, primaryRole } from "@/lib/auth";
+import { useTranslation } from "react-i18next";
 import { pageHead } from "@/components/app/head";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -10,20 +11,21 @@ export const Route = createFileRoute("/_app/dashboard")({
 
 function Dashboard() {
   const { profile, roles } = useAuth();
-  const first = profile?.full_name.split(" ")[0] || "there";
+  const { t } = useTranslation();
+  const first = profile?.full_name.split(" ")[0];
   return (
     <div className="space-y-8">
       <section className="rounded-3xl bg-hero p-7 text-primary-foreground shadow-soft sm:p-10">
-        <p className="text-sm font-medium opacity-90">Welcome back</p>
-        <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">Hello, {first}</h1>
+        <p className="text-sm font-medium opacity-90">{t("dashboard.welcomeBack")}</p>
+        <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{first ? t("dashboard.hello", { name: first }) : t("dashboard.helloNoName")}</h1>
         <p className="mt-3 opacity-90">
-          {ROLE_LABELS[primaryRole(roles)]}
-          {profile?.branches && <> · {profile.branches.name} branch{profile.branches.regions && <>, {profile.branches.regions.name}</>}</>}
+          {t(`common.roles.${primaryRole(roles)}`)}
+          {profile?.branches && <> · {t("dashboard.branchLine", { branch: profile.branches.name })}{profile.branches.regions && <>, {profile.branches.regions.name}</>}</>}
         </p>
       </section>
       <div className="grid gap-5 md:grid-cols-2">
-        <EmptyCard icon={CalendarDays} title="My upcoming events" text="You have no upcoming events yet." />
-        <EmptyCard icon={ListChecks} title="My tasks" text="You have no tasks at the moment." />
+        <EmptyCard icon={CalendarDays} title={t("dashboard.eventsTitle")} text={t("dashboard.eventsEmpty")} />
+        <EmptyCard icon={ListChecks} title={t("dashboard.tasksTitle")} text={t("dashboard.tasksEmpty")} />
       </div>
     </div>
   );

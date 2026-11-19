@@ -12,5 +12,5 @@ export const Route = createFileRoute("/_app/training")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: () => <ComingSoon title="Training" />,
+  component: () => <ComingSoon titleKey="navigation.training" />,
 });

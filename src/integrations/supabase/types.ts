@@ -100,6 +100,7 @@ export type Database = {
           full_name: string
           id: string
           phone: string | null
+          preferred_language: string
           status: Database["public"]["Enums"]["profile_status"]
         }
         Insert: {
@@ -109,6 +110,7 @@ export type Database = {
           full_name?: string
           id: string
           phone?: string | null
+          preferred_language?: string
           status?: Database["public"]["Enums"]["profile_status"]
         }
         Update: {
@@ -118,6 +120,7 @@ export type Database = {
           full_name?: string
           id?: string
           phone?: string | null
+          preferred_language?: string
           status?: Database["public"]["Enums"]["profile_status"]
         }
         Relationships: [

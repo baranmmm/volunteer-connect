@@ -1,11 +1,14 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { Trans, useTranslation } from "react-i18next";
 import { fetchHistory, type Member } from "@/lib/members";
 import { fetchRegionGroups } from "@/lib/branches";
-import { ROLE_LABELS } from "@/lib/auth";
+import { formatDate } from "@/lib/i18n";
+import { historyChange } from "@/lib/history";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export function MemberHistory({ member, onClose }: { member: Member | null; onClose: () => void }) {
+  const { t } = useTranslation();
   const history = useInfiniteQuery({
     queryKey: ["member-history", member?.id],
     queryFn: ({ pageParam }) => member ? fetchHistory(member.id, pageParam) : Promise.resolve([]),
@@ -15,25 +18,25 @@ export function MemberHistory({ member, onClose }: { member: Member | null; onCl
   });
   const groups = useQuery({ queryKey: ["region-groups"], queryFn: fetchRegionGroups, enabled: !!member });
   const branches = groups.data?.flatMap((r) => r.branches) ?? [];
-  const roleName = (value: string | null) => value && value in ROLE_LABELS ? ROLE_LABELS[value as keyof typeof ROLE_LABELS] : "No role";
-  const branchName = (value: string | null) => branches.find((b) => b.id === value)?.name ?? "No branch";
+  const branchName = (value: string | null) => branches.find((b) => b.id === value)?.name ?? t("common.noBranch");
 
   return <Sheet open={!!member} onOpenChange={(open) => { if (!open) onClose(); }}>
     <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
       <SheetHeader>
-        <SheetTitle>History</SheetTitle>
-        <SheetDescription>{member?.full_name || "Unnamed"}</SheetDescription>
+        <SheetTitle>{t("history.title")}</SheetTitle>
+        <SheetDescription>{member?.full_name || t("common.unnamed")}</SheetDescription>
       </SheetHeader>
       <div className="p-4">
-        {history.isLoading ? <p className="text-muted-foreground">Loading…</p> : history.isError ? <div role="alert"><p className="text-destructive">History could not be loaded.</p><Button variant="outline" onClick={() => history.refetch()}>Retry</Button></div> : !history.data?.pages.flat().length ? <p className="text-muted-foreground">No changes recorded yet.</p> :
+        {history.isLoading ? <p className="text-muted-foreground">{t("common.loading")}</p> : history.isError ? <div role="alert"><p className="text-destructive">{t("history.loadError")}</p><Button variant="outline" onClick={() => history.refetch()}>{t("common.retry")}</Button></div> : !history.data?.pages.flat().length ? <p className="text-muted-foreground">{t("history.empty")}</p> :
           <ol className="divide-y">{history.data.pages.flat().map((entry) => {
-            const change = entry.action === "user_deleted" ? "User deletion authorized" : entry.action === "user_deletion_failed" ? "User deletion failed" : entry.action === "deletion_requested" ? "Account deletion requested" : entry.action === "deletion_cancelled" ? "Account deletion request cancelled" : entry.action === "role_change" ? `Role changed from ${roleName(entry.old_value)} to ${roleName(entry.new_value)}` : entry.action === "branch_change" ? `Branch changed from ${branchName(entry.old_value)} to ${branchName(entry.new_value)}` : entry.old_value === "pending" && entry.new_value === "active" ? "Approved" : entry.new_value === "active" ? "Activated" : entry.new_value === "inactive" ? "Deactivated" : "Status changed to Pending";
+            const c = historyChange(entry);
+            const params = { ...c.params, from: c.branch ? branchName(entry.old_value) : c.params?.from && t(c.params.from), to: c.branch ? branchName(entry.new_value) : c.params?.to && t(c.params.to) };
             return <li key={entry.id} className="py-4 text-sm leading-6 break-words">
-              <p>{change} by <span className="font-semibold">{entry.actor_name}</span></p>
-              <time className="text-muted-foreground" dateTime={entry.created_at}>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" }).format(new Date(entry.created_at))}</time>
+              <p><Trans i18nKey="history.by" values={{ change: t(c.key, params), actor: entry.actor_name }} components={{ bold: <span className="font-semibold" /> }} /></p>
+              <time className="text-muted-foreground" dateTime={entry.created_at}>{formatDate(entry.created_at, { dateStyle: "medium", timeStyle: "short" })}</time>
             </li>;
           })}</ol>}
-        {history.hasNextPage && <Button variant="outline" disabled={history.isFetchingNextPage} onClick={() => history.fetchNextPage()}>{history.isFetchingNextPage ? "Loading…" : "Load more"}</Button>}
+        {history.hasNextPage && <Button variant="outline" disabled={history.isFetchingNextPage} onClick={() => history.fetchNextPage()}>{history.isFetchingNextPage ? t("common.loading") : t("history.loadMore")}</Button>}
       </div>
     </SheetContent>
   </Sheet>;

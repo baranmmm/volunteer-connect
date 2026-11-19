@@ -3,19 +3,19 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { to: string; label: string; icon: LucideIcon; managerOnly?: boolean };
+export type NavItem = { to: string; labelKey: string; icon: LucideIcon; managerOnly?: boolean };
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/tasks", label: "Tasks", icon: ListChecks },
-  { to: "/meetings", label: "Meetings", icon: Users2 },
-  { to: "/media", label: "Media", icon: Image },
-  { to: "/training", label: "Training", icon: GraduationCap },
-  { to: "/contacts", label: "Contacts", icon: Contact },
-  { to: "/approvals", label: "Approvals", icon: UserCheck, managerOnly: true },
-  { to: "/users", label: "Users", icon: Users, managerOnly: true },
-  { to: "/profile", label: "Profile", icon: UserCircle },
+  { to: "/dashboard", labelKey: "navigation.dashboard", icon: LayoutDashboard },
+  { to: "/calendar", labelKey: "navigation.calendar", icon: CalendarDays },
+  { to: "/tasks", labelKey: "navigation.tasks", icon: ListChecks },
+  { to: "/meetings", labelKey: "navigation.meetings", icon: Users2 },
+  { to: "/media", labelKey: "navigation.media", icon: Image },
+  { to: "/training", labelKey: "navigation.training", icon: GraduationCap },
+  { to: "/contacts", labelKey: "navigation.contacts", icon: Contact },
+  { to: "/approvals", labelKey: "navigation.approvals", icon: UserCheck, managerOnly: true },
+  { to: "/users", labelKey: "navigation.users", icon: Users, managerOnly: true },
+  { to: "/profile", labelKey: "navigation.profile", icon: UserCircle },
 ];
 
 export const MOBILE_PRIMARY = ["/dashboard", "/calendar", "/tasks", "/meetings"];

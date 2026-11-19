@@ -12,5 +12,5 @@ export const Route = createFileRoute("/_app/media")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: () => <ComingSoon title="Media" />,
+  component: () => <ComingSoon titleKey="navigation.media" />,
 });

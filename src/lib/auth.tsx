@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { isLang, setLanguage } from "@/lib/i18n";
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"] & {
@@ -21,11 +22,6 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-export const ROLE_LABELS: Record<AppRole, string> = {
-  regional_director: "Regional Director",
-  branch_manager: "Branch Manager",
-  volunteer: "Volunteer",
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -69,7 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role").eq("user_id", uid),
     ]);
     if (id !== requestId.current) return; // a newer request (or sign-out) superseded this one
-    setProfile((p.data as Profile) ?? null);
+    const prof = (p.data as Profile) ?? null;
+    // After sign-in the saved profile language wins and is mirrored to localStorage.
+    if (prof && isLang(prof.preferred_language)) setLanguage(prof.preferred_language);
+    setProfile(prof);
     setRoles((r.data ?? []).map((x) => x.role));
     setLoadedFor(uid);
   }, []);

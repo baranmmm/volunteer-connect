@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput, MIN_PASSWORD_LENGTH } from "@/components/app/PasswordInput";
+import { LanguageToggle } from "@/components/app/LanguageToggle";
+import { useTranslation } from "react-i18next";
+import { currentLang, translateError } from "@/lib/i18n";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -31,6 +34,7 @@ type Mode = "signin" | "signup" | "forgot";
 function AuthPage() {
   const { session, loading } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
+  const { t } = useTranslation();
   useRedirect(!loading && !!session, "/dashboard");
   if (!loading && session) return null;
 
@@ -39,12 +43,13 @@ function AuthPage() {
       <div className="hidden flex-col justify-between bg-hero p-12 text-primary-foreground lg:flex">
         <Logo />
         <div>
-          <h1 className="text-4xl font-semibold leading-tight">Bringing communities together, one conversation at a time.</h1>
-          <p className="mt-4 max-w-md text-lg opacity-90">Your home for volunteering with Dialogue Society.</p>
+          <h1 className="text-4xl font-semibold leading-tight">{t("auth.heroTitle")}</h1>
+          <p className="mt-4 max-w-md text-lg opacity-90">{t("auth.heroText")}</p>
         </div>
-        <p className="text-sm opacity-75">Dialogue Society · Registered UK charity</p>
+        <p className="text-sm opacity-75">{t("auth.charity")}</p>
       </div>
-      <div className="flex items-center justify-center px-5 py-10">
+      <div className="relative flex items-center justify-center px-5 py-16">
+        <LanguageToggle className="absolute right-4 top-4" />
         <div className="w-full max-w-md">
           <Logo className="mb-8 text-primary lg:hidden" />
           {mode === "signin" && <SignIn setMode={setMode} />}
@@ -66,6 +71,7 @@ function Field({ id, label, ...props }: { id: string; label: string } & React.Co
 }
 
 function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -76,28 +82,28 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
       password: String(f.get("password")),
     });
     setBusy(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(translateError(error));
   }
   return (
     <form onSubmit={submit} className="space-y-5">
       <div>
-        <h2 className="text-3xl font-semibold">Welcome back</h2>
-        <p className="mt-1 text-muted-foreground">Sign in to your volunteer account.</p>
+        <h2 className="text-3xl font-semibold">{t("auth.welcomeBack")}</h2>
+        <p className="mt-1 text-muted-foreground">{t("auth.signInIntro")}</p>
       </div>
-      <Field id="email" name="email" type="email" label="Email" autoComplete="email" required />
+      <Field id="email" name="email" type="email" label={t("auth.email")} autoComplete="email" required />
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("auth.password")}</Label>
         <PasswordInput id="password" name="password" autoComplete="current-password" required className="h-12 rounded-xl" />
       </div>
       <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy}>
-        {busy ? "Signing in…" : "Sign in"}
+        {busy ? t("auth.signingIn") : t("auth.signIn")}
       </Button>
       <div className="flex flex-wrap justify-between gap-2 text-sm">
         <button type="button" className="min-h-11 font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("forgot")}>
-          Forgotten your password?
+          {t("auth.forgot")}
         </button>
         <button type="button" className="min-h-11 font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signup")}>
-          Create an account
+          {t("auth.createAccountLink")}
         </button>
       </div>
     </form>
@@ -105,6 +111,7 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
 }
 
 function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
+  const { t } = useTranslation();
   const [groups, setGroups] = useState<RegionGroup[]>([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -112,7 +119,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
   const [confirm, setConfirm] = useState("");
   const mismatch = confirm.length > 0 && password !== confirm;
   useEffect(() => {
-    fetchRegionGroups().then(setGroups).catch(() => toast.error("Could not load branches"));
+    fetchRegionGroups().then(setGroups).catch(() => toast.error(t("errors.branchesLoad")));
   }, []);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -120,27 +127,27 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
     const f = new FormData(e.currentTarget);
     const branch_id = String(f.get("branch") || "");
     if (password !== confirm) return;
-    if (!branch_id) { toast.error("Please choose your branch"); return; }
+    if (!branch_id) { toast.error(t("errors.chooseBranch")); return; }
     setBusy(true);
     const { data, error } = await supabase.auth.signUp({
       email: String(f.get("email")),
       password: String(f.get("password")),
       options: {
         emailRedirectTo: window.location.origin,
-        data: { full_name: String(f.get("full_name")), phone: String(f.get("phone")), branch_id },
+        data: { full_name: String(f.get("full_name")), phone: String(f.get("phone")), branch_id, preferred_language: currentLang() },
       },
     });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(translateError(error)); return; }
     if (!data.session) setDone(true);
   }
 
   if (done) {
     return (
       <div className="space-y-4">
-        <h2 className="text-3xl font-semibold">Check your email</h2>
-        <p className="text-muted-foreground">We've sent you a link to confirm your email address. Once confirmed, your Branch Manager will review your account.</p>
-        <Button variant="outline" className="h-12 rounded-xl" onClick={() => setMode("signin")}>Back to sign in</Button>
+        <h2 className="text-3xl font-semibold">{t("auth.checkEmailTitle")}</h2>
+        <p className="text-muted-foreground">{t("auth.checkEmailText")}</p>
+        <Button variant="outline" className="h-12 rounded-xl" onClick={() => setMode("signin")}>{t("auth.backToSignIn")}</Button>
       </div>
     );
   }
@@ -148,26 +155,26 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h2 className="text-3xl font-semibold">Join as a volunteer</h2>
-        <p className="mt-1 text-muted-foreground">Your Branch Manager will approve your account.</p>
+        <h2 className="text-3xl font-semibold">{t("auth.joinTitle")}</h2>
+        <p className="mt-1 text-muted-foreground">{t("auth.joinIntro")}</p>
       </div>
-      <Field id="full_name" name="full_name" label="Full name" autoComplete="name" required />
-      <Field id="email" name="email" type="email" label="Email" autoComplete="email" required />
-      <Field id="phone" name="phone" type="tel" label="Phone" autoComplete="tel" required />
+      <Field id="full_name" name="full_name" label={t("auth.fullName")} autoComplete="name" required />
+      <Field id="email" name="email" type="email" label={t("auth.email")} autoComplete="email" required />
+      <Field id="phone" name="phone" type="tel" label={t("auth.phone")} autoComplete="tel" required />
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("auth.password")}</Label>
         <PasswordInput id="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required aria-describedby="password-help" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl" />
-        <p id="password-help" className="text-sm text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
+        <p id="password-help" className="text-sm text-muted-foreground">{t("auth.passwordHelp", { count: MIN_PASSWORD_LENGTH })}</p>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="confirm">Confirm password</Label>
+        <Label htmlFor="confirm">{t("auth.confirmPassword")}</Label>
         <PasswordInput id="confirm" name="confirm" autoComplete="new-password" required aria-invalid={mismatch} aria-describedby={mismatch ? "confirm-error" : undefined} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-12 rounded-xl" />
-        {mismatch && <p id="confirm-error" role="alert" className="text-sm font-medium text-destructive">Passwords do not match</p>}
+        {mismatch && <p id="confirm-error" role="alert" className="text-sm font-medium text-destructive">{t("auth.passwordsDontMatch")}</p>}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="branch">Branch</Label>
+        <Label htmlFor="branch">{t("auth.branch")}</Label>
         <select id="branch" name="branch" required defaultValue="" className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
-          <option value="" disabled>Choose your branch</option>
+          <option value="" disabled>{t("auth.chooseBranch")}</option>
           {groups.map((g) => (
             <optgroup key={g.id} label={g.name}>
               {g.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -176,16 +183,17 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
         </select>
       </div>
       <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy || password !== confirm}>
-        {busy ? "Creating account…" : "Create account"}
+        {busy ? t("auth.creatingAccount") : t("auth.createAccount")}
       </Button>
       <button type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
-        Already have an account? Sign in
+        {t("auth.haveAccount")}
       </button>
     </form>
   );
 }
 
 function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
+  const { t } = useTranslation();
   const [sent, setSent] = useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -193,21 +201,21 @@ function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
     const { error } = await supabase.auth.resetPasswordForEmail(String(f.get("email")), {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(translateError(error));
     else setSent(true);
   }
   return (
     <form onSubmit={submit} className="space-y-5">
       <div>
-        <h2 className="text-3xl font-semibold">Reset your password</h2>
+        <h2 className="text-3xl font-semibold">{t("auth.resetTitle")}</h2>
         <p className="mt-1 text-muted-foreground">
-          {sent ? "If an account exists for that email, we've sent a reset link." : "Enter your email and we'll send you a link."}
+          {sent ? t("auth.resetSent") : t("auth.resetIntro")}
         </p>
       </div>
-      {!sent && <Field id="email" name="email" type="email" label="Email" required />}
-      {!sent && <Button type="submit" size="lg" className="h-12 w-full rounded-xl">Send reset link</Button>}
+      {!sent && <Field id="email" name="email" type="email" label={t("auth.email")} required />}
+      {!sent && <Button type="submit" size="lg" className="h-12 w-full rounded-xl">{t("auth.sendReset")}</Button>}
       <button type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
-        Back to sign in
+        {t("auth.backToSignIn")}
       </button>
     </form>
   );
