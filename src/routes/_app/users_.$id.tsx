@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, ArrowRightLeft, Check, History, Sparkles, Trash2, UserCog } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Check, History, Sparkles, Trash2, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, primaryRole, ROLE_LABELS } from "@/lib/auth";
 import { fetchMember, fetchMembers, fetchDirectorBranches, setStatus, setRole, setBranch } from "@/lib/members";
@@ -89,17 +89,22 @@ function UserDetails() {
 
     <section aria-labelledby="actions-h" className="rounded-2xl border bg-card p-6 shadow-soft">
       <h2 id="actions-h" className="text-xl font-semibold">Actions</h2>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {m.status === "pending" && <Button className="h-11" disabled={busy} onClick={() => changeStatus("active", "Volunteer approved")}><Check className="mr-2 h-4 w-4" />Approve</Button>}
-        {m.status === "active" && <Button variant="outline" className="h-11" disabled={busy} onClick={() => changeStatus("inactive", "User deactivated")}>Deactivate</Button>}
-        {m.status === "inactive" && <Button variant="outline" className="h-11" disabled={busy} onClick={() => changeStatus("active", "User activated")}>Activate</Button>}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start">
+        {m.status === "pending" && <>
+          <Button className="h-11" disabled={busy} onClick={() => changeStatus("active", "Volunteer approved")}><Check className="mr-2 h-4 w-4" />Approve</Button>
+          <Button variant="outline" className="h-11" disabled={busy} onClick={() => changeStatus("inactive", "Request rejected")}><X className="mr-2 h-4 w-4" />Reject</Button>
+        </>}
+        <Button variant="outline" className="h-11" onClick={() => setHistoryOpen(true)}><History className="mr-2 h-4 w-4" />History</Button>
         {director && <><Button variant="outline" className="h-11" onClick={() => { setEdit("role"); setValue(primaryRole(m.roles)); setError(""); }}><UserCog className="mr-2 h-4 w-4" />Change role</Button>
-          <Button variant="outline" className="h-11" disabled={!branches.data?.length} onClick={() => { setEdit("branch"); setValue(m.branch_id ?? ""); setError(""); }}><ArrowRightLeft className="mr-2 h-4 w-4" />Move to another branch</Button></>}
-        <div className="flex flex-col gap-1">
-          <Button variant="destructive" className="h-11" disabled={!!block} aria-describedby={block ? "delete-hint" : undefined} onClick={() => setDeleting(true)}><Trash2 className="mr-2 h-4 w-4" />Delete user</Button>
-          {block && <p id="delete-hint" className="text-xs text-muted-foreground">{block}</p>}
+          {!!branches.data?.length && <Button variant="outline" className="h-11" onClick={() => { setEdit("branch"); setValue(m.branch_id ?? ""); setError(""); }}><ArrowRightLeft className="mr-2 h-4 w-4" />Move to another branch</Button>}</>}
+        <div className="flex flex-col gap-2 border-t pt-3 sm:ml-2 sm:flex-row sm:items-start sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+          {m.status === "active" && <Button variant="outline" className="h-11 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} onClick={() => changeStatus("inactive", "User deactivated")}>Deactivate</Button>}
+          {m.status === "inactive" && <Button variant="outline" className="h-11" disabled={busy} onClick={() => changeStatus("active", "User reactivated")}>Reactivate</Button>}
+          <div className="flex flex-col gap-1">
+            <Button variant="destructive" className="h-11" disabled={!!block} aria-describedby={block ? "delete-hint" : undefined} onClick={() => setDeleting(true)}><Trash2 className="mr-2 h-4 w-4" />Delete user</Button>
+            {block && <p id="delete-hint" className="text-xs text-muted-foreground">{block}</p>}
+          </div>
         </div>
-        <Button variant="outline" className="h-11" onClick={() => setHistoryOpen(true)}><History className="mr-2 h-4 w-4" />View history</Button>
       </div>
     </section>
 
