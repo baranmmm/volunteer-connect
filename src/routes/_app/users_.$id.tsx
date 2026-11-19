@@ -4,8 +4,8 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRightLeft, Check, History, Sparkles, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, primaryRole, ROLE_LABELS } from "@/lib/auth";
-import { fetchMember, fetchDirectorBranches, setStatus, setRole, setBranch } from "@/lib/members";
-import { canEditRoleOrBranch, deleteBlockReason } from "@/lib/member-rules";
+import { fetchMember, fetchMembers, fetchDirectorBranches, setStatus, setRole, setBranch } from "@/lib/members";
+import { canEditRoleOrBranch, deleteBlockReason, isLastBranchManager } from "@/lib/member-rules";
 import { MemberHistory } from "@/components/app/MemberHistory";
 import { DeleteUserDialog } from "@/components/app/DeleteUserDialog";
 import { pageHead } from "@/components/app/head";
@@ -29,6 +29,7 @@ function UserDetails() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const director = canEditRoleOrBranch(profile?.status, roles);
+  const members = useQuery({ queryKey: ["members", uid], queryFn: () => fetchMembers(uid), enabled: !!uid && director });
   // RLS only returns this profile when can_manage_user(auth.uid(), id) is true.
   const member = useQuery({ queryKey: ["member", id], queryFn: () => fetchMember(id), enabled: isManager && id !== uid });
   const branches = useQuery({ queryKey: ["director-branches", uid, director, profile?.branch_id], queryFn: () => fetchDirectorBranches(uid), enabled: !!uid && director });
@@ -98,13 +99,8 @@ function UserDetails() {
           <Button variant="destructive" className="h-11" disabled={!!block} aria-describedby={block ? "delete-hint" : undefined} onClick={() => setDeleting(true)}><Trash2 className="mr-2 h-4 w-4" />Delete user</Button>
           {block && <p id="delete-hint" className="text-xs text-muted-foreground">{block}</p>}
         </div>
+        <Button variant="outline" className="h-11" onClick={() => setHistoryOpen(true)}><History className="mr-2 h-4 w-4" />View history</Button>
       </div>
-    </section>
-
-    <section aria-labelledby="history-h" className="rounded-2xl border bg-card p-6 shadow-soft">
-      <h2 id="history-h" className="text-xl font-semibold">History</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Every change to this user's status, role and branch.</p>
-      <Button variant="outline" className="mt-4 h-11" onClick={() => setHistoryOpen(true)}><History className="mr-2 h-4 w-4" />View history</Button>
     </section>
 
     <div className="grid gap-4 md:grid-cols-3">{["Tasks", "Events", "Training"].map((t) => <section key={t} className="rounded-2xl border bg-card p-6 shadow-soft"><h2 className="text-xl font-semibold">{t}</h2><p className="mt-2 flex items-center gap-2 text-muted-foreground"><Sparkles className="h-4 w-4 text-primary" aria-hidden />Coming soon</p></section>)}</div>
@@ -114,6 +110,7 @@ function UserDetails() {
         <DialogHeader><DialogTitle>{edit === "role" ? "Change role" : "Move to another branch"}</DialogTitle><DialogDescription>Confirm the change for {m.full_name || "this user"}.</DialogDescription></DialogHeader>
         <Label>{edit === "role" ? "New role" : "New branch"}</Label>
         <Select value={value} onValueChange={setValue}><SelectTrigger aria-label={edit === "role" ? "New role" : "New branch"} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{(edit === "role" ? roleOptions : branchOptions).map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+        {edit === "role" && value === "volunteer" && isLastBranchManager(m, members.data ?? []) && <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">This is the last Branch Manager in {m.branches?.name ?? "this branch"}. Continuing will leave the branch without a Branch Manager.</p>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <DialogFooter className="gap-2"><Button variant="outline" disabled={busy} onClick={() => setEdit(null)}>Cancel</Button><Button disabled={busy || !value || (edit === "role" ? value === primaryRole(m.roles) : value === m.branch_id)} onClick={confirmEdit}>{busy ? "Saving…" : "Confirm change"}</Button></DialogFooter>
       </DialogContent>

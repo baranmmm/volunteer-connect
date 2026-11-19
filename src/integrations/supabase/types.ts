@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       account_deletion_requests: {
         Row: {
+          deletion_audit_id: string | null
           handled_at: string | null
           handled_by: string | null
           id: string
@@ -24,6 +25,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          deletion_audit_id?: string | null
           handled_at?: string | null
           handled_by?: string | null
           id?: string
@@ -32,6 +34,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          deletion_audit_id?: string | null
           handled_at?: string | null
           handled_by?: string | null
           id?: string
@@ -40,6 +43,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "account_deletion_requests_deletion_audit_id_fkey"
+            columns: ["deletion_audit_id"]
+            isOneToOne: false
+            referencedRelation: "user_audit_log"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "account_deletion_requests_handled_by_fkey"
             columns: ["handled_by"]
@@ -201,7 +211,7 @@ export type Database = {
     Functions: {
       authorize_user_deletion: {
         Args: { _actor: string; _request?: string; _target: string }
-        Returns: undefined
+        Returns: string
       }
       can_manage_user: {
         Args: { _actor: string; _target: string }
@@ -229,7 +239,11 @@ export type Database = {
         Returns: boolean
       }
       record_user_deletion: {
-        Args: { _actor: string; _request?: string; _target: string }
+        Args: { _actor: string; _audit: string; _target: string }
+        Returns: undefined
+      }
+      record_user_deletion_failure: {
+        Args: { _actor: string; _audit: string; _target: string }
         Returns: undefined
       }
       request_account_deletion: { Args: never; Returns: string }
@@ -263,6 +277,7 @@ export type Database = {
         | "user_deleted"
         | "deletion_requested"
         | "deletion_cancelled"
+        | "user_deletion_failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -400,6 +415,7 @@ export const Constants = {
         "user_deleted",
         "deletion_requested",
         "deletion_cancelled",
+        "user_deletion_failed",
       ],
     },
   },

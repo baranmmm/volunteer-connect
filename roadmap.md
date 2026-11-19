@@ -1,6 +1,6 @@
 # Role management
-- [ ] Simplify Users rows and group details actions without changing Approvals.
-- [ ] Log deletion before account removal and record failures safely; test and provide updated definitions.
+- [x] Simplify Users rows and group details actions without changing Approvals.
+- [x] Log deletion before account removal and record failures safely; 39 tests and simulated desktop/mobile checks passed.
 - [x] Add guarded role/branch changes and immutable audit history.
 - [x] Add Users filters, confirmation dialogs, and history panel.
 - [x] Refresh account permissions on navigation and token refresh.

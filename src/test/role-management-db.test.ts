@@ -30,6 +30,8 @@ beforeAll(async () => {
   const end = previous.indexOf("-- 5. Function execution");
   await db.exec(previous.slice(start, end));
   await db.exec(readFileSync("supabase/migrations/20261119183332_9bf1ec9d-5236-4163-80bd-92130515e750.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/20261119193207_d7d98bcc-555f-432e-b2d4-a601f9beda29.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/20261119195745_cfd6bcd7-ff4f-4c35-9fd3-2c7a6961b166.sql", "utf8"));
 }, 20000);
 afterAll(async () => { await db.close(); });
 
@@ -39,6 +41,32 @@ async function rollbackTest(action: () => Promise<void>) {
 }
 
 describe("Role management database permissions", () => {
+  it("writes a personal-data-free deletion audit before deletion and returns its id", async () => rollbackTest(async () => {
+    await db.query("UPDATE profiles SET status='inactive' WHERE id=$1", [target]);
+    const result = await db.query<{ id: string }>("SELECT authorize_user_deletion($1,$2) AS id", [actor, target]);
+    expect((await db.query("SELECT id,actor_id,target_id,action,old_value,new_value FROM user_audit_log")).rows).toEqual([{ id: result.rows[0]?.id, actor_id: actor, target_id: target, action: "user_deleted", old_value: null, new_value: null }]);
+    expect((await db.query("SELECT id FROM profiles WHERE id=$1", [target])).rows).toEqual([{ id: target }]);
+  }));
+  it("does not log a deletion when permission checks fail", async () => {
+    await expect(db.query("SELECT authorize_user_deletion($1,$2)", [actor, target])).rejects.toThrow("Deactivate the user first");
+    expect((await db.query("SELECT id FROM user_audit_log")).rows).toEqual([]);
+  });
+  it("records deletion failure without personal data and resets only related requests", async () => rollbackTest(async () => {
+    const request = await db.query<{ id: string }>("INSERT INTO account_deletion_requests(user_id) VALUES ($1) RETURNING id", [target]);
+    const result = await db.query<{ id: string }>("SELECT authorize_user_deletion($1,$2,$3) AS id", [actor, target, request.rows[0]?.id]);
+    await db.query("SELECT record_user_deletion_failure($1,$2,$3)", [actor, target, result.rows[0]?.id]);
+    expect((await db.query("SELECT actor_id,target_id,action,old_value,new_value FROM user_audit_log WHERE action='user_deletion_failed'")).rows).toEqual([{ actor_id: actor, target_id: target, action: "user_deletion_failed", old_value: null, new_value: null }]);
+    expect((await db.query("SELECT status,handled_at,handled_by,deletion_audit_id FROM account_deletion_requests")).rows).toEqual([{ status: "pending", handled_at: null, handled_by: null, deletion_audit_id: null }]);
+  }));
+  it("completion only marks the linked request and never inserts another deletion audit", async () => rollbackTest(async () => {
+    await db.query("UPDATE profiles SET status='inactive' WHERE id=$1", [target]);
+    await db.query("INSERT INTO account_deletion_requests(user_id) VALUES ($1), (NULL)", [target]);
+    const result = await db.query<{ id: string }>("SELECT authorize_user_deletion($1,$2) AS id", [actor, target]);
+    await db.query("UPDATE account_deletion_requests SET user_id=NULL WHERE user_id=$1", [target]);
+    await db.query("SELECT record_user_deletion($1,$2,$3)", [actor, target, result.rows[0]?.id]);
+    expect((await db.query("SELECT status FROM account_deletion_requests ORDER BY status")).rows).toEqual([{ status: "pending" }, { status: "completed" }]);
+    expect((await db.query("SELECT action FROM user_audit_log")).rows).toEqual([{ action: "user_deleted" }]);
+  }));
   it("replaces role atomically and logs old and new values", async () => rollbackTest(async () => {
     await db.query("SELECT set_user_role($1,'branch_manager')", [target]);
     expect((await db.query("SELECT role FROM user_roles WHERE user_id=$1", [target])).rows).toEqual([{ role: "branch_manager" }]);
