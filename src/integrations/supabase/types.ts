@@ -93,6 +93,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_audit_log: {
+        Row: {
+          action: Database["public"]["Enums"]["user_audit_action"]
+          actor_id: string
+          created_at: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          target_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["user_audit_action"]
+          actor_id: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          target_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["user_audit_action"]
+          actor_id?: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          target_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -131,6 +161,17 @@ export type Database = {
         Args: { _actor: string; _target: string }
         Returns: boolean
       }
+      get_user_audit_history: {
+        Args: { _offset?: number; _target: string }
+        Returns: {
+          action: Database["public"]["Enums"]["user_audit_action"]
+          actor_name: string
+          created_at: string
+          id: string
+          new_value: string
+          old_value: string
+        }[]
+      }
       get_user_branch: { Args: { _user_id: string }; Returns: string }
       get_user_region: { Args: { _user_id: string }; Returns: string }
       has_role: {
@@ -139,6 +180,17 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      set_user_branch: {
+        Args: { _branch: string; _target: string }
+        Returns: undefined
+      }
+      set_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _target: string
+        }
+        Returns: undefined
       }
       set_user_status: {
         Args: {
@@ -151,6 +203,7 @@ export type Database = {
     Enums: {
       app_role: "regional_director" | "branch_manager" | "volunteer"
       profile_status: "pending" | "active" | "inactive"
+      user_audit_action: "status_change" | "role_change" | "branch_change"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -280,6 +333,7 @@ export const Constants = {
     Enums: {
       app_role: ["regional_director", "branch_manager", "volunteer"],
       profile_status: ["pending", "active", "inactive"],
+      user_audit_action: ["status_change", "role_change", "branch_change"],
     },
   },
 } as const

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useRedirect } from "@/lib/use-redirect";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Clock, LogOut, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { NAV_ITEMS, MOBILE_PRIMARY } from "@/components/app/nav";
@@ -30,10 +30,12 @@ function useSignOut() {
 }
 
 function AppLayout() {
-  const { loading, session, profile, isManager } = useAuth();
+  const { loading, session, profile, isManager, refresh } = useAuth();
   const signOut = useSignOut();
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  useEffect(() => { void refresh().catch(() => undefined); }, [pathname, refresh]);
 
   useRedirect(!loading && !session, "/auth");
 

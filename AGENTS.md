@@ -32,3 +32,6 @@ use the editor.
 ## Project rules
 - All routes use `ssr: false` (client-side SPA) because the app will be packaged as a PWA/native app.
 - Roles live only in `user_roles`; profile status changes go through the `set_user_status` RPC, and clients may update only `full_name`/`phone` (column grants), so RLS stays the real enforcement.
+- Role and branch mutations use permission-checked database RPCs with atomic audit inserts; history names come from a scoped RPC so profile access is not widened.
+- Account permissions refresh on page navigation and token refresh outside the synchronous auth listener to avoid Supabase auth deadlocks.
+- User lists and history paginate before filtering or displaying to avoid silently missing members and last-manager warnings.

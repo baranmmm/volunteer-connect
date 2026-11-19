@@ -34,17 +34,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const requestId = useRef(0);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   // Exactly one listener, registered before getSession(). The callback is synchronous:
   // awaiting Supabase calls inside it deadlocks supabase-js.
   useEffect(() => {
     let mounted = true;
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mounted) return;
       // Only replace state when the signed-in user actually changes, so token refreshes
       // and focus events don't cause re-renders or refetches.
       setSession((prev) => (prev?.user.id === s?.user.id && prev?.access_token === s?.access_token ? prev : s));
       setSessionReady(true);
+      // Defer reads to the effect; never await Supabase inside its auth callback.
+      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") setRefreshVersion((v) => v + 1);
     });
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
@@ -81,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     loadProfile(userId).catch(() => setLoadedFor(userId));
-  }, [userId, loadProfile]);
+  }, [userId, loadProfile, refreshVersion]);
 
   const refresh = useCallback(async () => {
     if (userId) await loadProfile(userId);
