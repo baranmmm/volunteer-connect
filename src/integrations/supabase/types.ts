@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_requests: {
+        Row: {
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          requested_at: string
+          status: Database["public"]["Enums"]["deletion_request_status"]
+          user_id: string | null
+        }
+        Insert: {
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          requested_at?: string
+          status?: Database["public"]["Enums"]["deletion_request_status"]
+          user_id?: string | null
+        }
+        Update: {
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          requested_at?: string
+          status?: Database["public"]["Enums"]["deletion_request_status"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_deletion_requests_handled_by_fkey"
+            columns: ["handled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_deletion_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           id: string
@@ -157,10 +199,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authorize_user_deletion: {
+        Args: { _actor: string; _request?: string; _target: string }
+        Returns: undefined
+      }
       can_manage_user: {
         Args: { _actor: string; _target: string }
         Returns: boolean
       }
+      cancel_account_deletion: { Args: never; Returns: undefined }
       get_user_audit_history: {
         Args: { _offset?: number; _target: string }
         Returns: {
@@ -181,6 +228,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_user_deletion: {
+        Args: { _actor: string; _request?: string; _target: string }
+        Returns: undefined
+      }
+      request_account_deletion: { Args: never; Returns: string }
       set_user_branch: {
         Args: { _branch: string; _target: string }
         Returns: undefined
@@ -202,8 +254,15 @@ export type Database = {
     }
     Enums: {
       app_role: "regional_director" | "branch_manager" | "volunteer"
+      deletion_request_status: "pending" | "cancelled" | "completed"
       profile_status: "pending" | "active" | "inactive"
-      user_audit_action: "status_change" | "role_change" | "branch_change"
+      user_audit_action:
+        | "status_change"
+        | "role_change"
+        | "branch_change"
+        | "user_deleted"
+        | "deletion_requested"
+        | "deletion_cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -332,8 +391,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["regional_director", "branch_manager", "volunteer"],
+      deletion_request_status: ["pending", "cancelled", "completed"],
       profile_status: ["pending", "active", "inactive"],
-      user_audit_action: ["status_change", "role_change", "branch_change"],
+      user_audit_action: [
+        "status_change",
+        "role_change",
+        "branch_change",
+        "user_deleted",
+        "deletion_requested",
+        "deletion_cancelled",
+      ],
     },
   },
 } as const
