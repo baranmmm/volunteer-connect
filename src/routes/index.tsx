@@ -1,4 +1,5 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useRedirect } from "@/lib/use-redirect";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
@@ -18,6 +19,6 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { loading, session } = useAuth();
-  if (loading) return <div className="min-h-screen" />;
-  return <Navigate to={session ? "/dashboard" : "/auth"} replace />;
+  useRedirect(!loading, session ? "/dashboard" : "/auth");
+  return <div className="min-h-screen" />;
 }

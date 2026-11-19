@@ -1,8 +1,8 @@
-import { createFileRoute, Link, Navigate, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { useRedirect } from "@/lib/use-redirect";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Clock, LogOut, MoreHorizontal } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { NAV_ITEMS, MOBILE_PRIMARY } from "@/components/app/nav";
 import { Logo } from "@/components/app/Logo";
@@ -17,11 +17,15 @@ export const Route = createFileRoute("/_app")({
 function useSignOut() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   return async () => {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    try {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      await signOut();
+    } finally {
+      navigate({ to: "/auth", replace: true });
+    }
   };
 }
 
@@ -31,8 +35,10 @@ function AppLayout() {
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  useRedirect(!loading && !session, "/auth");
+
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
-  if (!session) return <Navigate to="/auth" replace />;
+  if (!session) return null;
 
   if (!profile || profile.status !== "active") {
     const inactive = profile?.status === "inactive";

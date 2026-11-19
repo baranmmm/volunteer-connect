@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -9,12 +9,14 @@ export type Profile = Database["public"]["Tables"]["profiles"]["Row"] & {
 };
 
 type AuthState = {
+  /** True until the initial session AND (if signed in) the profile/roles have loaded. */
   loading: boolean;
   session: Session | null;
   profile: Profile | null;
   roles: AppRole[];
   isManager: boolean;
   refresh: () => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -27,47 +29,85 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const requestId = useRef(0);
 
-  const load = useCallback(async (s: Session | null) => {
-    setSession(s);
-    if (!s) {
-      setProfile(null);
-      setRoles([]);
-      setLoading(false);
-      return;
-    }
-    const uid = s.user.id;
+  // Exactly one listener, registered before getSession(). The callback is synchronous:
+  // awaiting Supabase calls inside it deadlocks supabase-js.
+  useEffect(() => {
+    let mounted = true;
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!mounted) return;
+      // Only replace state when the signed-in user actually changes, so token refreshes
+      // and focus events don't cause re-renders or refetches.
+      setSession((prev) => (prev?.user.id === s?.user.id && prev?.access_token === s?.access_token ? prev : s));
+      setSessionReady(true);
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession((prev) => prev ?? data.session);
+      setSessionReady(true);
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  const userId = session?.user.id ?? null;
+
+  const loadProfile = useCallback(async (uid: string) => {
+    const id = ++requestId.current;
     const [p, r] = await Promise.all([
       supabase.from("profiles").select("*, branches(name, regions(name))").eq("id", uid).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", uid),
     ]);
+    if (id !== requestId.current) return; // a newer request (or sign-out) superseded this one
     setProfile((p.data as Profile) ?? null);
     setRoles((r.data ?? []).map((x) => x.role));
-    setLoading(false);
+    setLoadedFor(uid);
   }, []);
 
+  // Profile/roles load in their own effect, keyed on the user id only.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => load(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
-        setTimeout(() => load(s), 0);
-      }
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [load]);
+    if (!userId) {
+      requestId.current++;
+      setProfile(null);
+      setRoles([]);
+      setLoadedFor(null);
+      return;
+    }
+    loadProfile(userId).catch(() => setLoadedFor(userId));
+  }, [userId, loadProfile]);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    await load(data.session);
-  }, [load]);
+    if (userId) await loadProfile(userId);
+  }, [userId, loadProfile]);
 
+  const signOut = useCallback(async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      // If the server call failed, still drop the locally stored session.
+      if (error) await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    } finally {
+      requestId.current++;
+      setSession(null);
+      setProfile(null);
+      setRoles([]);
+      setLoadedFor(null);
+    }
+  }, []);
+
+  const loading = !sessionReady || (userId !== null && loadedFor !== userId);
   const isManager = roles.includes("branch_manager") || roles.includes("regional_director");
 
   return (
-    <AuthContext.Provider value={{ loading, session, profile, roles, isManager, refresh }}>
+    <AuthContext.Provider value={{ loading, session, profile, roles, isManager, refresh, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,5 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useRedirect } from "@/lib/use-redirect";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +31,8 @@ type Mode = "signin" | "signup" | "forgot";
 function AuthPage() {
   const { session, loading } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
-  if (!loading && session) return <Navigate to="/dashboard" replace />;
+  useRedirect(!loading && !!session, "/dashboard");
+  if (!loading && session) return null;
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
