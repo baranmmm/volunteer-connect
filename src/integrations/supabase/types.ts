@@ -14,16 +14,143 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      branches: {
+        Row: {
+          id: string
+          name: string
+          region_id: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          region_id: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          region_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["profile_status"]
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["profile_status"]
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["profile_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regions: {
+        Row: {
+          id: string
+          name: string
+        }
+        Insert: {
+          id?: string
+          name: string
+        }
+        Update: {
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          region_id: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          region_id?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          region_id?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_manage_user: {
+        Args: { _actor: string; _target: string }
+        Returns: boolean
+      }
+      get_user_branch: { Args: { _user_id: string }; Returns: string }
+      get_user_region: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      set_user_status: {
+        Args: {
+          _status: Database["public"]["Enums"]["profile_status"]
+          _target: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "regional_director" | "branch_manager" | "volunteer"
+      profile_status: "pending" | "active" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +277,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["regional_director", "branch_manager", "volunteer"],
+      profile_status: ["pending", "active", "inactive"],
+    },
   },
 } as const
