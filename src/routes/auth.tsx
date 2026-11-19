@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRedirect } from "@/lib/use-redirect";
 import { useEffect, useState, type FormEvent } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fetchRegionGroups, type RegionGroup } from "@/lib/branches";
@@ -90,19 +90,19 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
         <h2 className="text-3xl font-semibold">{t("auth.welcomeBack")}</h2>
         <p className="mt-1 text-muted-foreground">{t("auth.signInIntro")}</p>
       </div>
-      <Field id="email" name="email" type="email" label={t("auth.email")} autoComplete="email" required />
+      <Field id="email" name="email" type="email" label={t("auth.email")} data-testid="auth-email-input" autoComplete="email" required />
       <div className="space-y-2">
         <Label htmlFor="password">{t("auth.password")}</Label>
-        <PasswordInput id="password" name="password" autoComplete="current-password" required className="h-12 rounded-xl" />
+        <PasswordInput data-testid="auth-password-input" id="password" name="password" autoComplete="current-password" required className="h-12 rounded-xl" />
       </div>
-      <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy}>
+      <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy}>
         {busy ? t("auth.signingIn") : t("auth.signIn")}
       </Button>
       <div className="flex flex-wrap justify-between gap-2 text-sm">
-        <button type="button" className="min-h-11 font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("forgot")}>
+        <button data-testid="auth-forgot-password-link" type="button" className="min-h-11 font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("forgot")}>
           {t("auth.forgot")}
         </button>
-        <button type="button" className="min-h-11 font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signup")}>
+        <button type="button" className="min-h-11 font-medium text-primary underline-offset-4 hover:underline" data-testid="auth-toggle-mode-link" onClick={() => setMode("signup")}>
           {t("auth.createAccountLink")}
         </button>
       </div>
@@ -158,22 +158,22 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
         <h2 className="text-3xl font-semibold">{t("auth.joinTitle")}</h2>
         <p className="mt-1 text-muted-foreground">{t("auth.joinIntro")}</p>
       </div>
-      <Field id="full_name" name="full_name" label={t("auth.fullName")} autoComplete="name" required />
-      <Field id="email" name="email" type="email" label={t("auth.email")} autoComplete="email" required />
-      <Field id="phone" name="phone" type="tel" label={t("auth.phone")} autoComplete="tel" required />
+      <Field id="full_name" name="full_name" label={t("auth.fullName")} data-testid="auth-full-name-input" autoComplete="name" required />
+      <Field id="email" name="email" type="email" label={t("auth.email")} data-testid="auth-email-input" autoComplete="email" required />
+      <Field id="phone" name="phone" type="tel" label={t("auth.phone")} data-testid="auth-phone-input" autoComplete="tel" required />
       <div className="space-y-2">
         <Label htmlFor="password">{t("auth.password")}</Label>
-        <PasswordInput id="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required aria-describedby="password-help" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl" />
+        <PasswordInput data-testid="auth-password-input" id="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required aria-describedby="password-help" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl" />
         <p id="password-help" className="text-sm text-muted-foreground">{t("auth.passwordHelp", { count: MIN_PASSWORD_LENGTH })}</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirm">{t("auth.confirmPassword")}</Label>
-        <PasswordInput id="confirm" name="confirm" autoComplete="new-password" required aria-invalid={mismatch} aria-describedby={mismatch ? "confirm-error" : undefined} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-12 rounded-xl" />
-        {mismatch && <p id="confirm-error" role="alert" className="text-sm font-medium text-destructive">{t("auth.passwordsDontMatch")}</p>}
+        <PasswordInput data-testid="auth-confirm-password-input" id="confirm" name="confirm" autoComplete="new-password" required aria-invalid={mismatch} aria-describedby={mismatch ? "confirm-error" : undefined} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-12 rounded-xl" />
+        {mismatch && <p data-testid="auth-error-message" id="confirm-error" role="alert" className="text-sm font-medium text-destructive">{t("auth.passwordsDontMatch")}</p>}
       </div>
       <div className="space-y-2">
         <Label htmlFor="branch">{t("auth.branch")}</Label>
-        <select id="branch" name="branch" required defaultValue="" className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+        <select data-testid="auth-branch-select" id="branch" name="branch" required defaultValue="" className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
           <option value="" disabled>{t("auth.chooseBranch")}</option>
           {groups.map((g) => (
             <optgroup key={g.id} label={g.name}>
@@ -182,10 +182,10 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
           ))}
         </select>
       </div>
-      <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy || password !== confirm}>
+      <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy || password !== confirm}>
         {busy ? t("auth.creatingAccount") : t("auth.createAccount")}
       </Button>
-      <button type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
+      <button data-testid="auth-toggle-mode-link" type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
         {t("auth.haveAccount")}
       </button>
     </form>
@@ -212,8 +212,8 @@ function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
           {sent ? t("auth.resetSent") : t("auth.resetIntro")}
         </p>
       </div>
-      {!sent && <Field id="email" name="email" type="email" label={t("auth.email")} required />}
-      {!sent && <Button type="submit" size="lg" className="h-12 w-full rounded-xl">{t("auth.sendReset")}</Button>}
+      {!sent && <Field id="email" name="email" type="email" label={t("auth.email")} data-testid="auth-email-input" required />}
+      {!sent && <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl">{t("auth.sendReset")}</Button>}
       <button type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
         {t("auth.backToSignIn")}
       </button>

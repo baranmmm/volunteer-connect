@@ -21,7 +21,7 @@ export function MemberHistory({ member, onClose }: { member: Member | null; onCl
   const branchName = (value: string | null) => branches.find((b) => b.id === value)?.name ?? t("common.noBranch");
 
   return <Sheet open={!!member} onOpenChange={(open) => { if (!open) onClose(); }}>
-    <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+    <SheetContent data-testid="history-panel" className="w-full overflow-y-auto sm:max-w-lg">
       <SheetHeader>
         <SheetTitle>{t("history.title")}</SheetTitle>
         <SheetDescription>{member?.full_name || t("common.unnamed")}</SheetDescription>
@@ -31,7 +31,7 @@ export function MemberHistory({ member, onClose }: { member: Member | null; onCl
           <ol className="divide-y">{history.data.pages.flat().map((entry) => {
             const c = historyChange(entry);
             const params = { ...c.params, from: c.branch ? branchName(entry.old_value) : c.params?.from && t(c.params.from), to: c.branch ? branchName(entry.new_value) : c.params?.to && t(c.params.to) };
-            return <li key={entry.id} className="py-4 text-sm leading-6 break-words">
+            return <li key={entry.id} data-testid="history-entry" data-action={entry.action} className="py-4 text-sm leading-6 break-words">
               <p><Trans i18nKey="history.by" values={{ change: t(c.key, params), actor: entry.actor_name }} components={{ bold: <span className="font-semibold" /> }} /></p>
               <time className="text-muted-foreground" dateTime={entry.created_at}>{formatDate(entry.created_at, { dateStyle: "medium", timeStyle: "short" })}</time>
             </li>;

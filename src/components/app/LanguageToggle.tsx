@@ -13,7 +13,7 @@ export function LanguageToggle({ className }: { className?: string }) {
       {opts.map((o, i) => (
         <span key={o.value} className="flex items-center">
           {i > 0 && <span aria-hidden className="px-0.5 text-muted-foreground">|</span>}
-          <button type="button" lang={o.value} aria-label={o.name} aria-pressed={i18n.language === o.value} onClick={() => setLanguage(o.value)}
+          <button type="button" data-testid={`auth-language-toggle-${o.value}`} lang={o.value} aria-label={o.name} aria-pressed={i18n.language === o.value} onClick={() => setLanguage(o.value)}
             className={cn("min-h-9 min-w-10 rounded-full px-2.5", i18n.language === o.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
             {o.label}
           </button>

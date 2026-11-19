@@ -14,6 +14,7 @@ export function PasswordInput({ className, ...props }: Omit<ComponentProps<typeo
       <Input type={show ? "text" : "password"} className={cn("pr-12", className)} {...props} />
       <button
         type="button"
+        data-testid="password-visibility-toggle"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? t("common.hidePassword") : t("common.showPassword")}
         aria-pressed={show}

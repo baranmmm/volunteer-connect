@@ -8,3 +8,6 @@
 - [ ] Verify with a real signed-in account: external Supabase does not support managed test sessions here.
 # Language support
 - [x] English/Turkish UI, saved language on profile, switchers; 45 tests and simulated desktop/mobile checks passed.
+
+# Test ids
+- [x] Stable data-testid attributes across pages, dialogs and toasts.

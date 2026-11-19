@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PasswordInput, MIN_PASSWORD_LENGTH } from "@/components/app/PasswordInput";
@@ -50,15 +50,15 @@ function ResetPassword() {
         <h1 className="text-3xl font-semibold">{t("auth.setNewTitle")}</h1>
         <div className="space-y-2">
           <Label htmlFor="password">{t("auth.newPassword")}</Label>
-          <PasswordInput id="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required aria-describedby="password-help" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl" />
+          <PasswordInput data-testid="auth-password-input" id="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required aria-describedby="password-help" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl" />
           <p id="password-help" className="text-sm text-muted-foreground">{t("auth.passwordHelp", { count: MIN_PASSWORD_LENGTH })}</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">{t("auth.confirmPassword")}</Label>
-          <PasswordInput id="confirm" name="confirm" autoComplete="new-password" required aria-invalid={mismatch} aria-describedby={mismatch ? "confirm-error" : undefined} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-12 rounded-xl" />
-          {mismatch && <p id="confirm-error" role="alert" className="text-sm font-medium text-destructive">{t("auth.passwordsDontMatch")}</p>}
+          <PasswordInput data-testid="auth-confirm-password-input" id="confirm" name="confirm" autoComplete="new-password" required aria-invalid={mismatch} aria-describedby={mismatch ? "confirm-error" : undefined} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-12 rounded-xl" />
+          {mismatch && <p data-testid="auth-error-message" id="confirm-error" role="alert" className="text-sm font-medium text-destructive">{t("auth.passwordsDontMatch")}</p>}
         </div>
-        <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy || password !== confirm}>{t("auth.updatePassword")}</Button>
+        <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy || password !== confirm}>{t("auth.updatePassword")}</Button>
       </form>
     </div>
   );

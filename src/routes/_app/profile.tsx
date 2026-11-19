@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMyDeletionRequest, requestAccountDeletion, cancelAccountDeletion } from "@/lib/members";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, primaryRole } from "@/lib/auth";
 import { useTranslation } from "react-i18next";
@@ -71,18 +71,18 @@ function ProfilePage() {
       <section className="max-w-xl space-y-2 rounded-2xl border bg-card p-6 shadow-soft">
         <Label htmlFor="language">{t("profile.language")}</Label>
         <Select value={i18n.language} onValueChange={changeLanguage}>
-          <SelectTrigger id="language" className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+          <SelectTrigger data-testid="profile-language-select" id="language" className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="en" lang="en">English</SelectItem><SelectItem value="tr" lang="tr">Türkçe</SelectItem></SelectContent>
         </Select>
       </section>
       <form onSubmit={submit} className="max-w-xl space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
         <div className="space-y-2">
           <Label htmlFor="full_name">{t("profile.fullName")}</Label>
-          <Input id="full_name" name="full_name" defaultValue={profile.full_name} required className="h-12 rounded-xl" />
+          <Input data-testid="profile-full-name-input" id="full_name" name="full_name" defaultValue={profile.full_name} required className="h-12 rounded-xl" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">{t("profile.phone")}</Label>
-          <Input id="phone" name="phone" type="tel" defaultValue={profile.phone ?? ""} className="h-12 rounded-xl" />
+          <Input data-testid="profile-phone-input" id="phone" name="phone" type="tel" defaultValue={profile.phone ?? ""} className="h-12 rounded-xl" />
         </div>
         <dl className="grid gap-4 border-t pt-5 text-sm sm:grid-cols-3">
           <div><dt className="text-muted-foreground">{t("profile.email")}</dt><dd className="font-medium break-all">{profile.email}</dd></div>
@@ -90,7 +90,7 @@ function ProfilePage() {
           <div><dt className="text-muted-foreground">{t("profile.branch")}</dt><dd className="font-medium">{profile.branches?.name ?? "—"}</dd></div>
         </dl>
         <p className="text-xs text-muted-foreground">{t("profile.roleNote")}</p>
-        <Button type="submit" className="h-12 rounded-xl px-6" disabled={busy}>{busy ? t("common.saving") : t("common.save")}</Button>
+        <Button data-testid="profile-save-button" type="submit" className="h-12 rounded-xl px-6" disabled={busy}>{busy ? t("common.saving") : t("common.save")}</Button>
       </form>
       <section aria-labelledby="delete-h" className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft">
         <h2 id="delete-h" className="text-xl font-semibold">{t("profile.deleteTitle")}</h2>
@@ -98,13 +98,13 @@ function ProfilePage() {
           <p className="text-sm text-muted-foreground">{t("profile.directorNote")}</p>
         ) : myRequest.isLoading ? <p className="text-sm text-muted-foreground">{t("common.loading")}</p> : myRequest.data ? (
           <>
-            <p className="text-sm">{t("profile.requestedOn", { date: formatDate(myRequest.data.requested_at) })}</p>
-            <Button variant="outline" className="h-11 rounded-xl" disabled={deleteBusy} onClick={() => runDeletion("cancel")}>{deleteBusy ? t("profile.cancelling") : t("profile.cancelRequest")}</Button>
+            <p data-testid="profile-deletion-pending-notice" className="text-sm">{t("profile.requestedOn", { date: formatDate(myRequest.data.requested_at) })}</p>
+            <Button variant="outline" className="h-11 rounded-xl" disabled={deleteBusy} data-testid="profile-cancel-deletion-button" onClick={() => runDeletion("cancel")}>{deleteBusy ? t("profile.cancelling") : t("profile.cancelRequest")}</Button>
           </>
         ) : (
           <>
             <p className="text-sm text-muted-foreground">{t("profile.deleteIntro")}</p>
-            <Button variant="destructive" className="h-11 rounded-xl" onClick={() => setConfirmOpen(true)}>{t("profile.deleteTitle")}</Button>
+            <Button variant="destructive" className="h-11 rounded-xl" data-testid="profile-delete-account-button" onClick={() => setConfirmOpen(true)}>{t("profile.deleteTitle")}</Button>
           </>
         )}
       </section>
@@ -115,8 +115,8 @@ function ProfilePage() {
             <DialogDescription>{t("profile.confirmText")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" disabled={deleteBusy} onClick={() => setConfirmOpen(false)}>{t("profile.keepAccount")}</Button>
-            <Button variant="destructive" disabled={deleteBusy} onClick={() => runDeletion("request")}>{deleteBusy ? t("profile.sending") : t("profile.requestDeletion")}</Button>
+            <Button data-testid="confirm-dialog-cancel-button" variant="outline" disabled={deleteBusy} onClick={() => setConfirmOpen(false)}>{t("profile.keepAccount")}</Button>
+            <Button data-testid="confirm-dialog-confirm-button" variant="destructive" disabled={deleteBusy} onClick={() => runDeletion("request")}>{deleteBusy ? t("profile.sending") : t("profile.requestDeletion")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

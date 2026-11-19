@@ -48,7 +48,7 @@ function AppLayout() {
     const inactive = profile?.status === "inactive";
     return (
       <div className="flex min-h-screen items-center justify-center px-5">
-        <div className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-soft">
+        <div data-testid="pending-approval-screen" className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-soft">
           <Clock className="mx-auto h-12 w-12 text-primary" aria-hidden />
           <h1 className="mt-4 text-2xl font-semibold">
             {inactive ? t("navigation.inactiveTitle") : t("navigation.pendingTitle")}
@@ -56,7 +56,7 @@ function AppLayout() {
           <p className="mt-3 text-muted-foreground">
             {inactive ? t("navigation.inactiveText") : t("navigation.pendingText")}
           </p>
-          <Button variant="outline" className="mt-6 h-12 rounded-xl" onClick={signOut}>
+          <Button data-testid="pending-sign-out-button" variant="outline" className="mt-6 h-12 rounded-xl" onClick={signOut}>
             <LogOut className="mr-2 h-4 w-4" /> {t("navigation.signOut")}
           </Button>
         </div>
@@ -74,17 +74,18 @@ function AppLayout() {
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-5 text-sidebar-foreground lg:flex">
         <Logo className="mb-8 px-2" />
         <nav aria-label={t("navigation.main")} className="flex-1 space-y-1">
-          {items.map(({ to, labelKey, icon: Icon }) => (
+          {items.map(({ to, testId, labelKey, icon: Icon }) => (
             <Link
               key={to}
               to={to}
+              data-testid={testId}
               className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-primary"
             >
               <Icon className="h-5 w-5" aria-hidden /> {t(labelKey)}
             </Link>
           ))}
         </nav>
-        <button onClick={signOut} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-sidebar-accent">
+        <button data-testid="nav-sign-out" onClick={signOut} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-sidebar-accent">
           <LogOut className="h-5 w-5" aria-hidden /> {t("navigation.signOut")}
         </button>
       </aside>
@@ -98,12 +99,13 @@ function AppLayout() {
       </main>
 
       <nav aria-label={t("navigation.main")} className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
-        {primary.map(({ to, labelKey, icon: Icon }) => (
-          <Link key={to} to={to} className="flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground data-[status=active]:text-primary">
+        {primary.map(({ to, testId, labelKey, icon: Icon }) => (
+          <Link key={to} to={to} data-testid={testId} className="flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground data-[status=active]:text-primary">
             <Icon className="h-6 w-6" aria-hidden /> {t(labelKey)}
           </Link>
         ))}
         <button
+          data-testid="mobile-nav-more"
           onClick={() => setMoreOpen(true)}
           aria-label={t("navigation.more")}
           className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${more.some((m) => active(m.to)) ? "text-primary" : "text-muted-foreground"}`}
@@ -116,12 +118,12 @@ function AppLayout() {
         <SheetContent side="bottom" className="rounded-t-3xl">
           <SheetHeader><SheetTitle>{t("navigation.more")}</SheetTitle></SheetHeader>
           <div className="grid gap-1 p-4 pt-0">
-            {more.map(({ to, labelKey, icon: Icon }) => (
-              <Link key={to} to={to} onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted data-[status=active]:bg-secondary data-[status=active]:text-primary">
+            {more.map(({ to, testId, labelKey, icon: Icon }) => (
+              <Link key={to} to={to} data-testid={testId} onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted data-[status=active]:bg-secondary data-[status=active]:text-primary">
                 <Icon className="h-5 w-5" aria-hidden /> {t(labelKey)}
               </Link>
             ))}
-            <button onClick={signOut} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted">
+            <button data-testid="nav-sign-out" onClick={signOut} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted">
               <LogOut className="h-5 w-5" aria-hidden /> {t("navigation.signOut")}
             </button>
           </div>

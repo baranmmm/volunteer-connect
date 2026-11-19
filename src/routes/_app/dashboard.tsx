@@ -17,10 +17,10 @@ function Dashboard() {
     <div className="space-y-8">
       <section className="rounded-3xl bg-hero p-7 text-primary-foreground shadow-soft sm:p-10">
         <p className="text-sm font-medium opacity-90">{t("dashboard.welcomeBack")}</p>
-        <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{first ? t("dashboard.hello", { name: first }) : t("dashboard.helloNoName")}</h1>
+        <h1 data-testid="dashboard-welcome" className="mt-1 text-3xl font-semibold sm:text-4xl">{first ? t("dashboard.hello", { name: first }) : t("dashboard.helloNoName")}</h1>
         <p className="mt-3 opacity-90">
-          {t(`common.roles.${primaryRole(roles)}`)}
-          {profile?.branches && <> · {t("dashboard.branchLine", { branch: profile.branches.name })}{profile.branches.regions && <>, {profile.branches.regions.name}</>}</>}
+          <span data-testid="dashboard-user-role">{t(`common.roles.${primaryRole(roles)}`)}</span>
+          {profile?.branches && <> · <span data-testid="dashboard-user-branch">{t("dashboard.branchLine", { branch: profile.branches.name })}</span>{profile.branches.regions && <>, {profile.branches.regions.name}</>}</>}
         </p>
       </section>
       <div className="grid gap-5 md:grid-cols-2">
