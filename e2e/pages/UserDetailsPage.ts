@@ -3,7 +3,6 @@ import { ConfirmDialog, DeleteUserDialog } from "./components/ConfirmDialog";
 import { pickOption } from "./components/select";
 
 export type EditableRole = "volunteer" | "branch_manager";
-const ROLE_OPTION_ORDER: EditableRole[] = ["volunteer", "branch_manager"];
 
 export class UserDetailsPage {
   constructor(readonly page: Page) {}
@@ -14,6 +13,10 @@ export class UserDetailsPage {
   readonly role = () => this.page.getByTestId("user-details-role");
   readonly status = () => this.page.getByTestId("user-details-status");
   readonly notAllowed = () => this.page.getByTestId("user-details-not-allowed");
+  readonly loadError = () => this.page.getByTestId("user-details-load-error");
+  readonly deleteHint = () => this.page.getByTestId("user-details-delete-hint");
+  readonly editDialogError = () => this.page.getByTestId("edit-dialog-error");
+  readonly historyEmpty = () => this.page.getByTestId("history-empty");
 
   readonly approveButton = () => this.page.getByTestId("user-details-approve-button");
   readonly rejectButton = () => this.page.getByTestId("user-details-reject-button");
@@ -45,14 +48,14 @@ export class UserDetailsPage {
   async chooseRole(role: EditableRole) {
     await this.changeRoleButton().click();
     await expect(this.roleDialog().root).toBeVisible();
-    await pickOption(this.page, "change-role-select", "change-role-option", role, ROLE_OPTION_ORDER.indexOf(role));
+    await pickOption(this.page, "change-role-select", "change-role-option", role);
   }
 
-  /** Opens the move-branch dialog and selects a branch; `index` is its position in the region's name-ordered list. */
-  async chooseBranch(branchId: string, index: number) {
+  /** Opens the move-branch dialog and selects a branch by id; does not confirm. */
+  async chooseBranch(branchId: string) {
     await this.moveBranchButton().click();
     await expect(this.branchDialog().root).toBeVisible();
-    await pickOption(this.page, "move-branch-select", "move-branch-option", branchId, index);
+    await pickOption(this.page, "move-branch-select", "move-branch-option", branchId);
   }
 
   async openHistory() {

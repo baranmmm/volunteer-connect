@@ -1,40 +1,63 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "users" | "profile";
 const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
 
-/** Desktop sidebar or mobile bottom nav + "More" sheet, depending on the project. */
+/** Desktop sidebar (`app-sidebar`) or mobile bottom nav (`mobile-bottom-nav`) + "More" sheet (`mobile-nav-more-sheet`). */
 export class Sidebar {
   constructor(private readonly page: Page, private readonly isMobile: boolean) {}
 
-  /** The visible nav link (desktop and mobile navs both exist in the DOM). */
-  link(key: NavKey) {
-    return this.page.getByTestId(`nav-${key}`).filter({ visible: true });
+  private get desktopNav() {
+    return this.page.getByTestId("app-sidebar");
+  }
+  private get bottomNav() {
+    return this.page.getByTestId("mobile-bottom-nav");
+  }
+  private get moreSheet() {
+    return this.page.getByTestId("mobile-nav-more-sheet");
   }
 
-  private async openMoreIfNeeded(key: NavKey | "sign-out") {
-    if (this.isMobile && !MOBILE_PRIMARY.includes(key as NavKey)) {
-      await this.page.getByTestId("mobile-nav-more").click();
-    }
+  private inMore(key: NavKey) {
+    return this.isMobile && !MOBILE_PRIMARY.includes(key);
+  }
+
+  private async openMore() {
+    await this.page.getByTestId("mobile-nav-more").click();
+    await expect(this.moreSheet).toBeVisible();
+  }
+
+  /** The nav container that holds this item on the current device. */
+  private container(key: NavKey): Locator {
+    if (!this.isMobile) return this.desktopNav;
+    return this.inMore(key) ? this.moreSheet : this.bottomNav;
+  }
+
+  link(key: NavKey) {
+    return this.container(key).getByTestId(`nav-${key}`);
   }
 
   async go(key: NavKey) {
-    await this.openMoreIfNeeded(key);
+    if (this.inMore(key)) await this.openMore();
     await this.link(key).click();
     await expect(this.page).toHaveURL(new RegExp(`/${key}(?:$|[/?#])`));
   }
 
   /** Whether a manager-only item is offered to this user (checks the right nav for the device). */
   async hasItem(key: NavKey): Promise<boolean> {
-    await this.openMoreIfNeeded(key);
-    const visible = (await this.link(key).count()) > 0;
-    if (this.isMobile && !MOBILE_PRIMARY.includes(key)) await this.page.keyboard.press("Escape");
-    return visible;
+    if (this.inMore(key)) await this.openMore();
+    else await expect(this.container(key)).toBeVisible();
+    const present = (await this.link(key).count()) > 0;
+    if (this.inMore(key)) await this.page.keyboard.press("Escape");
+    return present;
   }
 
   async signOut() {
-    await this.openMoreIfNeeded("sign-out");
-    await this.page.getByTestId("nav-sign-out").filter({ visible: true }).click();
+    if (this.isMobile) {
+      await this.openMore();
+      await this.moreSheet.getByTestId("mobile-nav-sign-out").click();
+    } else {
+      await this.desktopNav.getByTestId("nav-sign-out").click();
+    }
     await expect(this.page).toHaveURL(/\/auth$/);
   }
 }

@@ -8,6 +8,7 @@ test.describe("Pending approval screen", () => {
     const dashboard = new DashboardPage(page);
     await page.goto("/dashboard");
     await expect(dashboard.pendingScreen()).toBeVisible();
+    await expect(dashboard.pendingScreen()).toHaveAttribute("data-status", "pending");
     await expect(dashboard.welcome()).toHaveCount(0);
     await expect(page.getByTestId("nav-dashboard")).toHaveCount(0);
 
@@ -24,7 +25,6 @@ test.describe("Pending approval screen", () => {
     const user = await freshUser({ status: "inactive" });
     const page = await pageAs(user);
     await page.goto("/dashboard");
-    await expect(page.getByTestId("pending-approval-screen")).toBeVisible();
-    // Once Lovable adds data-status on this screen: expect(...).toHaveAttribute("data-status", "inactive")
+    await expect(page.getByTestId("pending-approval-screen")).toHaveAttribute("data-status", "inactive");
   });
 });

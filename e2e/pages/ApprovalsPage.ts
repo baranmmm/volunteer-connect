@@ -7,9 +7,16 @@ export class ApprovalsPage {
   readonly newTab = () => this.page.getByTestId("approvals-tab-new");
   readonly deletionsTab = () => this.page.getByTestId("approvals-tab-deletions");
   readonly rows = () => this.page.getByTestId("approvals-row");
+  readonly emptyState = () => this.page.getByTestId("approvals-empty-state");
+  readonly deletionsEmptyState = () => this.page.getByTestId("deletion-requests-empty-state");
+  readonly deletionsError = () => this.page.getByTestId("deletion-requests-error");
 
   row(userId: string) {
     return this.page.locator(`[data-testid="approvals-row"][data-user-id="${userId}"]`);
+  }
+  /** Pending deletion request of a user (data-user-id on the row). */
+  deletionRowForUser(userId: string) {
+    return this.page.locator(`[data-testid="deletion-request-row"][data-user-id="${userId}"]`);
   }
   deletionRow(requestId: string) {
     return this.page.locator(`[data-testid="deletion-request-row"][data-request-id="${requestId}"]`);

@@ -6,6 +6,7 @@ export class UsersPage {
   readonly search = () => this.page.getByTestId("users-search-input");
   readonly rows = () => this.page.getByTestId("users-row");
   readonly emptyState = () => this.page.getByTestId("users-empty-state");
+  readonly loadError = () => this.page.getByTestId("users-load-error");
   readonly branchFilter = () => this.page.getByTestId("users-filter-branch");
 
   /** Row of a specific user, located by record id (never by text). */
@@ -21,6 +22,8 @@ export class UsersPage {
   /** The list has finished loading when either rows or the empty state is shown. */
   async waitForList() {
     await expect(this.search()).toBeVisible();
+    await expect(this.page.getByTestId("users-loading")).toHaveCount(0);
+    await expect(this.loadError()).toHaveCount(0);
     await expect(this.rows().first().or(this.emptyState())).toBeVisible();
   }
 

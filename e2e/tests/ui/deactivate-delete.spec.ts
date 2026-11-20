@@ -26,6 +26,7 @@ test.describe("Deactivate and delete (branch manager)", () => {
     await details.goto(user.id);
 
     await expect(details.deleteButton()).toBeDisabled();
+    await expect(details.deleteHint()).toBeVisible();
     await details.deactivateButton().click();
     await expect(details.reactivateButton()).toBeVisible();
     await expect(details.deleteButton()).toBeEnabled();

@@ -62,24 +62,9 @@ npm test             # starts the app on BASE_URL against QA, then runs all proj
 - Secrets live in the GitHub environment `qa`: `QA_SUPABASE_URL`, `QA_SUPABASE_PUBLISHABLE_KEY`,
   `QA_SUPABASE_SERVICE_ROLE_KEY`, `QA_SUPABASE_DB_POOLER_URL` (no password), `QA_SUPABASE_DB_PASSWORD`, `E2E_USER_PASSWORD`.
 
-## data-testids still needed from Lovable
+## data-testids
 
-Until these exist, a few page objects fall back to an option's position (`pages/components/select.ts`) or to `getByRole("dialog")`.
-
-**Required**
-
-| Page | File | Add |
-|---|---|---|
-| Auth | `src/routes/auth.tsx` | `auth-sign-in-form`, `auth-sign-up-form`, `auth-forgot-form`, `auth-check-email-screen`, `auth-back-to-sign-in-button`, `auth-reset-sent-message` |
-| App layout | `src/routes/_app/route.tsx` | `data-status` on `pending-approval-screen`; `mobile-nav-sign-out` for the sign-out in the mobile "More" sheet |
-| Users | `src/routes/_app/users.tsx` | `users-filter-status-option-{value}`, `users-filter-role-option-{value}`, `users-filter-branch-option-{branchId}`, `users-row-branch`, `users-row-email` |
-| User details | `src/routes/_app/users_.$id.tsx` | `change-role-option-{volunteer\|branch_manager}`, `move-branch-option-{branchId}`, `edit-dialog-error`, `user-details-delete-hint` |
-| Approvals | `src/routes/_app/approvals.tsx` | `approvals-empty-state`, `deletion-requests-empty-state`, `data-user-id` on `deletion-request-row` |
-| Profile | `src/routes/_app/profile.tsx` | `profile-language-option-{en\|tr}`, `profile-delete-confirm-dialog`, `profile-director-delete-note` |
-| Delete dialog | `src/components/app/DeleteUserDialog.tsx` | `delete-user-error` |
-| History | `src/components/app/MemberHistory.tsx` | `history-empty` |
-
-**Nice to have**: `app-loading`, `app-sidebar`, `mobile-bottom-nav`, `mobile-nav-more-sheet`, `users-loading`,
-`users-load-error`, `user-details-loading`, `user-details-load-error`, `user-details-back-link`, `user-details-phone`,
-`user-details-region`, `deletion-requests-error`, `history-load-error`, `history-load-more-button`, `profile-email`,
-`profile-role`, `profile-branch`, `approvals-row-name`, `deletion-request-user-link`, `not-found-page`, `error-page`.
+All test ids requested from Lovable (commit `884c943`) are in place, including option ids for every Radix
+Select (`<select-test-id>-option-<value>`), dialog containers, empty/loading/error states and `data-status` on
+the pending screen. Page objects use only `getByTestId` (and `data-user-id` / `data-request-id` attributes).
+New UI must follow the same convention; see `CLAUDE.md`.

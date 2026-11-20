@@ -19,7 +19,7 @@ test.describe("Sign in and sign out", () => {
     await expect(dashboard.branch()).toBeVisible();
 
     await sidebar.signOut();
-    await expect(auth.submit()).toBeVisible();
+    await expect(auth.signInForm()).toBeVisible();
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/auth$/);
   });

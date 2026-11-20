@@ -18,7 +18,7 @@ export class LanguageSwitcher {
 
   /** Profile page select (options: en, tr). */
   async chooseOnProfile(lang: Lang) {
-    await pickOption(this.page, "profile-language-select", "profile-language-option", lang, lang === "en" ? 0 : 1);
+    await pickOption(this.page, "profile-language-select", "profile-language-option", lang);
   }
 
   /** The app mirrors the active language on <html lang>, which is language-neutral to assert. */

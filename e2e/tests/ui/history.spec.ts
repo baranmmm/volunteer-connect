@@ -34,6 +34,7 @@ test.describe("Member history", () => {
     const details = new UserDetailsPage(page);
     await details.goto(user.id);
     await details.openHistory();
+    await expect(details.historyEmpty()).toBeVisible();
     await expect(details.historyEntries()).toHaveCount(0);
   });
 });

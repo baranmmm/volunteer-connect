@@ -4,9 +4,9 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export class ConfirmDialog {
   constructor(readonly root: Locator) {}
 
-  /** Scope by container test id, or the open dialog role when the container has none yet. */
-  static in(page: Page, containerTestId?: string) {
-    return new ConfirmDialog(containerTestId ? page.getByTestId(containerTestId) : page.getByRole("dialog"));
+  /** Scope by the dialog container's test id. */
+  static in(page: Page, containerTestId: string) {
+    return new ConfirmDialog(page.getByTestId(containerTestId));
   }
 
   get confirmButton() {
@@ -30,6 +30,9 @@ export class ConfirmDialog {
 export class DeleteUserDialog extends ConfirmDialog {
   constructor(page: Page) {
     super(page.getByTestId("delete-user-dialog"));
+  }
+  get error() {
+    return this.root.getByTestId("delete-user-error");
   }
   get nameInput() {
     return this.root.getByTestId("delete-user-name-input");

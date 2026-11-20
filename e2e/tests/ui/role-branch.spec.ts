@@ -22,8 +22,7 @@ test.describe("Role and branch changes (regional director)", () => {
     const details = new UserDetailsPage(page);
     await details.goto(user.id);
 
-    const index = seed.regionBranches.findIndex((b) => b.id === seed.branches.Brighton);
-    await details.chooseBranch(seed.branches.Brighton, index);
+    await details.chooseBranch(seed.branches.Brighton);
     await details.branchDialog().confirm();
     await expect(toastSuccess(page)).toBeVisible();
     await expect.poll(async () => (await getProfile(user.id))?.branch_id).toBe(seed.branches.Brighton);

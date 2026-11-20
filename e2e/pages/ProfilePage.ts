@@ -12,6 +12,8 @@ export class ProfilePage {
   readonly deleteAccountButton = () => this.page.getByTestId("profile-delete-account-button");
   readonly cancelDeletionButton = () => this.page.getByTestId("profile-cancel-deletion-button");
   readonly deletionPendingNotice = () => this.page.getByTestId("profile-deletion-pending-notice");
+  readonly directorDeleteNote = () => this.page.getByTestId("profile-director-delete-note");
+  readonly email = () => this.page.getByTestId("profile-email");
   get language() {
     return new LanguageSwitcher(this.page);
   }
@@ -23,8 +25,7 @@ export class ProfilePage {
 
   async requestAccountDeletion() {
     await this.deleteAccountButton().click();
-    // Container test id requested from Lovable: profile-delete-confirm-dialog.
-    await ConfirmDialog.in(this.page).confirm();
+    await ConfirmDialog.in(this.page, "profile-delete-confirm-dialog").confirm();
     await expect(this.deletionPendingNotice()).toBeVisible();
   }
 

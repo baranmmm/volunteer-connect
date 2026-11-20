@@ -35,6 +35,7 @@ test.describe("Delete my account", () => {
     await approvals.goto();
     await approvals.openDeletionRequests();
     await expect(approvals.deletionRow(request.id)).toBeVisible();
+    await expect(approvals.deletionRowForUser(user.id)).toHaveAttribute("data-request-id", request.id);
     await expect(approvals.deletionRow(request.id).getByTestId("deletion-request-days-left")).toBeVisible();
 
     await approvals.processDeletion(request.id, user.fullName);
@@ -51,6 +52,7 @@ test.describe("Delete my account — regional director", () => {
   test("directors cannot request deletion in-app", async ({ page }) => {
     const profile = new ProfilePage(page);
     await profile.goto();
+    await expect(profile.directorDeleteNote()).toBeVisible();
     await expect(profile.deleteAccountButton()).toHaveCount(0);
     await expect(profile.cancelDeletionButton()).toHaveCount(0);
   });

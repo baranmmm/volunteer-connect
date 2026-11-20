@@ -8,6 +8,7 @@ export class DashboardPage {
   readonly branch = () => this.page.getByTestId("dashboard-user-branch");
   readonly pendingScreen = () => this.page.getByTestId("pending-approval-screen");
   readonly pendingSignOut = () => this.page.getByTestId("pending-sign-out-button");
+  readonly appLoading = () => this.page.getByTestId("app-loading");
 
   async goto() {
     await this.page.goto("/dashboard");
