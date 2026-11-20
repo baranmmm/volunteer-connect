@@ -85,7 +85,7 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
     if (error) toast.error(translateError(error));
   }
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form data-testid="auth-sign-in-form" onSubmit={submit} className="space-y-5">
       <div>
         <h2 className="text-3xl font-semibold">{t("auth.welcomeBack")}</h2>
         <p className="mt-1 text-muted-foreground">{t("auth.signInIntro")}</p>
@@ -144,16 +144,16 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
 
   if (done) {
     return (
-      <div className="space-y-4">
+      <div data-testid="auth-check-email-screen" className="space-y-4">
         <h2 className="text-3xl font-semibold">{t("auth.checkEmailTitle")}</h2>
         <p className="text-muted-foreground">{t("auth.checkEmailText")}</p>
-        <Button variant="outline" className="h-12 rounded-xl" onClick={() => setMode("signin")}>{t("auth.backToSignIn")}</Button>
+        <Button data-testid="auth-back-to-sign-in-button" variant="outline" className="h-12 rounded-xl" onClick={() => setMode("signin")}>{t("auth.backToSignIn")}</Button>
       </div>
     );
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form data-testid="auth-sign-up-form" onSubmit={submit} className="space-y-4">
       <div>
         <h2 className="text-3xl font-semibold">{t("auth.joinTitle")}</h2>
         <p className="mt-1 text-muted-foreground">{t("auth.joinIntro")}</p>
@@ -205,16 +205,16 @@ function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
     else setSent(true);
   }
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form data-testid="auth-forgot-form" onSubmit={submit} className="space-y-5">
       <div>
         <h2 className="text-3xl font-semibold">{t("auth.resetTitle")}</h2>
-        <p className="mt-1 text-muted-foreground">
+        <p data-testid={sent ? "auth-reset-sent-message" : undefined} className="mt-1 text-muted-foreground">
           {sent ? t("auth.resetSent") : t("auth.resetIntro")}
         </p>
       </div>
       {!sent && <Field id="email" name="email" type="email" label={t("auth.email")} data-testid="auth-email-input" required />}
       {!sent && <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl">{t("auth.sendReset")}</Button>}
-      <button type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
+      <button data-testid="auth-back-to-sign-in-button" type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
         {t("auth.backToSignIn")}
       </button>
     </form>

@@ -11,3 +11,4 @@
 
 # Test ids
 - [x] Stable data-testid attributes across pages, dialogs and toasts.
+- [x] Add the requested supplemental test ids and verify them without behaviour, styling, text or database changes.
