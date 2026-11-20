@@ -72,7 +72,7 @@ function ProfilePage() {
         <Label htmlFor="language">{t("profile.language")}</Label>
         <Select value={i18n.language} onValueChange={changeLanguage}>
           <SelectTrigger data-testid="profile-language-select" id="language" className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="en" lang="en">English</SelectItem><SelectItem value="tr" lang="tr">Türkçe</SelectItem></SelectContent>
+          <SelectContent><SelectItem data-testid="profile-language-option-en" value="en" lang="en">English</SelectItem><SelectItem data-testid="profile-language-option-tr" value="tr" lang="tr">Türkçe</SelectItem></SelectContent>
         </Select>
       </section>
       <form onSubmit={submit} className="max-w-xl space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
@@ -85,9 +85,9 @@ function ProfilePage() {
           <Input data-testid="profile-phone-input" id="phone" name="phone" type="tel" defaultValue={profile.phone ?? ""} className="h-12 rounded-xl" />
         </div>
         <dl className="grid gap-4 border-t pt-5 text-sm sm:grid-cols-3">
-          <div><dt className="text-muted-foreground">{t("profile.email")}</dt><dd className="font-medium break-all">{profile.email}</dd></div>
-          <div><dt className="text-muted-foreground">{t("profile.role")}</dt><dd className="font-medium">{t(`common.roles.${primaryRole(roles)}`)}</dd></div>
-          <div><dt className="text-muted-foreground">{t("profile.branch")}</dt><dd className="font-medium">{profile.branches?.name ?? "—"}</dd></div>
+          <div><dt className="text-muted-foreground">{t("profile.email")}</dt><dd data-testid="profile-email" className="font-medium break-all">{profile.email}</dd></div>
+          <div><dt className="text-muted-foreground">{t("profile.role")}</dt><dd data-testid="profile-role" className="font-medium">{t(`common.roles.${primaryRole(roles)}`)}</dd></div>
+          <div><dt className="text-muted-foreground">{t("profile.branch")}</dt><dd data-testid="profile-branch" className="font-medium">{profile.branches?.name ?? "—"}</dd></div>
         </dl>
         <p className="text-xs text-muted-foreground">{t("profile.roleNote")}</p>
         <Button data-testid="profile-save-button" type="submit" className="h-12 rounded-xl px-6" disabled={busy}>{busy ? t("common.saving") : t("common.save")}</Button>
@@ -95,7 +95,7 @@ function ProfilePage() {
       <section aria-labelledby="delete-h" className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft">
         <h2 id="delete-h" className="text-xl font-semibold">{t("profile.deleteTitle")}</h2>
         {isDirector ? (
-          <p className="text-sm text-muted-foreground">{t("profile.directorNote")}</p>
+          <p data-testid="profile-director-delete-note" className="text-sm text-muted-foreground">{t("profile.directorNote")}</p>
         ) : myRequest.isLoading ? <p className="text-sm text-muted-foreground">{t("common.loading")}</p> : myRequest.data ? (
           <>
             <p data-testid="profile-deletion-pending-notice" className="text-sm">{t("profile.requestedOn", { date: formatDate(myRequest.data.requested_at) })}</p>
@@ -109,7 +109,7 @@ function ProfilePage() {
         )}
       </section>
       <Dialog open={confirmOpen} onOpenChange={(o) => { if (!deleteBusy) setConfirmOpen(o); }}>
-        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg">
+        <DialogContent data-testid="profile-delete-confirm-dialog" className="max-w-[calc(100%-2rem)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{t("profile.confirmTitle")}</DialogTitle>
             <DialogDescription>{t("profile.confirmText")}</DialogDescription>

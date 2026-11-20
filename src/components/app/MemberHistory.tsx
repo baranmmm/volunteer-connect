@@ -27,7 +27,7 @@ export function MemberHistory({ member, onClose }: { member: Member | null; onCl
         <SheetDescription>{member?.full_name || t("common.unnamed")}</SheetDescription>
       </SheetHeader>
       <div className="p-4">
-        {history.isLoading ? <p className="text-muted-foreground">{t("common.loading")}</p> : history.isError ? <div role="alert"><p className="text-destructive">{t("history.loadError")}</p><Button variant="outline" onClick={() => history.refetch()}>{t("common.retry")}</Button></div> : !history.data?.pages.flat().length ? <p className="text-muted-foreground">{t("history.empty")}</p> :
+        {history.isLoading ? <p className="text-muted-foreground">{t("common.loading")}</p> : history.isError ? <div data-testid="history-load-error" role="alert"><p className="text-destructive">{t("history.loadError")}</p><Button variant="outline" onClick={() => history.refetch()}>{t("common.retry")}</Button></div> : !history.data?.pages.flat().length ? <p data-testid="history-empty" className="text-muted-foreground">{t("history.empty")}</p> :
           <ol className="divide-y">{history.data.pages.flat().map((entry) => {
             const c = historyChange(entry);
             const params = { ...c.params, from: c.branch ? branchName(entry.old_value) : c.params?.from && t(c.params.from), to: c.branch ? branchName(entry.new_value) : c.params?.to && t(c.params.to) };
@@ -36,7 +36,7 @@ export function MemberHistory({ member, onClose }: { member: Member | null; onCl
               <time className="text-muted-foreground" dateTime={entry.created_at}>{formatDate(entry.created_at, { dateStyle: "medium", timeStyle: "short" })}</time>
             </li>;
           })}</ol>}
-        {history.hasNextPage && <Button variant="outline" disabled={history.isFetchingNextPage} onClick={() => history.fetchNextPage()}>{history.isFetchingNextPage ? t("common.loading") : t("history.loadMore")}</Button>}
+        {history.hasNextPage && <Button data-testid="history-load-more-button" variant="outline" disabled={history.isFetchingNextPage} onClick={() => history.fetchNextPage()}>{history.isFetchingNextPage ? t("common.loading") : t("history.loadMore")}</Button>}
       </div>
     </SheetContent>
   </Sheet>;

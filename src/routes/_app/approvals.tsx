@@ -55,13 +55,13 @@ function Approvals() {
           {isLoading ? (
             <p className="text-muted-foreground">{t("common.loading")}</p>
           ) : pending.length === 0 ? (
-            <div className="rounded-2xl border bg-card p-10 text-center text-muted-foreground shadow-soft">{t("approvals.allCaughtUp")}</div>
+            <div data-testid="approvals-empty-state" className="rounded-2xl border bg-card p-10 text-center text-muted-foreground shadow-soft">{t("approvals.allCaughtUp")}</div>
           ) : (
             <ul className="space-y-3">
               {pending.map((m) => (
                 <li key={m.id} data-testid="approvals-row" data-user-id={m.id} className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-semibold">{m.full_name || t("common.unnamed")}</p>
+                    <p data-testid="approvals-row-name" className="font-semibold">{m.full_name || t("common.unnamed")}</p>
                     <p className="text-sm text-muted-foreground break-all">{m.email} · {m.phone}</p>
                     <p className="text-sm text-muted-foreground">{m.branches?.name} · {t("approvals.signedUp", { date: formatDate(m.created_at) })}</p>
                   </div>
@@ -75,15 +75,15 @@ function Approvals() {
           )}
         </TabsContent>
         <TabsContent value="deletions" className="mt-4">
-          {requests.isLoading ? <p className="text-muted-foreground">{t("common.loading")}</p> : requests.isError ? <div role="alert"><p className="text-destructive">{t("approvals.requestsError")}</p><Button variant="outline" onClick={() => requests.refetch()}>{t("common.retry")}</Button></div> : reqs.length === 0 ? (
-            <div className="rounded-2xl border bg-card p-10 text-center text-muted-foreground shadow-soft">{t("approvals.noRequests")}</div>
+          {requests.isLoading ? <p className="text-muted-foreground">{t("common.loading")}</p> : requests.isError ? <div data-testid="deletion-requests-error" role="alert"><p className="text-destructive">{t("approvals.requestsError")}</p><Button variant="outline" onClick={() => requests.refetch()}>{t("common.retry")}</Button></div> : reqs.length === 0 ? (
+            <div data-testid="deletion-requests-empty-state" className="rounded-2xl border bg-card p-10 text-center text-muted-foreground shadow-soft">{t("approvals.noRequests")}</div>
           ) : (
             <ul className="space-y-3">
               {reqs.map((r) => {
                 const days = deletionDaysRemaining(r.requested_at);
-                return <li key={r.id} data-testid="deletion-request-row" data-request-id={r.id} className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+                return <li key={r.id} data-testid="deletion-request-row" data-request-id={r.id} data-user-id={r.user_id} className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    {r.user_id ? <Link to="/users/$id" params={{ id: r.user_id }} className="font-semibold underline-offset-4 hover:underline">{r.profiles?.full_name || t("common.unnamed")}</Link> : <p className="font-semibold">{t("common.formerMember")}</p>}
+                    {r.user_id ? <Link data-testid="deletion-request-user-link" to="/users/$id" params={{ id: r.user_id }} className="font-semibold underline-offset-4 hover:underline">{r.profiles?.full_name || t("common.unnamed")}</Link> : <p className="font-semibold">{t("common.formerMember")}</p>}
                     <p className="text-sm text-muted-foreground break-all">{r.profiles?.email} · {r.profiles?.branches?.name ?? t("common.noBranch")}</p>
                     <p className="text-sm text-muted-foreground">{t("approvals.requested", { date: formatDate(r.requested_at) })} · <span data-testid="deletion-request-days-left" className={days <= 5 ? "font-semibold text-destructive" : ""}>{t("approvals.daysRemaining", { count: days })}</span></p>
                   </div>

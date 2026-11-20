@@ -43,7 +43,7 @@ export function DeleteUserDialog({ target, onClose, onDeleted }: { target: Targe
         <Input data-testid="delete-user-name-input" id="confirm-name" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" className="h-11" disabled={!name} />
         {!name && <p className="text-sm text-muted-foreground">{t("userDetails.noNameText")}</p>}
       </div>
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {error && <p data-testid="delete-user-error" role="alert" className="text-sm text-destructive">{error}</p>}
       <DialogFooter className="gap-2">
         <Button data-testid="confirm-dialog-cancel-button" variant="outline" disabled={busy} onClick={onClose}>{t("common.cancel")}</Button>
         <Button data-testid="confirm-dialog-confirm-button" variant="destructive" disabled={busy || !matches} onClick={confirm}>{busy ? t("userDetails.deleting") : t("userDetails.deletePermanently")}</Button>

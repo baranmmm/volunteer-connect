@@ -42,9 +42,9 @@ function UserDetails() {
   const [deleting, setDeleting] = useState(false);
 
   if (!isManager) return <Navigate to="/dashboard" replace />;
-  if (id === uid || (member.isSuccess && !member.data)) return <div data-testid="user-details-not-allowed" className="space-y-4"><h1 className="text-3xl font-semibold">{t("userDetails.notAllowedTitle")}</h1><p className="text-muted-foreground">{t("userDetails.notAllowedText")}</p><Button asChild variant="outline"><Link to="/users"><ArrowLeft className="mr-2 h-4 w-4" />{t("userDetails.back")}</Link></Button></div>;
-  if (member.isLoading) return <p className="text-muted-foreground">{t("common.loading")}</p>;
-  if (member.isError || !member.data) return <div role="alert"><p className="text-destructive">{t("userDetails.loadError")}</p><Button variant="outline" onClick={() => member.refetch()}>{t("common.retry")}</Button></div>;
+  if (id === uid || (member.isSuccess && !member.data)) return <div data-testid="user-details-not-allowed" className="space-y-4"><h1 className="text-3xl font-semibold">{t("userDetails.notAllowedTitle")}</h1><p className="text-muted-foreground">{t("userDetails.notAllowedText")}</p><Button asChild variant="outline"><Link data-testid="user-details-back-link" to="/users"><ArrowLeft className="mr-2 h-4 w-4" />{t("userDetails.back")}</Link></Button></div>;
+  if (member.isLoading) return <p data-testid="user-details-loading" className="text-muted-foreground">{t("common.loading")}</p>;
+  if (member.isError || !member.data) return <div data-testid="user-details-load-error" role="alert"><p className="text-destructive">{t("userDetails.loadError")}</p><Button variant="outline" onClick={() => member.refetch()}>{t("common.retry")}</Button></div>;
   const m = member.data;
   const block = deleteBlockReason(m.status);
   const branchOptions = (branches.data ?? []).map((b) => ({ value: b.id, label: b.name }));
@@ -71,15 +71,15 @@ function UserDetails() {
   }
 
   const rows: [string, string, string?][] = [
-    [t("userDetails.name"), m.full_name || t("common.unnamed"), "user-details-name"], [t("userDetails.email"), m.email ?? "—", "user-details-email"], [t("userDetails.phone"), m.phone || "—"],
-    [t("userDetails.branch"), m.branches?.name ?? t("common.noBranch"), "user-details-branch"], [t("userDetails.region"), m.branches?.regions?.name ?? "—"],
+    [t("userDetails.name"), m.full_name || t("common.unnamed"), "user-details-name"], [t("userDetails.email"), m.email ?? "—", "user-details-email"], [t("userDetails.phone"), m.phone || "—", "user-details-phone"],
+    [t("userDetails.branch"), m.branches?.name ?? t("common.noBranch"), "user-details-branch"], [t("userDetails.region"), m.branches?.regions?.name ?? "—", "user-details-region"],
     [t("userDetails.role"), t(`common.roles.${primaryRole(m.roles)}`), "user-details-role"], [t("userDetails.status"), t(`common.status.${m.status}`), "user-details-status"],
     [t("userDetails.joined"), formatDate(m.created_at)],
   ];
 
   return <div className="space-y-8">
     <div className="space-y-3">
-      <Link to="/users" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-1 h-4 w-4" />{t("userDetails.usersLink")}</Link>
+      <Link data-testid="user-details-back-link" to="/users" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-1 h-4 w-4" />{t("userDetails.usersLink")}</Link>
       <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold break-words">{m.full_name || t("common.unnamed")}</h1><Badge variant="outline">{t(`common.roles.${primaryRole(m.roles)}`)}</Badge><Badge variant={m.status === "active" ? "default" : "secondary"}>{t(`common.status.${m.status}`)}</Badge></div>
     </div>
 
@@ -103,7 +103,7 @@ function UserDetails() {
           {m.status === "inactive" && <Button variant="outline" className="h-11" disabled={busy} data-testid="user-details-reactivate-button" onClick={() => changeStatus("active", t("userDetails.reactivated"))}>{t("userDetails.reactivate")}</Button>}
           <div className="flex flex-col gap-1">
             <Button variant="destructive" className="h-11" disabled={!!block} aria-describedby={block ? "delete-hint" : undefined} data-testid="user-details-delete-button" onClick={() => setDeleting(true)}><Trash2 className="mr-2 h-4 w-4" />{t("userDetails.deleteUser")}</Button>
-            {block && <p id="delete-hint" className="text-xs text-muted-foreground">{t("userDetails.deactivateFirst")}</p>}
+            {block && <p data-testid="user-details-delete-hint" id="delete-hint" className="text-xs text-muted-foreground">{t("userDetails.deactivateFirst")}</p>}
           </div>
         </div>
       </div>
@@ -115,9 +115,9 @@ function UserDetails() {
       <DialogContent data-testid={edit === "role" ? "change-role-dialog" : "move-branch-dialog"} className="max-w-[calc(100%-2rem)] sm:max-w-lg">
         <DialogHeader><DialogTitle>{edit === "role" ? t("userDetails.changeRole") : t("userDetails.moveBranch")}</DialogTitle><DialogDescription>{t("userDetails.confirmFor", { name: m.full_name || t("userDetails.thisUser") })}</DialogDescription></DialogHeader>
         <Label>{edit === "role" ? t("userDetails.newRole") : t("userDetails.newBranch")}</Label>
-        <Select value={value} onValueChange={setValue}><SelectTrigger data-testid={edit === "role" ? "change-role-select" : "move-branch-select"} aria-label={edit === "role" ? t("userDetails.newRole") : t("userDetails.newBranch")} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{(edit === "role" ? roleOptions : branchOptions).map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+        <Select value={value} onValueChange={setValue}><SelectTrigger data-testid={edit === "role" ? "change-role-select" : "move-branch-select"} aria-label={edit === "role" ? t("userDetails.newRole") : t("userDetails.newBranch")} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{(edit === "role" ? roleOptions : branchOptions).map((o) => <SelectItem key={o.value} value={o.value} data-testid={edit === "role" ? `change-role-option-${o.value}` : `move-branch-option-${o.value}`}>{o.label}</SelectItem>)}</SelectContent></Select>
         {edit === "role" && value === "volunteer" && isLastBranchManager(m, members.data ?? []) && <p data-testid="last-manager-warning" role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">{t("userDetails.lastManager", { branch: m.branches?.name ?? t("userDetails.thisBranch") })}</p>}
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        {error && <p data-testid="edit-dialog-error" role="alert" className="text-sm text-destructive">{error}</p>}
         <DialogFooter className="gap-2"><Button data-testid="confirm-dialog-cancel-button" variant="outline" disabled={busy} onClick={() => setEdit(null)}>{t("common.cancel")}</Button><Button data-testid="confirm-dialog-confirm-button" disabled={busy || !value || (edit === "role" ? value === primaryRole(m.roles) : value === m.branch_id)} onClick={confirmEdit}>{busy ? t("common.saving") : t("userDetails.confirmChange")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
