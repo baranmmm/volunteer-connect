@@ -1,0 +1,75 @@
+name: E2E (QA)
+
+on:
+  push:
+  pull_request:
+
+# The QA database is shared: never run two e2e/migrate jobs at the same time, never cancel a running one.
+concurrency:
+  group: qa-db
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    environment: qa
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      SUPABASE_PROJECT_REF: impdbvwsaancutwlrmac
+      SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QA_SUPABASE_SERVICE_ROLE_KEY }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_EMAIL_DOMAIN: dsvolunteer.test
+      BASE_URL: http://localhost:3100
+      E2E_RUN_ID: gh${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install app dependencies (root)
+        run: bun install --frozen-lockfile
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Guard — QA only
+        working-directory: e2e
+        run: npm run guard
+
+      - name: Seed QA users (fails clearly if migrate never ran)
+        working-directory: e2e
+        run: npm run qa:seed
+
+      - name: Run Playwright tests
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Teardown per-test users
+        if: always()
+        working-directory: e2e
+        run: npm run qa:teardown
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 14
