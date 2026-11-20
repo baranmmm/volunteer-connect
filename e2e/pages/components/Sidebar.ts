@@ -26,6 +26,12 @@ export class Sidebar {
     await expect(this.moreSheet).toBeVisible();
   }
 
+  /** Waits for the close animation: the modal overlay swallows clicks until the sheet is gone. */
+  private async closeMore() {
+    await this.page.keyboard.press("Escape");
+    await expect(this.moreSheet).toBeHidden();
+  }
+
   /** The nav container that holds this item on the current device. */
   private container(key: NavKey): Locator {
     if (!this.isMobile) return this.desktopNav;
@@ -47,7 +53,7 @@ export class Sidebar {
     if (this.inMore(key)) await this.openMore();
     else await expect(this.container(key)).toBeVisible();
     const present = (await this.link(key).count()) > 0;
-    if (this.inMore(key)) await this.page.keyboard.press("Escape");
+    if (this.inMore(key)) await this.closeMore();
     return present;
   }
 
