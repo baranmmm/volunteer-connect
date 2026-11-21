@@ -1,0 +1,31 @@
+name: Cleanup deleted events
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: cleanup-deleted-events-production
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Purge expired deleted events
+        env:
+          CLEANUP_CRON_SECRET: ${{ secrets.CLEANUP_CRON_SECRET }}
+          CLEANUP_URL: https://project--d60ecf19-db1a-4e44-b08c-c48c46fd1eaa.lovable.app/api/public/cleanup-deleted-events
+        run: |
+          test -n "$CLEANUP_CRON_SECRET" || { echo 'CLEANUP_CRON_SECRET is not configured'; exit 1; }
+          status=$(curl --silent --show-error --max-time 540 \
+            --output /tmp/cleanup-result.json --write-out '%{http_code}' \
+            --request POST --header "Authorization: Bearer $CLEANUP_CRON_SECRET" "$CLEANUP_URL")
+          case "$status" in
+            2??) cat /tmp/cleanup-result.json ;;
+            *) echo 'Cleanup endpoint returned a non-success response'; exit 1 ;;
+          esac

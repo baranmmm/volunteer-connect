@@ -52,6 +52,10 @@ export function formatDate(value: string | Date, opts: Intl.DateTimeFormatOption
 }
 
 const ERROR_KEYS: Record<string, string> = {
+  "Event title confirmation required": "events.titleMismatch",
+  "Event cannot be restored": "events.restoreUnavailable",
+  "Event restoration files missing": "events.restoreFilesMissing",
+  "Required publish fields missing": "events.requiredNote",
   "Event cannot be deleted": "events.deleteUnavailable",
   "Event deletion cleanup failed": "events.deleteCleanupFailed",
   "Event files still exist": "events.deleteCleanupFailed",

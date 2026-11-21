@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), remove: vi.fn(), bucket: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), move: vi.fn(), exists: vi.fn(), bucket: vi.fn() }));
 vi.mock('@tanstack/react-start', () => ({ createServerFn: () => ({ middleware: () => ({ inputValidator: () => ({ handler: (handler: unknown) => handler }) }) }) }));
 vi.mock('@/integrations/supabase/auth-middleware', () => ({ requireSupabaseAuth: {} }));
 vi.mock('@/integrations/supabase/client.server', () => ({ supabaseAdmin: { storage: { from: mocks.bucket } } }));
@@ -12,32 +12,33 @@ const run = deleteEvent as unknown as (input: unknown) => Promise<void>;
 const input = { data: { id }, context: { supabase: { rpc: mocks.rpc } } };
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.bucket.mockReturnValue({ remove: mocks.remove });
-  mocks.remove.mockResolvedValue({ error: null });
+  mocks.bucket.mockReturnValue({ move: mocks.move, exists: mocks.exists });
+  mocks.move.mockResolvedValue({ error: null });
+  mocks.exists.mockResolvedValue({ data: true, error: null });
   mocks.rpc.mockResolvedValueOnce({ data: { paths, deleted: false }, error: null }).mockResolvedValueOnce({ data: { paths: [], deleted: true }, error: null });
 });
 describe('event deletion storage orchestration', () => {
-  it('authorizes before real Storage API cleanup and finalizes only afterward', async () => {
+  it('authorizes before private Storage archiving and finalizes only afterward', async () => {
     await run(input);
     expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'delete_event', { _event: id });
     expect(mocks.bucket).toHaveBeenCalledWith('event-media');
-    expect(mocks.remove).toHaveBeenCalledWith(paths);
-    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'delete_event', { _event: id, _finalize: true });
-    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(mocks.remove.mock.invocationCallOrder[0] ?? 0);
-    expect(mocks.remove.mock.invocationCallOrder[0]).toBeLessThan(mocks.rpc.mock.invocationCallOrder[1] ?? 0);
+    for (const path of paths) expect(mocks.move).toHaveBeenCalledWith(path, `deleted/${path}`);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'delete_event', { _event: id, _complete: true });
+    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(mocks.move.mock.invocationCallOrder[0] ?? 0);
+    expect(mocks.move.mock.invocationCallOrder[0]).toBeLessThan(mocks.rpc.mock.invocationCallOrder[1] ?? 0);
   });
-  it('does not touch Storage when a volunteer or past event is rejected', async () => {
+  it('does not touch Storage when a volunteer is rejected', async () => {
     mocks.rpc.mockReset().mockResolvedValue({ error: { message: 'Not allowed' } });
     await expect(run(input)).rejects.toThrow('Not allowed');
     expect(mocks.bucket).not.toHaveBeenCalled();
   });
   it.each(['returned', 'thrown'])('does not finalize after a %s storage failure', async (kind) => {
-    if (kind === 'returned') mocks.remove.mockResolvedValue({ error: { message: 'Storage unavailable' } });
-    else mocks.remove.mockRejectedValue(new Error('Storage unavailable'));
+    if (kind === 'returned') mocks.move.mockResolvedValue({ error: { message: 'Storage unavailable' } });
+    else mocks.move.mockRejectedValue(new Error('Event deletion cleanup failed'));
     await expect(run(input)).rejects.toThrow('Event deletion cleanup failed');
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
-  it('allows a no-file draft to finalize without calling Storage', async () => {
+  it('allows a no-file draft to complete without calling Storage', async () => {
     mocks.rpc.mockReset().mockResolvedValueOnce({ data: { paths: [], deleted: false } }).mockResolvedValueOnce({ data: { paths: [], deleted: true } });
     await run(input);
     expect(mocks.bucket).not.toHaveBeenCalled();

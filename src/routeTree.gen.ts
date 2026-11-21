@@ -25,6 +25,7 @@ import { Route as AppTrainingRouteImport } from './routes/_app/training'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
 import { Route as AppEventsIdRouteImport } from './routes/_app/events_.$id'
 import { Route as AppUsersIdRouteImport } from './routes/_app/users_.$id'
+import { Route as ApiPublicCleanupDeletedEventsRouteImport } from './routes/api/public/cleanup-deleted-events'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -105,6 +106,12 @@ const AppUsersIdRoute = AppUsersIdRouteImport.update({
   path: '/users/$id',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const ApiPublicCleanupDeletedEventsRoute =
+  ApiPublicCleanupDeletedEventsRouteImport.update({
+    id: '/api/public/cleanup-deleted-events',
+    path: '/api/public/cleanup-deleted-events',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AppUsersRoute
   '/events/$id': typeof AppEventsIdRoute
   '/users/$id': typeof AppUsersIdRoute
+  '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -139,6 +147,7 @@ export interface FileRoutesByTo {
   '/users': typeof AppUsersRoute
   '/events/$id': typeof AppEventsIdRoute
   '/users/$id': typeof AppUsersIdRoute
+  '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -158,6 +167,7 @@ export interface FileRoutesById {
   '/_app/users': typeof AppUsersRoute
   '/_app/events_/$id': typeof AppEventsIdRoute
   '/_app/users_/$id': typeof AppUsersIdRoute
+  '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/events/$id'
     | '/users/$id'
+    | '/api/public/cleanup-deleted-events'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/events/$id'
     | '/users/$id'
+    | '/api/public/cleanup-deleted-events'
   id:
     | '__root__'
     | '/'
@@ -212,6 +224,7 @@ export interface FileRouteTypes {
     | '/_app/users'
     | '/_app/events_/$id'
     | '/_app/users_/$id'
+    | '/api/public/cleanup-deleted-events'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -219,6 +232,7 @@ export interface RootRouteChildren {
   AppRouteRoute: typeof AppRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicCleanupDeletedEventsRoute: typeof ApiPublicCleanupDeletedEventsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -335,6 +349,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUsersIdRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/api/public/cleanup-deleted-events': {
+      id: '/api/public/cleanup-deleted-events'
+      path: '/api/public/cleanup-deleted-events'
+      fullPath: '/api/public/cleanup-deleted-events'
+      preLoaderRoute: typeof ApiPublicCleanupDeletedEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -377,6 +398,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicCleanupDeletedEventsRoute: ApiPublicCleanupDeletedEventsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

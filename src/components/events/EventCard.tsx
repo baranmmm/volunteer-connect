@@ -17,7 +17,7 @@ export function EventCard({ event }: { event: HubEvent }) {
       {cover?.url ? <img src={cover.url} alt={event.title} className="h-full w-full object-cover" loading="lazy" /> : <CategoryIcon category={event.category} className="size-12" />}
     </div>
     <div className="min-w-0 flex-1 space-y-2 p-4">
-      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarDays className="size-4" /><span>{formatDate(event.start_at, { dateStyle: 'medium' })} · {formatDate(event.start_at, { timeStyle: 'short' })}</span></div>
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarDays className="size-4" /><span>{event.start_at ? `${formatDate(event.start_at, { dateStyle: 'medium' })} · ${formatDate(event.start_at, { timeStyle: 'short' })}` : t('events.unscheduled')}</span></div>
       <h2 className="break-words text-xl font-semibold group-hover:text-primary">{event.title}</h2>
       <div className="flex flex-wrap items-center gap-2"><span className="break-words text-sm">{event.organizer}</span><Badge variant="secondary">{t(`events.categories.${event.category}`)}</Badge>{event.status !== 'published' && <Badge variant={event.status === 'cancelled' ? 'destructive' : 'outline'}>{t(`events.${event.status}`)}</Badge>}</div>
       {event.location && <p className="flex items-start gap-1 text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" /><span className="break-words">{event.location}</span></p>}

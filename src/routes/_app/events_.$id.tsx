@@ -7,6 +7,9 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 import { getEvent, cancelEvent } from '@/lib/events.functions';
 import { deleteEvent } from '@/lib/delete-event.functions';
+import { requiresEventTitle } from '@/lib/event-deletion';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { eventIcs } from '@/lib/event-rules';
 import { formatDate, translateError } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
@@ -24,20 +27,20 @@ function EventDetail() {
   const fetch = useServerFn(getEvent), cancel = useServerFn(cancelEvent), remove = useServerFn(deleteEvent), qc = useQueryClient(), navigate = useNavigate();
   const query = useQuery({ queryKey:['event',id,session?.user.id,profile?.status], queryFn:() => fetch({ data:{id} }), enabled: profile?.status === 'active', staleTime:240000, refetchInterval:240000 });
   const [editing,setEditing] = useState(false), [cancelling,setCancelling] = useState(false), [busy,setBusy] = useState(false), [error,setError] = useState('');
-  const [deleting,setDeleting] = useState(false);
+  const [deleting,setDeleting] = useState(false), [confirmationTitle,setConfirmationTitle] = useState('');
   const [image,setImage] = useState<number|null>(null), touch = useRef<number|null>(null);
   if (query.isLoading) return <p className="text-muted-foreground">{t('common.loading')}</p>;
   if (query.isError) return <div role="alert" className="space-y-3"><p className="text-destructive">{t('events.loadError')}</p><Button variant="outline" onClick={() => query.refetch()}>{t('common.retry')}</Button></div>;
   if (!query.data?.event) return <div className="space-y-4"><p>{t('events.notFound')}</p><Button asChild variant="outline"><Link to="/calendar"><ArrowLeft />{t('events.back')}</Link></Button></div>;
   const { event, canManage, deletion } = query.data;
-  const hasStarted = event.status === 'published' && Date.parse(event.start_at) <= Date.now();
-  const canDelete = deletion.canDelete && !hasStarted;
-  const deleteReason = hasStarted ? 'started' : deletion.reason;
+  const canDelete = deletion.canDelete;
+  const needsTitle = requiresEventTitle(event);
   const images = event.media.filter(m => m.kind === 'image' && m.url), pdfs = event.media.filter(m => m.kind === 'pdf' && m.url);
   const selected = image === null ? null : images[image];
   function next(delta: number) { setImage(current => current === null || !images.length ? null : (current+delta+images.length)%images.length); }
   const url = `${window.location.origin}/events/${event.id}`;
   function downloadCalendar() {
+    if (!event.start_at) return;
     const blob = new Blob([eventIcs(event,url)], { type:'text/calendar;charset=utf-8' });
     const object = URL.createObjectURL(blob), a = document.createElement('a'); a.href=object; a.download=`event-${event.id}.ics`; a.click(); setTimeout(() => URL.revokeObjectURL(object),1000);
   }
@@ -49,9 +52,10 @@ function EventDetail() {
   async function confirmDelete() {
     setBusy(true); setError('');
     try {
-      await remove({ data: { id } });
+      if (needsTitle && confirmationTitle !== event.title) return;
+      await remove({ data: { id, ...(needsTitle ? { title: confirmationTitle } : {}) } });
       qc.removeQueries({ queryKey: ['event', id] });
-      await qc.invalidateQueries({ queryKey: ['events'] });
+      await Promise.all([qc.invalidateQueries({ queryKey: ['events'] }), qc.invalidateQueries({ queryKey: ['events-deleted'] })]);
       toast.success(t('events.deletedSuccess'));
       await navigate({ to: '/calendar' });
     } catch (e) {
@@ -65,16 +69,16 @@ function EventDetail() {
     <section data-testid="event-detail-gallery" aria-label={t('events.gallery')} className="space-y-3">{images.length ? <div className="grid gap-3 sm:grid-cols-2">{images.map((m,i) => <Button key={m.id} variant="ghost" data-testid="event-detail-image" data-position={m.position} aria-label={t('events.imageNumber',{position:i+1,count:images.length})} className={`h-auto overflow-hidden rounded-lg p-0 ${i===0?'sm:col-span-2':''}`} onClick={() => setImage(i)}><img src={m.url ?? ''} alt={event.title} className={`w-full object-cover ${i===0?'max-h-[480px]':'aspect-[16/10]'}`} /></Button>)}</div> : <div className="flex h-36 items-center justify-center border-y bg-secondary text-secondary-foreground"><CategoryIcon category={event.category} className="size-14" /></div>}
       {pdfs.map((m,i) => <Button key={m.id} asChild variant="outline"><a data-testid="event-detail-pdf-link" href={m.url ?? ''} target="_blank" rel="noopener noreferrer"><FileText />{t('events.leaflet')}{pdfs.length>1?` ${i+1}`:''}</a></Button>)}
     </section>
-    <div className="space-y-4 border-y py-5"><div className="flex items-start gap-3"><CalendarDays className="mt-1 size-5 shrink-0 text-primary" /><div><p className="font-semibold">{formatDate(event.start_at,{ dateStyle:'full' })}</p><p className="text-muted-foreground">{formatDate(event.start_at,{timeStyle:'short'})}{event.end_at ? ` – ${formatDate(event.end_at,{dateStyle:'medium',timeStyle:'short'})}` : ''}</p></div></div>
+    <div className="space-y-4 border-y py-5"><div className="flex items-start gap-3"><CalendarDays className="mt-1 size-5 shrink-0 text-primary" /><div><p className="font-semibold">{event.start_at ? formatDate(event.start_at,{ dateStyle:'full' }) : t('events.unscheduled')}</p><p className="text-muted-foreground">{event.start_at ? formatDate(event.start_at,{timeStyle:'short'}) : ''}{event.end_at ? ` – ${formatDate(event.end_at,{dateStyle:'medium',timeStyle:'short'})}` : ''}</p></div></div>
       {event.location && <a data-testid="event-detail-location-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-primary underline underline-offset-4"><MapPin className="mt-0.5 size-5 shrink-0" /><span className="break-words">{event.location}</span></a>}
       <dl className="grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">{t('events.scope')}</dt><dd>{t(`events.${event.scope}`)}</dd></div>{query.data.branchName && <div><dt className="text-muted-foreground">{t('events.branch')}</dt><dd>{query.data.branchName}</dd></div>}<div><dt className="text-muted-foreground">{t('events.region')}</dt><dd>{query.data.regionName ?? '—'}</dd></div><div><dt className="text-muted-foreground">{t('events.capacity')}</dt><dd>{event.capacity ?? t('events.unlimited')}</dd></div></dl>
     </div>
     {event.description && <p className="whitespace-pre-wrap break-words leading-relaxed">{event.description}</p>}
-    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button data-testid="event-add-to-calendar-button" variant="outline" className="h-11" onClick={downloadCalendar}><CalendarPlus />{t('events.addCalendar')}</Button><Button asChild variant="outline" className="h-11"><a data-testid="event-share-whatsapp-button" href={`https://wa.me/?text=${encodeURIComponent(`${event.title}\n${formatDate(event.start_at,{dateStyle:'full',timeStyle:'short'})}\n${url}`)}`} target="_blank" rel="noopener noreferrer"><Share2 />{t('events.whatsapp')}</a></Button></div>
-    {canManage && <section className="space-y-3 border-t pt-5"><div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">{!deletion.pending && <><Button data-testid="event-edit-button" variant="outline" className="h-11" onClick={() => setEditing(true)}><Pencil />{t('events.edit')}</Button>{event.status!=='cancelled' && <Button data-testid="event-cancel-event-button" variant="outline" className="h-11 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => { setError('');setCancelling(true); }}><X />{t('events.cancelEvent')}</Button>}</>}{canDelete && <Button data-testid="event-delete-button" variant="destructive" className="h-11" disabled={busy} onClick={() => { setError('');setDeleting(true); }}><Trash2 />{t('events.deleteEvent')}</Button>}</div>{deletion.pending && <p className="text-sm text-muted-foreground">{t('events.deletePending')}</p>}{!canDelete && <p className="text-sm text-muted-foreground">{t(deleteReason === 'started' ? 'events.deleteStarted' : deleteReason === 'registrations' ? 'events.deleteRegistrations' : 'events.deleteStatus')}</p>}</section>}
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button data-testid="event-add-to-calendar-button" disabled={!event.start_at} variant="outline" className="h-11" onClick={downloadCalendar}><CalendarPlus />{t('events.addCalendar')}</Button><Button asChild variant="outline" className="h-11"><a data-testid="event-share-whatsapp-button" href={`https://wa.me/?text=${encodeURIComponent(`${event.title}\n${(event.start_at ? formatDate(event.start_at,{dateStyle:'full',timeStyle:'short'}) : t('events.unscheduled'))}\n${url}`)}`} target="_blank" rel="noopener noreferrer"><Share2 />{t('events.whatsapp')}</a></Button></div>
+    {canManage && <section className="space-y-3 border-t pt-5"><div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">{!deletion.pending && <><Button data-testid="event-edit-button" variant="outline" className="h-11" onClick={() => setEditing(true)}><Pencil />{t('events.edit')}</Button>{event.status!=='cancelled' && <Button data-testid="event-cancel-event-button" variant="outline" className="h-11 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => { setError('');setCancelling(true); }}><X />{t('events.cancelEvent')}</Button>}</>}{canDelete && <Button data-testid="event-delete-button" variant="destructive" className="h-11" disabled={busy} onClick={() => { setError('');setConfirmationTitle('');setDeleting(true); }}><Trash2 />{t('events.deleteEvent')}</Button>}</div>{deletion.pending && <p className="text-sm text-muted-foreground">{t('events.deletePending')}</p>}</section>}
     {editing && canManage && <EventForm event={event} onClose={() => setEditing(false)} onSaved={() => setEditing(false)} />}
     <EventDialog open={cancelling && canManage} onClose={() => { if (!busy) setCancelling(false); }} title={t('events.cancelTitle')}><p className="text-muted-foreground">{t('events.cancelText')}</p>{error && <p role="alert" className="mt-3 text-destructive">{error}</p>}<div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="outline" disabled={busy} onClick={() => setCancelling(false)}>{t('events.keepEvent')}</Button><Button data-testid="confirm-dialog-confirm-button" variant="destructive" disabled={busy} onClick={confirmCancel}>{busy?t('common.saving'):t('events.cancelEvent')}</Button></div></EventDialog>
-    <EventDialog open={deleting && canManage} onClose={() => { if (!busy) setDeleting(false); }} title={t('events.deleteTitle')}><p className="text-muted-foreground">{t('events.deleteText')}</p>{error && <p role="alert" className="mt-3 text-destructive">{error}</p>}<div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="outline" disabled={busy} onClick={() => setDeleting(false)}>{t('events.keepEvent')}</Button><Button data-testid="event-delete-confirm" variant="destructive" disabled={busy || !canDelete} onClick={confirmDelete}><Trash2 />{busy?t('events.deleting'):t('events.deleteEvent')}</Button></div></EventDialog>
+    <EventDialog open={deleting && canManage} onClose={() => { if (!busy) setDeleting(false); }} title={t('events.deleteTitle')}><p className="text-muted-foreground">{t('events.deleteText')}</p>{needsTitle && <div className="mt-4 space-y-2"><Label htmlFor="event-delete-title-input">{t('events.confirmEventTitle', { title: event.title })}</Label><Input id="event-delete-title-input" data-testid="event-delete-title-input" value={confirmationTitle} maxLength={200} disabled={busy} onChange={e => setConfirmationTitle(e.target.value)} autoComplete="off" /></div>}{error && <p role="alert" className="mt-3 text-destructive">{error}</p>}<div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="outline" disabled={busy} onClick={() => setDeleting(false)}>{t('events.keepEvent')}</Button><Button data-testid="event-delete-confirm" variant="destructive" disabled={busy || !canDelete || (needsTitle && confirmationTitle !== event.title)} onClick={confirmDelete}><Trash2 />{busy?t('events.deleting'):t('events.deleteEvent')}</Button></div></EventDialog>
     <EventDialog open={image!==null && !!selected} onClose={() => setImage(null)} title={t('events.gallery')} testId="event-detail-lightbox" fullscreen><div className="flex min-h-0 flex-1 flex-col" tabIndex={0} onKeyDown={e => { if(e.key==='ArrowRight') next(1);if(e.key==='ArrowLeft') next(-1); }} onTouchStart={e => { touch.current=e.touches[0]?.clientX ?? null; }} onTouchEnd={e => { const end=e.changedTouches[0]?.clientX; if(touch.current!==null && end!==undefined && Math.abs(end-touch.current)>40) next(end<touch.current?1:-1);touch.current=null; }}><img src={selected?.url ?? ''} alt={event.title} className="min-h-0 w-full flex-1 object-contain" /><div className="mt-4 flex items-center justify-between"><Button variant="outline" size="icon" aria-label={t('events.previous')} onClick={() => next(-1)}><ChevronLeft /></Button><p className="text-sm text-muted-foreground">{t('events.imageNumber',{position:(image??0)+1,count:images.length})}</p><Button variant="outline" size="icon" aria-label={t('events.next')} onClick={() => next(1)}><ChevronRight /></Button></div></div></EventDialog>
   </article>;
 }

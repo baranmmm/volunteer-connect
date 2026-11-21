@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { eventFileExtension, eventUploadError, normalizeEventExtension, eventIcs, filterEvents, imageDimensions, londonInput, londonToIso, validateEventFile, type HubEvent } from '@/lib/event-rules';
 
-const event: HubEvent = { id:'11111111-1111-4111-8111-111111111111', title:'Community dinner',description:'A shared meal',location:'London',organizer:'Dialogue Society',category:'dinner',start_at:'2027-06-01T17:00:00Z',end_at:null,capacity:null,scope:'branch',branch_id:null,region_id:'r',status:'published',created_by:null,created_at:'',updated_at:'',media:[] };
+const event: HubEvent = { id:'11111111-1111-4111-8111-111111111111', title:'Community dinner',description:'A shared meal',location:'London',organizer:'Dialogue Society',category:'dinner',start_at:'2027-06-01T17:00:00Z',end_at:null,capacity:null,scope:'branch',branch_id:null,region_id:'r',status:'published',created_by:null,created_at:'',updated_at:'',deleted_at:null,deleted_by:null,media:[] };
 describe('event rules', () => {
   it('normalizes phone JPEG extensions to jpg on storage paths', () => {
     expect(normalizeEventExtension('jpeg')).toBe('jpg');

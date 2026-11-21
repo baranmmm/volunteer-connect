@@ -78,7 +78,12 @@ export const eventBranches = createServerFn({ method: 'POST' }).middleware([requ
   if (result.error) throw result.error;
   return result.data;
 });
-const input = z.object({ title: z.string().trim().min(1).max(200), description: z.string(), location: z.string(), organizer: z.string().trim().min(1).max(200), category: z.enum(['dialogue','dinner','interfaith','community','education','other']), start_at: z.string().datetime(), end_at: z.string().datetime().nullable(), capacity: z.number().int().positive().nullable(), scope: z.enum(['branch','region']), branch_id: z.string().uuid().nullable(), status: z.enum(['draft','published','cancelled']) });
+const input = z.object({ title: z.string().trim().min(1).max(200), description: z.string(), location: z.string(), organizer: z.string().trim().max(200), category: z.enum(['dialogue','dinner','interfaith','community','education','other']), start_at: z.string().datetime().nullable(), end_at: z.string().datetime().nullable(), capacity: z.number().int().positive().nullable(), scope: z.enum(['branch','region']), branch_id: z.string().uuid().nullable(), status: z.enum(['draft','published','cancelled']) }).superRefine((event, ctx) => {
+  if (event.status !== 'draft') {
+    for (const key of ['start_at', 'end_at', 'location'] as const) if (!event[key]?.trim()) ctx.addIssue({ code: 'custom', path: [key], message: 'Required publish fields missing' });
+    if (event.scope === 'branch' && !event.branch_id) ctx.addIssue({ code: 'custom', path: ['branch_id'], message: 'Required publish fields missing' });
+  }
+});
 export const saveEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid().nullable(), event: input })).handler(async ({ data, context }) => {
   const result = data.id ? await context.supabase.rpc('update_event', { _event: data.id, _data: data.event }) : await context.supabase.rpc('create_event', { _data: data.event });
   if (result.error) throw new Error(result.error.message);

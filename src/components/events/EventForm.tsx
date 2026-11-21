@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { EVENT_CATEGORIES, eventFileExtension, londonInput, londonToIso, MAX_EVENT_FILES, type HubEvent, type EventMedia } from '@/lib/event-rules';
 import { prepareEventFile, uploadEventFile, removeStoredEventFile } from '@/lib/event-files';
 import { saveEvent, eventBranches, reserveEventMedia, deleteEventMedia, reorderEventMedia } from '@/lib/events.functions';
+import { validateEventForm } from '@/lib/event-form-rules';
 import { translateError } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
   const [organizer, setOrganizer] = useState(event?.organizer ?? 'Dialogue Society');
   const initialCategory = EVENT_CATEGORIES.find(c => c === event?.category) ?? 'dialogue';
   const [category, setCategory] = useState<typeof initialCategory>(initialCategory);
-  const [start, setStart] = useState(event ? londonInput(event.start_at) : '');
+  const [start, setStart] = useState(event?.start_at ? londonInput(event.start_at) : '');
   const [end, setEnd] = useState(event?.end_at ? londonInput(event.end_at) : '');
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? '');
   const [scope, setScope] = useState<'branch' | 'region'>(event?.scope === 'region' ? 'region' : 'branch');
@@ -43,7 +44,9 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
   const [fileErrors, setFileErrors] = useState<string[]>([]);
   const previews = useRef<string[]>([]);
   useEffect(() => () => previews.current.forEach(url => URL.revokeObjectURL(url)), []);
-  const valid = !!title.trim() && !!organizer.trim() && !!start && (scope === 'region' || !!branch);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const formRef = useRef<HTMLFormElement>(null);
+  function fieldError(key: string) { return fieldErrors[key] ? <p id={`event-form-${key}-error`} role="alert" className="text-sm text-destructive">{t(fieldErrors[key])}</p> : null; }
   async function addFiles(files: FileList | null) {
     if (!files) return;
     setPreparing(true); setError(''); setFileErrors([]);
@@ -71,13 +74,21 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
     setItems(next); setError('');
   }
   async function submit(status: 'draft' | 'published' | 'cancelled') {
-    if (!valid || busy || preparing) return;
+    if (busy) return;
+    const validation = validateEventForm({ title, start, end, location, category, scope, branch, capacity, organizer }, status);
+    setFieldErrors(validation);
+    const first = ['title', 'location', 'organizer', 'category', 'start', 'end', 'scope', 'branch', 'capacity'].find(key => validation[key]);
+    if (first) {
+      requestAnimationFrame(() => { const node = formRef.current?.querySelector<HTMLElement>(`[data-testid="event-form-${first}"]`); node?.scrollIntoView({ behavior: 'smooth', block: 'center' }); node?.focus(); });
+      return;
+    }
+    if (preparing) { setError(t('events.filePreparing')); return; }
     setBusy(true); setError(''); setFileErrors([]);
     let id = savedId;
     try {
-      const startIso = londonToIso(start), endIso = end ? londonToIso(end) : null;
-      if (endIso && Date.parse(endIso) < Date.parse(startIso)) { setError(t('events.dateError')); return; }
-      const data = { title, description, location, organizer, category, start_at: startIso, end_at: endIso, capacity: capacity ? Number(capacity) : null, scope, branch_id: scope === 'branch' ? branch : null, status };
+      const startIso = start ? londonToIso(start) : null, endIso = end ? londonToIso(end) : null;
+      if (startIso && endIso && Date.parse(endIso) < Date.parse(startIso)) { setError(t('events.dateError')); return; }
+      const data = { title, description, location, organizer, category, start_at: startIso, end_at: endIso, capacity: capacity ? Number(capacity) : null, scope: status === 'draft' && director && !branch ? 'region' as const : scope, branch_id: scope === 'branch' && branch ? branch : null, status };
       // Create a recoverable draft before uploading; publish only after all file operations succeed.
       if (!id) { id = await save({ data: { id: null, event: { ...data, status: 'draft' } } }); setSavedId(id); }
       for (const old of [...attached.current]) {
@@ -120,18 +131,21 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
     finally { setBusy(false); }
   }
   function field(label: string, testId: string, value: string, setter: (value: string) => void, type = 'text', required = false) {
-    return <div className="space-y-1.5"><Label htmlFor={testId}>{label}</Label><Input id={testId} data-testid={testId} type={type} value={value} onChange={e => setter(e.target.value)} required={required} disabled={busy} className="min-w-0 h-11" {...(type === 'number' ? { min: 1, step: 1, placeholder: t('events.unlimited') } : {})} {...(testId === 'event-form-title' || testId === 'event-form-organizer' ? { maxLength: 200 } : {})} /></div>;
+    return <div className="space-y-1.5"><Label htmlFor={testId}>{label}{required && ' *'}</Label><Input id={testId} data-testid={testId} type={type} value={value} onChange={e => setter(e.target.value)} aria-required={required} aria-invalid={!!fieldErrors[testId.replace('event-form-', '')]} aria-describedby={fieldErrors[testId.replace('event-form-', '')] ? `${testId}-error` : undefined} disabled={busy} className="min-w-0 h-11" {...(type === 'number' ? { min: 1, step: 1, placeholder: t('events.unlimited') } : {})} {...(testId === 'event-form-title' || testId === 'event-form-organizer' ? { maxLength: 200 } : {})} />{fieldError(testId.replace('event-form-', ''))}</div>;
   }
   return <EventDialog open onClose={() => { if (!busy && !preparing) onClose(); }} title={event ? t('events.edit') : t('events.create')}>
-    <form data-testid="event-form" className="space-y-4" onSubmit={e => { e.preventDefault(); void submit(event?.status === 'cancelled' ? 'cancelled' : 'published'); }}>
+    <form ref={formRef} noValidate data-testid="event-form" className="space-y-4" onSubmit={e => { e.preventDefault(); void submit(event?.status === 'cancelled' ? 'cancelled' : 'published'); }}>
+      <p className="text-sm text-muted-foreground">{t('events.requiredNote')}</p>
       {field(t('events.titleLabel'), 'event-form-title', title, setTitle, 'text', true)}
       <div className="space-y-1.5"><Label htmlFor="event-form-description">{t('events.description')}</Label><Textarea id="event-form-description" data-testid="event-form-description" value={description} onChange={e => setDescription(e.target.value)} disabled={busy} rows={3} /></div>
-      {field(t('events.location'), 'event-form-location', location, setLocation)}
-      <div className="grid gap-4 sm:grid-cols-2">{field(t('events.organizer'), 'event-form-organizer', organizer, setOrganizer, 'text', true)}
-        <div className="space-y-1.5"><Label>{t('events.category')}</Label><Select value={category} disabled={busy} onValueChange={v => { const c = EVENT_CATEGORIES.find(x => x === v); if (c) setCategory(c); }}><SelectTrigger data-testid="event-form-category" aria-label={t('events.category')} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{EVENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`events.categories.${c}`)}</SelectItem>)}</SelectContent></Select></div>
-        {field(t('events.start'), 'event-form-start', start, setStart, 'datetime-local', true)}{field(t('events.end'), 'event-form-end', end, setEnd, 'datetime-local')}
-        {director && <div className="space-y-1.5"><Label>{t('events.scope')}</Label><Select value={scope} disabled={busy} onValueChange={v => setScope(v === 'region' ? 'region' : 'branch')}><SelectTrigger data-testid="event-form-scope" aria-label={t('events.scope')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="branch">{t('events.branch')}</SelectItem><SelectItem value="region">{t('events.region')}</SelectItem></SelectContent></Select></div>}
-        {scope === 'branch' && <div className="space-y-1.5"><Label>{t('events.branch')}</Label><Select value={branch} onValueChange={setBranch} disabled={busy || branches.isLoading}><SelectTrigger data-testid="event-form-branch" aria-label={t('events.branch')} className="h-11"><SelectValue placeholder={t('auth.chooseBranch')} /></SelectTrigger><SelectContent>{(branches.data ?? []).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select></div>}
+      {field(t('events.location'), 'event-form-location', location, setLocation, 'text', true)}
+      <div className="grid gap-4 sm:grid-cols-2">{field(t('events.organizer'), 'event-form-organizer', organizer, setOrganizer, 'text')}
+        <div className="space-y-1.5"><Label>{t('events.category')} *</Label><Select value={category} disabled={busy} onValueChange={v => { const c = EVENT_CATEGORIES.find(x => x === v); if (c) setCategory(c); }}><SelectTrigger data-testid="event-form-category" aria-label={t('events.category')} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{EVENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`events.categories.${c}`)}</SelectItem>)}</SelectContent></Select>{fieldError('category')}</div>
+        {field(t('events.start'), 'event-form-start', start, setStart, 'datetime-local', true)}{field(t('events.end'), 'event-form-end', end, setEnd, 'datetime-local', true)}
+        {director && <div className="space-y-1.5"><Label>{t('events.scope')} *</Label><Select value={scope} disabled={busy} onValueChange={v => setScope(v === 'region' ? 'region' : 'branch')}><SelectTrigger data-testid="event-form-scope" aria-label={t('events.scope')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="branch">{t('events.branch')}</SelectItem><SelectItem value="region">{t('events.region')}</SelectItem></SelectContent></Select>{fieldError('scope')}</div>}
+        {scope === 'branch' && <div className="space-y-1.5"><Label>{t('events.branch')} *</Label><Select value={branch} onValueChange={setBranch} disabled={busy || branches.isLoading}><SelectTrigger data-testid="event-form-branch" aria-label={t('events.branch')} className="h-11"><SelectValue placeholder={t('auth.chooseBranch')} /></SelectTrigger><SelectContent>{(branches.data ?? []).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>{fieldError('branch')}</div>}
+        {!director && <div className="space-y-1.5"><Label>{t('events.scope')} *</Label><p className="text-sm">{t('events.branch')}</p></div>}
+        {scope === 'region' && <div className="space-y-1.5"><Label>{t('events.region')} *</Label><p className="text-sm">{profile?.branches?.regions?.name ?? t('events.region')}</p></div>}
         {field(t('events.capacity'), 'event-form-capacity', capacity, setCapacity, 'number')}
       </div>
       {branches.isError && <p role="alert" className="text-sm text-destructive">{t('errors.branchesLoad')}</p>}
@@ -147,7 +161,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
       {fileErrors.length > 0 && <ul data-testid="event-form-file-errors" role="alert" className="space-y-1 text-sm text-destructive">{fileErrors.map((message, index) => <li key={index}>{message}</li>)}</ul>}
       {error && <p data-testid="event-form-error" role="alert" className="text-sm text-destructive">{error}</p>}
       {savedId && error && <Button asChild variant="link"><Link to="/events/$id" params={{ id: savedId }}>{t('events.openSaved')}</Link></Button>}
-      <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">{event?.status !== 'cancelled' && <Button data-testid="event-form-save-draft" type="button" variant="outline" disabled={!valid || busy || preparing} onClick={() => void submit('draft')}>{busy ? t('common.saving') : t('events.saveDraft')}</Button>}<Button data-testid="event-form-publish" type="submit" disabled={!valid || busy || preparing}>{busy ? t('common.saving') : event?.status === 'cancelled' ? t('common.save') : t('events.publish')}</Button></div>
+      <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">{event?.status !== 'cancelled' && <Button data-testid="event-form-save-draft" type="button" variant="outline" disabled={busy} onClick={() => void submit('draft')}>{busy ? t('common.saving') : t('events.saveDraft')}</Button>}<Button data-testid="event-form-publish" type="submit" disabled={busy}>{busy ? t('common.saving') : event?.status === 'cancelled' ? t('common.save') : t('events.publish')}</Button></div>
     </form>
   </EventDialog>;
 }

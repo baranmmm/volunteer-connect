@@ -43,12 +43,23 @@ describe('event deletion UI permissions and confirmation', () => {
     expect(screen.queryByTestId('event-delete-button')).toBeNull();
     expect(screen.queryByTestId('event-delete-confirm')).toBeNull();
   });
-  it.each(['started', 'registrations'])('keeps Cancel but hides Delete for %s events', (reason) => {
-    mocks.data['event'] = { ...(mocks.data['event'] as object), status: 'published' };
-    mocks.data['deletion'] = { canManage: true, canDelete: false, pending: false, reason };
+  it.each(['published', 'cancelled'])('requires the exact title for %s events', async status => {
+    mocks.data['event'] = { ...(mocks.data['event'] as object), status };
     render(<Component />);
-    expect(screen.queryByTestId('event-delete-button')).toBeNull();
-    expect(screen.getByTestId('event-cancel-event-button')).toBeDefined();
+    fireEvent.click(screen.getByTestId('event-delete-button'));
+    const confirm = screen.getByTestId('event-delete-confirm') as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(screen.getByTestId('event-delete-title-input'), { target: { value: 'Wrong' } });
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(screen.getByTestId('event-delete-title-input'), { target: { value: 'Draft' } });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(mocks.remove).toHaveBeenCalledWith({ data: { id: 'event-id', title: 'Draft' } }));
+  });
+  it('a past draft also requires its title', () => {
+    mocks.data['event'] = { ...(mocks.data['event'] as object), start_at: '2020-01-01T00:00:00Z' };
+    render(<Component />);
+    fireEvent.click(screen.getByTestId('event-delete-button'));
+    expect((screen.getByTestId('event-delete-confirm') as HTMLButtonElement).disabled).toBe(true);
   });
   it('allows retry but hides edits and cancellation during pending cleanup', () => {
     mocks.data['deletion'] = { canManage: true, canDelete: true, pending: true, reason: null };

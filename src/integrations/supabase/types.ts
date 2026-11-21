@@ -260,7 +260,7 @@ export type Database = {
           organizer: string
           region_id: string
           scope: string
-          start_at: string
+          start_at: string | null
           status: string
           title: string
           updated_at: string
@@ -280,7 +280,7 @@ export type Database = {
           organizer: string
           region_id: string
           scope: string
-          start_at: string
+          start_at?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -300,7 +300,7 @@ export type Database = {
           organizer?: string
           region_id?: string
           scope?: string
-          start_at?: string
+          start_at?: string | null
           status?: string
           title?: string
           updated_at?: string

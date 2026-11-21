@@ -13,11 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EventCard } from '@/components/events/EventCard';
 import { MonthEvents } from '@/components/events/MonthEvents';
 import { EventForm } from '@/components/events/EventForm';
+import { RecentlyDeletedEvents } from '@/components/events/RecentlyDeletedEvents';
 
 export const Route = createFileRoute('/_app/calendar')({ ssr:false, head: () => pageHead('Calendar & Events', 'View Dialogue Society branch and regional events and manage your event calendar.'), component: CalendarPage });
 function CalendarPage() {
   const { t } = useTranslation();
-  const { session, profile, isManager } = useAuth();
+  const { session, profile, isManager, roles } = useAuth();
   const fetch = useServerFn(listEvents), navigate = useNavigate();
   const [view,setView] = useState<'month'|'list'>('list');
   useEffect(() => { setView(window.matchMedia('(max-width: 767px)').matches ? 'list' : 'month'); }, []);
@@ -36,5 +37,7 @@ function CalendarPage() {
     <div className="grid gap-3 sm:grid-cols-2"><Select value={category} onValueChange={setCategory}><SelectTrigger data-testid="calendar-filter-category" aria-label={t('events.category')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('events.allCategories')}</SelectItem>{EVENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`events.categories.${c}`)}</SelectItem>)}</SelectContent></Select><Select value={organizer} onValueChange={setOrganizer}><SelectTrigger data-testid="calendar-filter-organizer" aria-label={t('events.organizer')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('events.allOrganizers')}</SelectItem>{organizers.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
     {events.isLoading ? <p className="py-10 text-center text-muted-foreground">{t('common.loading')}</p> : events.isError ? <div role="alert" className="space-y-3"><p className="text-destructive">{t('events.loadError')}</p><Button variant="outline" onClick={() => events.refetch()}>{t('common.retry')}</Button></div> : view === 'month' ? <MonthEvents month={month} onMonth={setMonth} events={filtered} /> : <section data-testid="calendar-list-view" className="space-y-3">{filtered.length ? filtered.map(e => <EventCard key={e.id} event={e} />) : <p className="border-y py-12 text-center text-muted-foreground">{t('events.empty')}</p>}</section>}
     {creating && <EventForm onClose={() => setCreating(false)} onSaved={id => { setCreating(false); void navigate({ to:'/events/$id',params:{id} }); }} />}
+    {view === 'month' && filtered.some(e => !e.start_at) && <section className="space-y-3"><h2 className="text-xl font-semibold">{t('events.unscheduled')}</h2>{filtered.filter(e => !e.start_at).map(e => <EventCard key={e.id} event={e} />)}</section>}
+    {roles.includes('regional_director') && <RecentlyDeletedEvents />}
   </div>;
 }

@@ -43,8 +43,8 @@ export function validateEventFile(file: { type: string; size: number }, count: n
   if (file.size > MAX_FILE_BYTES) throw new Error('Event file exceeds 10 MB');
 }
 export function filterEvents(events: HubEvent[], past: boolean, category: string, organizer: string, now = new Date()) {
-  return events.filter(e => (past ? new Date(e.end_at ?? e.start_at) < now : new Date(e.end_at ?? e.start_at) >= now) && (category === 'all' || e.category === category) && (organizer === 'all' || e.organizer === organizer))
-    .sort((a, b) => (past ? -1 : 1) * (Date.parse(a.start_at) - Date.parse(b.start_at)) || a.id.localeCompare(b.id));
+  return events.filter(e => (e.start_at ? (past ? new Date(e.end_at ?? e.start_at) < now : new Date(e.end_at ?? e.start_at) >= now) : !past) && (category === 'all' || e.category === category) && (organizer === 'all' || e.organizer === organizer))
+    .sort((a, b) => (past ? -1 : 1) * (Date.parse(a.start_at ?? '9999-01-01') - Date.parse(b.start_at ?? '9999-01-01')) || a.id.localeCompare(b.id));
 }
 function escapeIcs(value: string) { return value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,'); }
 function utcStamp(value: string | Date) { return new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }
@@ -54,6 +54,7 @@ function foldLine(line: string) {
   return result;
 }
 export function eventIcs(event: EventRow, url: string, now = new Date()) {
+  if (!event.start_at) throw new Error('Required publish fields missing');
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dialogue Society//Volunteer Hub//EN', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', `UID:${event.id}@dialoguesociety.org`, `DTSTAMP:${utcStamp(now)}`, `DTSTART:${utcStamp(event.start_at)}`];
   if (event.end_at) lines.push(`DTEND:${utcStamp(event.end_at)}`);
   lines.push(`SUMMARY:${escapeIcs(event.title)}`, `DESCRIPTION:${escapeIcs(event.description)}`, `LOCATION:${escapeIcs(event.location)}`, `URL:${escapeIcs(url)}`, `STATUS:${event.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}`, 'END:VEVENT', 'END:VCALENDAR');
