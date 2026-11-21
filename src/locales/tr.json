@@ -58,7 +58,7 @@
     "heroTitle": "Toplulukları her sohbetle biraz daha yakınlaştırıyoruz.",
     "heroText": "Dialogue Society gönüllülüğünün yeni adresi.",
     "charity": "Dialogue Society · Birleşik Krallık'ta kayıtlı hayır kurumu",
-    "welcomeBack": "Tekrar hoş geldiniz",
+    "welcomeBack": "Hoş geldiniz",
     "signInIntro": "Gönüllü hesabınıza giriş yapın.",
     "email": "E-posta",
     "password": "Şifre",
@@ -91,7 +91,7 @@
     "passwordUpdated": "Şifreniz güncellendi"
   },
   "dashboard": {
-    "welcomeBack": "Tekrar hoş geldiniz",
+    "welcomeBack": "Hoş geldiniz",
     "hello": "Merhaba, {{name}}",
     "branchLine": "{{branch}} şubesi",
     "eventsTitle": "Yaklaşan etkinliklerim",

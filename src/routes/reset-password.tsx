@@ -46,7 +46,7 @@ function ResetPassword() {
     <div className="relative flex min-h-screen items-center justify-center px-5">
       <LanguageToggle className="absolute right-4 top-4" />
       <form onSubmit={submit} className="w-full max-w-md space-y-5">
-        <Logo className="text-primary" />
+        <Logo variant="auth" />
         <h1 className="text-3xl font-bold">{t("auth.setNewTitle")}</h1>
         <div className="space-y-2">
           <Label htmlFor="password">{t("auth.newPassword")}</Label>

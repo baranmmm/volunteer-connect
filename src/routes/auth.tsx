@@ -51,7 +51,7 @@ function AuthPage() {
       <div className="relative flex items-center justify-center px-5 py-16">
         <LanguageToggle className="absolute right-4 top-4" />
         <div className="w-full max-w-md">
-          <Logo className="mb-8 text-primary lg:hidden" />
+          <Logo variant="auth" className="mb-8 lg:hidden" />
           {mode === "signin" && <SignIn setMode={setMode} />}
           {mode === "signup" && <SignUp setMode={setMode} />}
           {mode === "forgot" && <Forgot setMode={setMode} />}

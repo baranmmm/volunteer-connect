@@ -10,24 +10,27 @@ const MARK_SIZES = {
 export function Logo({
   className = "",
   size = "md",
+  variant = "sidebar",
 }: {
   className?: string;
   size?: keyof typeof MARK_SIZES;
+  variant?: "sidebar" | "auth";
 }) {
   const { t } = useTranslation();
 
   const mobile = size === "sm";
+  const auth = variant === "auth";
 
   return (
-    <div className={`inline-flex min-w-0 items-center gap-3 ${className}`}>
+    <div className={`${auth ? "flex flex-col items-center gap-4 text-center sm:flex-row sm:gap-3 sm:text-left" : "inline-flex items-center gap-3"} min-w-0 ${className}`}>
       <img
         src="/brand/ds-logo-glow.png"
         alt="Dialogue Society"
         className={`shrink-0 ${MARK_SIZES[size]}`}
       />
-      <div className={`min-w-0 flex-1 leading-tight ${mobile ? "block" : "hidden lg:block"}`}>
-        <div className={`truncate font-semibold ${mobile ? "text-[15px] text-foreground" : "text-base text-sidebar-foreground"}`}>Dialogue Society</div>
-        <div className={`truncate text-xs ${mobile ? "mt-0.5 text-foreground/70" : "mt-1 text-sidebar-foreground/70"}`}>{t("common.hubName")}</div>
+      <div className={`min-w-0 flex-1 leading-tight ${mobile || auth ? "block" : "hidden lg:block"}`}>
+        <div className={`truncate font-semibold ${mobile ? "text-[15px]" : "text-base"} ${mobile || auth ? "text-foreground" : "text-sidebar-foreground"}`}>Dialogue Society</div>
+        <div className={`truncate text-xs ${mobile ? "mt-0.5" : "mt-1"} ${mobile || auth ? "text-foreground/70" : "text-sidebar-foreground/70"}`}>{t("common.hubName")}</div>
       </div>
     </div>
   );
