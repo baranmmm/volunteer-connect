@@ -26,3 +26,8 @@
 - [x] Apply brand colour tokens and accessible action/sidebar colours.
 - [x] Add official full and square logos to desktop and mobile layouts.
 - [x] Update favicon, Apple touch icon, and PWA icons; verify desktop/mobile presentation.
+
+# Follow-up visual changes
+- [x] Use a frosted blue-mark logo tile on navy, with brand text on desktop only.
+- [x] Generate SVG/PNG favicon and install icons from the speech-bubble mark.
+- [x] Apply Apple-style system typography with Inter latin-ext fallback and verify rendering.
