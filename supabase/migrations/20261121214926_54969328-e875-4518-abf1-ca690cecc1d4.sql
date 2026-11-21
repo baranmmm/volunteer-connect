@@ -1,0 +1,1 @@
+CREATE POLICY cleanup_audit_service_only ON public.event_cleanup_audit FOR ALL TO service_role USING(true) WITH CHECK(true);

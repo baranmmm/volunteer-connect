@@ -1,4 +1,5 @@
 # Soft deletion and recovery
+- [ ] Event form: publish-required markers, title-only drafts, enabled save buttons, inline errors and scroll to first invalid field.
 - [ ] Hide soft-deleted events and media; archive files to invalidate their old paths.
 - [ ] Regional Director recovery within 30 days, title confirmation, and audit logging.
 - [ ] Daily GitHub Actions purge at 03:30 UTC: constant-time CLEANUP_CRON_SECRET check, bounded batches, count-only response, per-run audit, concurrency, manual dispatch.
