@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+ <radialGradient id="halo" cx="256" cy="256" r="256" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#D9F2FD"/><stop offset=".55" stop-color="#EEF8FD"/><stop offset="1" stop-color="#FFFFFF"/></radialGradient>
+ <linearGradient id="mk" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="247"><stop offset="0" stop-color="#3FC0F2"/><stop offset=".5" stop-color="#0A93CF"/><stop offset="1" stop-color="#005F8A"/></linearGradient>
+ <linearGradient id="gl" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="125"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+ <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="9" result="b"/>
+  <feFlood flood-color="#2AAEE6" flood-opacity=".45"/><feComposite in2="b" operator="in" result="g"/>
+  <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+ </filter>
+</defs>
+<rect width="512" height="512" fill="url(#halo)"/>
+<g transform="translate(256 256) scale(1.92) translate(-116 -123.5)">
+ <g fill="url(#mk)" filter="url(#glow)"><path d="M129.374 238.71c-66.417.077-126.973-60.266-126.806-115.6L1.002 123c-.063 9.155 1.104 17.045 2.706 25.946 13.381 60.338 67.038 97.853 121.126 97.041 26.414-.315 49.143-8.037 67.166-20.255l-.82-.008c-10.489 4.277-29.237 12.95-61.806 12.987M121.327 1.979 121.335 0C70.04 1.651 31 35.409 31 75.275c0 41.08 42.24 74.747 93.422 74.725L147 104.978c-7.972-1.426-15.818-1.962-22.567-1.962-41.925-.25-80.214-28.244-79.393-51.35.82-23.105 33.487-47.197 76.287-49.687"/><path d="m99.345 197.71-.345.326 24.26-48.15c51.223-.122 92.748-37.14 92.748-74.738s-41.205-70.727-89.603-73.28L126.419 0c53.701.455 104.243 42.399 104.58 99.816.346 59.188-62.05 111.937-131.654 97.894"/></g>
+ <g fill="url(#gl)"><path d="M129.374 238.71c-66.417.077-126.973-60.266-126.806-115.6L1.002 123c-.063 9.155 1.104 17.045 2.706 25.946 13.381 60.338 67.038 97.853 121.126 97.041 26.414-.315 49.143-8.037 67.166-20.255l-.82-.008c-10.489 4.277-29.237 12.95-61.806 12.987M121.327 1.979 121.335 0C70.04 1.651 31 35.409 31 75.275c0 41.08 42.24 74.747 93.422 74.725L147 104.978c-7.972-1.426-15.818-1.962-22.567-1.962-41.925-.25-80.214-28.244-79.393-51.35.82-23.105 33.487-47.197 76.287-49.687"/><path d="m99.345 197.71-.345.326 24.26-48.15c51.223-.122 92.748-37.14 92.748-74.738s-41.205-70.727-89.603-73.28L126.419 0c53.701.455 104.243 42.399 104.58 99.816.346 59.188-62.05 111.937-131.654 97.894"/></g>
+</g>
+</svg>
