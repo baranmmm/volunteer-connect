@@ -5,11 +5,11 @@ export function Logo({ className = "" }: { className?: string }) {
 
   return (
     <div className={`inline-flex items-center gap-3 ${className}`}>
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] border border-logo-tile-border bg-logo-tile backdrop-blur-md">
+      <div className="logo-tile flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[12px]">
         <img
           src="/ds-mark.svg"
           alt="Dialogue Society"
-          className="logo-mark-glow h-8 w-auto"
+          className="logo-mark-shine relative z-[1] h-8 w-auto"
         />
       </div>
       <div className="hidden min-w-0 leading-tight lg:block">

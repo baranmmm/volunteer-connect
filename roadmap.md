@@ -31,3 +31,7 @@
 - [x] Use a frosted blue-mark logo tile on navy, with brand text on desktop only.
 - [x] Generate SVG/PNG favicon and install icons from the speech-bubble mark.
 - [x] Apply Apple-style system typography with Inter latin-ext fallback and verify rendering.
+
+# Glossy app-icon treatment
+- [x] Replace the sidebar frosted tile with the glossy gradient tile and crisp blue mark.
+- [x] Regenerate matching SVG/PNG browser, Apple, and PWA icons and verify desktop/mobile rendering.
