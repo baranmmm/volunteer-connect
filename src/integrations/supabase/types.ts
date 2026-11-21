@@ -133,6 +133,33 @@ export type Database = {
           },
         ]
       }
+      event_cleanup_audit: {
+        Row: {
+          events_purged: number
+          files_purged: number
+          finished_at: string | null
+          id: string
+          outcome: string
+          started_at: string
+        }
+        Insert: {
+          events_purged?: number
+          files_purged?: number
+          finished_at?: string | null
+          id?: string
+          outcome?: string
+          started_at?: string
+        }
+        Update: {
+          events_purged?: number
+          files_purged?: number
+          finished_at?: string | null
+          id?: string
+          outcome?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       event_deletion_jobs: {
         Row: {
           created_at: string
