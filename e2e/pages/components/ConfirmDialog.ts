@@ -26,7 +26,7 @@ export class ConfirmDialog {
   }
 }
 
-/** Type-the-full-name delete dialog (DeleteUserDialog). */
+/** User deletion dialog; only self-requested erasure requires typing the full name. */
 export class DeleteUserDialog extends ConfirmDialog {
   constructor(page: Page) {
     super(page.getByTestId("delete-user-dialog"));

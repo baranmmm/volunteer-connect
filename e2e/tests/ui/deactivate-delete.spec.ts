@@ -20,7 +20,7 @@ test.describe("Deactivate and delete (branch manager)", () => {
     await expect.poll(async () => (await getProfile(user.id))?.status).toBe("active");
   });
 
-  test("deletes a user only after deactivation, confirming with the full name", async ({ page, freshUser }) => {
+  test("deletes a user only after deactivation and simple confirmation", async ({ page, freshUser }) => {
     const user = await freshUser();
     const details = new UserDetailsPage(page);
     await details.goto(user.id);
@@ -33,10 +33,9 @@ test.describe("Deactivate and delete (branch manager)", () => {
 
     await details.deleteButton().click();
     const dialog = details.deleteDialog();
-    await expect(dialog.confirmButton).toBeDisabled();
-    await dialog.nameInput.fill(`${user.fullName} typo`);
-    await expect(dialog.confirmButton).toBeDisabled();
-    await dialog.deleteTyping(user.fullName);
+    await expect(dialog.nameInput).toHaveCount(0);
+    await expect(dialog.confirmButton).toBeEnabled();
+    await dialog.confirm();
 
     await expect(toastSuccess(page).last()).toBeVisible();
     await expect(page).toHaveURL(/\/users$/);

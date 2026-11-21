@@ -1,3 +1,7 @@
+# Erasure-request confirmation
+- [x] Keep ordinary admin user deletion on simple confirmation; require the exact full name only when processing a self-requested erasure.
+- [x] Add focused UI regression tests and verify the preview build; 171 tests passed and the preview build is clean.
+
 # App-wide Recycle Bin
 - [x] Replace Calendar recovery with a manager-only Recycle Bin for events and users, scoped in the database.
 - [x] Integrate soft user deletion, immediate access blocking, restoration and non-restorable self-requested erasure.
