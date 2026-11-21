@@ -13,7 +13,7 @@ export async function relocateEventFiles(client: SupabaseClient<Database>, paths
       const alreadyMoved = await bucket.exists(target);
       if (alreadyMoved.error) throw new Error('Event deletion cleanup failed');
       // An upload reservation may never have acquired a file; restore validates records.
-      if (restoring && !alreadyMoved.data) throw new Error('Event restoration files missing');
+      // A reservation without an object is removed by the restore finalization RPC.
       continue;
     }
     const moved = await bucket.move(source, target);

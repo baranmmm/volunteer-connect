@@ -8,7 +8,7 @@ export const deleteEvent = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ id: z.string().uuid(), title: z.string().max(200).optional() }))
   .handler(async ({ data, context }) => {
     // Authorization and eligibility must precede privileged Storage access.
-    const prepared = await context.supabase.rpc('delete_event', { _event: data.id, ...(data.title !== undefined ? { _title: data.title } : {}) });
+    const prepared = await context.supabase.rpc('delete_event', { _event: data.id });
     if (prepared.error) throw new Error(prepared.error.message);
     const { paths } = eventDeletionResult.parse(prepared.data);
     if (paths.length) {

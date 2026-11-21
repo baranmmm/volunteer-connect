@@ -13,12 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EventCard } from '@/components/events/EventCard';
 import { MonthEvents } from '@/components/events/MonthEvents';
 import { EventForm } from '@/components/events/EventForm';
-import { RecentlyDeletedEvents } from '@/components/events/RecentlyDeletedEvents';
 
 export const Route = createFileRoute('/_app/calendar')({ ssr:false, head: () => pageHead('Calendar & Events', 'View Dialogue Society branch and regional events and manage your event calendar.'), component: CalendarPage });
 function CalendarPage() {
   const { t } = useTranslation();
-  const { session, profile, isManager, roles } = useAuth();
+  const { session, profile, isManager } = useAuth();
   const fetch = useServerFn(listEvents), navigate = useNavigate();
   const [view,setView] = useState<'month'|'list'>('list');
   useEffect(() => { setView(window.matchMedia('(max-width: 767px)').matches ? 'list' : 'month'); }, []);
@@ -44,6 +43,5 @@ function CalendarPage() {
     {events.isLoading ? <p className="py-10 text-center text-muted-foreground">{t('common.loading')}</p> : events.isError ? <div role="alert" className="space-y-3"><p className="text-destructive">{t('events.loadError')}</p><Button variant="outline" onClick={() => events.refetch()}>{t('common.retry')}</Button></div> : view === 'month' ? <MonthEvents month={month} onMonth={setMonth} events={filtered} now={now} /> : <section data-testid="calendar-list-view" className="space-y-3">{filtered.length ? filtered.map(e => <EventCard key={e.id} event={e} now={now} />) : <p className="border-y py-12 text-center text-muted-foreground">{t('events.empty')}</p>}</section>}
     {creating && <EventForm onClose={() => setCreating(false)} onSaved={id => { setCreating(false); void navigate({ to:'/events/$id',params:{id} }); }} />}
     {view === 'month' && filtered.some(e => !e.start_at) && <section className="space-y-3"><h2 className="text-xl font-semibold">{t('events.unscheduled')}</h2>{filtered.filter(e => !e.start_at).map(e => <EventCard key={e.id} event={e} now={now} />)}</section>}
-    {roles.includes('regional_director') && <RecentlyDeletedEvents />}
   </div>;
 }

@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Deletes a user's sign-in account (profile and roles cascade). Permission rules live in the database.
+// Soft deletion and audit are atomic in the existing RPC; Auth blocking precedes completion.
 export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { userId: string; requestId?: string | null }) => {
@@ -21,7 +21,7 @@ export const deleteUser = createServerFn({ method: "POST" })
     if (!auditId) throw new Error("Deletion could not be logged. The account has not been deleted.");
     const args = { _actor: actor, _target: data.userId, _audit: auditId };
     try {
-      const del = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+      const del = await supabaseAdmin.auth.admin.updateUserById(data.userId, { ban_duration: '876000h' });
       if (del.error) throw new Error("Account deletion failed");
     } catch {
       try {
