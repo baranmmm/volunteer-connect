@@ -5,6 +5,22 @@ export const EVENT_CATEGORIES = ['dialogue', 'dinner', 'interfaith', 'community'
 export const MAX_EVENT_FILES = 5;
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_IMAGE_SIDE = 2000;
+export function normalizeEventExtension(extension: string) {
+  const lower = extension.toLowerCase();
+  return lower === 'jpeg' ? 'jpg' : lower;
+}
+export function eventFileExtension(type: string) {
+  return normalizeEventExtension(type === 'application/pdf' ? 'pdf' : type.split('/')[1] ?? '');
+}
+/** Storage errors use structured codes; older Storage versions only return messages. */
+export function eventUploadError(error: unknown): Error {
+  const value = error && typeof error === 'object' ? error : {};
+  const message = 'message' in value ? String(value.message) : '';
+  const code = 'code' in value ? String(value.code) : '';
+  if (code === 'EntityTooLarge' || /maximum allowed size|exceed.*size|too large|payload too large/i.test(message)) return new Error('Event file exceeds 10 MB');
+  if (code === 'InvalidMimeType' || /mime.*not supported|unsupported.*mime|mime.*not allowed|invalid.*mime/i.test(message)) return new Error('Invalid event file');
+  return new Error('Event file upload failed');
+}
 export type EventRow = Database['public']['Tables']['events']['Row'];
 export type MediaRow = Database['public']['Tables']['event_media']['Row'];
 export type EventMedia = MediaRow & { url: string | null };

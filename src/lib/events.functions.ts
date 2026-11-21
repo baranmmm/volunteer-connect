@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import type { EventMedia, HubEvent, EventRow, MediaRow } from './event-rules';
+import { normalizeEventExtension } from './event-rules';
 
 async function active(client: SupabaseClient<Database>, uid: string) {
   const { data, error } = await client.from('profiles').select('status').eq('id', uid).single();
@@ -85,8 +86,8 @@ export const cancelEvent = createServerFn({ method: 'POST' }).middleware([requir
   const result = await context.supabase.rpc('cancel_event', { _event: data.id });
   if (result.error) throw new Error(result.error.message);
 });
-export const reserveEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ eventId: z.string().uuid(), kind: z.enum(['image','pdf']), extension: z.enum(['jpg','png','webp','pdf']) })).handler(async ({ data, context }) => {
-  const result = await context.supabase.rpc('add_event_media', { _event: data.eventId, _kind: data.kind, _extension: data.extension });
+export const reserveEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ eventId: z.string().uuid(), kind: z.enum(['image','pdf']), extension: z.enum(['jpg','jpeg','png','webp','pdf']) })).handler(async ({ data, context }) => {
+  const result = await context.supabase.rpc('add_event_media', { _event: data.eventId, _kind: data.kind, _extension: normalizeEventExtension(data.extension) });
   if (result.error) throw new Error(result.error.message);
   const row = await context.supabase.from('event_media').select('*').eq('id', result.data).single();
   if (row.error) throw row.error;

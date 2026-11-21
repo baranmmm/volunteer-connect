@@ -41,3 +41,4 @@ use the editor.
 - Event reads and mutations use authenticated server functions and user-scoped RPCs; event RLS checks active status and branch/region membership so UI permissions are not authoritative.
 - Event media reserves a slot through an RPC before private Storage upload; event-row locks enforce the five-file cap, Storage deletion precedes record deletion, and signed URLs expire after five minutes.
 - Event input uses date-fns-tz for Europe/London conversion and browser canvas re-encoding for image resize/EXIF removal, avoiding browser-zone shifts and metadata leaks.
+- Event uploads normalize JPEG extensions in the client/server and reservation RPC; bucket MIME/size limits enforce file rules, while upload RLS checks only bucket, reserved path permission and extension because pre-upload metadata is empty.

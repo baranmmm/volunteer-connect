@@ -1,8 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { eventIcs, filterEvents, imageDimensions, londonInput, londonToIso, validateEventFile, type HubEvent } from '@/lib/event-rules';
+import { eventFileExtension, eventUploadError, normalizeEventExtension, eventIcs, filterEvents, imageDimensions, londonInput, londonToIso, validateEventFile, type HubEvent } from '@/lib/event-rules';
 
 const event: HubEvent = { id:'11111111-1111-4111-8111-111111111111', title:'Community dinner',description:'A shared meal',location:'London',organizer:'Dialogue Society',category:'dinner',start_at:'2027-06-01T17:00:00Z',end_at:null,capacity:null,scope:'branch',branch_id:null,region_id:'r',status:'published',created_by:null,created_at:'',updated_at:'',media:[] };
 describe('event rules', () => {
+  it('normalizes phone JPEG extensions to jpg on storage paths', () => {
+    expect(normalizeEventExtension('jpeg')).toBe('jpg');
+    expect(normalizeEventExtension('JPEG')).toBe('jpg');
+    expect(eventFileExtension('image/jpeg')).toBe('jpg');
+    expect(eventFileExtension('image/png')).toBe('png');
+    expect(eventFileExtension('application/pdf')).toBe('pdf');
+  });
+  it('rejects txt files', () => {
+    expect(() => validateEventFile({ type: 'text/plain', size: 100 }, 0)).toThrow('Invalid event file');
+  });
+  it('classifies bucket MIME rejections', () => {
+    expect(eventUploadError({ code: 'InvalidMimeType', message: 'Rejected' }).message).toBe('Invalid event file');
+    expect(eventUploadError({ message: 'mime type text/plain is not supported' }).message).toBe('Invalid event file');
+  });
+  it('classifies bucket 10 MB size rejections', () => {
+    expect(eventUploadError({ code: 'EntityTooLarge' }).message).toBe('Event file exceeds 10 MB');
+    expect(eventUploadError({ message: 'The object exceeded the maximum allowed size' }).message).toBe('Event file exceeds 10 MB');
+  });
   it('converts summer London input using BST, not the browser time zone', () => {
     expect(londonToIso('2027-06-01T18:00')).toBe('2027-06-01T17:00:00.000Z');
     expect(londonInput('2027-06-01T17:00:00Z')).toBe('2027-06-01T18:00');

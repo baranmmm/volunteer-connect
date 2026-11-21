@@ -1,3 +1,9 @@
+# Event upload repair
+- [x] Normalize JPEG paths and remove premature upload metadata checks without changing other permissions.
+- [x] Enforce bucket MIME types and 10 MB limit; show per-file rejection reasons and preserve cleanup.
+- [x] Run regressions (96 passed), real browser image preparation and actual bucket TXT / oversized rejection checks.
+- [ ] Verify real Branch Manager upload / Volunteer readback: external Supabase has no managed browser sessions; live preview redirects to sign-in.
+
 # Role management
 - [x] Simplify Users rows and group details actions without changing Approvals.
 - [x] Log deletion before account removal and record failures safely; 39 tests and simulated desktop/mobile checks passed.

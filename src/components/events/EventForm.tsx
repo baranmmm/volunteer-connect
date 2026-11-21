@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { ArrowUp, ArrowDown, Trash2, FileText, Image, Upload } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { EVENT_CATEGORIES, londonInput, londonToIso, MAX_EVENT_FILES, type HubEvent, type EventMedia } from '@/lib/event-rules';
+import { EVENT_CATEGORIES, eventFileExtension, londonInput, londonToIso, MAX_EVENT_FILES, type HubEvent, type EventMedia } from '@/lib/event-rules';
 import { prepareEventFile, uploadEventFile, removeStoredEventFile } from '@/lib/event-files';
 import { saveEvent, eventBranches, reserveEventMedia, deleteEventMedia, reorderEventMedia } from '@/lib/events.functions';
 import { translateError } from '@/lib/i18n';
@@ -40,22 +40,25 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
   const attached = useRef<EventMedia[]>(event?.media ?? []);
   const [savedId, setSavedId] = useState(event?.id ?? null);
   const [busy, setBusy] = useState(false), [preparing, setPreparing] = useState(false), [error, setError] = useState('');
+  const [fileErrors, setFileErrors] = useState<string[]>([]);
   const previews = useRef<string[]>([]);
   useEffect(() => () => previews.current.forEach(url => URL.revokeObjectURL(url)), []);
   const valid = !!title.trim() && !!organizer.trim() && !!start && (scope === 'region' || !!branch);
   async function addFiles(files: FileList | null) {
     if (!files) return;
-    setPreparing(true); setError('');
+    setPreparing(true); setError(''); setFileErrors([]);
     let next = [...items];
-    try {
-      for (const original of Array.from(files)) {
+    const rejected: string[] = [];
+    for (const original of Array.from(files)) {
+      try {
         const file = await prepareEventFile(original, next.length);
         const kind = file.type === 'application/pdf' ? 'pdf' : 'image';
         const preview = kind === 'image' ? URL.createObjectURL(file) : undefined;
         if (preview) previews.current.push(preview);
         next.push({ key: crypto.randomUUID(), name: original.name, kind, file, ...(preview ? { preview } : {}) });
-      }
-    } catch (e) { setError(translateError(e)); }
+      } catch (e) { rejected.push(t('events.fileRejected', { name: original.name, reason: translateError(e) })); }
+    }
+    setFileErrors(rejected);
     // Never leave a PDF as cover when images are available.
     if (next[0]?.kind === 'pdf') { const i = next.findIndex(x => x.kind === 'image'); if (i > 0) { const [cover] = next.splice(i, 1); if (cover) next.unshift(cover); } }
     setItems(next); setPreparing(false);
@@ -69,7 +72,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
   }
   async function submit(status: 'draft' | 'published' | 'cancelled') {
     if (!valid || busy || preparing) return;
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setFileErrors([]);
     let id = savedId;
     try {
       const startIso = londonToIso(start), endIso = end ? londonToIso(end) : null;
@@ -86,10 +89,20 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
       const completed: Item[] = [];
       for (const item of items) {
         if (item.file) {
-          const extension = item.file.type === 'application/pdf' ? 'pdf' : item.file.type === 'image/jpeg' ? 'jpg' : item.file.type === 'image/png' ? 'png' : 'webp';
-          const row = await reserve({ data: { eventId: id, kind: item.kind, extension } });
-          try { await uploadEventFile(row.storage_path, item.file); }
-          catch (e) { await removeStoredEventFile(row.storage_path).catch(() => undefined); await remove({ data: { id: row.id } }).catch(() => undefined); throw e; }
+          const extension = eventFileExtension(item.file.type);
+          if (extension !== 'jpg' && extension !== 'png' && extension !== 'webp' && extension !== 'pdf') throw new Error('Invalid event file');
+          let row: EventMedia | undefined;
+          try {
+            row = { ...await reserve({ data: { eventId: id, kind: item.kind, extension } }), url: null };
+            await uploadEventFile(row.storage_path, item.file);
+          } catch (e) {
+            setFileErrors([t('events.fileRejected', { name: item.name, reason: translateError(e) })]);
+            if (row) {
+              await removeStoredEventFile(row.storage_path).catch(() => undefined);
+              await remove({ data: { id: row.id } });
+            }
+            throw e;
+          }
           const media = { ...row, url: item.preview ?? null };
           attached.current.push(media);
           const updated = { key: row.id, name: item.name, kind: item.kind, media, ...(item.preview ? { preview: item.preview } : {}) };
@@ -131,6 +144,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
           <div className="flex shrink-0 gap-1"><Button type="button" variant="ghost" size="icon" disabled={busy || preparing || i === 0} aria-label={t('events.moveUp')} title={t('events.moveUp')} onClick={() => move(i,-1)}><ArrowUp /></Button><Button type="button" variant="ghost" size="icon" disabled={busy || preparing || i === items.length-1} aria-label={t('events.moveDown')} title={t('events.moveDown')} onClick={() => move(i,1)}><ArrowDown /></Button><Button data-testid="event-form-file-remove" type="button" variant="ghost" size="icon" disabled={busy || preparing} aria-label={t('events.remove')} title={t('events.remove')} onClick={() => setItems(items.filter((_, index) => index !== i))}><Trash2 /></Button></div>
         </li>)}</ol>
       </section>
+      {fileErrors.length > 0 && <ul data-testid="event-form-file-errors" role="alert" className="space-y-1 text-sm text-destructive">{fileErrors.map((message, index) => <li key={index}>{message}</li>)}</ul>}
       {error && <p data-testid="event-form-error" role="alert" className="text-sm text-destructive">{error}</p>}
       {savedId && error && <Button asChild variant="link"><Link to="/events/$id" params={{ id: savedId }}>{t('events.openSaved')}</Link></Button>}
       <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">{event?.status !== 'cancelled' && <Button data-testid="event-form-save-draft" type="button" variant="outline" disabled={!valid || busy || preparing} onClick={() => void submit('draft')}>{busy ? t('common.saving') : t('events.saveDraft')}</Button>}<Button data-testid="event-form-publish" type="submit" disabled={!valid || busy || preparing}>{busy ? t('common.saving') : event?.status === 'cancelled' ? t('common.save') : t('events.publish')}</Button></div>

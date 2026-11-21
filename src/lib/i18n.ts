@@ -59,6 +59,7 @@ const ERROR_KEYS: Record<string, string> = {
   "Invalid event file": "events.fileError",
   "Maximum 5 files per event": "events.tooManyFiles",
   "Event file exceeds 10 MB": "events.fileTooLarge",
+  "Event file upload failed": "events.fileUploadFailed",
   "Invalid event file order": "events.orderError",
   "Cover must be an image": "events.orderError",
   "Remove stored file first": "events.removeFirst",
