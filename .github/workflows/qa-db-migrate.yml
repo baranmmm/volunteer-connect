@@ -62,9 +62,10 @@ jobs:
         working-directory: e2e
         run: npx playwright install --with-deps chromium
 
+      # Pinned: same CLI as local runs. Update deliberately; 3.x needs --yes for a non-interactive db push.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.2.0
 
       - name: Guard — QA only (including pooler URL)
         working-directory: e2e
