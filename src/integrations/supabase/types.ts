@@ -446,7 +446,10 @@ export type Database = {
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       create_event: { Args: { _data: Json }; Returns: string }
-      delete_event: { Args: { _event: string; _title?: string }; Returns: Json }
+      delete_event: {
+        Args: { _complete?: boolean; _event: string; _title?: string }
+        Returns: Json
+      }
       delete_event_media: { Args: { _media: string }; Returns: undefined }
       event_has_registrations: { Args: { _event: string }; Returns: boolean }
       get_event_deletion_state: { Args: { _event: string }; Returns: Json }
@@ -473,6 +476,7 @@ export type Database = {
       list_deleted_events: {
         Args: { _offset?: number }
         Returns: {
+          cleanup_pending: boolean
           deleted_at: string
           deleted_by: string
           id: string
