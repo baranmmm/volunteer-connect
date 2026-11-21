@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import type { EventMedia, HubEvent, EventRow, MediaRow } from './event-rules';
 import { normalizeEventExtension } from './event-rules';
+import { eventDeletionState } from './event-deletion';
 
 async function active(client: SupabaseClient<Database>, uid: string) {
   const { data, error } = await client.from('profiles').select('status').eq('id', uid).single();
@@ -49,15 +50,16 @@ export const getEvent = createServerFn({ method: 'POST' }).middleware([requireSu
   const result = await context.supabase.from('events').select('*').eq('id', data.id).maybeSingle();
   if (result.error) throw result.error;
   if (!result.data) return null;
-  const manage = await context.supabase.rpc('can_manage_event', { _event: data.id });
+  const manage = await context.supabase.rpc('get_event_deletion_state', { _event: data.id });
   if (manage.error) throw manage.error;
+  const deletion = eventDeletionState.parse(manage.data);
   const [branch, region] = await Promise.all([
     result.data.branch_id ? context.supabase.from('branches').select('name').eq('id', result.data.branch_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     context.supabase.from('regions').select('name').eq('id', result.data.region_id).maybeSingle(),
   ]);
   if (branch.error) throw branch.error;
   if (region.error) throw region.error;
-  return { event: (await withMedia(context.supabase, [result.data]))[0] ?? null, canManage: manage.data, branchName: branch.data?.name ?? null, regionName: region.data?.name ?? null };
+  return { event: (await withMedia(context.supabase, [result.data]))[0] ?? null, canManage: deletion.canManage, deletion, branchName: branch.data?.name ?? null, regionName: region.data?.name ?? null };
 });
 export const eventBranches = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await active(context.supabase, context.userId);

@@ -1,7 +1,7 @@
 # Delete event
-- [ ] Add server-enforced deletion eligibility, durable cleanup coordination, and retained event audit entries.
-- [ ] Add bilingual confirmation and manager-only actions; test draft/past/volunteer and cleanup rules.
-- [ ] Verify live deletion and storage readback if an authenticated external account is available.
+- [x] Add server-enforced deletion eligibility, durable cleanup coordination, and retained event audit entries.
+- [x] Add bilingual confirmation and manager-only actions; isolated database, Storage orchestration, and UI permission tests pass.
+- [ ] Verify live deletion and storage readback: external unmanaged Supabase has no authenticated test session; live preview redirects to /auth.
 
 # Event upload repair
 - [x] Normalize JPEG paths and remove premature upload metadata checks without changing other permissions.

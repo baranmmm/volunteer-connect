@@ -52,6 +52,10 @@ export function formatDate(value: string | Date, opts: Intl.DateTimeFormatOption
 }
 
 const ERROR_KEYS: Record<string, string> = {
+  "Event cannot be deleted": "events.deleteUnavailable",
+  "Event deletion cleanup failed": "events.deleteCleanupFailed",
+  "Event files still exist": "events.deleteCleanupFailed",
+  "Event deletion not prepared": "events.deleteCleanupFailed",
   "Event title and organizer are required": "events.required",
   "Invalid event values": "events.invalid",
   "Invalid event dates or capacity": "events.invalid",
