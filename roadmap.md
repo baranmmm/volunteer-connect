@@ -1,3 +1,9 @@
+# Soft deletion and recovery
+- [ ] Hide soft-deleted events and media; archive files to invalidate their old paths.
+- [ ] Regional Director recovery within 30 days, title confirmation, and audit logging.
+- [ ] Daily GitHub Actions purge with authenticated file cleanup; configure published URL and shared secret.
+- [ ] Run database, file orchestration, and UI tests; check live access where credentials permit.
+
 # Delete event
 - [x] Add server-enforced deletion eligibility, durable cleanup coordination, and retained event audit entries.
 - [x] Add bilingual confirmation and manager-only actions; isolated database, Storage orchestration, and UI permission tests pass.

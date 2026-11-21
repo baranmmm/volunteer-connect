@@ -137,16 +137,19 @@ export type Database = {
         Row: {
           created_at: string
           event_id: string
+          operation: string
           requested_by: string | null
         }
         Insert: {
           created_at?: string
           event_id: string
+          operation?: string
           requested_by?: string | null
         }
         Update: {
           created_at?: string
           event_id?: string
+          operation?: string
           requested_by?: string | null
         }
         Relationships: [
@@ -221,6 +224,8 @@ export type Database = {
           category: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string
           end_at: string | null
           id: string
@@ -239,6 +244,8 @@ export type Database = {
           category: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string
           end_at?: string | null
           id?: string
@@ -257,6 +264,8 @@ export type Database = {
           category?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string
           end_at?: string | null
           id?: string
@@ -431,15 +440,13 @@ export type Database = {
         Returns: boolean
       }
       can_read_event_file: { Args: { _path: string }; Returns: boolean }
+      can_restore_event: { Args: { _event: string }; Returns: boolean }
       can_view_event: { Args: { _event: string }; Returns: boolean }
       can_write_event_file: { Args: { _path: string }; Returns: boolean }
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       create_event: { Args: { _data: Json }; Returns: string }
-      delete_event: {
-        Args: { _event: string; _finalize?: boolean }
-        Returns: Json
-      }
+      delete_event: { Args: { _event: string; _title?: string }; Returns: Json }
       delete_event_media: { Args: { _media: string }; Returns: undefined }
       event_has_registrations: { Args: { _event: string }; Returns: boolean }
       get_event_deletion_state: { Args: { _event: string }; Returns: Json }
@@ -463,6 +470,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_deleted_events: {
+        Args: { _offset?: number }
+        Returns: {
+          deleted_at: string
+          deleted_by: string
+          id: string
+          start_at: string
+          status: string
+          title: string
+        }[]
+      }
+      purge_event: {
+        Args: { _event: string; _finalize?: boolean }
+        Returns: Json
+      }
       record_user_deletion: {
         Args: { _actor: string; _audit: string; _target: string }
         Returns: undefined
@@ -476,6 +498,10 @@ export type Database = {
         Returns: undefined
       }
       request_account_deletion: { Args: never; Returns: string }
+      restore_event: {
+        Args: { _event: string; _finalize?: boolean }
+        Returns: Json
+      }
       set_user_branch: {
         Args: { _branch: string; _target: string }
         Returns: undefined
