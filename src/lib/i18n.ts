@@ -52,6 +52,17 @@ export function formatDate(value: string | Date, opts: Intl.DateTimeFormatOption
 }
 
 const ERROR_KEYS: Record<string, string> = {
+  "Event title and organizer are required": "events.required",
+  "Invalid event values": "events.invalid",
+  "Invalid event dates or capacity": "events.invalid",
+  "Invalid event scope": "events.invalid",
+  "Invalid event file": "events.fileError",
+  "Maximum 5 files per event": "events.tooManyFiles",
+  "Event file exceeds 10 MB": "events.fileTooLarge",
+  "Invalid event file order": "events.orderError",
+  "Cover must be an image": "events.orderError",
+  "Remove stored file first": "events.removeFirst",
+  "Invalid London time": "events.timeError",
   "Deactivate the user first": "errors.deactivateFirst",
   "Invalid deletion audit entry": "errors.generic",
   "No pending deletion request": "errors.noPendingRequest",

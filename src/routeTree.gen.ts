@@ -23,6 +23,7 @@ import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTrainingRouteImport } from './routes/_app/training'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
+import { Route as AppEventsIdRouteImport } from './routes/_app/events_.$id'
 import { Route as AppUsersIdRouteImport } from './routes/_app/users_.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -94,6 +95,11 @@ const AppUsersRoute = AppUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppEventsIdRoute = AppEventsIdRouteImport.update({
+  id: '/events_/$id',
+  path: '/events/$id',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppUsersIdRoute = AppUsersIdRouteImport.update({
   id: '/users_/$id',
   path: '/users/$id',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
   '/users': typeof AppUsersRoute
+  '/events/$id': typeof AppEventsIdRoute
   '/users/$id': typeof AppUsersIdRoute
 }
 export interface FileRoutesByTo {
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
   '/users': typeof AppUsersRoute
+  '/events/$id': typeof AppEventsIdRoute
   '/users/$id': typeof AppUsersIdRoute
 }
 export interface FileRoutesById {
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/_app/tasks': typeof AppTasksRoute
   '/_app/training': typeof AppTrainingRoute
   '/_app/users': typeof AppUsersRoute
+  '/_app/events_/$id': typeof AppEventsIdRoute
   '/_app/users_/$id': typeof AppUsersIdRoute
 }
 export interface FileRouteTypes {
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/training'
     | '/users'
+    | '/events/$id'
     | '/users/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/training'
     | '/users'
+    | '/events/$id'
     | '/users/$id'
   id:
     | '__root__'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/_app/tasks'
     | '/_app/training'
     | '/_app/users'
+    | '/_app/events_/$id'
     | '/_app/users_/$id'
   fileRoutesById: FileRoutesById
 }
@@ -309,6 +321,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUsersRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/events_/$id': {
+      id: '/_app/events_/$id'
+      path: '/events/$id'
+      fullPath: '/events/$id'
+      preLoaderRoute: typeof AppEventsIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/users_/$id': {
       id: '/_app/users_/$id'
       path: '/users/$id'
@@ -330,6 +349,7 @@ interface AppRouteRouteChildren {
   AppTasksRoute: typeof AppTasksRoute
   AppTrainingRoute: typeof AppTrainingRoute
   AppUsersRoute: typeof AppUsersRoute
+  AppEventsIdRoute: typeof AppEventsIdRoute
   AppUsersIdRoute: typeof AppUsersIdRoute
 }
 
@@ -344,6 +364,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTasksRoute: AppTasksRoute,
   AppTrainingRoute: AppTrainingRoute,
   AppUsersRoute: AppUsersRoute,
+  AppEventsIdRoute: AppEventsIdRoute,
   AppUsersIdRoute: AppUsersIdRoute,
 }
 

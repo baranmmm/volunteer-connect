@@ -38,3 +38,6 @@ use the editor.
 - User deletion runs in a requireSupabaseAuth server function: service-role-only authorization atomically writes the audit before auth deletion; requests link to that audit so completion or failure updates only that attempt. Failures write a personal-data-free audit and restore pending requests. Edge Functions are not used; future user-referencing tables use ON DELETE SET NULL.
 - UI text lives only in src/locales/{en,tr}.json via react-i18next (src/lib/i18n.ts); DB error messages map to keys there and history renders from audit rows, so translations never depend on stored sentences.
 - E2E selectors use stable kebab-case data-testid attributes (never derived from text); toasts must use src/lib/toast.ts so they carry toast-success/toast-error ids.
+- Event reads and mutations use authenticated server functions and user-scoped RPCs; event RLS checks active status and branch/region membership so UI permissions are not authoritative.
+- Event media reserves a slot through an RPC before private Storage upload; event-row locks enforce the five-file cap, Storage deletion precedes record deletion, and signed URLs expire after five minutes.
+- Event input uses date-fns-tz for Europe/London conversion and browser canvas re-encoding for image resize/EXIF removal, avoiding browser-zone shifts and metadata leaks.

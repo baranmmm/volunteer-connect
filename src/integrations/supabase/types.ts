@@ -92,6 +92,133 @@ export type Database = {
           },
         ]
       }
+      event_media: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          kind: string
+          position: number
+          storage_path: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          kind: string
+          position: number
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          kind?: string
+          position?: number
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_media_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          branch_id: string | null
+          capacity: number | null
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          end_at: string | null
+          id: string
+          location: string
+          organizer: string
+          region_id: string
+          scope: string
+          start_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          capacity?: number | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          end_at?: string | null
+          id?: string
+          location?: string
+          organizer: string
+          region_id: string
+          scope: string
+          start_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          capacity?: number | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          end_at?: string | null
+          id?: string
+          location?: string
+          organizer?: string
+          region_id?: string
+          scope?: string
+          start_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           branch_id: string | null
@@ -212,15 +339,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_event_media: {
+        Args: { _event: string; _extension: string; _kind: string }
+        Returns: string
+      }
       authorize_user_deletion: {
         Args: { _actor: string; _request?: string; _target: string }
         Returns: string
+      }
+      can_manage_event: { Args: { _event: string }; Returns: boolean }
+      can_manage_event_scope: {
+        Args: { _branch: string; _region: string; _scope: string }
+        Returns: boolean
       }
       can_manage_user: {
         Args: { _actor: string; _target: string }
         Returns: boolean
       }
+      can_read_event_file: { Args: { _path: string }; Returns: boolean }
+      can_view_event: { Args: { _event: string }; Returns: boolean }
+      can_write_event_file: { Args: { _path: string }; Returns: boolean }
       cancel_account_deletion: { Args: never; Returns: undefined }
+      cancel_event: { Args: { _event: string }; Returns: undefined }
+      create_event: { Args: { _data: Json }; Returns: string }
+      delete_event_media: { Args: { _media: string }; Returns: undefined }
       get_user_audit_history: {
         Args: { _offset?: number; _target: string }
         Returns: {
@@ -249,6 +391,10 @@ export type Database = {
         Args: { _actor: string; _audit: string; _target: string }
         Returns: undefined
       }
+      reorder_event_media: {
+        Args: { _event: string; _ids: string[] }
+        Returns: undefined
+      }
       request_account_deletion: { Args: never; Returns: string }
       set_user_branch: {
         Args: { _branch: string; _target: string }
@@ -266,6 +412,10 @@ export type Database = {
           _status: Database["public"]["Enums"]["profile_status"]
           _target: string
         }
+        Returns: undefined
+      }
+      update_event: {
+        Args: { _data: Json; _event: string }
         Returns: undefined
       }
     }
