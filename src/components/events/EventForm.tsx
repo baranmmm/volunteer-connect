@@ -37,7 +37,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? '');
   const [scope, setScope] = useState<'branch' | 'region'>(event?.scope === 'region' ? 'region' : 'branch');
   const [branch, setBranch] = useState(event?.branch_id ?? (director ? '' : profile?.branch_id ?? ''));
-  const [items, setItems] = useState<Item[]>((event?.media ?? []).map(m => ({ key: m.id, name: m.storage_path.split('/').pop() ?? m.id, kind: m.kind === 'pdf' ? 'pdf' : 'image', media: m })));
+  const [items, setItems] = useState<Item[]>((event?.media ?? []).map(m => ({ key: m.id, name: m.original_name || (m.storage_path.split('/').pop() ?? m.id), kind: m.kind === 'pdf' ? 'pdf' : 'image', media: m })));
   const attached = useRef<EventMedia[]>(event?.media ?? []);
   const [savedId, setSavedId] = useState(event?.id ?? null);
   const [busy, setBusy] = useState(false), [preparing, setPreparing] = useState(false), [error, setError] = useState('');
@@ -104,7 +104,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
           if (extension !== 'jpg' && extension !== 'png' && extension !== 'webp' && extension !== 'pdf') throw new Error('Invalid event file');
           let row: EventMedia | undefined;
           try {
-            row = { ...await reserve({ data: { eventId: id, kind: item.kind, extension } }), url: null };
+            row = { ...await reserve({ data: { eventId: id, kind: item.kind, extension, originalName: item.name.slice(0, 255) } }), url: null };
             await uploadEventFile(row.storage_path, item.file);
           } catch (e) {
             setFileErrors([t('events.fileRejected', { name: item.name, reason: translateError(e) })]);

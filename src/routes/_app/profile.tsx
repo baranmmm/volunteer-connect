@@ -36,7 +36,7 @@ function ProfilePage() {
     setLanguage(value as Lang);
     const { error } = await supabase.from("profiles").update({ preferred_language: value }).eq("id", profile!.id);
     if (error) { setLanguage(previous); toast.error(translateError(error)); return; }
-    toast.success(t("profile.languageSaved"));
+    toast.success(i18n.t("profile.languageSaved", { lng: value }));
     refresh();
   }
 
@@ -89,7 +89,7 @@ function ProfilePage() {
           <div><dt className="text-muted-foreground">{t("profile.role")}</dt><dd data-testid="profile-role" className="font-medium">{t(`common.roles.${primaryRole(roles)}`)}</dd></div>
           <div><dt className="text-muted-foreground">{t("profile.branch")}</dt><dd data-testid="profile-branch" className="font-medium">{profile.branches?.name ?? "—"}</dd></div>
         </dl>
-        <p className="text-xs text-muted-foreground">{t("profile.roleNote")}</p>
+        {!isDirector && <p className="text-xs text-muted-foreground">{t(roles.includes("branch_manager") ? "profile.roleNoteBranchManager" : "profile.roleNote")}</p>}
         <Button data-testid="profile-save-button" type="submit" className="h-12 rounded-xl px-6" disabled={busy}>{busy ? t("common.saving") : t("common.save")}</Button>
       </form>
       <section aria-labelledby="delete-h" className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft">

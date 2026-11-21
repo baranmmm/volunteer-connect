@@ -207,6 +207,7 @@
     "role": "Role",
     "branch": "Branch",
     "roleNote": "Your role and branch can only be changed by your Branch Manager.",
+    "roleNoteBranchManager": "Your role and branch can only be changed by your Regional Director.",
     "saved": "Profile saved",
     "language": "Language / Dil",
     "languageSaved": "Language saved",

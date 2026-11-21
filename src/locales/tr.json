@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Dialogue Society Gönüllü Merkezi",
+    "appName": "Dialogue Society Gönüllü Platformu",
     "loading": "Yükleniyor…",
     "retry": "Tekrar deneyin",
     "cancel": "Vazgeç",
@@ -33,7 +33,7 @@
       "active": "Aktif",
       "inactive": "Pasif"
     },
-    "hubName": "Gönüllü Merkezi"
+    "hubName": "Gönüllü Platformu"
   },
   "navigation": {
     "main": "Ana menü",
@@ -207,6 +207,7 @@
     "role": "Rol",
     "branch": "Şube",
     "roleNote": "Rolünüz ve şubeniz yalnızca Şube Yöneticiniz tarafından değiştirilebilir.",
+    "roleNoteBranchManager": "Rolünüz ve şubeniz yalnızca Bölge Direktörünüz tarafından değiştirilebilir.",
     "saved": "Profiliniz kaydedildi",
     "language": "Language / Dil",
     "languageSaved": "Dil tercihiniz kaydedildi",
@@ -341,7 +342,7 @@
     "fieldRequired": "Bu alan zorunludur.",
     "happeningNow": "Şu an devam ediyor",
     "unscheduled": "Tarih belirlenmedi",
-    "back": "Takvime dönün",
+    "back": "Takvime dön",
     "leaflet": "Broşürü görüntüle",
     "addCalendar": "Takvime ekle",
     "whatsapp": "WhatsApp'ta paylaş",

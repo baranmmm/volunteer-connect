@@ -93,8 +93,8 @@ export const cancelEvent = createServerFn({ method: 'POST' }).middleware([requir
   const result = await context.supabase.rpc('cancel_event', { _event: data.id });
   if (result.error) throw new Error(result.error.message);
 });
-export const reserveEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ eventId: z.string().uuid(), kind: z.enum(['image','pdf']), extension: z.enum(['jpg','jpeg','png','webp','pdf']) })).handler(async ({ data, context }) => {
-  const result = await context.supabase.rpc('add_event_media', { _event: data.eventId, _kind: data.kind, _extension: normalizeEventExtension(data.extension) });
+export const reserveEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ eventId: z.string().uuid(), kind: z.enum(['image','pdf']), extension: z.enum(['jpg','jpeg','png','webp','pdf']), originalName: z.string().max(255).optional() })).handler(async ({ data, context }) => {
+  const result = await context.supabase.rpc('add_event_media', { _event: data.eventId, _kind: data.kind, _extension: normalizeEventExtension(data.extension), _original_name: data.originalName ?? '' });
   if (result.error) throw new Error(result.error.message);
   const row = await context.supabase.from('event_media').select('*').eq('id', result.data).single();
   if (row.error) throw row.error;
