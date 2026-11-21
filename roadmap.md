@@ -1,3 +1,9 @@
+# App-wide Recycle Bin
+- [ ] Replace Calendar recovery with a manager-only Recycle Bin for events and users, scoped in the database.
+- [ ] Integrate soft user deletion, immediate access blocking, restoration and non-restorable self-requested erasure.
+- [ ] Add simple deletion confirmations, typed permanent deletion and audited multi-type daily cleanup.
+- [ ] Run permission, retention, orchestration and UI tests; signed-in live verification requires an external session.
+
 # Calendar ongoing events
 - [x] Include ongoing events in Upcoming and show bilingual Happening now badges; move to Past after end.
 - [x] Month ignores List time toggle; compare timestamps in UTC and date-only events in Europe/London.
