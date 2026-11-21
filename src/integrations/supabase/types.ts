@@ -92,6 +92,80 @@ export type Database = {
           },
         ]
       }
+      event_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          branch_id: string | null
+          created_at: string
+          event_id: string
+          id: string
+          region_id: string
+          scope: string
+        }
+        Insert: {
+          action?: string
+          actor_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          region_id: string
+          scope: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          region_id?: string
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_deletion_jobs: {
+        Row: {
+          created_at: string
+          event_id: string
+          requested_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          requested_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          requested_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_deletion_jobs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_deletion_jobs_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_media: {
         Row: {
           created_at: string
@@ -362,7 +436,13 @@ export type Database = {
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       create_event: { Args: { _data: Json }; Returns: string }
+      delete_event: {
+        Args: { _event: string; _finalize?: boolean }
+        Returns: Json
+      }
       delete_event_media: { Args: { _media: string }; Returns: undefined }
+      event_has_registrations: { Args: { _event: string }; Returns: boolean }
+      get_event_deletion_state: { Args: { _event: string }; Returns: Json }
       get_user_audit_history: {
         Args: { _offset?: number; _target: string }
         Returns: {
