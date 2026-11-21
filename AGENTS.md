@@ -30,6 +30,7 @@ use the editor.
 <!-- LOVABLE:END -->
 
 ## Project rules
+- Calendar timing uses shared UTC-instant/London-date helpers and one client clock; Month ignores List time filters, and cached events update at start/end without extra network reads.
 - All routes use `ssr: false` (client-side SPA) because the app will be packaged as a PWA/native app.
 - Roles live only in `user_roles`; profile status changes go through the `set_user_status` RPC, and clients may update only `full_name`/`phone` (column grants), so RLS stays the real enforcement.
 - Role and branch mutations use permission-checked database RPCs with atomic audit inserts; history names come from a scoped RPC so profile access is not widened.

@@ -337,6 +337,7 @@
     "restoreFilesMissing": "Files could not be restored. The event is still hidden; please retry.",
     "requiredNote": "* Required to publish. To save a draft, only a title is needed.",
     "fieldRequired": "This field is required.",
+    "happeningNow": "Happening now",
     "unscheduled": "Date not set",
     "back": "Back to calendar",
     "leaflet": "View leaflet",

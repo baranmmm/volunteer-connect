@@ -1,3 +1,9 @@
+# Calendar ongoing events
+- [x] Include ongoing events in Upcoming and show bilingual Happening now badges; move to Past after end.
+- [x] Month ignores List time toggle; compare timestamps in UTC and date-only events in Europe/London.
+- [x] 147 regression tests passed; calendar tests also passed in Los Angeles/Tokyo time zones. Real components displayed EN/TR badges and removed them after end.
+- [ ] Signed-in calendar verification: external Supabase has no managed session; preview redirects to /auth. No all-day field currently exists; shared rules support date-only/London-day input without schema changes.
+
 # Soft deletion and recovery
 - [x] Event form: publish-required markers, title-only drafts, enabled save buttons, inline errors and scroll to first invalid field.
 - [x] Hide soft-deleted events and media; archive files to invalidate old paths (live Storage link 200 → 400, restored).

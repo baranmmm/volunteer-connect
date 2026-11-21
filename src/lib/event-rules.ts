@@ -42,8 +42,26 @@ export function validateEventFile(file: { type: string; size: number }, count: n
   if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type)) throw new Error('Invalid event file');
   if (file.size > MAX_FILE_BYTES) throw new Error('Event file exceeds 10 MB');
 }
-export function filterEvents(events: HubEvent[], past: boolean, category: string, organizer: string, now = new Date()) {
-  return events.filter(e => (e.start_at ? (past ? new Date(e.end_at ?? e.start_at) < now : new Date(e.end_at ?? e.start_at) >= now) : !past) && (category === 'all' || e.category === category) && (organizer === 'all' || e.organizer === organizer))
+type EventTime = { start_at: string | null; end_at: string | null; all_day?: boolean };
+export function londonDate(value: string | Date) {
+  // Date-only values are calendar dates, not UTC midnight instants.
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : formatInTimeZone(value, LONDON, 'yyyy-MM-dd');
+}
+export function eventTimeState(event: EventTime, now = new Date()) {
+  if (!event.start_at) return { past: false, happeningNow: false };
+  if (event.all_day || /^\d{4}-\d{2}-\d{2}$/.test(event.start_at)) {
+    const today = londonDate(now), start = londonDate(event.start_at), end = londonDate(event.end_at ?? event.start_at);
+    return { past: end < today, happeningNow: start <= today && today <= end };
+  }
+  const start = Date.parse(event.start_at), end = Date.parse(event.end_at ?? event.start_at), current = now.getTime();
+  return { past: end < current, happeningNow: start <= current && current <= end };
+}
+export function eventOccursOn(event: EventTime, day: string) {
+  if (!event.start_at) return false;
+  return londonDate(event.start_at) <= day && day <= londonDate(event.end_at ?? event.start_at);
+}
+export function filterEvents(events: HubEvent[], past: boolean | null, category: string, organizer: string, now = new Date()) {
+  return events.filter(e => (past === null || eventTimeState(e, now).past === past) && (category === 'all' || e.category === category) && (organizer === 'all' || e.organizer === organizer))
     .sort((a, b) => (past ? -1 : 1) * (Date.parse(a.start_at ?? '9999-01-01') - Date.parse(b.start_at ?? '9999-01-01')) || a.id.localeCompare(b.id));
 }
 function escapeIcs(value: string) { return value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,'); }
