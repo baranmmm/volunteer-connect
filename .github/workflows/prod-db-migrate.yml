@@ -1,0 +1,95 @@
+name: PROD DB migrate
+
+# Applies supabase/migrations to PRODUCTION. Manual only, from main only, dry-run by default.
+# Usage and rules: e2e/README.md → "Production migrations". The first run must be a dry-run.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run lists and previews only; apply runs supabase db push against PRODUCTION"
+        type: choice
+        options: [dry-run, apply]
+        default: dry-run
+      confirm:
+        description: 'Required for apply: type exactly APPLY PROD'
+        type: string
+        required: false
+        default: ""
+
+# Shared with "QA DB migrate" and "E2E (QA)": none of them run at the same time.
+concurrency:
+  group: qa-db
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Runs without the production environment, so a wrong branch or input fails before any approval or secret.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Main branch and confirmation
+        env:
+          MODE: ${{ inputs.mode }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::PROD DB migrate runs only on main (got $GITHUB_REF)."
+            exit 1
+          fi
+          case "$MODE" in
+            dry-run) echo "Mode: dry-run (nothing will be applied)." ;;
+            apply)
+              if [ "$CONFIRM" != "APPLY PROD" ]; then
+                echo "::error::mode=apply requires the confirm input to be exactly: APPLY PROD"
+                exit 1
+              fi
+              echo "Mode: apply (confirmed)." ;;
+            *) echo "::error::Unknown mode."; exit 1 ;;
+          esac
+
+  migrate:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned: same CLI as QA. Update deliberately; 3.x needs --yes for a non-interactive db push.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.2.0
+
+      - name: Run summary header
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          {
+            echo "## PROD DB migrate: $MODE"
+            echo
+            echo "Commit \`$GITHUB_SHA\` on \`$GITHUB_REF_NAME\`, started by @$GITHUB_ACTOR. Connection details are masked."
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate and mask the connection (guard against QA)
+        env:
+          POOLER_URL: ${{ secrets.PROD_DB_POOLER_URL }}
+          DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+        run: node .github/scripts/prod-db-migrate.mjs prepare
+
+      - name: supabase migration list
+        run: node .github/scripts/prod-db-migrate.mjs run "Migration list (before)" migration list
+
+      - name: supabase db push --dry-run
+        run: node .github/scripts/prod-db-migrate.mjs run "db push --dry-run" db push --dry-run
+
+      - name: supabase db push --yes (apply only)
+        if: inputs.mode == 'apply' && inputs.confirm == 'APPLY PROD'
+        run: node .github/scripts/prod-db-migrate.mjs run "db push (applied)" db push --yes
+
+      - name: supabase migration list (after apply)
+        if: inputs.mode == 'apply' && inputs.confirm == 'APPLY PROD'
+        run: node .github/scripts/prod-db-migrate.mjs run "Migration list (after)" migration list

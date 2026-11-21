@@ -5,8 +5,27 @@
 Bilingual (EN/TR) volunteer hub for Dialogue Society branches, packaged as a PWA/native app.
 TanStack Start + React 19 + Supabase, client-side SPA only (every route `ssr: false`).
 
-**Lovable also edits this repo** (two-way sync on `main`). Pull before working, work on feature
-branches, never force-push or rewrite pushed history, and keep `main` buildable.
+## Working agreement
+Claude Code makes frontend (`src/`) and database (`supabase/migrations/`) changes. Lovable is used only for new
+screens and design, and still syncs two-way on `main`.
+- Every task gets its own branch from `main`. Pull `main` before starting. Never commit or push to `main` directly:
+  changes go through a PR and the user merges it.
+- **No parallel work with Lovable.** When the user says a Lovable task is running, do not touch `src/` or
+  `supabase/` until they say it has finished.
+- Never rewrite pushed history (Lovable mirrors it), and keep `main` buildable.
+
+### Before opening a PR
+Run these locally and put the results in the PR description:
+1. `npx tsc --noEmit` (repo root; and inside `e2e/` when it changed).
+2. ESLint on the changed files only: `npx eslint <changed files>`. The rest of `src/` has known formatting issues.
+3. The Playwright specs related to the change, against QA (`cd e2e && npx playwright test <specs>`).
+
+### Always ask first
+- Pushing to `main`, force pushing, `git reset --hard`, rebase.
+- Deleting any file, migration files included.
+- Any connection to the production database, and any `supabase db push`. Production migrations go only through
+  the `PROD DB migrate` workflow (`.github/workflows/prod-db-migrate.yml`), with the user's approval.
+- Reading, showing or changing `.env`, `e2e/.env.qa` or any other key or secret file.
 
 ## Roles
 - `regional_director`: manages every branch in their region (region on `user_roles.region_id`). Only role
@@ -22,7 +41,16 @@ branches, never force-push or rewrite pushed history, and keep `main` buildable.
 - User deletion only through the `deleteUser` server function (`src/lib/delete-user.functions.ts`).
 - The service_role key lives only in server code, e2e seed/teardown/API tests and GitHub secrets. Never in
   browser code and never in a `VITE_*` variable.
-- Schema changes are made by Lovable. Never edit `supabase/migrations/`.
+
+## Database migrations (`supabase/migrations/`)
+- Every change is a **new** file with a new timestamp (`YYYYMMDDHHMMSS_description.sql`). Never edit, rename or
+  delete an existing migration, even an unreleased one.
+- RLS stays enabled on every table, new tables included.
+- Never grant `INSERT`, `UPDATE`, `DELETE` or `TRUNCATE` to `anon`.
+- `SECURITY DEFINER` functions pin the search path (`SET search_path = ''` or `public`, with schema-qualified
+  names), `REVOKE EXECUTE ... FROM PUBLIC, anon`, and `GRANT EXECUTE ... TO authenticated` only.
+- QA gets migrations from the `QA DB migrate` workflow (or `npm run qa:migrate` in `e2e/`, which applies without
+  a prompt). Production only through `PROD DB migrate`, dry-run first (see `e2e/README.md`).
 
 ## i18n
 No hardcoded user-facing strings. Every string is a key in both `src/locales/en.json` and `src/locales/tr.json`.
@@ -32,6 +60,7 @@ DB error messages map to keys through `ERROR_KEYS` in `src/lib/i18n.ts`.
 kebab-case `page-element[-qualifier]` (e.g. `users-row-status-badge`, `user-details-delete-button`).
 Never derived from visible or translated text. Lists expose record ids as `data-user-id` / `data-request-id`.
 Toasts go through `src/lib/toast.ts` so they carry `toast-success` / `toast-error`.
+The same rules apply to UI built by Claude Code and by Lovable.
 
 ## E2E tests (`e2e/`)
 Separate npm package with Playwright + TypeScript page objects; see `e2e/README.md`.
