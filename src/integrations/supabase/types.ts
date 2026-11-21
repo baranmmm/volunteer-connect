@@ -572,20 +572,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_event_media:
-        | {
-            Args: { _event: string; _extension: string; _kind: string }
-            Returns: string
-          }
-        | {
-            Args: {
-              _event: string
-              _extension: string
-              _kind: string
-              _original_name: string
-            }
-            Returns: string
-          }
+      add_event_media: {
+        Args: {
+          _event: string
+          _extension: string
+          _kind: string
+          _original_name: string
+        }
+        Returns: string
+      }
       authorize_user_deletion: {
         Args: { _actor: string; _request?: string; _target: string }
         Returns: string

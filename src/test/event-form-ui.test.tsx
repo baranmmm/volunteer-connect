@@ -46,4 +46,21 @@ describe('event form actionable validation', () => {
     expect(screen.getByTestId('event-form-location').getAttribute('aria-invalid')).toBe('true');
     expect(mocks.save).not.toHaveBeenCalled();
   });
+});describe('A2a form controls', () => {
+  it('All day hides time inputs and shows date pickers; End follows Start + 2 hours', () => {
+    render(<EventForm onClose={vi.fn()} onSaved={mocks.saved} />);
+    fireEvent.change(screen.getByTestId('event-form-start'), { target: { value: '2027-01-10T18:00' } });
+    expect((screen.getByTestId('event-form-end') as HTMLInputElement).value).toBe('2027-01-10T20:00');
+    fireEvent.click(screen.getByTestId('event-form-all-day'));
+    expect(screen.queryByTestId('event-form-start')).toBeNull();
+    expect((screen.getByTestId('event-form-start-date') as HTMLInputElement).type).toBe('date');
+    expect((screen.getByTestId('event-form-end-date') as HTMLInputElement).type).toBe('date');
+  });
+  it('offers a location type and accepts Word and PowerPoint files', () => {
+    render(<EventForm onClose={vi.fn()} onSaved={mocks.saved} />);
+    expect(screen.getByTestId('event-form-location-type')).toBeTruthy();
+    const accept = (screen.getByTestId('event-form-file-input') as HTMLInputElement).accept;
+    expect(accept).toContain('.docx');
+    expect(accept).toContain('.pptx');
+  });
 });
