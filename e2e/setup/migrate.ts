@@ -49,7 +49,9 @@ async function main() {
 
   // `supabase link` is intentionally not used: it may try the IPv6-only direct connection.
   supabaseCli(["db", "push", "--db-url", dbUrl, "--dry-run"]);
-  supabaseCli(["db", "push", "--db-url", dbUrl]);
+  // CLI 3.x asks for confirmation before applying and aborts when stdout is not a terminal (CI).
+  // The dry-run above has already listed what will be applied.
+  supabaseCli(["db", "push", "--db-url", dbUrl, "--yes"]);
   console.log("\n[migrate] Done. Next: npm run qa:seed");
 }
 
