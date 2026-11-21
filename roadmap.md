@@ -21,3 +21,8 @@
 - [x] Calendar/list filters, creation/editing, details/gallery and calendar sharing in EN/TR.
 - [x] Test access rules, file limits and London times; provide SQL and test-id report (84 tests and simulated desktop/phone flows passed).
 - [ ] Verify real signed-in creation and file readback (external account required).
+
+# Dialogue Society brand
+- [x] Apply brand colour tokens and accessible action/sidebar colours.
+- [x] Add official full and square logos to desktop and mobile layouts.
+- [x] Update favicon, Apple touch icon, and PWA icons; verify desktop/mobile presentation.

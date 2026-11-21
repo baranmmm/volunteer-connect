@@ -1,13 +1,24 @@
 import { useTranslation } from "react-i18next";
+
 export function Logo({ className = "" }: { className?: string }) {
   const { t } = useTranslation();
+
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <img src="/icons/icon-192.png" alt="" className="h-10 w-10 rounded-xl" />
-      <div className="leading-tight">
-        <div className="font-display text-lg font-semibold">Dialogue Society</div>
-        <div className="text-xs opacity-80">{t("common.hubName")}</div>
+    <div className={`inline-flex items-center gap-3 rounded-2xl bg-card p-3 text-card-foreground ${className}`}>
+      <img
+        src="/icons/ds-icon-270.png"
+        alt="Dialogue Society"
+        className="h-10 w-10 shrink-0 lg:hidden"
+      />
+      <div className="hidden min-w-0 lg:block">
+        <img
+          src="/ds-logo.svg"
+          alt="Dialogue Society"
+          className="h-14 w-auto max-w-full object-contain object-left"
+        />
+        <div className="mt-1 text-xs font-medium text-muted-foreground">{t("common.hubName")}</div>
       </div>
+      <div className="text-sm font-semibold lg:hidden">{t("common.hubName")}</div>
     </div>
   );
 }

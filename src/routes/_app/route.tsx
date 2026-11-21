@@ -72,14 +72,14 @@ function AppLayout() {
   return (
     <div className="min-h-screen lg:flex">
       <aside data-testid="app-sidebar" className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-5 text-sidebar-foreground lg:flex">
-        <Logo className="mb-8 px-2" />
+        <Logo className="mb-8 w-full" />
         <nav aria-label={t("navigation.main")} className="flex-1 space-y-1">
           {items.map(({ to, testId, labelKey, icon: Icon }) => (
             <Link
               key={to}
               to={to}
               data-testid={testId}
-              className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-primary"
+              className="flex min-h-11 items-center gap-3 rounded-xl border-l-2 border-transparent px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent data-[status=active]:border-l-sidebar-primary data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-foreground"
             >
               <Icon className="h-5 w-5" aria-hidden /> {t(labelKey)}
             </Link>
