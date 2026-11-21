@@ -117,8 +117,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const { i18n } = useTranslation();
+
+  useEffect(() => {
+    const updateLanguage = (language: string) => {
+      document.documentElement.lang = language === "tr" ? "tr" : "en-GB";
+    };
+    updateLanguage(i18n.language);
+    i18n.on("languageChanged", updateLanguage);
+    return () => { i18n.off("languageChanged", updateLanguage); };
+  }, [i18n]);
+
   return (
-    <html lang="en-GB">
+    <html lang="en-GB" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
