@@ -54,11 +54,44 @@ npm test             # starts the app on BASE_URL against QA, then runs all proj
   never `VITE_`-prefixed) is passed to the server for the `deleteUser` server function. `tests/api/bundle-secrets.spec.ts`
   checks it never reaches the browser.
 
+## Production migrations (`PROD DB migrate`)
+
+`.github/workflows/prod-db-migrate.yml` is the only way migrations reach production. Nobody runs `supabase db push`
+against production by hand.
+
+**Rules**
+- Manual only (Actions → *PROD DB migrate* → *Run workflow*), from `main` only. Any other branch fails immediately.
+- **The first run after any migration change must be `mode: dry-run`.** Read the job summary and check that it lists
+  only the migrations you expect. Only then run `mode: apply`.
+- `mode: apply` also needs `confirm` set to exactly `APPLY PROD`. Otherwise the job fails before it touches the database.
+- It has its own concurrency group `prod-db`, so two production runs never overlap; it does not wait for the QA
+  workflows. Apply to QA first and let the E2E suite pass before applying to production.
+
+**What a run does**
+1. `check` job (no secrets): main branch and the `confirm` input.
+2. `migrate` job in the GitHub environment `production`: validates the connection, then runs
+   `supabase migration list` and `supabase db push --dry-run`. The output of both goes to the job summary.
+3. Only for `apply` + `APPLY PROD`: `supabase db push --yes`, then `supabase migration list` again.
+
+**Setup (once, by the repo owner)**
+- Environment `production` with secrets `PROD_DB_POOLER_URL` (Session pooler URL **without** the password) and
+  `PROD_DB_PASSWORD`.
+- Recommended in the environment settings: *Deployment branches* = `main` only, and *Required reviewers*, so every run
+  waits for approval.
+
+**Safety**
+- The job stops if the pooler URL contains the QA ref `impdbvwsaancutwlrmac`, its user does not contain the production
+  ref `kcxmjscxooqqhsgrhknb`, it contains a password, or it is not a `*.pooler.supabase.com` Session pooler URL.
+- The URL, its host, user and the password are masked in the logs (`::add-mask::`) and replaced with `***` in the job summary.
+- Supabase CLI is pinned to 3.2.0 (`.github/scripts/prod-db-migrate.mjs` passes `--remote=<url>` and `--output-format text`).
+
 ## CI
 
 - `.github/workflows/e2e.yml`: every push and pull request. Seed → tests → teardown, HTML report artifact.
 - `.github/workflows/qa-db-migrate.yml`: manual, nightly, and on `supabase/migrations/**` changes on `main`.
-- Both share the `qa-db` concurrency group so they never overlap on the shared QA database.
+- `.github/workflows/prod-db-migrate.yml`: production, manual only; see *Production migrations* above.
+- The two QA workflows share the `qa-db` concurrency group so they never overlap on the shared QA database;
+  `prod-db-migrate.yml` uses its own `prod-db` group.
 - Secrets live in the GitHub environment `qa`: `QA_SUPABASE_URL`, `QA_SUPABASE_PUBLISHABLE_KEY`,
   `QA_SUPABASE_SERVICE_ROLE_KEY`, `QA_SUPABASE_DB_POOLER_URL` (no password), `QA_SUPABASE_DB_PASSWORD`, `E2E_USER_PASSWORD`.
 
