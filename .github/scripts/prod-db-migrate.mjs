@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
 const QA_REF = "impdbvwsaancutwlrmac";
+const PROD_REF = "kcxmjscxooqqhsgrhknb";
 
 function fail(message) {
   console.log(`::error::${message}`);
@@ -49,6 +50,12 @@ function prepare() {
   if (raw.includes(QA_REF) || decodeURIComponent(u.username).includes(QA_REF)) {
     fail(
       "PROD_DB_POOLER_URL points at the QA project. Aborting: this workflow is for production only.",
+    );
+  }
+  // ...and must target the production project: the Session pooler user is postgres.<project ref>.
+  if (!decodeURIComponent(u.username).includes(PROD_REF)) {
+    fail(
+      `PROD_DB_POOLER_URL does not contain the production project ref (${PROD_REF}) in its user. Aborting.`,
     );
   }
   if (u.password)

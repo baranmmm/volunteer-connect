@@ -64,8 +64,8 @@ against production by hand.
 - **The first run after any migration change must be `mode: dry-run`.** Read the job summary and check that it lists
   only the migrations you expect. Only then run `mode: apply`.
 - `mode: apply` also needs `confirm` set to exactly `APPLY PROD`. Otherwise the job fails before it touches the database.
-- It shares the `qa-db` concurrency group, so it never runs alongside *QA DB migrate* or *E2E (QA)*. Apply to QA first
-  and let the E2E suite pass before applying to production.
+- It has its own concurrency group `prod-db`, so two production runs never overlap; it does not wait for the QA
+  workflows. Apply to QA first and let the E2E suite pass before applying to production.
 
 **What a run does**
 1. `check` job (no secrets): main branch and the `confirm` input.
@@ -80,8 +80,8 @@ against production by hand.
   waits for approval.
 
 **Safety**
-- The job stops if the pooler URL contains the QA ref `impdbvwsaancutwlrmac`, contains a password, or is not a
-  `*.pooler.supabase.com` Session pooler URL.
+- The job stops if the pooler URL contains the QA ref `impdbvwsaancutwlrmac`, its user does not contain the production
+  ref `kcxmjscxooqqhsgrhknb`, it contains a password, or it is not a `*.pooler.supabase.com` Session pooler URL.
 - The URL, its host, user and the password are masked in the logs (`::add-mask::`) and replaced with `***` in the job summary.
 - Supabase CLI is pinned to 3.2.0 (`.github/scripts/prod-db-migrate.mjs` passes `--remote=<url>` and `--output-format text`).
 
@@ -90,7 +90,8 @@ against production by hand.
 - `.github/workflows/e2e.yml`: every push and pull request. Seed → tests → teardown, HTML report artifact.
 - `.github/workflows/qa-db-migrate.yml`: manual, nightly, and on `supabase/migrations/**` changes on `main`.
 - `.github/workflows/prod-db-migrate.yml`: production, manual only; see *Production migrations* above.
-- All three share the `qa-db` concurrency group, so none of them overlap (QA database runs and production migrations).
+- The two QA workflows share the `qa-db` concurrency group so they never overlap on the shared QA database;
+  `prod-db-migrate.yml` uses its own `prod-db` group.
 - Secrets live in the GitHub environment `qa`: `QA_SUPABASE_URL`, `QA_SUPABASE_PUBLISHABLE_KEY`,
   `QA_SUPABASE_SERVICE_ROLE_KEY`, `QA_SUPABASE_DB_POOLER_URL` (no password), `QA_SUPABASE_DB_PASSWORD`, `E2E_USER_PASSWORD`.
 

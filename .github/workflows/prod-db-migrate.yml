@@ -16,9 +16,9 @@ on:
         required: false
         default: ""
 
-# Shared with "QA DB migrate" and "E2E (QA)": none of them run at the same time.
+# Own group: production runs queue behind each other, independent of the QA workflows (qa-db).
 concurrency:
-  group: qa-db
+  group: prod-db
   cancel-in-progress: false
 
 permissions:
