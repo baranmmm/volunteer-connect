@@ -141,6 +141,7 @@ export type Database = {
           id: string
           outcome: string
           started_at: string
+          users_purged: number
         }
         Insert: {
           events_purged?: number
@@ -149,6 +150,7 @@ export type Database = {
           id?: string
           outcome?: string
           started_at?: string
+          users_purged?: number
         }
         Update: {
           events_purged?: number
@@ -157,6 +159,7 @@ export type Database = {
           id?: string
           outcome?: string
           started_at?: string
+          users_purged?: number
         }
         Relationships: []
       }
@@ -333,6 +336,8 @@ export type Database = {
         Row: {
           branch_id: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           email: string | null
           full_name: string
           id: string
@@ -343,6 +348,8 @@ export type Database = {
         Insert: {
           branch_id?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           email?: string | null
           full_name?: string
           id: string
@@ -353,6 +360,8 @@ export type Database = {
         Update: {
           branch_id?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           email?: string | null
           full_name?: string
           id?: string
@@ -366,6 +375,54 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recycle_bin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          branch_id: string | null
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          region_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          region_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          region_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recycle_bin_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -415,6 +472,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_deletion_state: {
+        Row: {
+          created_at: string
+          deletion_audit_id: string
+          operation: string
+          operation_actor: string | null
+          previous_status: Database["public"]["Enums"]["profile_status"]
+          self_requested: boolean
+          target_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deletion_audit_id: string
+          operation: string
+          operation_actor?: string | null
+          previous_status: Database["public"]["Enums"]["profile_status"]
+          self_requested: boolean
+          target_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deletion_audit_id?: string
+          operation?: string
+          operation_actor?: string | null
+          previous_status?: Database["public"]["Enums"]["profile_status"]
+          self_requested?: boolean
+          target_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_deletion_state_deletion_audit_id_fkey"
+            columns: ["deletion_audit_id"]
+            isOneToOne: false
+            referencedRelation: "user_audit_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_deletion_state_operation_actor_fkey"
+            columns: ["operation_actor"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -457,9 +562,17 @@ export type Database = {
         Args: { _actor: string; _request?: string; _target: string }
         Returns: string
       }
+      can_manage_deleted_user: {
+        Args: { _actor: string; _target: string }
+        Returns: boolean
+      }
       can_manage_event: { Args: { _event: string }; Returns: boolean }
       can_manage_event_scope: {
         Args: { _branch: string; _region: string; _scope: string }
+        Returns: boolean
+      }
+      can_manage_recycle_scope: {
+        Args: { _actor: string; _branch: string; _region: string }
         Returns: boolean
       }
       can_manage_user: {
@@ -479,6 +592,10 @@ export type Database = {
       }
       delete_event_media: { Args: { _media: string }; Returns: undefined }
       event_has_registrations: { Args: { _event: string }; Returns: boolean }
+      finish_user_recycle_operation: {
+        Args: { _id: string; _operation: string }
+        Returns: undefined
+      }
       get_event_deletion_state: { Args: { _event: string }; Returns: Json }
       get_user_audit_history: {
         Args: { _offset?: number; _target: string }
@@ -512,6 +629,30 @@ export type Database = {
           title: string
         }[]
       }
+      list_recycle_bin: {
+        Args: { _offset?: number; _search?: string; _type?: string }
+        Returns: {
+          branch: string
+          can_restore: boolean
+          days_left: number
+          deleted_at: string
+          deleted_by_name: string
+          id: string
+          region: string
+          role: string
+          title: string
+          total_count: number
+          type: string
+        }[]
+      }
+      permanent_delete_item: {
+        Args: { _confirmation: string; _id: string; _type: string }
+        Returns: Json
+      }
+      prepare_user_purge: {
+        Args: { _actor?: string; _id: string }
+        Returns: Json
+      }
       purge_event: {
         Args: { _event: string; _finalize?: boolean }
         Returns: Json
@@ -533,6 +674,7 @@ export type Database = {
         Args: { _event: string; _finalize?: boolean }
         Returns: Json
       }
+      restore_item: { Args: { _id: string; _type: string }; Returns: Json }
       set_user_branch: {
         Args: { _branch: string; _target: string }
         Returns: undefined
