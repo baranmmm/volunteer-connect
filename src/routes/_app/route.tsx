@@ -50,7 +50,7 @@ function AppLayout() {
       <div className="flex min-h-screen items-center justify-center px-5">
         <div data-testid="pending-approval-screen" data-status={profile?.status ?? "pending"} className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-soft">
           <Clock className="mx-auto h-12 w-12 text-primary" aria-hidden />
-          <h1 className="mt-4 text-2xl font-semibold">
+          <h1 className="mt-4 text-2xl font-bold">
             {inactive ? t("navigation.inactiveTitle") : t("navigation.pendingTitle")}
           </h1>
           <p className="mt-3 text-muted-foreground">

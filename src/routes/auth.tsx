@@ -43,7 +43,7 @@ function AuthPage() {
       <div className="hidden flex-col justify-between bg-hero p-12 text-primary-foreground lg:flex">
         <Logo />
         <div>
-          <h1 className="text-4xl font-semibold leading-tight">{t("auth.heroTitle")}</h1>
+          <h1 className="text-4xl font-bold leading-tight">{t("auth.heroTitle")}</h1>
           <p className="mt-4 max-w-md text-lg opacity-90">{t("auth.heroText")}</p>
         </div>
         <p className="text-sm opacity-75">{t("auth.charity")}</p>

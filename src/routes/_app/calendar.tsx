@@ -28,7 +28,7 @@ function CalendarPage() {
   const filtered = filterEvents(events.data ?? [],past,category,organizer);
   const organizers = [...new Set((events.data ?? []).map(e => e.organizer))].sort();
   return <div className="space-y-6">
-    <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-3xl font-semibold">{t('events.title')}</h1>{isManager && <Button data-testid="calendar-create-event-button" className="h-11" onClick={() => setCreating(true)}><Plus />{t('events.create')}</Button>}</header>
+    <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-3xl font-bold">{t('events.title')}</h1>{isManager && <Button data-testid="calendar-create-event-button" className="h-11" onClick={() => setCreating(true)}><Plus />{t('events.create')}</Button>}</header>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
       <div data-testid="calendar-view-toggle" role="group" aria-label={t('events.title')} className="flex gap-1"><Button variant={view==='month'?'secondary':'ghost'} aria-pressed={view==='month'} onClick={() => setView('month')}><CalendarDays />{t('events.month')}</Button><Button variant={view==='list'?'secondary':'ghost'} aria-pressed={view==='list'} onClick={() => setView('list')}><List />{t('events.list')}</Button></div>
       <div className="flex flex-wrap gap-2"><Button data-testid="calendar-filter-upcoming" variant={!past?'default':'outline'} aria-pressed={!past} onClick={() => setPast(false)}>{t('events.upcoming')}</Button><Button data-testid="calendar-filter-past" variant={past?'default':'outline'} aria-pressed={past} onClick={() => setPast(true)}>{t('events.past')}</Button></div>

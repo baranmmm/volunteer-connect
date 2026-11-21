@@ -67,7 +67,7 @@ function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-semibold">{t("profile.title")}</h1>
+      <h1 className="text-3xl font-bold">{t("profile.title")}</h1>
       <section className="max-w-xl space-y-2 rounded-2xl border bg-card p-6 shadow-soft">
         <Label htmlFor="language">{t("profile.language")}</Label>
         <Select value={i18n.language} onValueChange={changeLanguage}>

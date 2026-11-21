@@ -43,7 +43,7 @@ function UsersPage() {
   const roleOptions = [{ value: "volunteer", label: t("common.roles.volunteer") }, { value: "branch_manager", label: t("common.roles.branch_manager") }];
 
   return <div className="space-y-6">
-    <h1 className="text-3xl font-semibold">{t("users.title")}</h1>
+    <h1 className="text-3xl font-bold">{t("users.title")}</h1>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" aria-hidden /><Input data-testid="users-search-input" aria-label={t("users.search")} placeholder={t("users.search")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 pl-9" /></div>
       <Choice testId="users-filter-status" label={t("users.filterStatus")} value={status} onChange={setStatusFilter} options={[{ value: "all", label: t("users.allStatuses") }, ...STATUSES.map((value) => ({ value, label: t(`common.status.${value}`) }))]} />

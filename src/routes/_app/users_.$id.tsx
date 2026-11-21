@@ -42,7 +42,7 @@ function UserDetails() {
   const [deleting, setDeleting] = useState(false);
 
   if (!isManager) return <Navigate to="/dashboard" replace />;
-  if (id === uid || (member.isSuccess && !member.data)) return <div data-testid="user-details-not-allowed" className="space-y-4"><h1 className="text-3xl font-semibold">{t("userDetails.notAllowedTitle")}</h1><p className="text-muted-foreground">{t("userDetails.notAllowedText")}</p><Button asChild variant="outline"><Link data-testid="user-details-back-link" to="/users"><ArrowLeft className="mr-2 h-4 w-4" />{t("userDetails.back")}</Link></Button></div>;
+  if (id === uid || (member.isSuccess && !member.data)) return <div data-testid="user-details-not-allowed" className="space-y-4"><h1 className="text-3xl font-bold">{t("userDetails.notAllowedTitle")}</h1><p className="text-muted-foreground">{t("userDetails.notAllowedText")}</p><Button asChild variant="outline"><Link data-testid="user-details-back-link" to="/users"><ArrowLeft className="mr-2 h-4 w-4" />{t("userDetails.back")}</Link></Button></div>;
   if (member.isLoading) return <p data-testid="user-details-loading" className="text-muted-foreground">{t("common.loading")}</p>;
   if (member.isError || !member.data) return <div data-testid="user-details-load-error" role="alert"><p className="text-destructive">{t("userDetails.loadError")}</p><Button variant="outline" onClick={() => member.refetch()}>{t("common.retry")}</Button></div>;
   const m = member.data;
@@ -80,7 +80,7 @@ function UserDetails() {
   return <div className="space-y-8">
     <div className="space-y-3">
       <Link data-testid="user-details-back-link" to="/users" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="mr-1 h-4 w-4" />{t("userDetails.usersLink")}</Link>
-      <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold break-words">{m.full_name || t("common.unnamed")}</h1><Badge variant="outline">{t(`common.roles.${primaryRole(m.roles)}`)}</Badge><Badge variant={m.status === "active" ? "default" : "secondary"}>{t(`common.status.${m.status}`)}</Badge></div>
+      <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-bold break-words">{m.full_name || t("common.unnamed")}</h1><Badge variant="outline">{t(`common.roles.${primaryRole(m.roles)}`)}</Badge><Badge variant={m.status === "active" ? "default" : "secondary"}>{t(`common.status.${m.status}`)}</Badge></div>
     </div>
 
     <section aria-labelledby="profile-h" className="rounded-2xl border bg-card p-6 shadow-soft">

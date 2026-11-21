@@ -47,7 +47,7 @@ function ResetPassword() {
       <LanguageToggle className="absolute right-4 top-4" />
       <form onSubmit={submit} className="w-full max-w-md space-y-5">
         <Logo className="text-primary" />
-        <h1 className="text-3xl font-semibold">{t("auth.setNewTitle")}</h1>
+        <h1 className="text-3xl font-bold">{t("auth.setNewTitle")}</h1>
         <div className="space-y-2">
           <Label htmlFor="password">{t("auth.newPassword")}</Label>
           <PasswordInput data-testid="auth-password-input" id="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required aria-describedby="password-help" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl" />

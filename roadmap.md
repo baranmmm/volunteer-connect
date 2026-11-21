@@ -39,3 +39,8 @@
 # Final brand assets
 - [x] Save the supplied logo and icon files in public/brand and use them in the sidebar, favicon, Apple touch icon and PWA manifest.
 - [x] Remove the CSS tile, gloss, gradient, border and glow treatment now that the glow is part of the artwork; verify desktop and phone rendering.
+- [x] Replace only the browser favicon with the supplied glossy set (svg, 48/32/16 png, ico) and keep the sidebar, Apple and PWA icons unchanged.
+
+# Inter typography
+- [x] Make Inter the primary font with the variable-font load (wght 400..700, latin-ext, font-display swap).
+- [x] Apply the Notion-style hierarchy: titles 700 at -0.02em, section headings 600, body 400 at 16px/1.5, labels and menu items 500; verify English and Turkish rendering.
