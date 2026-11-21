@@ -23,7 +23,7 @@ cp .env.qa.example .env.qa  # then fill in the QA values (git-ignored)
 ## First QA setup — order matters
 
 ```sh
-npm run qa:migrate   # Session pooler (IPv4): rls_auto_enable check/bootstrap, db push dry-run, db push
+npm run qa:migrate   # Session pooler (IPv4): rls_auto_enable check/bootstrap, db push dry-run, db push only if pending
 npm run qa:seed      # checks the schema first; fails with "Önce migrate çalıştırın" if tables are missing
 npm test             # starts the app on BASE_URL against QA, then runs all projects
 ```
@@ -87,11 +87,24 @@ against production by hand.
 
 ## CI
 
-- `.github/workflows/e2e.yml`: every push and pull request. Seed → tests → teardown, HTML report artifact.
-- `.github/workflows/qa-db-migrate.yml`: manual, nightly, and on `supabase/migrations/**` changes on `main`.
-- `.github/workflows/prod-db-migrate.yml`: production, manual only; see *Production migrations* above.
-- The two QA workflows share the `qa-db` concurrency group so they never overlap on the shared QA database;
+- `.github/workflows/e2e.yml`: every push and pull request, on every branch.
+  Guard → **QA migrate** → seed → tests → teardown, HTML report artifact.
+  - The migrate step runs `npm run qa:migrate` (Supabase CLI 3.2.0). It applies the commit's pending migrations
+    before the tests run against them. When nothing is pending it logs
+    `No pending migrations: QA is up to date, nothing applied.` and does not run `db push`.
+- `.github/workflows/qa-db-migrate.yml`: nightly (02:00 UTC) and manual only, with a seed + API smoke run.
+  It has no push trigger, because E2E (QA) already migrates on every push.
+- `.github/workflows/prod-db-migrate.yml`: production, manual only; see _Production migrations_ above.
+- The two QA workflows share the `qa-db` concurrency group, so they never overlap on the shared QA database.
+  GitHub keeps one _pending_ run per group, so a newer push can cancel an older queued E2E run. Nothing is lost:
+  the run that goes ahead migrates first and so also applies the cancelled run's migrations.
   `prod-db-migrate.yml` uses its own `prod-db` group.
+- **Feature-branch migrations reach QA.** QA is shared, so a migration pushed on a branch is applied to QA before
+  it is merged. Migrations are never edited (see `CLAUDE.md`), so this is harmless while the branch gets merged.
+  If a branch is abandoned after its migration reached QA, later `db push` runs fail with
+  _remote migration versions not found in the local migrations directory_. Ask the repo owner before repairing QA:
+  undo the migration's objects, then mark it reverted with
+  `supabase migration repair --status reverted <version> --db-url <QA pooler URL>`.
 - Secrets live in the GitHub environment `qa`: `QA_SUPABASE_URL`, `QA_SUPABASE_PUBLISHABLE_KEY`,
   `QA_SUPABASE_SERVICE_ROLE_KEY`, `QA_SUPABASE_DB_POOLER_URL` (no password), `QA_SUPABASE_DB_PASSWORD`, `E2E_USER_PASSWORD`.
 

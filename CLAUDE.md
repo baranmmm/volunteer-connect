@@ -49,8 +49,9 @@ Run these locally and put the results in the PR description:
 - Never grant `INSERT`, `UPDATE`, `DELETE` or `TRUNCATE` to `anon`.
 - `SECURITY DEFINER` functions pin the search path (`SET search_path = ''` or `public`, with schema-qualified
   names), `REVOKE EXECUTE ... FROM PUBLIC, anon`, and `GRANT EXECUTE ... TO authenticated` only.
-- QA gets migrations from the `QA DB migrate` workflow (or `npm run qa:migrate` in `e2e/`, which applies without
-  a prompt). Production only through `PROD DB migrate`, dry-run first (see `e2e/README.md`).
+- QA gets migrations from `E2E (QA)`, which migrates before every test run on every branch (feature-branch
+  migrations included), from the nightly `QA DB migrate`, or from `npm run qa:migrate` in `e2e/` (applies without a
+  prompt). Production only through `PROD DB migrate`, dry-run first (see `e2e/README.md`).
 
 ## i18n
 No hardcoded user-facing strings. Every string is a key in both `src/locales/en.json` and `src/locales/tr.json`.

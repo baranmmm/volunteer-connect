@@ -5,6 +5,8 @@ on:
   pull_request:
 
 # The QA database is shared: never run two e2e/migrate jobs at the same time, never cancel a running one.
+# A newer queued run may cancel an older *pending* one (GitHub keeps one pending run per group). That is fine:
+# every run migrates QA before its tests, so the run that does go ahead also applies the cancelled run's migrations.
 concurrency:
   group: qa-db
   cancel-in-progress: false
@@ -23,6 +25,9 @@ jobs:
       SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
       SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QA_SUPABASE_SERVICE_ROLE_KEY }}
+      # Session pooler URL WITHOUT the password; the password comes from its own secret.
+      SUPABASE_DB_POOLER_URL: ${{ secrets.QA_SUPABASE_DB_POOLER_URL }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.QA_SUPABASE_DB_PASSWORD }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
       E2E_EMAIL_DOMAIN: dsvolunteer.test
       BASE_URL: http://localhost:3100
@@ -49,11 +54,29 @@ jobs:
         working-directory: e2e
         run: npx playwright install --with-deps chromium
 
-      - name: Guard — QA only
+      # Pinned: same CLI as QA DB migrate and local runs. Update deliberately; 3.x needs --yes for db push.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.2.0
+
+      - name: Guard — QA only (including pooler URL)
         working-directory: e2e
         run: npm run guard
 
-      - name: Seed QA users (fails clearly if migrate never ran)
+      - name: Check the Session pooler resolves over IPv4
+        run: |
+          host=$(node -e "console.log(new URL(process.env.SUPABASE_DB_POOLER_URL).hostname)")
+          echo "Pooler host: $host"
+          getent ahostsv4 "$host" | tee /tmp/ipv4.txt
+          test -s /tmp/ipv4.txt || { echo "::error::Pooler host has no IPv4 address"; exit 1; }
+
+      # Applies this commit's pending migrations (feature branches included) before the tests run against them.
+      # Logs "No pending migrations" and applies nothing when QA is already up to date.
+      - name: Migrate QA (rls_auto_enable check, db push dry-run, db push only if pending)
+        working-directory: e2e
+        run: npm run qa:migrate
+
+      - name: Seed QA users
         working-directory: e2e
         run: npm run qa:seed
 

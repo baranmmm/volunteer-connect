@@ -23,6 +23,31 @@ function supabaseCli(args: string[]): void {
   if (result.status !== 0) throw new Error(`supabase ${args[0]} ${args[1]} failed with exit code ${result.status}`);
 }
 
+/** `db push --dry-run` as JSON: the migrations it would apply, or null when the output cannot be read. */
+function pendingMigrations(dbUrl: string): string[] | null {
+  console.log("\n[migrate] $ supabase db push --db-url <pooler-url> --dry-run --output-format json");
+  const result = spawnSync("supabase", ["db", "push", "--db-url", dbUrl, "--dry-run", "--output-format", "json"], {
+    cwd: REPO_ROOT,
+    env: process.env,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  if (result.error) {
+    throw new Error(`Could not run the Supabase CLI (${result.error.message}). Install it: https://supabase.com/docs/guides/local-development/cli/getting-started`);
+  }
+  if (result.status !== 0) throw new Error(`supabase db push --dry-run failed with exit code ${result.status}`);
+  const json = result.stdout.slice(result.stdout.indexOf("{"), result.stdout.lastIndexOf("}") + 1);
+  try {
+    const parsed = JSON.parse(json) as { upToDate?: boolean; migrations?: unknown };
+    if (parsed.upToDate === true) return [];
+    if (Array.isArray(parsed.migrations)) return parsed.migrations.map(String);
+  } catch {
+    /* fall through */
+  }
+  console.log(result.stdout.trim());
+  return null;
+}
+
 async function main() {
   assertQaEnvironment(process.env, { requireDb: true });
   const dbUrl = poolerUrlWithPassword();
@@ -48,7 +73,18 @@ async function main() {
   }
 
   // `supabase link` is intentionally not used: it may try the IPv6-only direct connection.
-  supabaseCli(["db", "push", "--db-url", dbUrl, "--dry-run"]);
+  const pending = pendingMigrations(dbUrl);
+  if (pending?.length === 0) {
+    console.log("[migrate] No pending migrations: QA is up to date, nothing applied.");
+    console.log("\n[migrate] Done. Next: npm run qa:seed");
+    return;
+  }
+  if (pending) {
+    console.log(`[migrate] ${pending.length} pending migration(s):`);
+    for (const m of pending) console.log(`[migrate]   • ${m}`);
+  } else {
+    console.log("[migrate] Could not read the dry-run result; running db push anyway (it applies only what is pending).");
+  }
   // CLI 3.x asks for confirmation before applying and aborts when stdout is not a terminal (CI).
   // The dry-run above has already listed what will be applied.
   supabaseCli(["db", "push", "--db-url", dbUrl, "--yes"]);
