@@ -15,3 +15,9 @@
 
 # Hydration
 - [x] Keep the root HTML language stable during SSR and synchronize it after hydration.
+
+# Calendar & Events
+- [ ] Secure event and media tables, RPCs, and private storage.
+- [ ] Calendar/list filters, creation/editing, details/gallery and calendar sharing in EN/TR.
+- [ ] Test access rules, file limits and London times; provide SQL and test-id report.
+- [ ] Verify real signed-in creation and file readback (external account required).
