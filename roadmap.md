@@ -1,3 +1,8 @@
+# Delete event
+- [ ] Add server-enforced deletion eligibility, durable cleanup coordination, and retained event audit entries.
+- [ ] Add bilingual confirmation and manager-only actions; test draft/past/volunteer and cleanup rules.
+- [ ] Verify live deletion and storage readback if an authenticated external account is available.
+
 # Event upload repair
 - [x] Normalize JPEG paths and remove premature upload metadata checks without changing other permissions.
 - [x] Enforce bucket MIME types and 10 MB limit; show per-file rejection reasons and preserve cleanup.
