@@ -1,10 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
-import { eventFileExtension, eventUploadError, imageDimensions, validateEventFile } from './event-rules';
+import { EVENT_FILE_MIMES, eventFileExtension, eventUploadError, imageDimensions, validateEventFile } from './event-rules';
 
 /** Canvas encoding creates new pixels-only images: metadata, including EXIF/GPS, is not copied. */
 export async function prepareEventFile(file: File, count: number): Promise<File> {
   validateEventFile(file, count);
-  if (file.type === 'application/pdf') return file;
+  const extension0 = eventFileExtension(file.type, file.name);
+  if (extension0 === 'pdf') return file;
+  // Office files keep their bytes; give them the exact MIME the bucket allows when the browser left it empty.
+  if (extension0 === 'docx' || extension0 === 'pptx') return file.type ? file : new File([file], file.name, { type: EVENT_FILE_MIMES[extension0] ?? '' });
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   try {
     const dimensions = imageDimensions(bitmap.width, bitmap.height);

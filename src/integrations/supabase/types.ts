@@ -252,6 +252,7 @@ export type Database = {
       }
       events: {
         Row: {
+          all_day: boolean
           branch_id: string | null
           capacity: number | null
           category: string
@@ -261,17 +262,22 @@ export type Database = {
           deleted_by: string | null
           description: string
           end_at: string | null
+          end_date: string | null
           id: string
           location: string
+          location_type: string
+          online_url: string | null
           organizer: string
           region_id: string
           scope: string
           start_at: string | null
+          start_date: string | null
           status: string
           title: string
           updated_at: string
         }
         Insert: {
+          all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
           category: string
@@ -281,17 +287,22 @@ export type Database = {
           deleted_by?: string | null
           description?: string
           end_at?: string | null
+          end_date?: string | null
           id?: string
           location?: string
+          location_type?: string
+          online_url?: string | null
           organizer: string
           region_id: string
           scope: string
           start_at?: string | null
+          start_date?: string | null
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
+          all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
           category?: string
@@ -301,12 +312,16 @@ export type Database = {
           deleted_by?: string | null
           description?: string
           end_at?: string | null
+          end_date?: string | null
           id?: string
           location?: string
+          location_type?: string
+          online_url?: string | null
           organizer?: string
           region_id?: string
           scope?: string
           start_at?: string | null
+          start_date?: string | null
           status?: string
           title?: string
           updated_at?: string

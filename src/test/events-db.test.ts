@@ -26,7 +26,7 @@ async function transaction(user: string, action: () => Promise<void>, before?:()
  try { if(before)await before();await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[user]);await db.exec('SET LOCAL ROLE authenticated');await action(); } finally { await db.exec('ROLLBACK'); }
 }
 async function visible() { return (await db.query<{id:string}>('SELECT id FROM events ORDER BY id')).rows.map(r=>r.id).sort(); }
-async function add(kind='image',extension='jpg',event=branchEvent) { const result=await db.query<{id:string}>('SELECT add_event_media($1,$2,$3) AS id',[event,kind,extension]);const id=result.rows[0]?.id;if(!id)throw new Error('Missing media');return id; }
+async function add(kind='image',extension='jpg',event=branchEvent) { const result=await db.query<{id:string}>('SELECT add_event_media($1,$2,$3,NULL::text) AS id',[event,kind,extension]);const id=result.rows[0]?.id;if(!id)throw new Error('Missing media');return id; }
 describe('events database rules',()=>{
  it('a draft soft delete hides its event and media from every role while retaining rows and audit',async()=>transaction(ids.manager,async()=>{
    await add('image','jpg',draftEvent);
@@ -149,4 +149,32 @@ describe('events database rules',()=>{
  it('stored objects must be deleted before their records and remaining positions compact',async()=>transaction(ids.manager,async()=>{const a=await add(),b=await add();await db.query('SELECT delete_event_media($1)',[a]);expect((await db.query('SELECT id,position FROM event_media')).rows).toEqual([{id:b,position:0}]);}));
  it('tables are read-only for authenticated users and inaccessible to anon',async()=>{for(const table of ['events','event_media']){const result=await db.query(`SELECT has_table_privilege('authenticated','${table}','SELECT') AS read,has_table_privilege('authenticated','${table}','INSERT') AS insert,has_table_privilege('authenticated','${table}','UPDATE') AS update,has_table_privilege('authenticated','${table}','DELETE') AS delete,has_table_privilege('anon','${table}','SELECT') AS anon`);expect(result.rows).toEqual([{read:true,insert:false,update:false,delete:false,anon:false}]);}});
  it('new callable functions have authenticated-only execution and trigger is not callable',async()=>{const result=await db.query<{name:string;anon:boolean;authenticated:boolean}>(`SELECT p.proname AS name,has_function_privilege('anon',p.oid,'EXECUTE') AS anon,has_function_privilege('authenticated',p.oid,'EXECUTE') AS authenticated FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('create_event','update_event','cancel_event','add_event_media','reorder_event_media','delete_event_media','can_view_event','can_manage_event','validate_event')`);expect(result.rows).toHaveLength(10);for(const row of result.rows){expect(row.anon).toBe(false);expect(row.authenticated).toBe(row.name!=='validate_event');}});
+});
+describe('A2a database publish and scope rules', () => {
+ const publish = (extra: object) => ({ ...data(), ...extra });
+ it('rejects incomplete publishing and past end times through the API',async()=>{
+  const cases: [object,string][] = [[{ location:'' },'Required publish fields missing'],[{ start_at:'2020-01-01T10:00:00Z', end_at:'2020-01-01T12:00:00Z' },'Published event cannot end in the past'],[{ end_at:'2027-01-01T18:00:00Z' },'Event end must be after start'],[{ location:'', location_type:'online', online_url:'http://zoom.us/j/1' },'Online meeting link must use https']];
+  for (const [extra,message] of cases) await transaction(ids.manager,async()=>{ await expect(create(publish(extra))).rejects.toThrow(message); });
+  await transaction(ids.manager,async()=>{
+   expect(await create(publish({ location:'', location_type:'online', online_url:'https://zoom.us/j/1' }))).toBeTruthy();
+   expect(await create({ title:'Draft only', status:'draft', scope:'branch', category:'dialogue' })).toBeTruthy();
+  });
+ });
+ it('stores all-day events as London dates and defaults the end date to the start date',async()=>{
+  await transaction(ids.manager,async()=>{
+   const id=await create(publish({ all_day:true, start_date:'2027-03-27', start_at:'2027-03-27T10:00:00Z', end_at:null }));
+   const row=(await db.query<{start_at:string|null;start_date:string;end_date:string}>("SELECT start_at,start_date::text,end_date::text FROM events WHERE id=$1",[id])).rows[0];
+   expect(row).toEqual({ start_at:null, start_date:'2027-03-27', end_date:'2027-03-27' });
+  });
+ });
+ it('a Branch Manager cannot create region or other-branch events; a volunteer cannot create events',async()=>{
+  await transaction(ids.manager,async()=>{ await expect(create(publish({ scope:'region', branch_id:null }))).rejects.toThrow('Not allowed'); });
+  await transaction(ids.manager,async()=>{ await expect(create(publish({ branch_id:ids.branch2 }))).rejects.toThrow('Not allowed'); });
+  await transaction(ids.volunteer,async()=>{ await expect(create(publish({}))).rejects.toThrow('Not allowed'); });
+ });
+ it('accepts docx/pptx documents and rejects doc/txt',async()=>{
+  await transaction(ids.manager,async()=>{ expect(await add('document','docx')).toBeTruthy(); expect(await add('document','pptx')).toBeTruthy(); });
+  for (const ext of ['doc','txt','docm']) await transaction(ids.manager,async()=>{ await expect(add('document',ext)).rejects.toThrow('Invalid event file'); });
+ });
+
 });

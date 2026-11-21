@@ -2,13 +2,14 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CalendarPlus, Share2, Pencil, X, MapPin, ChevronLeft, ChevronRight, FileText, CalendarDays, Trash2 } from 'lucide-react';
+import { ArrowLeft, Share2, Download, Video, Pencil, X, MapPin, ChevronLeft, ChevronRight, FileText, CalendarDays, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
 import { getEvent, cancelEvent } from '@/lib/events.functions';
 import { deleteEvent } from '@/lib/delete-event.functions';
-import { eventIcs } from '@/lib/event-rules';
-import { formatDate, translateError } from '@/lib/i18n';
+import { eventWhen } from '@/lib/event-rules';
+import { AddToCalendarMenu } from '@/components/events/AddToCalendarMenu';
+import { dateLocale, translateError } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { pageHead } from '@/components/app/head';
 import { Button } from '@/components/ui/button';
@@ -34,15 +35,11 @@ function EventDetail() {
   if (!query.data?.event) return <div className="space-y-4"><p>{t('events.notFound')}</p><Button asChild variant="outline"><Link to="/calendar"><ArrowLeft />{t('events.back')}</Link></Button></div>;
   const { event, canManage, deletion } = query.data;
   const canDelete = deletion.canDelete;
-  const images = event.media.filter(m => m.kind === 'image' && m.url), pdfs = event.media.filter(m => m.kind === 'pdf' && m.url);
+  const images = event.media.filter(m => m.kind === 'image' && m.url), pdfs = event.media.filter(m => m.kind === 'pdf' && m.url), documents = event.media.filter(m => m.kind === 'document' && m.url);
+  const when = eventWhen(event, dateLocale());
   const selected = image === null ? null : images[image];
   function next(delta: number) { setImage(current => current === null || !images.length ? null : (current+delta+images.length)%images.length); }
   const url = `${window.location.origin}/events/${event.id}`;
-  function downloadCalendar() {
-    if (!event.start_at) return;
-    const blob = new Blob([eventIcs(event,url)], { type:'text/calendar;charset=utf-8' });
-    const object = URL.createObjectURL(blob), a = document.createElement('a'); a.href=object; a.download=`event-${event.id}.ics`; a.click(); setTimeout(() => URL.revokeObjectURL(object),1000);
-  }
   async function confirmCancel() {
     setBusy(true); setError('');
     try { await cancel({ data:{id} }); await Promise.all([qc.invalidateQueries({ queryKey:['event',id] }),qc.invalidateQueries({ queryKey:['events'] })]); setCancelling(false); toast.success(t('events.cancelledSuccess')); }
@@ -65,14 +62,16 @@ function EventDetail() {
     <Link to="/calendar" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="size-4" />{t('events.back')}</Link>
     <header className="space-y-3"><div className="flex flex-wrap items-center gap-2"><Badge data-testid="event-detail-category" variant="secondary">{t(`events.categories.${event.category}`)}</Badge><Badge data-testid="event-detail-status-badge" variant={event.status==='cancelled'?'destructive':'outline'}>{t(`events.${event.status}`)}</Badge><HappeningNowBadge event={event} now={now} /></div><h1 data-testid="event-detail-title" className="break-words text-3xl font-bold sm:text-4xl">{event.title}</h1><p data-testid="event-detail-organizer" className="break-words text-lg text-muted-foreground">{event.organizer}</p></header>
     <section data-testid="event-detail-gallery" aria-label={t('events.gallery')} className="space-y-3">{images.length ? <div className="grid gap-3 sm:grid-cols-2">{images.map((m,i) => <Button key={m.id} variant="ghost" data-testid="event-detail-image" data-position={m.position} aria-label={t('events.imageNumber',{position:i+1,count:images.length})} className={`h-auto overflow-hidden rounded-lg border bg-muted p-0 ${i===0?'sm:col-span-2':''}`} onClick={() => setImage(i)}><img src={m.url ?? ''} alt={event.title} className={`block w-full bg-muted object-cover ${i===0?'h-56 sm:h-80':'h-44 sm:h-48'}`} /></Button>)}</div> : <div className="flex h-36 items-center justify-center border-y bg-secondary text-secondary-foreground"><CategoryIcon category={event.category} className="size-14" /></div>}
+      {documents.length > 0 && <ul aria-label={t('events.documents')} className="space-y-2">{documents.map(m => <li key={m.id} data-testid="event-media-document" className="flex min-w-0 items-center gap-3 rounded-lg border bg-card p-3"><FileText className="size-6 shrink-0 text-muted-foreground" aria-hidden /><span className="min-w-0 flex-1 break-all text-sm">{m.original_name || m.storage_path.split('/').pop()}</span><Button asChild variant="outline" size="sm"><a data-testid="event-media-download" href={m.url ?? ''} download={m.original_name || undefined} rel="noopener noreferrer"><Download />{t('events.download')}</a></Button></li>)}</ul>}
       {pdfs.map((m,i) => <Button key={m.id} asChild variant="outline"><a data-testid="event-detail-pdf-link" href={m.url ?? ''} target="_blank" rel="noopener noreferrer"><FileText />{t('events.leaflet')}{pdfs.length>1?` ${i+1}`:''}</a></Button>)}
     </section>
-    <div className="space-y-4 border-y py-5"><div className="flex items-start gap-3"><CalendarDays className="mt-1 size-5 shrink-0 text-primary" /><div><p className="font-semibold">{event.start_at ? formatDate(event.start_at,{ dateStyle:'full' }) : t('events.unscheduled')}</p><p className="text-muted-foreground">{event.start_at ? formatDate(event.start_at,{timeStyle:'short'}) : ''}{event.end_at ? ` – ${formatDate(event.end_at,{dateStyle:'medium',timeStyle:'short'})}` : ''}</p></div></div>
-      {event.location && <a data-testid="event-detail-location-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-primary underline underline-offset-4"><MapPin className="mt-0.5 size-5 shrink-0" /><span className="break-words">{event.location}</span></a>}
+    <div className="space-y-4 border-y py-5"><div className="flex items-start gap-3"><CalendarDays className="mt-1 size-5 shrink-0 text-primary" /><div><p data-testid="event-detail-when" className="font-semibold">{when ? when.text : t('events.unscheduled')}</p>{when?.allDay && <p className="text-muted-foreground">{t('events.allDay')}</p>}</div></div>
+      {event.location_type === 'online' && event.online_url && <a data-testid="event-detail-online-link" href={event.online_url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-primary underline underline-offset-4"><Video className="mt-0.5 size-5 shrink-0" /><span className="break-all">{t('events.joinOnline')}</span></a>}
+      {event.location_type !== 'online' && event.location && <a data-testid="event-detail-location-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-primary underline underline-offset-4"><MapPin className="mt-0.5 size-5 shrink-0" /><span className="break-words">{event.location}</span></a>}
       <dl className="grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">{t('events.scope')}</dt><dd>{t(`events.${event.scope}`)}</dd></div>{query.data.branchName && <div><dt className="text-muted-foreground">{t('events.branch')}</dt><dd>{query.data.branchName}</dd></div>}<div><dt className="text-muted-foreground">{t('events.region')}</dt><dd>{query.data.regionName ?? '—'}</dd></div><div><dt className="text-muted-foreground">{t('events.capacity')}</dt><dd>{event.capacity ?? t('events.unlimited')}</dd></div></dl>
     </div>
     {event.description && <p className="whitespace-pre-wrap break-words leading-relaxed">{event.description}</p>}
-    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button data-testid="event-add-to-calendar-button" disabled={!event.start_at} variant="outline" className="h-11" onClick={downloadCalendar}><CalendarPlus />{t('events.addCalendar')}</Button><Button asChild variant="outline" className="h-11"><a data-testid="event-share-whatsapp-button" href={`https://wa.me/?text=${encodeURIComponent(`${event.title}\n${(event.start_at ? formatDate(event.start_at,{dateStyle:'full',timeStyle:'short'}) : t('events.unscheduled'))}\n${url}`)}`} target="_blank" rel="noopener noreferrer"><Share2 />{t('events.whatsapp')}</a></Button></div>
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><AddToCalendarMenu event={event} url={url} /><Button asChild variant="outline" className="h-11"><a data-testid="event-share-whatsapp-button" href={`https://wa.me/?text=${encodeURIComponent(`${event.title}\n${(when ? `${when.text}${when.allDay ? ` · ${t('events.allDay')}` : ''}` : t('events.unscheduled'))}\n${url}`)}`} target="_blank" rel="noopener noreferrer"><Share2 />{t('events.whatsapp')}</a></Button></div>
     {canManage && <section className="space-y-3 border-t pt-5"><div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">{!deletion.pending && <><Button data-testid="event-edit-button" variant="outline" className="h-11" onClick={() => setEditing(true)}><Pencil />{t('events.edit')}</Button>{event.status!=='cancelled' && <Button data-testid="event-cancel-event-button" variant="outline" className="h-11 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => { setError('');setCancelling(true); }}><X />{t('events.cancelEvent')}</Button>}</>}{canDelete && <Button data-testid="event-delete-button" variant="destructive" className="h-11" disabled={busy} onClick={() => { setError('');setDeleting(true); }}><Trash2 />{t('events.deleteEvent')}</Button>}</div>{deletion.pending && <p className="text-sm text-muted-foreground">{t('events.deletePending')}</p>}</section>}
     {editing && canManage && <EventForm event={event} onClose={() => setEditing(false)} onSaved={() => setEditing(false)} />}
     <EventDialog open={cancelling && canManage} onClose={() => { if (!busy) setCancelling(false); }} title={t('events.cancelTitle')}><p className="text-muted-foreground">{t('events.cancelText')}</p>{error && <p role="alert" className="mt-3 text-destructive">{error}</p>}<div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="outline" disabled={busy} onClick={() => setCancelling(false)}>{t('events.keepEvent')}</Button><Button data-testid="confirm-dialog-confirm-button" variant="destructive" disabled={busy} onClick={confirmCancel}>{busy?t('common.saving'):t('events.cancelEvent')}</Button></div></EventDialog>

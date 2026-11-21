@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { CalendarDays, List, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
-import { EVENT_CATEGORIES, filterEvents, londonInput } from '@/lib/event-rules';
+import { EVENT_CATEGORIES, filterEvents, isScheduled, londonInput } from '@/lib/event-rules';
 import { listEvents } from '@/lib/events.functions';
 import { pageHead } from '@/components/app/head';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,6 @@ function CalendarPage() {
     <div className="grid gap-3 sm:grid-cols-2"><Select value={category} onValueChange={setCategory}><SelectTrigger data-testid="calendar-filter-category" aria-label={t('events.category')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('events.allCategories')}</SelectItem>{EVENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`events.categories.${c}`)}</SelectItem>)}</SelectContent></Select><Select value={organizer} onValueChange={setOrganizer}><SelectTrigger data-testid="calendar-filter-organizer" aria-label={t('events.organizer')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t('events.allOrganizers')}</SelectItem>{organizers.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
     {events.isLoading ? <p className="py-10 text-center text-muted-foreground">{t('common.loading')}</p> : events.isError ? <div role="alert" className="space-y-3"><p className="text-destructive">{t('events.loadError')}</p><Button variant="outline" onClick={() => events.refetch()}>{t('common.retry')}</Button></div> : view === 'month' ? <MonthEvents month={month} onMonth={setMonth} events={filtered} now={now} /> : <section data-testid="calendar-list-view" className="space-y-3">{filtered.length ? filtered.map(e => <EventCard key={e.id} event={e} now={now} />) : <p className="border-y py-12 text-center text-muted-foreground">{t('events.empty')}</p>}</section>}
     {creating && <EventForm onClose={() => setCreating(false)} onSaved={id => { setCreating(false); void navigate({ to:'/events/$id',params:{id} }); }} />}
-    {view === 'month' && filtered.some(e => !e.start_at) && <section className="space-y-3"><h2 className="text-xl font-semibold">{t('events.unscheduled')}</h2>{filtered.filter(e => !e.start_at).map(e => <EventCard key={e.id} event={e} now={now} />)}</section>}
+    {view === 'month' && filtered.some(e => !isScheduled(e)) && <section className="space-y-3"><h2 className="text-xl font-semibold">{t('events.unscheduled')}</h2>{filtered.filter(e => !isScheduled(e)).map(e => <EventCard key={e.id} event={e} now={now} />)}</section>}
   </div>;
 }

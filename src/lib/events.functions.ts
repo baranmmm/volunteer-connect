@@ -78,10 +78,16 @@ export const eventBranches = createServerFn({ method: 'POST' }).middleware([requ
   if (result.error) throw result.error;
   return result.data;
 });
-const input = z.object({ title: z.string().trim().min(1).max(200), description: z.string(), location: z.string(), organizer: z.string().trim().max(200), category: z.enum(['dialogue','dinner','interfaith','community','education','other']), start_at: z.string().datetime().nullable(), end_at: z.string().datetime().nullable(), capacity: z.number().int().positive().nullable(), scope: z.enum(['branch','region']), branch_id: z.string().uuid().nullable(), status: z.enum(['draft','published','cancelled']) }).superRefine((event, ctx) => {
+const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const input = z.object({ title: z.string().trim().min(1).max(200), description: z.string().max(10000), location: z.string().max(500), location_type: z.enum(['in_person','online']), online_url: z.string().trim().max(2000).nullable(), organizer: z.string().trim().max(200), category: z.enum(['dialogue','dinner','interfaith','community','education','other']), all_day: z.boolean(), start_date: dateOnly.nullable(), end_date: dateOnly.nullable(), start_at: z.string().datetime().nullable(), end_at: z.string().datetime().nullable(), capacity: z.number().int().positive().nullable(), scope: z.enum(['branch','region']), branch_id: z.string().uuid().nullable(), status: z.enum(['draft','published','cancelled']) }).superRefine((event, ctx) => {
+  const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
+  if (event.online_url && !/^https:\/\/[^\s/?#]+\.[^\s]*$/.test(event.online_url)) issue('online_url', 'Online meeting link must use https');
+  if (!event.all_day && event.start_at && event.end_at && Date.parse(event.end_at) <= Date.parse(event.start_at)) issue('end_at', 'Event end must be after start');
+  if (event.all_day && event.start_date && event.end_date && event.end_date < event.start_date) issue('end_date', 'Event end must be after start');
   if (event.status !== 'draft') {
-    for (const key of ['start_at', 'end_at', 'location'] as const) if (!event[key]?.trim()) ctx.addIssue({ code: 'custom', path: [key], message: 'Required publish fields missing' });
-    if (event.scope === 'branch' && !event.branch_id) ctx.addIssue({ code: 'custom', path: ['branch_id'], message: 'Required publish fields missing' });
+    if (event.all_day ? !event.start_date : !event.start_at || !event.end_at) issue('start_at', 'Required publish fields missing');
+    if (event.location_type === 'in_person' ? !event.location.trim() : !event.online_url) issue('location', 'Required publish fields missing');
+    if (event.scope === 'branch' && !event.branch_id) issue('branch_id', 'Required publish fields missing');
   }
 });
 export const saveEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid().nullable(), event: input })).handler(async ({ data, context }) => {
@@ -93,7 +99,7 @@ export const cancelEvent = createServerFn({ method: 'POST' }).middleware([requir
   const result = await context.supabase.rpc('cancel_event', { _event: data.id });
   if (result.error) throw new Error(result.error.message);
 });
-export const reserveEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ eventId: z.string().uuid(), kind: z.enum(['image','pdf']), extension: z.enum(['jpg','jpeg','png','webp','pdf']), originalName: z.string().max(255).optional() })).handler(async ({ data, context }) => {
+export const reserveEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ eventId: z.string().uuid(), kind: z.enum(['image','pdf','document']), extension: z.enum(['jpg','jpeg','png','webp','pdf','docx','pptx']), originalName: z.string().max(255).optional() })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('add_event_media', { _event: data.eventId, _kind: data.kind, _extension: normalizeEventExtension(data.extension), _original_name: data.originalName ?? '' });
   if (result.error) throw new Error(result.error.message);
   const row = await context.supabase.from('event_media').select('*').eq('id', result.data).single();

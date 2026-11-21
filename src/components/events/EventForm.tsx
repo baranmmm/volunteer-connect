@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { ArrowUp, ArrowDown, Trash2, FileText, Image, Upload } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { EVENT_CATEGORIES, eventFileExtension, londonInput, londonToIso, MAX_EVENT_FILES, type HubEvent, type EventMedia } from '@/lib/event-rules';
+import { EVENT_CATEGORIES, EVENT_FILE_ACCEPT, eventFileExtension, eventFileKind, type EventFileKind, londonInput, londonToIso, MAX_EVENT_FILES, type HubEvent, type EventMedia } from '@/lib/event-rules';
 import { prepareEventFile, uploadEventFile, removeStoredEventFile } from '@/lib/event-files';
 import { saveEvent, eventBranches, reserveEventMedia, deleteEventMedia, reorderEventMedia } from '@/lib/events.functions';
 import { validateEventForm } from '@/lib/event-form-rules';
@@ -15,10 +15,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { EventDialog } from './EventDialog';
 
-type Item = { key: string; name: string; kind: 'image' | 'pdf'; file?: File; media?: EventMedia; preview?: string };
+type Item = { key: string; name: string; kind: EventFileKind; file?: File; media?: EventMedia; preview?: string };
 export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClose: () => void; onSaved: (id: string) => void }) {
   const { t } = useTranslation();
   const { session, roles, profile } = useAuth();
@@ -32,12 +33,25 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
   const [organizer, setOrganizer] = useState(event?.organizer ?? 'Dialogue Society');
   const initialCategory = EVENT_CATEGORIES.find(c => c === event?.category) ?? 'dialogue';
   const [category, setCategory] = useState<typeof initialCategory>(initialCategory);
-  const [start, setStart] = useState(event?.start_at ? londonInput(event.start_at) : '');
-  const [end, setEnd] = useState(event?.end_at ? londonInput(event.end_at) : '');
+  const [allDay, setAllDay] = useState(!!event?.all_day);
+  const [start, setStartValue] = useState(event?.start_at ? londonInput(event.start_at) : '');
+  const [end, setEndValue] = useState(event?.end_at ? londonInput(event.end_at) : '');
+  const [startDate, setStartDate] = useState(event?.start_date ?? '');
+  const [endDate, setEndDate] = useState(event?.end_date && event.end_date !== event.start_date ? event.end_date : '');
+  const [locationType, setLocationType] = useState<'in_person' | 'online'>(event?.location_type === 'online' ? 'online' : 'in_person');
+  const [onlineUrl, setOnlineUrl] = useState(event?.online_url ?? '');
+  // End follows Start + 2 hours until the user edits End themselves.
+  const endTouched = useRef(!!event?.end_at);
+  function setStart(value: string) {
+    setStartValue(value);
+    if (endTouched.current || !value) return;
+    try { setEndValue(londonInput(new Date(Date.parse(londonToIso(value)) + 2 * 3600 * 1000))); } catch { /* invalid London time is reported on submit */ }
+  }
+  function setEnd(value: string) { endTouched.current = true; setEndValue(value); }
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? '');
   const [scope, setScope] = useState<'branch' | 'region'>(event?.scope === 'region' ? 'region' : 'branch');
   const [branch, setBranch] = useState(event?.branch_id ?? (director ? '' : profile?.branch_id ?? ''));
-  const [items, setItems] = useState<Item[]>((event?.media ?? []).map(m => ({ key: m.id, name: m.original_name || (m.storage_path.split('/').pop() ?? m.id), kind: m.kind === 'pdf' ? 'pdf' : 'image', media: m })));
+  const [items, setItems] = useState<Item[]>((event?.media ?? []).map(m => ({ key: m.id, name: m.original_name || (m.storage_path.split('/').pop() ?? m.id), kind: m.kind === 'pdf' ? 'pdf' : m.kind === 'document' ? 'document' : 'image', media: m })));
   const attached = useRef<EventMedia[]>(event?.media ?? []);
   const [savedId, setSavedId] = useState(event?.id ?? null);
   const [busy, setBusy] = useState(false), [preparing, setPreparing] = useState(false), [error, setError] = useState('');
@@ -55,7 +69,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
     for (const original of Array.from(files)) {
       try {
         const file = await prepareEventFile(original, next.length);
-        const kind = file.type === 'application/pdf' ? 'pdf' : 'image';
+        const kind = eventFileKind(eventFileExtension(file.type, file.name)) ?? 'document';
         const preview = kind === 'image' ? URL.createObjectURL(file) : undefined;
         if (preview) previews.current.push(preview);
         next.push({ key: crypto.randomUUID(), name: original.name, kind, file, ...(preview ? { preview } : {}) });
@@ -63,21 +77,22 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
     }
     setFileErrors(rejected);
     // Never leave a PDF as cover when images are available.
-    if (next[0]?.kind === 'pdf') { const i = next.findIndex(x => x.kind === 'image'); if (i > 0) { const [cover] = next.splice(i, 1); if (cover) next.unshift(cover); } }
+    if (next[0] && next[0].kind !== 'image') { const i = next.findIndex(x => x.kind === 'image'); if (i > 0) { const [cover] = next.splice(i, 1); if (cover) next.unshift(cover); } }
     setItems(next); setPreparing(false);
   }
   function move(index: number, delta: number) {
     const next = [...items], item = next[index], other = next[index + delta];
     if (!item || !other) return;
     next[index] = other; next[index + delta] = item;
-    if (next[0]?.kind === 'pdf' && next.some(x => x.kind === 'image')) { setError(t('events.orderError')); return; }
+    if (next[0] && next[0].kind !== 'image' && next.some(x => x.kind === 'image')) { setError(t('events.orderError')); return; }
     setItems(next); setError('');
   }
   async function submit(status: 'draft' | 'published' | 'cancelled') {
     if (busy) return;
-    const validation = validateEventForm({ title, start, end, location, category, scope, branch, capacity, organizer }, status);
+    const timesChanged = !event || event.status !== 'published' || allDay !== !!event.all_day || (allDay ? startDate !== (event.start_date ?? '') || (endDate || startDate) !== (event.end_date ?? event.start_date ?? '') : start !== (event.start_at ? londonInput(event.start_at) : '') || end !== (event.end_at ? londonInput(event.end_at) : ''));
+    const validation = validateEventForm({ title, allDay, start, end, startDate, endDate, locationType, location, onlineUrl, category, scope, branch, capacity, organizer }, status, { checkPast: timesChanged });
     setFieldErrors(validation);
-    const first = ['title', 'location', 'organizer', 'category', 'start', 'end', 'scope', 'branch', 'capacity'].find(key => validation[key]);
+    const first = ['title', 'location-type', 'location', 'online-url', 'organizer', 'category', 'start', 'end', 'start-date', 'end-date', 'scope', 'branch', 'capacity'].find(key => validation[key]);
     if (first) {
       requestAnimationFrame(() => { const node = formRef.current?.querySelector<HTMLElement>(`[data-testid="event-form-${first}"]`); node?.scrollIntoView({ behavior: 'smooth', block: 'center' }); node?.focus(); });
       return;
@@ -86,9 +101,8 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
     setBusy(true); setError(''); setFileErrors([]);
     let id = savedId;
     try {
-      const startIso = start ? londonToIso(start) : null, endIso = end ? londonToIso(end) : null;
-      if (startIso && endIso && Date.parse(endIso) < Date.parse(startIso)) { setError(t('events.dateError')); return; }
-      const data = { title, description, location, organizer, category, start_at: startIso, end_at: endIso, capacity: capacity ? Number(capacity) : null, scope: status === 'draft' && director && !branch ? 'region' as const : scope, branch_id: scope === 'branch' && branch ? branch : null, status };
+      const startIso = !allDay && start ? londonToIso(start) : null, endIso = !allDay && end ? londonToIso(end) : null;
+      const data = { title, description, location: locationType === 'online' ? location.trim() : location, location_type: locationType, online_url: locationType === 'online' && onlineUrl.trim() ? onlineUrl.trim() : null, organizer: organizer.trim() || 'Dialogue Society', category, all_day: allDay, start_date: allDay && startDate ? startDate : null, end_date: allDay && endDate ? endDate : null, start_at: startIso, end_at: endIso, capacity: capacity ? Number(capacity) : null, scope: status === 'draft' && director && !branch ? 'region' as const : scope, branch_id: scope === 'branch' && branch ? branch : null, status };
       // Create a recoverable draft before uploading; publish only after all file operations succeed.
       if (!id) { id = await save({ data: { id: null, event: { ...data, status: 'draft' } } }); setSavedId(id); }
       for (const old of [...attached.current]) {
@@ -100,8 +114,8 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
       const completed: Item[] = [];
       for (const item of items) {
         if (item.file) {
-          const extension = eventFileExtension(item.file.type);
-          if (extension !== 'jpg' && extension !== 'png' && extension !== 'webp' && extension !== 'pdf') throw new Error('Invalid event file');
+          const extension = eventFileExtension(item.file.type, item.file.name);
+          if (extension !== 'jpg' && extension !== 'png' && extension !== 'webp' && extension !== 'pdf' && extension !== 'docx' && extension !== 'pptx') throw new Error('Invalid event file');
           let row: EventMedia | undefined;
           try {
             row = { ...await reserve({ data: { eventId: id, kind: item.kind, extension, originalName: item.name.slice(0, 255) } }), url: null };
@@ -122,7 +136,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
         } else completed.push(item);
       }
       let ordered = completed;
-      if (ordered[0]?.kind === 'pdf') { const cover = ordered.find(x => x.kind === 'image'); if (cover) ordered = [cover, ...ordered.filter(x => x !== cover)]; }
+      if (ordered[0] && ordered[0].kind !== 'image') { const cover = ordered.find(x => x.kind === 'image'); if (cover) ordered = [cover, ...ordered.filter(x => x !== cover)]; }
       await reorder({ data: { eventId: id, ids: ordered.flatMap(x => x.media ? [x.media.id] : []) } });
       await save({ data: { id, event: data } });
       await Promise.all([qc.invalidateQueries({ queryKey: ['events'] }), qc.invalidateQueries({ queryKey: ['event', id] })]);
@@ -138,22 +152,24 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
       <p className="text-sm text-muted-foreground">{t('events.requiredNote')}</p>
       {field(t('events.titleLabel'), 'event-form-title', title, setTitle, 'text', true)}
       <div className="space-y-1.5"><Label htmlFor="event-form-description">{t('events.description')}</Label><Textarea id="event-form-description" data-testid="event-form-description" value={description} onChange={e => setDescription(e.target.value)} disabled={busy} rows={3} /></div>
-      {field(t('events.location'), 'event-form-location', location, setLocation, 'text', true)}
+      <div className="space-y-1.5"><Label>{t('events.locationType')} *</Label><Select value={locationType} disabled={busy} onValueChange={v => setLocationType(v === 'online' ? 'online' : 'in_person')}><SelectTrigger data-testid="event-form-location-type" aria-label={t('events.locationType')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="in_person">{t('events.inPerson')}</SelectItem><SelectItem value="online">{t('events.online')}</SelectItem></SelectContent></Select></div>
+      {locationType === 'online' ? <div className="space-y-1">{field(t('events.onlineUrl'), 'event-form-online-url', onlineUrl, setOnlineUrl, 'url', true)}<p className="text-xs text-muted-foreground">{t('events.onlineUrlHint')}</p></div> : field(t('events.location'), 'event-form-location', location, setLocation, 'text', true)}
       <div className="grid gap-4 sm:grid-cols-2">{field(t('events.organizer'), 'event-form-organizer', organizer, setOrganizer, 'text')}
         <div className="space-y-1.5"><Label>{t('events.category')} *</Label><Select value={category} disabled={busy} onValueChange={v => { const c = EVENT_CATEGORIES.find(x => x === v); if (c) setCategory(c); }}><SelectTrigger data-testid="event-form-category" aria-label={t('events.category')} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{EVENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`events.categories.${c}`)}</SelectItem>)}</SelectContent></Select>{fieldError('category')}</div>
-        {field(t('events.start'), 'event-form-start', start, setStart, 'datetime-local', true)}{field(t('events.end'), 'event-form-end', end, setEnd, 'datetime-local', true)}
+        <div className="flex min-h-11 items-center gap-3 sm:col-span-2"><Switch id="event-form-all-day" data-testid="event-form-all-day" checked={allDay} disabled={busy} onCheckedChange={setAllDay} /><Label htmlFor="event-form-all-day">{t('events.allDay')}</Label></div>
+        {allDay ? <>{field(t('events.startDate'), 'event-form-start-date', startDate, setStartDate, 'date', true)}{field(t('events.endDate'), 'event-form-end-date', endDate, setEndDate, 'date')}</> : <>{field(t('events.start'), 'event-form-start', start, setStart, 'datetime-local', true)}{field(t('events.end'), 'event-form-end', end, setEnd, 'datetime-local', true)}</>}
         {director && <div className="space-y-1.5"><Label>{t('events.scope')} *</Label><Select value={scope} disabled={busy} onValueChange={v => setScope(v === 'region' ? 'region' : 'branch')}><SelectTrigger data-testid="event-form-scope" aria-label={t('events.scope')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="branch">{t('events.branch')}</SelectItem><SelectItem value="region">{t('events.region')}</SelectItem></SelectContent></Select>{fieldError('scope')}</div>}
-        {scope === 'branch' && <div className="space-y-1.5"><Label>{t('events.branch')} *</Label><Select value={branch} onValueChange={setBranch} disabled={busy || branches.isLoading}><SelectTrigger data-testid="event-form-branch" aria-label={t('events.branch')} className="h-11"><SelectValue placeholder={t('auth.chooseBranch')} /></SelectTrigger><SelectContent>{(branches.data ?? []).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>{fieldError('branch')}</div>}
-        {!director && <div className="space-y-1.5"><Label>{t('events.scope')} *</Label><p className="text-sm">{t('events.branch')}</p></div>}
+        {director && scope === 'branch' && <div className="space-y-1.5"><Label>{t('events.branch')} *</Label><Select value={branch} onValueChange={setBranch} disabled={busy || branches.isLoading}><SelectTrigger data-testid="event-form-branch" aria-label={t('events.branch')} className="h-11"><SelectValue placeholder={t('auth.chooseBranch')} /></SelectTrigger><SelectContent>{(branches.data ?? []).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>{fieldError('branch')}</div>}
+        {!director && <div className="space-y-1.5"><Label htmlFor="event-form-branch">{t('events.branch')} *</Label><Input id="event-form-branch" data-testid="event-form-branch" readOnly aria-readonly value={(branches.data ?? []).find(b => b.id === branch)?.name ?? profile?.branches?.name ?? ''} className="h-11 bg-muted" /><p className="text-xs text-muted-foreground">{t('events.branchFixed')}</p>{fieldError('branch')}</div>}
         {scope === 'region' && <div className="space-y-1.5"><Label>{t('events.region')} *</Label><p className="text-sm">{profile?.branches?.regions?.name ?? t('events.region')}</p></div>}
         {field(t('events.capacity'), 'event-form-capacity', capacity, setCapacity, 'number')}
       </div>
       {branches.isError && <p role="alert" className="text-sm text-destructive">{t('errors.branchesLoad')}</p>}
       <section className="space-y-3 border-t pt-4"><h3 className="font-semibold">{t('events.files')}</h3><p className="text-xs text-muted-foreground">{t('events.fileLimits')}</p>
-        <Label htmlFor="event-form-file-input" className="flex min-h-11 items-center gap-2 text-primary"><Upload className="size-4" />{t('events.files')}</Label><Input id="event-form-file-input" data-testid="event-form-file-input" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple disabled={busy || preparing || items.length >= MAX_EVENT_FILES} onChange={e => { void addFiles(e.target.files); e.target.value = ''; }} />
+        <Label htmlFor="event-form-file-input" className="flex min-h-11 items-center gap-2 text-primary"><Upload className="size-4" />{t('events.files')}</Label><Input id="event-form-file-input" data-testid="event-form-file-input" type="file" accept={EVENT_FILE_ACCEPT} multiple disabled={busy || preparing || items.length >= MAX_EVENT_FILES} onChange={e => { void addFiles(e.target.files); e.target.value = ''; }} />
         {preparing && <p role="status" className="text-sm text-muted-foreground">{t('events.filePreparing')}</p>}
         <ol className="space-y-2">{items.map((item, i) => <li key={item.key} data-testid="event-form-file-item" data-position={i} className="flex min-w-0 flex-wrap items-center gap-2 border-b py-2">
-          {(item.preview ?? item.media?.url) && item.kind === 'image' ? <img src={item.preview ?? item.media?.url ?? ''} alt="" className="size-12 rounded-md object-cover" /> : item.kind === 'pdf' ? <FileText className="size-6 text-muted-foreground" /> : <Image className="size-6 text-muted-foreground" />}
+          {(item.preview ?? item.media?.url) && item.kind === 'image' ? <img src={item.preview ?? item.media?.url ?? ''} alt="" className="size-12 rounded-md object-cover" /> : item.kind !== 'image' ? <FileText className="size-6 text-muted-foreground" /> : <Image className="size-6 text-muted-foreground" />}
           <span className="min-w-0 flex-1 break-all text-xs">{item.name}{i === 0 && item.kind === 'image' && <span className="ml-2 font-semibold text-primary">{t('events.cover')}</span>}</span>
           <div className="flex shrink-0 gap-1"><Button type="button" variant="ghost" size="icon" disabled={busy || preparing || i === 0} aria-label={t('events.moveUp')} title={t('events.moveUp')} onClick={() => move(i,-1)}><ArrowUp /></Button><Button type="button" variant="ghost" size="icon" disabled={busy || preparing || i === items.length-1} aria-label={t('events.moveDown')} title={t('events.moveDown')} onClick={() => move(i,1)}><ArrowDown /></Button><Button data-testid="event-form-file-remove" type="button" variant="ghost" size="icon" disabled={busy || preparing} aria-label={t('events.remove')} title={t('events.remove')} onClick={() => setItems(items.filter((_, index) => index !== i))}><Trash2 /></Button></div>
         </li>)}</ol>
