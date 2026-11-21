@@ -640,6 +640,7 @@ export type Database = {
           id: string
           region: string
           role: string
+          self_requested: boolean
           title: string
           total_count: number
           type: string

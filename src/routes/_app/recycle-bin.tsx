@@ -43,8 +43,8 @@ function RecycleBinPage() {
       else await restore({ data: { type: item.type, id: item.id } });
       setTarget(null); setTyped('');
       qc.removeQueries({ queryKey: ['event', item.id] });
-      qc.removeQueries({ queryKey: ['user', item.id] });
-      await Promise.all(['recycle-bin', 'events', 'users', 'managed-users', 'deletion-requests'].map(key => qc.invalidateQueries({ queryKey: [key] })));
+      qc.removeQueries({ queryKey: ['member', item.id] });
+      await Promise.all(['recycle-bin', 'events', 'members', 'member-history', 'deletion-requests'].map(key => qc.invalidateQueries({ queryKey: [key] })));
       toast.success(t(permanent ? 'recycleBin.permanentlyDeleted' : 'recycleBin.restored'));
     } catch (e) { setError(translateError(e)); }
     finally { setBusy(null); }

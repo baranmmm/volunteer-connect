@@ -52,7 +52,8 @@
     "pendingTitle": "Your account is waiting for approval by your Branch Manager",
     "pendingText": "We'll let you in as soon as your account has been approved. Thank you for your patience.",
     "inactiveTitle": "Your account is not active",
-    "inactiveText": "Please contact your Branch Manager if you think this is a mistake."
+    "inactiveText": "Please contact your Branch Manager if you think this is a mistake.",
+    "recycleBin": "Recycle Bin"
   },
   "auth": {
     "heroTitle": "Bringing communities together, one conversation at a time.",
@@ -172,7 +173,7 @@
     "events": "Events",
     "training": "Training",
     "deleteTitle": "Delete user",
-    "deleteText": "This permanently deletes {{name}}'s account and personal details. It cannot be undone. Their history entries are kept and will show as \"Former member\".",
+    "deleteText": "Are you sure you want to delete this user ({{name}})? They will be moved to the Recycle Bin and can be restored within 30 days.",
     "typeToConfirm": "Type <bold>{{name}}</bold> to confirm",
     "theFullName": "the user's full name",
     "noNameText": "This user has no name on file, so they cannot be deleted from here.",
@@ -215,7 +216,7 @@
     "cancelling": "Cancelling…",
     "deleteIntro": "Ask for your account and personal details to be permanently deleted.",
     "confirmTitle": "Request account deletion?",
-    "confirmText": "Your request goes to your manager, who will process it within 30 days as required by UK GDPR. Once processed, your account and personal details are permanently deleted. You can cancel the request until then.",
+    "confirmText": "Your manager will process your erasure request. Once processed, sign-in is blocked immediately and your account is scheduled for permanent erasure after 30 days, without restoration. You can cancel until your manager processes it.",
     "keepAccount": "Keep my account",
     "requestDeletion": "Request deletion",
     "sending": "Sending…",
@@ -315,14 +316,14 @@
     "cancelledSuccess": "Event cancelled",
     "deleteEvent": "Delete event",
     "deleteTitle": "Delete this event?",
-    "deleteText": "This event will disappear for everyone. A Regional Director can restore it within 30 days; after that it and its files will be permanently deleted.",
+    "deleteText": "Are you sure you want to delete this event? It will be moved to the Recycle Bin and can be restored within 30 days.",
     "deleting": "Deleting…",
     "deletedSuccess": "Event deleted",
     "deleteUnavailable": "You cannot delete this event.",
     "deleteStarted": "You cannot delete this event.",
     "deleteRegistrations": "You cannot delete this event.",
     "deleteStatus": "You cannot delete this event.",
-    "deleteCleanupFailed": "The event is hidden, but file archiving is incomplete. A Regional Director can finish deletion from Recently deleted before restoring it.",
+    "deleteCleanupFailed": "The event is hidden, but file archiving is incomplete. Restore it from the Recycle Bin or retry deletion.",
     "deletePending": "Deletion is awaiting file cleanup. Retry Delete event to finish; editing and uploads are paused.",
     "confirmEventTitle": "Type the event title to confirm: {{title}}",
     "titleMismatch": "Type the exact event title to confirm.",
@@ -333,7 +334,7 @@
     "noDeleted": "No recently deleted events.",
     "deletedOn": "Deleted on {{date}}",
     "retryDeletion": "Finish deletion",
-    "restoreUnavailable": "Only active Regional Directors in this region can restore the event within 30 days.",
+    "restoreUnavailable": "This item cannot be restored. Recovery is limited to your branch or region and 30 days; erasure requests cannot be restored.",
     "restoreFilesMissing": "Files could not be restored. The event is still hidden; please retry.",
     "requiredNote": "* Required to publish. To save a draft, only a title is needed.",
     "fieldRequired": "This field is required.",
@@ -371,5 +372,42 @@
       "education": "Education",
       "other": "Other"
     }
+  },
+  "recycleBin": {
+    "note": "Items are permanently deleted after 30 days.",
+    "typeFilter": "Filter by type",
+    "search": "Search deleted items",
+    "filters": {
+      "all": "All",
+      "event": "Events",
+      "user": "Users"
+    },
+    "types": {
+      "event": "Event",
+      "user": "User"
+    },
+    "item": "Item",
+    "branchRegion": "Branch / Region",
+    "deletedBy": "Deleted by",
+    "deletedOn": "Deleted on",
+    "daysLeft": "Days left",
+    "actions": "Actions",
+    "days": "{{count}} days",
+    "restore": "Restore",
+    "delete": "Delete",
+    "deletePermanently": "Delete permanently",
+    "scheduledErasure": "Scheduled for erasure",
+    "selfRequestNote": "This account was requested for erasure and cannot be restored.",
+    "empty": "The Recycle Bin is empty or no items match your search.",
+    "permanentTitle": "Delete permanently?",
+    "permanentText": "“{{title}}” and its associated files or account will be permanently deleted. This cannot be undone.",
+    "typeDelete": "Type DELETE to confirm.",
+    "restored": "Item restored",
+    "permanentlyDeleted": "Item permanently deleted",
+    "restoreUnavailable": "This item cannot be restored. Recovery is limited to your branch or region and 30 days; erasure requests cannot be restored.",
+    "purgeUnavailable": "This item cannot be deleted right now. Please retry.",
+    "restoreFailed": "The account is still hidden. Restoration could not be completed; please retry.",
+    "purgeFailed": "Account erasure could not be completed. It remains blocked; please retry.",
+    "accountDeleted": "This account has been deleted and cannot sign in."
   }
 }

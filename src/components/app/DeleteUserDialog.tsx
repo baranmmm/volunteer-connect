@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from "@/lib/toast";
 import { useTranslation } from "react-i18next";
 import { deleteUser } from "@/lib/delete-user.functions";
@@ -11,6 +12,7 @@ type Target = { id: string; fullName: string; requestId?: string | null };
 
 export function DeleteUserDialog({ target, onClose, onDeleted }: { target: Target | null; onClose: () => void; onDeleted: () => void }) {
   const run = useServerFn(deleteUser);
+  const qc = useQueryClient();
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -21,6 +23,7 @@ export function DeleteUserDialog({ target, onClose, onDeleted }: { target: Targe
     setBusy(true); setError("");
     try {
       await run({ data: { userId: target.id, requestId: target.requestId ?? null } });
+      await qc.invalidateQueries({ queryKey: ['recycle-bin'] });
       toast.success(t("userDetails.userDeleted"));
       onDeleted();
     } catch (e) { setError(translateError(e)); }

@@ -52,6 +52,12 @@ export function formatDate(value: string | Date, opts: Intl.DateTimeFormatOption
 }
 
 const ERROR_KEYS: Record<string, string> = {
+  "Item cannot be restored": "recycleBin.restoreUnavailable",
+  "Item cannot be purged": "recycleBin.purgeUnavailable",
+  "Account restoration failed": "recycleBin.restoreFailed",
+  "Account erasure failed": "recycleBin.purgeFailed",
+  "Permanent deletion confirmation required": "recycleBin.typeDelete",
+  "User is banned": "recycleBin.accountDeleted",
   "Event title confirmation required": "events.titleMismatch",
   "Event cannot be restored": "events.restoreUnavailable",
   "Event restoration files missing": "events.restoreFilesMissing",

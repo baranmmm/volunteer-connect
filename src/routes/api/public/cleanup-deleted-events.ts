@@ -12,7 +12,7 @@ export const Route = createFileRoute('/api/public/cleanup-deleted-events')({
       const result = await cleanupDeletedEvents(supabaseAdmin);
       return Response.json(result.counts, { status: result.failed ? 500 : 200, headers: { 'Cache-Control': 'no-store' } });
     } catch {
-      return Response.json({ events: 0, files: 0 }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
+      return Response.json({ events: 0, users: 0, files: 0 }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
     }
   } } },
 });

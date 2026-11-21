@@ -1,8 +1,10 @@
 # App-wide Recycle Bin
-- [ ] Replace Calendar recovery with a manager-only Recycle Bin for events and users, scoped in the database.
-- [ ] Integrate soft user deletion, immediate access blocking, restoration and non-restorable self-requested erasure.
-- [ ] Add simple deletion confirmations, typed permanent deletion and audited multi-type daily cleanup.
-- [ ] Run permission, retention, orchestration and UI tests; signed-in live verification requires an external session.
+- [x] Replace Calendar recovery with a manager-only Recycle Bin for events and users, scoped in the database.
+- [x] Integrate soft user deletion, immediate access blocking, restoration and non-restorable self-requested erasure.
+- [x] Add simple deletion confirmations, typed permanent deletion and audited multi-type daily cleanup.
+- [x] 169 tests passed: branch isolation, denied Volunteer APIs, non-restorable erasure requests, retention, Auth/Storage order and UI actions; fixture screenshots checked desktop/mobile EN/TR.
+- [ ] Full signed-in Recycle Bin preview verification: external unmanaged Supabase has no managed session; live /recycle-bin redirects to /auth.
+- [ ] Daily cleanup deployment: user must set CLEANUP_CRON_SECRET in Lovable Secrets and GitHub Actions secrets, then publish.
 
 # Calendar ongoing events
 - [x] Include ongoing events in Upcoming and show bilingual Happening now badges; move to Past after end.

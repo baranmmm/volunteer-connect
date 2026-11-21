@@ -52,7 +52,8 @@
     "pendingTitle": "Hesabınız Şube Yöneticinizin onayını bekliyor",
     "pendingText": "Hesabınız onaylanır onaylanmaz giriş yapabileceksiniz. Sabrınız için teşekkür ederiz.",
     "inactiveTitle": "Hesabınız aktif değil",
-    "inactiveText": "Bir hata olduğunu düşünüyorsanız lütfen Şube Yöneticinizle iletişime geçin."
+    "inactiveText": "Bir hata olduğunu düşünüyorsanız lütfen Şube Yöneticinizle iletişime geçin.",
+    "recycleBin": "Geri Dönüşüm Kutusu"
   },
   "auth": {
     "heroTitle": "Toplulukları her sohbetle biraz daha yakınlaştırıyoruz.",
@@ -172,7 +173,7 @@
     "events": "Etkinlikler",
     "training": "Eğitim",
     "deleteTitle": "Kullanıcıyı sil",
-    "deleteText": "Bu işlem {{name}} adlı kişinin hesabını ve kişisel bilgilerini kalıcı olarak siler ve geri alınamaz. Geçmiş kayıtları saklanır ve \"Eski üye\" olarak görünür.",
+    "deleteText": "Bu kullanıcıyı ({{name}}) silmek istediğinizden emin misiniz? Geri Dönüşüm Kutusu'na taşınacak ve 30 gün içinde geri yüklenebilir.",
     "typeToConfirm": "Onaylamak için <bold>{{name}}</bold> yazın",
     "theFullName": "kullanıcının tam adını",
     "noNameText": "Bu kullanıcının kayıtlı bir adı olmadığı için buradan silinemez.",
@@ -215,7 +216,7 @@
     "cancelling": "İptal ediliyor…",
     "deleteIntro": "Hesabınızın ve kişisel bilgilerinizin kalıcı olarak silinmesini talep edebilirsiniz.",
     "confirmTitle": "Hesap silme talebinde bulunmak istiyor musunuz?",
-    "confirmText": "Talebiniz yöneticinize iletilir ve UK GDPR gereğince 30 gün içinde işleme alınır. İşlem tamamlandığında hesabınız ve kişisel bilgileriniz kalıcı olarak silinir. O zamana kadar talebinizi iptal edebilirsiniz.",
+    "confirmText": "Yöneticiniz kalıcı silme talebinizi işleme alacaktır. İşleme alındığında giriş hemen engellenir ve hesabınız 30 gün sonra geri yükleme olmadan kalıcı olarak silinmek üzere planlanır. Yöneticiniz işleme alana kadar talebinizi iptal edebilirsiniz.",
     "keepAccount": "Hesabımı koru",
     "requestDeletion": "Silme talebi gönder",
     "sending": "Gönderiliyor…",
@@ -315,14 +316,14 @@
     "cancelledSuccess": "Etkinlik iptal edildi",
     "deleteEvent": "Etkinliği sil",
     "deleteTitle": "Bu etkinlik silinsin mi?",
-    "deleteText": "Etkinlik herkesten gizlenecek. Bölge Direktörü 30 gün içinde geri yükleyebilir; ardından etkinlik ve dosyaları kalıcı olarak silinecek.",
+    "deleteText": "Bu etkinliği silmek istediğinizden emin misiniz? Geri Dönüşüm Kutusu'na taşınacak ve 30 gün içinde geri yüklenebilir.",
     "deleting": "Siliniyor…",
     "deletedSuccess": "Etkinlik silindi",
     "deleteUnavailable": "Bu etkinliği silemezsiniz.",
     "deleteStarted": "Bu etkinliği silemezsiniz.",
     "deleteRegistrations": "Bu etkinliği silemezsiniz.",
     "deleteStatus": "Bu etkinliği silemezsiniz.",
-    "deleteCleanupFailed": "Etkinlik gizlendi ancak dosyalar tam arşivlenemedi. Bölge Direktörü geri yüklemeden önce Son silinenler listesinden silmeyi tamamlayabilir.",
+    "deleteCleanupFailed": "Etkinlik gizlendi ancak dosyalar tam arşivlenemedi. Geri Dönüşüm Kutusu'ndan geri yükleyin veya silmeyi tekrar deneyin.",
     "deletePending": "Silme işlemi dosyaların temizlenmesini bekliyor. Tamamlamak için Etkinliği sil işlemini tekrar deneyin; düzenleme ve yüklemeler duraklatıldı.",
     "confirmEventTitle": "Onaylamak için etkinlik başlığını yazın: {{title}}",
     "titleMismatch": "Onaylamak için etkinlik başlığını eksiksiz yazın.",
@@ -333,7 +334,7 @@
     "noDeleted": "Son silinen etkinlik yok.",
     "deletedOn": "Silinme tarihi: {{date}}",
     "retryDeletion": "Silmeyi tamamla",
-    "restoreUnavailable": "Yalnızca kendi bölgesindeki aktif Bölge Direktörleri etkinliği 30 gün içinde geri yükleyebilir.",
+    "restoreUnavailable": "Bu öğe geri yüklenemez. Geri yükleme kendi şubeniz veya bölgeniz ve 30 gün ile sınırlıdır; kalıcı silme talepleri geri yüklenemez.",
     "restoreFilesMissing": "Dosyalar geri yüklenemedi. Etkinlik gizli kalıyor; lütfen tekrar deneyin.",
     "requiredNote": "* Yayınlamak için zorunlu. Taslak olarak kaydetmek için sadece başlık yeterli.",
     "fieldRequired": "Bu alan zorunludur.",
@@ -371,5 +372,42 @@
       "education": "Eğitim",
       "other": "Diğer"
     }
+  },
+  "recycleBin": {
+    "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",
+    "typeFilter": "Türe göre filtrele",
+    "search": "Silinen öğeleri ara",
+    "filters": {
+      "all": "Tümü",
+      "event": "Etkinlikler",
+      "user": "Kullanıcılar"
+    },
+    "types": {
+      "event": "Etkinlik",
+      "user": "Kullanıcı"
+    },
+    "item": "Öğe",
+    "branchRegion": "Şube / Bölge",
+    "deletedBy": "Silen kişi",
+    "deletedOn": "Silinme tarihi",
+    "daysLeft": "Kalan gün",
+    "actions": "İşlemler",
+    "days": "{{count}} gün",
+    "restore": "Geri yükle",
+    "delete": "Sil",
+    "deletePermanently": "Kalıcı olarak sil",
+    "scheduledErasure": "Kalıcı silinmek üzere planlandı",
+    "selfRequestNote": "Bu hesap için kalıcı silme talep edilmiştir ve hesap geri yüklenemez.",
+    "empty": "Geri Dönüşüm Kutusu boş veya aramanıza uyan öğe yok.",
+    "permanentTitle": "Kalıcı olarak silinsin mi?",
+    "permanentText": "“{{title}}” ve ilişkili dosyalar veya hesap kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+    "typeDelete": "Onaylamak için DELETE yazın.",
+    "restored": "Öğe geri yüklendi",
+    "permanentlyDeleted": "Öğe kalıcı olarak silindi",
+    "restoreUnavailable": "Bu öğe geri yüklenemez. Geri yükleme kendi şubeniz veya bölgeniz ve 30 gün ile sınırlıdır; kalıcı silme talepleri geri yüklenemez.",
+    "purgeUnavailable": "Bu öğe şu anda silinemiyor. Lütfen tekrar deneyin.",
+    "restoreFailed": "Hesap gizli kalıyor. Geri yükleme tamamlanamadı; lütfen tekrar deneyin.",
+    "purgeFailed": "Hesap kalıcı olarak silinemedi. Giriş engeli devam ediyor; lütfen tekrar deneyin.",
+    "accountDeleted": "Bu hesap silinmiştir ve giriş yapamaz."
   }
 }

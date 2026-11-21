@@ -1,4 +1,4 @@
-name: Cleanup deleted events
+name: Cleanup Recycle Bin
 
 on:
   schedule:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Purge expired deleted events
+      - name: Purge expired events and users
         env:
           CLEANUP_CRON_SECRET: ${{ secrets.CLEANUP_CRON_SECRET }}
           CLEANUP_URL: https://project--d60ecf19-db1a-4e44-b08c-c48c46fd1eaa.lovable.app/api/public/cleanup-deleted-events
