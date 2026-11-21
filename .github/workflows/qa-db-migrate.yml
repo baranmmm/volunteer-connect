@@ -1,0 +1,103 @@
+name: QA DB migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      smoke:
+        description: "Run seed + API smoke tests after migrating"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 2 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+
+concurrency:
+  group: qa-db
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: qa
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      SUPABASE_PROJECT_REF: impdbvwsaancutwlrmac
+      SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QA_SUPABASE_SERVICE_ROLE_KEY }}
+      # Session pooler URL WITHOUT the password; the password comes from its own secret.
+      SUPABASE_DB_POOLER_URL: ${{ secrets.QA_SUPABASE_DB_POOLER_URL }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.QA_SUPABASE_DB_PASSWORD }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_EMAIL_DOMAIN: dsvolunteer.test
+      BASE_URL: http://localhost:3100
+      E2E_RUN_ID: mig${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      # bun + Playwright are only needed for the optional smoke step below.
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install app dependencies (root)
+        run: bun install --frozen-lockfile
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Guard — QA only (including pooler URL)
+        working-directory: e2e
+        run: npm run guard
+
+      - name: Check the Session pooler resolves over IPv4
+        run: |
+          host=$(node -e "console.log(new URL(process.env.SUPABASE_DB_POOLER_URL).hostname)")
+          echo "Pooler host: $host"
+          getent ahostsv4 "$host" | tee /tmp/ipv4.txt
+          test -s /tmp/ipv4.txt || { echo "::error::Pooler host has no IPv4 address"; exit 1; }
+
+      - name: Migrate QA (rls_auto_enable check, db push dry-run, db push)
+        working-directory: e2e
+        run: npm run qa:migrate
+
+      - name: Smoke — seed and API permission tests
+        if: github.event_name != 'workflow_dispatch' || inputs.smoke
+        working-directory: e2e
+        run: |
+          npm run qa:seed
+          npx playwright test --project=api
+
+      - name: Teardown per-test users
+        if: always()
+        working-directory: e2e
+        run: npm run qa:teardown || true
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-migrate
+          path: e2e/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
