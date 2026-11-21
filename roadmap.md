@@ -35,3 +35,7 @@
 # Glossy app-icon treatment
 - [x] Replace the sidebar frosted tile with the glossy gradient tile and crisp blue mark.
 - [x] Regenerate matching SVG/PNG browser, Apple, and PWA icons and verify desktop/mobile rendering.
+
+# Final brand assets
+- [x] Save the supplied logo and icon files in public/brand and use them in the sidebar, favicon, Apple touch icon and PWA manifest.
+- [x] Remove the CSS tile, gloss, gradient, border and glow treatment now that the glow is part of the artwork; verify desktop and phone rendering.

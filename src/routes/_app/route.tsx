@@ -91,7 +91,7 @@ function AppLayout() {
       </aside>
 
       <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
-        <Logo className="text-primary" />
+        <Logo size="sm" className="text-primary" />
       </header>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-10 lg:pt-10">

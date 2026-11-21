@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 704 704">
+<defs>
+ <radialGradient id="halo" cx="352" cy="352" r="352" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".40" stop-color="#F1FAFE" stop-opacity=".95"/><stop offset=".55" stop-color="#CDEEFC" stop-opacity=".78"/><stop offset=".68" stop-color="#94D9F8" stop-opacity=".48"/><stop offset=".80" stop-color="#5CC9F7" stop-opacity=".24"/><stop offset=".91" stop-color="#4CC6F7" stop-opacity=".08"/><stop offset="1" stop-color="#4CC6F7" stop-opacity="0"/></radialGradient>
+ <linearGradient id="mk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1FA6E0"/><stop offset=".6" stop-color="#008AC4"/><stop offset="1" stop-color="#006D9C"/></linearGradient>
+ <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="b"/>
+  <feFlood flood-color="#4CC6F7" flood-opacity=".55"/><feComposite in2="b" operator="in" result="g"/>
+  <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+ </filter>
+</defs>
+<circle cx="352" cy="352" r="352" fill="url(#halo)"/>
+<g transform="translate(174 166) scale(1.53)" fill="url(#mk)" filter="url(#glow)"><path d="M129.374 238.71c-66.417.077-126.973-60.266-126.806-115.6L1.002 123c-.063 9.155 1.104 17.045 2.706 25.946 13.381 60.338 67.038 97.853 121.126 97.041 26.414-.315 49.143-8.037 67.166-20.255l-.82-.008c-10.489 4.277-29.237 12.95-61.806 12.987M121.327 1.979 121.335 0C70.04 1.651 31 35.409 31 75.275c0 41.08 42.24 74.747 93.422 74.725L147 104.978c-7.972-1.426-15.818-1.962-22.567-1.962-41.925-.25-80.214-28.244-79.393-51.35.82-23.105 33.487-47.197 76.287-49.687"/><path d="m99.345 197.71-.345.326 24.26-48.15c51.223-.122 92.748-37.14 92.748-74.738s-41.205-70.727-89.603-73.28L126.419 0c53.701.455 104.243 42.399 104.58 99.816.346 59.188-62.05 111.937-131.654 97.894"/></g>
+</svg>

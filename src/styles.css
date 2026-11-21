@@ -70,7 +70,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --color-logo-tile-border: var(--logo-tile-border);
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --shadow-soft: var(--shadow-soft);
@@ -115,11 +114,6 @@
   --sidebar-ring: oklch(0.6002 0.1311 237);
   --gradient-hero: linear-gradient(135deg, var(--primary), var(--sidebar));
   --shadow-soft: 0 8px 24px -12px oklch(0.3307 0.0641 236.39 / 0.25);
-  --logo-tile-background: linear-gradient(180deg, oklch(1 0 0), oklch(0.9366 0.026 227.9));
-  --logo-tile-gloss: linear-gradient(180deg, oklch(1 0 0 / 0.75), oklch(1 0 0 / 0));
-  --logo-tile-border: oklch(1 0 0 / 0.6);
-  --logo-tile-shadow: 0 4px 12px oklch(0 0 0 / 0.35), 0 0 14px oklch(0.6002 0.1311 237 / 0.45);
-  --logo-mark-shadow: drop-shadow(0 1px 2px oklch(0.3386 0.0758 238.62 / 0.35));
 }
 
 @layer base {
@@ -143,18 +137,3 @@
 }
 
 @utility bg-hero { background-image: var(--gradient-hero); }
-@utility logo-tile {
-  position: relative;
-  background-image: var(--logo-tile-background);
-  border: 1px solid var(--color-logo-tile-border);
-  box-shadow: var(--logo-tile-shadow);
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 50%;
-    border-radius: inherit;
-    background-image: var(--logo-tile-gloss);
-    pointer-events: none;
-  }
-}
-@utility logo-mark-shine { filter: var(--logo-mark-shadow); }
