@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireMember } from '@/lib/require-member';
+import { requireMember } from "@/lib/require-member";
 import {
   duplicateEvent,
   requestMedia,
@@ -82,12 +82,17 @@ export const approveEventRequest = createServerFn({ method: "POST" })
       .parse(result.data);
     let failedCopies = 0;
     for (const copy of approved.copies) {
-      const file = await context.supabase.storage.from("event-request-files").download(copy.from);
-      const uploaded = file.error
-        ? file
-        : await context.supabase.storage
+      // A short signed link (Storage RLS: reviewers may read the request file); download() needs bucket access.
+      const signed = await context.supabase.storage
+        .from("event-request-files")
+        .createSignedUrl(copy.from, 60);
+      const response = signed.data ? await fetch(signed.data.signedUrl) : null;
+      const body = response?.ok ? await response.blob() : null;
+      const uploaded = body
+        ? await context.supabase.storage
             .from("event-media")
-            .upload(copy.to, file.data, { contentType: file.data.type, upsert: false });
+            .upload(copy.to, body, { contentType: body.type || undefined, upsert: false })
+        : { error: new Error("Request file could not be read") };
       if (uploaded.error) {
         failedCopies++;
         await context.supabase.rpc("delete_event_media", { _media: copy.media_id });

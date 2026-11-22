@@ -37,15 +37,19 @@ test.describe("Privacy notice", () => {
       await auth.submit().click();
       await expect(page.locator("#signup-privacy-error")).toBeVisible();
       await expect(auth.signUpForm()).toBeVisible();
+      // QA's Auth does not accept public sign-ups for test addresses, so the request is captured here; the server
+      // side (handle_new_user refusing accounts without the current version) is covered by tests/api/privacy.spec.ts.
+      let sent: { data?: Record<string, unknown> } | null = null;
+      await page.route("**/auth/v1/signup**", async (route) => {
+        sent = route.request().postDataJSON() as { data?: Record<string, unknown> };
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: randomUUID(), email: address, user_metadata: sent.data ?? {} }) });
+      });
       await page.getByTestId("signup-privacy-checkbox").click();
       await page.getByTestId("signup-photo-consent").click();
       await auth.submit().click();
       await expect(auth.checkEmailScreen()).toBeVisible();
-      const user = (await listAllUsers()).find((u) => u.email?.toLowerCase() === address.toLowerCase());
-      expect(user).toBeTruthy();
-      const { data: prefs } = await adminClient().from("consent_preferences").select("photo_consent, updates_email_consent").eq("user_id", user!.id).single();
-      expect(prefs).toEqual({ photo_consent: true, updates_email_consent: false });
-      expect((await adminClient().from("privacy_notice_acceptances").select("notice_version").eq("user_id", user!.id)).data).toHaveLength(1);
+      const { data: version } = await adminClient().rpc("privacy_notice_version");
+      expect(sent!.data).toMatchObject({ privacy_notice_version: version, photo_consent: true, updates_email_consent: false });
     } finally {
       const user = (await listAllUsers()).find((u) => u.email?.toLowerCase() === address.toLowerCase());
       if (user) await deleteAuthUser(user.id);

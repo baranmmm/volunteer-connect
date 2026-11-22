@@ -89,7 +89,7 @@ function AppLayout() {
     <div className="min-h-screen lg:flex">
       <aside data-testid="app-sidebar" className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-5 text-sidebar-foreground lg:flex">
         <Logo className="mb-8 w-full" />
-        <nav aria-label={t("navigation.main")} className="flex-1 space-y-1">
+        <nav aria-label={t("navigation.main")} className="-mx-1 min-h-0 flex-1 space-y-1 overflow-y-auto px-1">
           {items.map(({ to, testId, labelKey, icon: Icon, badge }) => (
             <Link
               key={to}
@@ -102,7 +102,7 @@ function AppLayout() {
             </Link>
           ))}
         </nav>
-        <button data-testid="nav-sign-out" onClick={signOut} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-sidebar-accent">
+        <button data-testid="nav-sign-out" onClick={signOut} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent">
           <LogOut className="h-5 w-5" aria-hidden /> {t("navigation.signOut")}
         </button>
       </aside>

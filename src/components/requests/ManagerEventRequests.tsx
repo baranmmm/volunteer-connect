@@ -110,44 +110,49 @@ export function ManagerEventRequests() {
           </Button>
         </div>
       ) : (
-        <ul data-testid="manager-requests-list" role="tabpanel" className="space-y-3">
-          {rows.length === 0 && (
-            <li className="border-y py-10 text-center text-muted-foreground">
-              {t("requests.emptyTab")}
-            </li>
-          )}
-          {rows.map((r) => (
-            <li key={r.id}>
-              <button
-                type="button"
-                data-testid={`manager-request-row-${r.id}`}
-                data-request-id={r.id}
-                data-status={r.status}
-                onClick={() => setOpen(r.id)}
-                className={cn(
-                  "block w-full space-y-1.5 rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-ring",
-                  r.status === "submitted" && "border-dashed border-status-draft-border",
-                )}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <span className="min-w-0 break-words font-semibold">{r.title}</span>
-                  <span className="flex flex-wrap gap-2">
-                    <RequestTypeBadge type={r.request_type} testId={`request-type-badge-${r.id}`} />
-                    <RequestStatusBadge status={r.status} />
-                  </span>
-                </div>
-                <RequestWhen request={r} />
-                <p className="text-xs text-muted-foreground">
-                  {r.scope === "region" ? r.region_name : r.branch_name} ·{" "}
-                  {t("requests.requestedBy", {
-                    name: r.requester_name ?? t("common.formerMember"),
-                  })}{" "}
-                  · {formatDate(r.created_at, { dateStyle: "medium" })}
-                </p>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div role="tabpanel" aria-label={t(`requests.tabs.${tab}`)}>
+          <ul data-testid="manager-requests-list" className="space-y-3">
+            {rows.length === 0 && (
+              <li className="border-y py-10 text-center text-muted-foreground">
+                {t("requests.emptyTab")}
+              </li>
+            )}
+            {rows.map((r) => (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  data-testid={`manager-request-row-${r.id}`}
+                  data-request-id={r.id}
+                  data-status={r.status}
+                  onClick={() => setOpen(r.id)}
+                  className={cn(
+                    "block w-full space-y-1.5 rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-ring",
+                    r.status === "submitted" && "border-dashed border-status-draft-border",
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <span className="min-w-0 break-words font-semibold">{r.title}</span>
+                    <span className="flex flex-wrap gap-2">
+                      <RequestTypeBadge
+                        type={r.request_type}
+                        testId={`request-type-badge-${r.id}`}
+                      />
+                      <RequestStatusBadge status={r.status} />
+                    </span>
+                  </div>
+                  <RequestWhen request={r} />
+                  <p className="text-xs text-muted-foreground">
+                    {r.scope === "region" ? r.region_name : r.branch_name} ·{" "}
+                    {t("requests.requestedBy", {
+                      name: r.requester_name ?? t("common.formerMember"),
+                    })}{" "}
+                    · {formatDate(r.created_at, { dateStyle: "medium" })}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {query.data && rows.length < query.data.total && (
         <Button

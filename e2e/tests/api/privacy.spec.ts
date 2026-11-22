@@ -13,9 +13,9 @@ const status = async (who: string) => (await rpcAs<Record<string, unknown>>(who,
 
 test.describe("Privacy notice API", () => {
   test("accounts cannot be created without confirming the current notice version", async () => {
+    // Every account creation goes through the handle_new_user trigger (the admin API too, which skips the
+    // email-domain checks QA's public sign-up applies to test addresses).
     for (const data of [{ full_name: "No notice" }, { full_name: "Old notice", privacy_notice_version: "0.9" }]) {
-      const viaSignUp = await anonClient().auth.signUp({ email: email(), password: userPassword(), options: { data } });
-      expect(viaSignUp.error, JSON.stringify(data)).not.toBeNull();
       const viaAdmin = await adminClient().auth.admin.createUser({ email: email(), password: userPassword(), email_confirm: true, user_metadata: data });
       expect(viaAdmin.error, JSON.stringify(data)).not.toBeNull();
     }

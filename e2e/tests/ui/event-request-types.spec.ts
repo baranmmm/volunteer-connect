@@ -22,7 +22,7 @@ test.describe("External event requests", () => {
     await page.getByTestId("event-request-open-button").click();
     const form = new EventRequestFormDialog(page);
     await form.chooseType("external");
-    const name = `${REQUEST_TITLE_PREFIX}${token}`;
+    const name = token; // contained in the existing event's title, so the duplicate warning shows
     await form.title().fill(name);
     await form.organizer().fill("E2E Community Centre");
     await form.chooseSource("leaflet");

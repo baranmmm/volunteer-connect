@@ -1,7 +1,7 @@
 // Idempotent QA seed: verifies the schema, then creates/resets the fixed test users.
 // Order on a fresh QA project: npm run qa:migrate → npm run qa:seed → npm test
 import { mkdirSync, writeFileSync } from "node:fs";
-import { ensureUser, listAllUsers } from "../api/SupabaseClient";
+import { adminClient, ensureUser, listAllUsers } from "../api/SupabaseClient";
 import { SEED_USERS, seedEmail, type RoleKey, type SeedState, type SeededUser } from "../data/users";
 import { AUTH_DIR, SEED_STATE_FILE, isMain, userPassword } from "./env";
 import { assertQaEnvironment } from "./guard";
@@ -13,6 +13,7 @@ export async function seed(): Promise<SeedState> {
 
   const { regionId, branches, regionBranches } = await runPreflight();
   console.log(`[seed] Schema OK. Region ${regionId}, branches Medway=${branches.Medway}, Brighton=${branches.Brighton}`);
+  await ensureEventMediaBucket();
 
   const existing = new Map((await listAllUsers()).map((u) => [u.email?.toLowerCase(), u.id]));
   const users = {} as Record<RoleKey, SeededUser>;
@@ -40,4 +41,24 @@ if (isMain(import.meta.url)) {
     console.error(`[seed] ${(e as Error).message}`);
     process.exit(1);
   });
+}
+
+/**
+ * QA only: the private event-media bucket (created in the dashboard in production, so not by a migration). Same rules
+ * as add_event_media and the upload policy: JPG, PNG, WebP, PDF, DOCX, PPTX, 10 MB. Never changes an existing bucket.
+ */
+async function ensureEventMediaBucket() {
+  const db = adminClient();
+  const { data, error } = await db.storage.getBucket("event-media");
+  if (data) return;
+  if (error && !/not found/i.test(error.message)) throw new Error(`read event-media bucket: ${error.message}`);
+  const created = await db.storage.createBucket("event-media", {
+    public: false,
+    fileSizeLimit: 10 * 1024 * 1024,
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+  });
+  if (created.error) throw new Error(`create event-media bucket: ${created.error.message}`);
+  console.log("[seed] Created the private event-media bucket on QA");
 }

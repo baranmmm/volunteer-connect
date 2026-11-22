@@ -97,9 +97,10 @@ test.describe("Event request types API", () => {
     expect(approved.data.published).toBe(true);
     expect(approved.data.copies).toEqual([expect.objectContaining({ from: path })]);
     const reviewer = await clientAs(manager.email);
-    const file = await reviewer.storage.from("event-request-files").download(path!);
-    expect(file.error).toBeNull();
-    expect((await reviewer.storage.from("event-media").upload(approved.data.copies[0]!.to, file.data!, { contentType: "image/png" })).error).toBeNull();
+    const signed = await reviewer.storage.from("event-request-files").createSignedUrl(path!, 60);
+    expect(signed.error).toBeNull();
+    const file = await (await fetch(signed.data!.signedUrl)).arrayBuffer();
+    expect((await reviewer.storage.from("event-media").upload(approved.data.copies[0]!.to, file, { contentType: "image/png" })).error).toBeNull();
     const { data: event } = await adminClient().from("events").select("status, is_external, organizer, title, category, location").eq("id", approved.data.event_id).single();
     expect(event).toEqual({ status: "published", is_external: true, organizer: "E2E Community Centre", title: `${t} edited`, category: "community", location: "E2E Hall" });
     expect(await storedObject("event-media", approved.data.copies[0]!.to)).toBe(true);
@@ -112,7 +113,8 @@ test.describe("Event request types API", () => {
     const token = `dup${Date.now()}`;
     const existing = await freshEvent(manager, { label: `Big ${token} night`, status: "published", startInMinutes: 7 * 24 * 60 });
     const { data: ev } = await adminClient().from("events").select("start_at, end_at").eq("id", existing.id).single();
-    const id = await submitExternal(volunteer.email, `${REQUEST_TITLE_PREFIX}${token.toUpperCase()}`, { proposed_start: ev!.start_at, proposed_end: ev!.end_at });
+    // The request title is contained in the event title (case-insensitive).
+    const id = await submitExternal(volunteer.email, token.toUpperCase(), { proposed_start: ev!.start_at, proposed_end: ev!.end_at });
     const dups = await rpcAs<{ id: string }[]>(manager.email, "get_event_request_duplicates", { p_id: id });
     expect(dups.data.map((d) => d.id)).toContain(existing.id);
     expect((await rpcAs(volunteer.email, "get_event_request_duplicates", { p_id: id })).error).toBe("Request not found");
