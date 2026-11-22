@@ -28,7 +28,7 @@ export function RequestEventButton({ variant = "default" }: { variant?: "default
           onClose={() => setOpen(false)}
           onSaved={() => {
             setOpen(false);
-            void navigate({ to: "/requests" });
+            void navigate({ to: "/my-requests" });
           }}
         />
       )}

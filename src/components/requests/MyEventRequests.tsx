@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { EventDialog } from "@/components/events/EventDialog";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 import { RequestTypeBadge } from "./RequestParts";
+import { matchesFilter, type RequestListFilter } from "./request-kinds";
 import { EventRequestForm } from "./EventRequestForm";
 
 /** Proposed (and alternative) dates of a request in London time. */
@@ -42,7 +43,8 @@ export function RequestWhen({ request }: { request: EventRequest }) {
   );
 }
 
-export function MyEventRequests() {
+/** The viewer's event requests (Event · External / Event · Proposal), narrowed by the page's filter. */
+export function MyEventRequests({ filter = "all" }: { filter?: RequestListFilter }) {
   const { t } = useTranslation();
   const { session, profile } = useAuth();
   const fetch = useServerFn(myEventRequests),
@@ -87,12 +89,9 @@ export function MyEventRequests() {
       setBusy(false);
     }
   }
-  const rows = query.data ?? [];
+  const rows = (query.data ?? []).filter((r) => matchesFilter(r.status, filter));
   return (
-    <section aria-labelledby="my-requests-title" className="space-y-3">
-      <h2 id="my-requests-title" className="text-xl font-semibold">
-        {t("requests.myTitle")}
-      </h2>
+    <section aria-label={t("requests.kinds.event")} className="space-y-3">
       {query.isLoading ? (
         <p className="text-muted-foreground">{t("common.loading")}</p>
       ) : query.isError ? (
@@ -123,7 +122,11 @@ export function MyEventRequests() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <h3 className="min-w-0 break-words font-semibold">{r.title}</h3>
                 <span className="flex flex-wrap gap-2">
-                  <RequestTypeBadge type={r.request_type} testId={`request-type-badge-${r.id}`} />
+                  <RequestTypeBadge
+                    type={r.request_type}
+                    kind="event"
+                    testId={`request-type-badge-${r.id}`}
+                  />
                   <RequestStatusBadge status={r.status} testId={`my-request-status-${r.id}`} />
                 </span>
               </div>

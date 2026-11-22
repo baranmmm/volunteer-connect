@@ -32,7 +32,7 @@ test.describe("External event requests", () => {
     await form.attachments().setInputFiles({ name: "leaflet.png", mimeType: "image/png", buffer: TINY_PNG });
     await expect(form.attachmentItems()).toHaveCount(1);
     await form.submit();
-    await expect(page).toHaveURL(/\/requests$/);
+    await expect(page).toHaveURL(/\/my-requests$/);
     const id = await requestIdByTitle(name);
     const mine = new RequestsPage(page);
     await expect(mine.typeBadge(id)).toHaveAttribute("data-type", "external");
@@ -65,7 +65,7 @@ test.describe("External event requests", () => {
     expect(event).toEqual({ status: "published", is_external: true, location: "E2E Community Hall", category: "community" });
 
     // The requester sees the manager's edit and the published event in the calendar with the External badge.
-    await mine.goto();
+    await mine.gotoMine();
     await expect(mine.myEditedNote(id)).toBeVisible();
     await page.goto("/calendar?view=list");
     await expect(page.locator(`[data-testid="event-card"][data-event-id="${row!.event_id}"]`).getByTestId("event-external-badge")).toBeVisible();
@@ -75,8 +75,8 @@ test.describe("External event requests", () => {
     const volunteer = await freshUser();
     const page = await pageAs(volunteer);
     const requests = new RequestsPage(page);
-    await requests.goto();
-    await requests.openButton().click();
+    await requests.gotoMine();
+    await requests.newEventRequest();
     const form = new EventRequestFormDialog(page);
     await form.chooseType("proposal");
     await expect(form.organizer()).toHaveCount(0);

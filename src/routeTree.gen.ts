@@ -19,6 +19,7 @@ import { Route as AppContactsRouteImport } from './routes/_app/contacts'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppMediaRouteImport } from './routes/_app/media'
 import { Route as AppMeetingsRouteImport } from './routes/_app/meetings'
+import { Route as AppMyRequestsRouteImport } from './routes/_app/my-requests'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppRecycleBinRouteImport } from './routes/_app/recycle-bin'
 import { Route as AppRequestsRouteImport } from './routes/_app/requests'
@@ -78,6 +79,11 @@ const AppMeetingsRoute = AppMeetingsRouteImport.update({
   path: '/meetings',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppMyRequestsRoute = AppMyRequestsRouteImport.update({
+  id: '/my-requests',
+  path: '/my-requests',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/media': typeof AppMediaRoute
   '/meetings': typeof AppMeetingsRoute
+  '/my-requests': typeof AppMyRequestsRoute
   '/profile': typeof AppProfileRoute
   '/recycle-bin': typeof AppRecycleBinRoute
   '/requests': typeof AppRequestsRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/media': typeof AppMediaRoute
   '/meetings': typeof AppMeetingsRoute
+  '/my-requests': typeof AppMyRequestsRoute
   '/profile': typeof AppProfileRoute
   '/recycle-bin': typeof AppRecycleBinRoute
   '/requests': typeof AppRequestsRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/media': typeof AppMediaRoute
   '/_app/meetings': typeof AppMeetingsRoute
+  '/_app/my-requests': typeof AppMyRequestsRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/recycle-bin': typeof AppRecycleBinRoute
   '/_app/requests': typeof AppRequestsRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/media'
     | '/meetings'
+    | '/my-requests'
     | '/profile'
     | '/recycle-bin'
     | '/requests'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/media'
     | '/meetings'
+    | '/my-requests'
     | '/profile'
     | '/recycle-bin'
     | '/requests'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/media'
     | '/_app/meetings'
+    | '/_app/my-requests'
     | '/_app/profile'
     | '/_app/recycle-bin'
     | '/_app/requests'
@@ -331,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMeetingsRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/my-requests': {
+      id: '/_app/my-requests'
+      path: '/my-requests'
+      fullPath: '/my-requests'
+      preLoaderRoute: typeof AppMyRequestsRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/profile': {
       id: '/_app/profile'
       path: '/profile'
@@ -404,6 +423,7 @@ interface AppRouteRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppMediaRoute: typeof AppMediaRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
+  AppMyRequestsRoute: typeof AppMyRequestsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppRecycleBinRoute: typeof AppRecycleBinRoute
   AppRequestsRoute: typeof AppRequestsRoute
@@ -421,6 +441,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppMediaRoute: AppMediaRoute,
   AppMeetingsRoute: AppMeetingsRoute,
+  AppMyRequestsRoute: AppMyRequestsRoute,
   AppProfileRoute: AppProfileRoute,
   AppRecycleBinRoute: AppRecycleBinRoute,
   AppRequestsRoute: AppRequestsRoute,

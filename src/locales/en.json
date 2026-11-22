@@ -54,7 +54,8 @@
     "inactiveTitle": "Your account is not active",
     "inactiveText": "Please contact your Branch Manager if you think this is a mistake.",
     "recycleBin": "Recycle Bin",
-    "requests": "Requests"
+    "requests": "Requests",
+    "myRequests": "My Requests"
   },
   "auth": {
     "heroTitle": "Bringing communities together, one conversation at a time.",
@@ -742,6 +743,20 @@
     "approvePublish": "Approve and publish",
     "publishedToast": "Event published from the request",
     "copyFailed": "{{count}} file(s) could not be copied to the event.",
-    "filesNotSaved": "{{count}} file(s) could not be saved. The request itself was saved."
+    "filesNotSaved": "{{count}} file(s) could not be saved. The request itself was saved.",
+    "kinds": {
+      "event": "Event",
+      "task": "Task",
+      "meeting": "Meeting"
+    },
+    "newRequest": "New request",
+    "comingSoon": "Coming soon",
+    "filterLabel": "Show requests",
+    "filters": {
+      "all": "All",
+      "open": "Open",
+      "decided": "Decided"
+    },
+    "reviewOnly": "Only Branch Managers and Regional Directors review requests here."
   }
 }

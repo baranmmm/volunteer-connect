@@ -8,13 +8,23 @@ import { listRequestMedia } from "@/lib/event-requests.functions";
 import { Badge } from "@/components/ui/badge";
 
 /** "External" (an event someone else organises) or "Proposal" (one we could organise). */
-export function RequestTypeBadge({ type, testId }: { type: RequestType; testId?: string }) {
+export function RequestTypeBadge({
+  type,
+  kind,
+  testId,
+}: {
+  type: RequestType;
+  kind?: "event";
+  testId?: string;
+}) {
   const { t } = useTranslation();
   const Icon = type === "external" ? Globe2 : Lightbulb;
   return (
     <Badge data-testid={testId} data-type={type} variant="secondary" className="gap-1">
       <Icon className="size-3.5" aria-hidden />
-      {t(`requests.types.${type}`)}
+      {kind
+        ? `${t(`requests.kinds.${kind}`)} · ${t(`requests.types.${type}`)}`
+        : t(`requests.types.${type}`)}
     </Badge>
   );
 }

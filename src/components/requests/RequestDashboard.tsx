@@ -101,7 +101,7 @@ export function RequestNotices() {
               </p>
             )}
             <Link
-              to="/requests"
+              to="/my-requests"
               className="mt-1 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               {t("requests.viewRequests")}

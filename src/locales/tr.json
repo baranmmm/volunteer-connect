@@ -54,7 +54,8 @@
     "inactiveTitle": "Hesabınız aktif değil",
     "inactiveText": "Bir hata olduğunu düşünüyorsanız lütfen Şube Yöneticinizle iletişime geçin.",
     "recycleBin": "Geri Dönüşüm Kutusu",
-    "requests": "Talepler"
+    "requests": "Talepler",
+    "myRequests": "Taleplerim"
   },
   "auth": {
     "heroTitle": "Toplulukları her sohbetle biraz daha yakınlaştırıyoruz.",
@@ -742,6 +743,20 @@
     "approvePublish": "Onayla ve yayınla",
     "publishedToast": "Talepten etkinlik yayınlandı",
     "copyFailed": "{{count}} dosya etkinliğe kopyalanamadı.",
-    "filesNotSaved": "{{count}} dosya kaydedilemedi. Talebin kendisi kaydedildi."
+    "filesNotSaved": "{{count}} dosya kaydedilemedi. Talebin kendisi kaydedildi.",
+    "kinds": {
+      "event": "Etkinlik",
+      "task": "Görev",
+      "meeting": "Toplantı"
+    },
+    "newRequest": "Yeni talep",
+    "comingSoon": "Yakında",
+    "filterLabel": "Talepleri göster",
+    "filters": {
+      "all": "Tümü",
+      "open": "Açık",
+      "decided": "Karara bağlanan"
+    },
+    "reviewOnly": "Talepleri burada yalnızca Şube Yöneticileri ve Bölge Direktörleri inceler."
   }
 }
