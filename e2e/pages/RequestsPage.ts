@@ -32,7 +32,8 @@ export class RequestsPage {
 
   async goto() {
     await this.page.goto("/requests");
-    await expect(this.managerPage().or(this.myList())).toBeVisible();
+    // Branch managers see both sections; wait for whichever renders first.
+    await expect(this.managerPage().or(this.myList()).first()).toBeVisible();
   }
   /** Opens a reviewer's request from the given tab. */
   async openManaged(id: string, tab: ManagerTab = "pending") {
