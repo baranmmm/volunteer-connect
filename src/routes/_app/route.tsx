@@ -1,6 +1,9 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useRedirect } from "@/lib/use-redirect";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getPrivacyStatus } from "@/lib/privacy.functions";
+import { PrivacyGate } from "@/components/app/PrivacyGate";
 import { useEffect, useState } from "react";
 import { Clock, LogOut, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -38,6 +41,14 @@ function AppLayout() {
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const pending = usePendingRequestCount().data?.total ?? 0;
+  // The current privacy notice must be confirmed before the app (the server enforces it too: requireMember, RLS).
+  const privacyFn = useServerFn(getPrivacyStatus);
+  const privacy = useQuery({
+    queryKey: ["privacy-status", session?.user.id],
+    queryFn: () => privacyFn(),
+    enabled: !!session && profile?.status === "active",
+    staleTime: 300000,
+  });
 
   useEffect(() => { void refresh().catch(() => undefined); }, [pathname, refresh]);
 
@@ -65,6 +76,9 @@ function AppLayout() {
       </div>
     );
   }
+
+  if (privacy.isLoading) return <div data-testid="app-loading" className="flex min-h-screen items-center justify-center text-muted-foreground">{t("common.loading")}</div>;
+  if (privacy.data && !privacy.data.current_accepted) return <PrivacyGate status={privacy.data} onSignOut={signOut} />;
 
   const items = NAV_ITEMS.filter((i) => !i.managerOnly || isManager);
   const primary = items.filter((i) => MOBILE_PRIMARY.includes(i.to));

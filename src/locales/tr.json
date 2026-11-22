@@ -758,5 +758,32 @@
       "decided": "Karara bağlanan"
     },
     "reviewOnly": "Talepleri burada yalnızca Şube Yöneticileri ve Bölge Direktörleri inceler."
+  },
+  "privacy": {
+    "gateTitle": "Lütfen gizlilik bildirimimizi okuyun",
+    "gateFirst": "Devam etmeden önce Gönüllü Merkezi'nin bilgilerinizi nasıl kullandığını okuyup onaylayın.",
+    "gateUpdated": "Gizlilik bildirimimiz değişti (sürüm {{version}}). Devam etmek için okuyup onaylayın.",
+    "noticeLabel": "Gizlilik bildirimi",
+    "readAndUnderstood": "Gizlilik Bildirimi'ni okudum ve anladım",
+    "confirm": "Onayla ve devam et",
+    "signupLegend": "Gizlilik",
+    "signupRead": "Okudum ve anladım:",
+    "noticeLink": "Gizlilik Bildirimi",
+    "signupRequired": "Lütfen Gizlilik Bildirimi'ni okuduğunuzu onaylayın.",
+    "optionalIntro": "İsteğe bağlı. Bunları istediğiniz zaman profilinizden değiştirebilirsiniz.",
+    "photoConsent": "Etkinliklerde çekilen fotoğraf ve videolarımı kullanabilirsiniz",
+    "updatesConsent": "Bana ara sıra e-postayla güncellemeler gönderin",
+    "profileTitle": "Gizlilik",
+    "readNotice": "Gizlilik Bildirimi'ni oku",
+    "confirmedOn": "{{version}} sürümünü {{date}} tarihinde onayladınız.",
+    "notConfirmed": "Güncel Gizlilik Bildirimi'ni henüz onaylamadınız.",
+    "preferencesSaved": "Gizlilik tercihleri kaydedildi",
+    "back": "Merkeze dön",
+    "errors": {
+      "mustAccept": "Lütfen Gizlilik Bildirimi'ni okuduğunuzu onaylayın.",
+      "outdated": "Gizlilik Bildirimi güncellendi. Lütfen yeni sürümü okuyun.",
+      "notAccepted": "Lütfen önce Gizlilik Bildirimi'ni onaylayın.",
+      "invalidConsent": "Gizlilik tercihlerinizi kontrol edip tekrar deneyin."
+    }
   }
 }

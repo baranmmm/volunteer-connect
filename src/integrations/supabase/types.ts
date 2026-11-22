@@ -92,6 +92,33 @@ export type Database = {
           },
         ]
       }
+      consent_preferences: {
+        Row: {
+          photo_consent: boolean
+          photo_consent_changed_at: string | null
+          updated_at: string
+          updates_email_consent: boolean
+          updates_email_consent_changed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          photo_consent?: boolean
+          photo_consent_changed_at?: string | null
+          updated_at?: string
+          updates_email_consent?: boolean
+          updates_email_consent_changed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          photo_consent?: boolean
+          photo_consent_changed_at?: string | null
+          updated_at?: string
+          updates_email_consent?: boolean
+          updates_email_consent_changed_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       event_audit_log: {
         Row: {
           action: string
@@ -741,6 +768,27 @@ export type Database = {
           },
         ]
       }
+      privacy_notice_acceptances: {
+        Row: {
+          accepted_at: string
+          id: string
+          notice_version: string
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          notice_version: string
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          notice_version?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           branch_id: string | null
@@ -963,6 +1011,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_privacy_notice: { Args: { p_version: string }; Returns: Json }
+      get_privacy_status: { Args: never; Returns: Json }
+      has_accepted_privacy_notice: { Args: never; Returns: boolean }
+      privacy_notice_version: { Args: never; Returns: string }
+      set_consent_preferences: { Args: { p_photo_consent: boolean; p_updates_email_consent: boolean }; Returns: Json }
       add_event_request_media: { Args: { p_extension: string; p_kind: string; p_original_name?: string; p_request_id: string }; Returns: Json }
       can_read_event_request_file: { Args: { _path: string }; Returns: boolean }
       can_write_event_request_file: { Args: { _path: string }; Returns: boolean }

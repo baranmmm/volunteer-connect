@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireMember } from '@/lib/require-member';
 import {
   duplicateEvent,
   requestMedia,
@@ -18,7 +18,7 @@ const fail = (error: { message: string } | null) => {
 };
 
 export const submitEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestPayloadSchema)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("submit_event_request", { p: data });
@@ -26,7 +26,7 @@ export const submitEventRequest = createServerFn({ method: "POST" })
     return z.string().uuid().parse(result.data);
   });
 export const updateEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId.extend({ request: requestPayloadSchema }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("update_event_request", {
@@ -37,7 +37,7 @@ export const updateEventRequest = createServerFn({ method: "POST" })
     return { ok: true };
   });
 export const withdrawEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("withdraw_event_request", { p_id: data.id });
@@ -45,7 +45,7 @@ export const withdrawEventRequest = createServerFn({ method: "POST" })
     return { ok: true };
   });
 export const deleteEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("delete_event_request", { p_id: data.id });
@@ -53,7 +53,7 @@ export const deleteEventRequest = createServerFn({ method: "POST" })
     return { ok: true };
   });
 export const startReviewEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("start_review_event_request", { p_id: data.id });
@@ -66,7 +66,7 @@ export const startReviewEventRequest = createServerFn({ method: "POST" })
  * fails leaves no broken media row behind (delete_event_media); the count of such files is returned.
  */
 export const approveEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("approve_event_request", { p_id: data.id });
@@ -97,7 +97,7 @@ export const approveEventRequest = createServerFn({ method: "POST" })
   });
 /** Reviewers edit an open request before deciding (the single editing path; no approval overrides). */
 export const managerUpdateEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId.extend({ request: requestPayloadSchema }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("manager_update_event_request", {
@@ -108,7 +108,7 @@ export const managerUpdateEventRequest = createServerFn({ method: "POST" })
     return { ok: true };
   });
 export const eventRequestDuplicates = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("get_event_request_duplicates", { p_id: data.id });
@@ -117,7 +117,7 @@ export const eventRequestDuplicates = createServerFn({ method: "POST" })
   });
 /** Attachments with 5-minute signed URLs (Storage RLS: the requester and the request's reviewers only). */
 export const listRequestMedia = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("list_event_request_media", {
@@ -143,7 +143,7 @@ export const listRequestMedia = createServerFn({ method: "POST" })
     });
   });
 export const reserveRequestMedia = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(
     requestId.extend({
       kind: z.enum(["image", "pdf"]),
@@ -165,7 +165,7 @@ export const reserveRequestMedia = createServerFn({ method: "POST" })
   });
 /** Call after the stored file was removed through Storage (the RPC refuses otherwise). */
 export const deleteRequestMedia = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(z.object({ mediaId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("delete_event_request_media", {
@@ -175,7 +175,7 @@ export const deleteRequestMedia = createServerFn({ method: "POST" })
     return { ok: true };
   });
 export const declineEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId.extend({ reason: z.string().max(1000) }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("decline_event_request", {
@@ -186,14 +186,14 @@ export const declineEventRequest = createServerFn({ method: "POST" })
     return { ok: true };
   });
 export const myEventRequests = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .handler(async ({ context }) => {
     const result = await context.supabase.rpc("list_my_event_requests");
     fail(result.error);
     return z.array(eventRequest).parse(result.data);
   });
 export const managedEventRequests = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(
     z.object({ tab: z.enum(MANAGER_TABS), offset: z.number().int().min(0).max(1000000) }),
   )
@@ -206,7 +206,7 @@ export const managedEventRequests = createServerFn({ method: "POST" })
     return managedRequests.parse(result.data);
   });
 export const getEventRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("get_event_request", { p_id: data.id });
@@ -214,14 +214,14 @@ export const getEventRequest = createServerFn({ method: "POST" })
     return eventRequest.parse(result.data);
   });
 export const pendingEventRequestCount = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .handler(async ({ context }) => {
     const result = await context.supabase.rpc("get_pending_event_request_count");
     fail(result.error);
     return pendingRequestCount.parse(result.data);
   });
 export const dismissEventRequestNotice = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(requestId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("dismiss_event_request_notice", { p_id: data.id });

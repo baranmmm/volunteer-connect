@@ -1,11 +1,11 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
-import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { requireMember } from '@/lib/require-member';
 import { recycleItemInput, permanentDeleteInput, recycleRow } from './recycle-bin';
 import { eventDeletionResult } from './event-deletion';
 
 export const listRecycleBin = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(z.object({ type: z.enum(['all', 'event', 'user', 'event_request']), search: z.string().max(200), offset: z.number().int().min(0).max(1000000) }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc('list_recycle_bin', { _type: data.type, _search: data.search, _offset: data.offset });
@@ -14,7 +14,7 @@ export const listRecycleBin = createServerFn({ method: 'POST' })
   });
 
 export const restoreRecycleItem = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(recycleItemInput)
   .handler(async ({ data, context }) => {
     const prepared = await context.supabase.rpc('restore_item', { _type: data.type, _id: data.id });
@@ -40,7 +40,7 @@ export const restoreRecycleItem = createServerFn({ method: 'POST' })
   });
 
 export const permanentlyDeleteRecycleItem = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(permanentDeleteInput)
   .handler(async ({ data, context }) => {
     const prepared = await context.supabase.rpc('permanent_delete_item', { _type: data.type, _id: data.id, _confirmation: data.confirmation });

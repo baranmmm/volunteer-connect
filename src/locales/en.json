@@ -758,5 +758,32 @@
       "decided": "Decided"
     },
     "reviewOnly": "Only Branch Managers and Regional Directors review requests here."
+  },
+  "privacy": {
+    "gateTitle": "Please read our privacy notice",
+    "gateFirst": "Before you continue, please read how the Volunteer Hub uses your information and confirm.",
+    "gateUpdated": "Our privacy notice has changed (version {{version}}). Please read it and confirm to continue.",
+    "noticeLabel": "Privacy notice",
+    "readAndUnderstood": "I have read and understood the Privacy Notice",
+    "confirm": "Confirm and continue",
+    "signupLegend": "Privacy",
+    "signupRead": "I have read and understood the",
+    "noticeLink": "Privacy Notice",
+    "signupRequired": "Please confirm that you have read the Privacy Notice.",
+    "optionalIntro": "Optional. You can change these at any time in your profile.",
+    "photoConsent": "You may use photos or videos of me from events",
+    "updatesConsent": "Send me occasional updates by email",
+    "profileTitle": "Privacy",
+    "readNotice": "Read the Privacy Notice",
+    "confirmedOn": "You confirmed version {{version}} on {{date}}.",
+    "notConfirmed": "You have not confirmed the current Privacy Notice yet.",
+    "preferencesSaved": "Privacy preferences saved",
+    "back": "Back to the Hub",
+    "errors": {
+      "mustAccept": "Please confirm that you have read the Privacy Notice.",
+      "outdated": "The Privacy Notice has been updated. Please read the new version.",
+      "notAccepted": "Please confirm the Privacy Notice first.",
+      "invalidConsent": "Check your privacy preferences and try again."
+    }
   }
 }

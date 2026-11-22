@@ -1,0 +1,85 @@
+// Privacy notice in the UI: sign-up confirmation and optional consents, the confirmation screen, /privacy, Profile.
+import { randomUUID } from "node:crypto";
+import { test, expect } from "../../fixtures/roles";
+import { adminClient, deleteAuthUser, listAllUsers } from "../../api/SupabaseClient";
+import { FRESH_PREFIX, readSeedState } from "../../data/users";
+import { emailDomain, userPassword } from "../../setup/env";
+import { AuthPage } from "../../pages/AuthPage";
+
+test.describe("Privacy notice", () => {
+  test("/privacy opens without signing in and shows the notice with its tables", async ({ browser }) => {
+    const context = await browser.newContext(); // no session
+    const page = await context.newPage();
+    await page.goto("/privacy");
+    await expect(page.getByTestId("privacy-page")).toBeVisible();
+    await expect(page.getByTestId("privacy-notice").locator("table")).toHaveCount(2);
+    await expect(page.getByTestId("privacy-notice").locator('th[scope="col"]').first()).toBeVisible();
+    await context.close();
+  });
+
+  test("sign-up needs the confirmation; the optional consents are off by default and saved when ticked", async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const address = `${FRESH_PREFIX}${process.env["E2E_RUN_ID"] ?? "local"}-signup-${randomUUID().slice(0, 8)}@${emailDomain()}`;
+    try {
+      const auth = new AuthPage(page);
+      await auth.goto();
+      await auth.toggleMode().click();
+      await expect(auth.signUpForm()).toBeVisible();
+      await page.getByTestId("auth-full-name-input").fill("E2E Privacy Signup");
+      await page.getByTestId("auth-email-input").fill(address);
+      await page.getByTestId("auth-phone-input").fill("07000000000");
+      await page.getByTestId("auth-password-input").fill(userPassword());
+      await page.getByTestId("auth-confirm-password-input").fill(userPassword());
+      await page.getByTestId("auth-branch-select").selectOption(readSeedState().branches.Medway);
+      await expect(page.getByTestId("signup-photo-consent")).not.toBeChecked();
+      await expect(page.getByTestId("signup-updates-consent")).not.toBeChecked();
+      await auth.submit().click();
+      await expect(page.locator("#signup-privacy-error")).toBeVisible();
+      await expect(auth.signUpForm()).toBeVisible();
+      await page.getByTestId("signup-privacy-checkbox").click();
+      await page.getByTestId("signup-photo-consent").click();
+      await auth.submit().click();
+      await expect(auth.checkEmailScreen()).toBeVisible();
+      const user = (await listAllUsers()).find((u) => u.email?.toLowerCase() === address.toLowerCase());
+      expect(user).toBeTruthy();
+      const { data: prefs } = await adminClient().from("consent_preferences").select("photo_consent, updates_email_consent").eq("user_id", user!.id).single();
+      expect(prefs).toEqual({ photo_consent: true, updates_email_consent: false });
+      expect((await adminClient().from("privacy_notice_acceptances").select("notice_version").eq("user_id", user!.id)).data).toHaveLength(1);
+    } finally {
+      const user = (await listAllUsers()).find((u) => u.email?.toLowerCase() === address.toLowerCase());
+      if (user) await deleteAuthUser(user.id);
+      await context.close();
+    }
+  });
+
+  test("a member without the current confirmation sees the confirmation screen first, then the app; Profile shows it", async ({ freshUser, pageAs }) => {
+    const volunteer = await freshUser();
+    await adminClient().from("privacy_notice_acceptances").update({ notice_version: "0.9" }).eq("user_id", volunteer.id);
+    const page = await pageAs(volunteer);
+    await page.goto("/dashboard");
+    const gate = page.getByTestId("privacy-gate");
+    await expect(gate).toBeVisible();
+    await expect(page.getByTestId("dashboard-welcome")).toHaveCount(0);
+    await expect(page.getByTestId("privacy-gate-accept")).toBeDisabled();
+    await page.getByTestId("privacy-gate-read").click();
+    await page.getByTestId("privacy-gate-accept").click();
+    await expect(page.getByTestId("dashboard-welcome")).toBeVisible();
+    await page.goto("/profile");
+    await expect(page.getByTestId("profile-privacy-version")).toHaveAttribute("data-version", /^\d+\.\d+$/);
+    await page.getByTestId("profile-photo-consent").click();
+    await expect(page.getByTestId("toast-success").last()).toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId("profile-photo-consent")).toHaveAttribute("data-state", "checked");
+    await expect(page.getByTestId("profile-updates-consent")).toHaveAttribute("data-state", "unchecked");
+  });
+
+  test("signing out from the confirmation screen", async ({ freshUser, pageAs }) => {
+    const volunteer = await freshUser();
+    await adminClient().from("privacy_notice_acceptances").delete().eq("user_id", volunteer.id);
+    const page = await pageAs(volunteer);
+    await page.goto("/dashboard");
+    await page.getByTestId("privacy-gate-signout").click();
+    await expect(page).toHaveURL(/\/auth$/);
+  });
+});

@@ -4,6 +4,7 @@ import { permanentDeleteInput } from '@/lib/recycle-bin';
 const mocks = vi.hoisted(() => ({ scoped: vi.fn(), adminRpc: vi.fn(), unban: vi.fn(), erase: vi.fn(), remove: vi.fn(), move: vi.fn(), exists: vi.fn() }));
 vi.mock('@tanstack/react-start', () => ({ createServerFn: () => ({ middleware: () => ({ inputValidator: () => ({ handler: (handler: unknown) => handler }) }) }) }));
 vi.mock('@/integrations/supabase/auth-middleware', () => ({ requireSupabaseAuth: {} }));
+vi.mock('@/lib/require-member', () => ({ requireMember: {} }));
 vi.mock('@/integrations/supabase/client.server', () => ({ supabaseAdmin: { rpc: mocks.adminRpc, auth: { admin: { updateUserById: mocks.unban, deleteUser: mocks.erase } }, storage: { from: () => ({ remove: mocks.remove, move: mocks.move, exists: mocks.exists }) } } }));
 import { restoreRecycleItem, permanentlyDeleteRecycleItem } from '@/lib/recycle-bin.functions';
 const id = '10000000-0000-4000-8000-000000000001';
