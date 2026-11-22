@@ -544,7 +544,6 @@
     "waitlisted": "Bekleme listesine katıldınız",
     "cancel": "Kaydı iptal et",
     "cancelled": "Kayıt iptal edildi",
-    "showName": "Adımı diğer gönüllülere göster",
     "attendees": "Katılanlar",
     "managerTitle": "Kayıtlar",
     "exportCsv": "CSV olarak indir",
@@ -594,7 +593,9 @@
       "notStarted": "Katılım, etkinlik başladıktan sonra kaydedilebilir.",
       "notFound": "Kayıt bulunamadı.",
       "invalidAttendance": "Bu kayıt işaretlenemez."
-    }
+    },
+    "hideName": "Adımı diğer gönüllülere gösterme",
+    "hideNameHint": "Adınız bu etkinliği görebilen diğer üyelere gösterilir. E-posta adresiniz asla gösterilmez."
   },
   "requests": {
     "title": "Etkinlik talepleri",

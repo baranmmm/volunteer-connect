@@ -266,4 +266,29 @@ describe("event registrations (database)", () => {
         ).rows,
       ).toEqual([{ user_id: null, status: "registered", show_name: false, notice: null }]);
     }));
+  it("names are opt-out: shown by default, hidden on request, still hidden after registering again", () =>
+    tx(async () => {
+      const e = await createEvent();
+      const showName = async (user: string) => {
+        await as(null);
+        return (
+          await db.query<{ show_name: boolean }>(
+            "SELECT show_name FROM public.event_registrations WHERE event_id=$1 AND user_id=$2",
+            [e, user],
+          )
+        ).rows[0]?.show_name;
+      };
+      await register(ids.a, e);
+      expect(await showName(ids.a)).toBe(true);
+      await as(ids.b);
+      await db.query("SELECT public.register_for_event($1, false)", [e]);
+      expect(await showName(ids.b)).toBe(false);
+      await as(ids.b);
+      await db.query("SELECT public.cancel_registration($1)", [e]);
+      await register(ids.b, e);
+      expect(await showName(ids.b)).toBe(false);
+      await as(ids.b);
+      await db.query("SELECT public.set_registration_show_name($1, true)", [e]);
+      expect(await showName(ids.b)).toBe(true);
+    }));
 });

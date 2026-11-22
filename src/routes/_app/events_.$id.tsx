@@ -57,7 +57,7 @@ function EventDetail() {
   const url = `${window.location.origin}/events/${event.id}`;
   async function confirmCancel() {
     setBusy(true); setError('');
-    try { await cancel({ data:{id} }); await Promise.all([qc.invalidateQueries({ queryKey:['event',id] }),qc.invalidateQueries({ queryKey:['events'] })]); setCancelling(false); toast.success(t('events.cancelledSuccess')); }
+    try { await cancel({ data:{id} }); await Promise.all([qc.invalidateQueries({ queryKey:['event',id] }),qc.invalidateQueries({ queryKey:['events'] }),qc.invalidateQueries({ queryKey:['registration-summary',id] }),qc.invalidateQueries({ queryKey:['registrations',id] })]); setCancelling(false); toast.success(t('events.cancelledSuccess')); }
     catch(e) { setError(translateError(e)); } finally { setBusy(false); }
   }
   async function chooseScope(mode: SeriesMode) {

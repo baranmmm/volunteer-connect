@@ -17,7 +17,9 @@ async function rpc<T>(email: string, fn: string, args: Record<string, unknown>):
   if (error) throw new Error(`${fn}: ${error.message}`);
   return data as T;
 }
-export const registerAs = (email: string, eventId: string, showName = false) => rpc<RegistrationResult>(email, "register_for_event", { p_event_id: eventId, p_show_name: showName });
+/** Without `showName` the database default applies (names shown). */
+export const registerAs = (email: string, eventId: string, showName?: boolean) =>
+  rpc<RegistrationResult>(email, "register_for_event", { p_event_id: eventId, ...(showName === undefined ? {} : { p_show_name: showName }) });
 export const cancelRegistrationAs = (email: string, eventId: string) => rpc<RegistrationResult>(email, "cancel_registration", { p_event_id: eventId });
 export const summaryAs = (email: string, eventId: string) => rpc<RegistrationSummary>(email, "get_event_registration_summary", { p_event_id: eventId });
 

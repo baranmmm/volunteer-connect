@@ -11,20 +11,26 @@ import { EventFormDialog } from "../../pages/components/EventFormDialog";
 const IN_3_DAYS = 3 * 24 * 60;
 
 test.describe("Event registrations", () => {
-  test("a volunteer registers (count and calendar badge update), shows their name, then cancels", async ({ freshUser, freshEvent, pageAs }) => {
+  test("a volunteer registers (count and calendar badge update), is listed by name until they hide it, then cancels", async ({ freshUser, freshEvent, pageAs }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const volunteer = await freshUser();
     const event = await freshEvent(manager, { label: "ui register", status: "published", startInMinutes: IN_3_DAYS, capacity: 30 });
     const page = new EventPage(await pageAs(volunteer));
     await page.goto(event.id);
     await expect(page.registrationCount()).toHaveText("0 / 30 registered");
-    await page.showNameCheckbox().click();
+    // The name choice exists only while registered or waitlisted; names are shown unless hidden (opt-out).
+    await expect(page.hideNameCheckbox()).toHaveCount(0);
     await page.registerButton().click();
     await expect(page.page.getByTestId("toast-success")).toBeVisible();
     await expect(page.registrationCount()).toHaveText("1 / 30 registered");
     await expect(page.registrationStatus()).toHaveAttribute("data-status", "registered");
     await expect(page.attendeeList()).toContainText(volunteer.fullName);
     expect(await registrationOf(event.id, volunteer.id)).toMatchObject({ status: "registered", show_name: true });
+    await expect(page.hideNameCheckbox()).not.toBeChecked();
+    await page.hideNameCheckbox().click();
+    await expect(page.hideNameCheckbox()).toBeChecked();
+    await expect(page.attendeeList()).toHaveCount(0);
+    await expect.poll(async () => (await registrationOf(event.id, volunteer.id))?.show_name).toBe(false);
 
     const calendar = new CalendarPage(page.page);
     await calendar.goto("list");
@@ -34,6 +40,7 @@ test.describe("Event registrations", () => {
     await page.cancelRegistrationButton().click();
     await expect(page.registerButton()).toBeVisible();
     await expect(page.registrationCount()).toHaveText("0 / 30 registered");
+    await expect(page.hideNameCheckbox()).toHaveCount(0);
     expect(await registrationOf(event.id, volunteer.id)).toMatchObject({ status: "cancelled" });
     await calendar.goto("list");
     await expect(calendar.card("list", event.id)).toBeVisible();
@@ -129,5 +136,42 @@ test.describe("Event registrations", () => {
     } finally {
       await adminClient().from("events").delete().eq("id", eventId);
     }
+  });
+
+  test("raising capacity in the edit form promotes the waitlist without a reload; no capacity warning once cancelled", async ({ freshUser, freshEvent, pageAs }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const [first, second] = [await freshUser(), await freshUser()];
+    const event = await freshEvent(manager, { label: "ui capacity", status: "published", startInMinutes: IN_3_DAYS, capacity: 1 });
+    await registerAs(first!.email, event.id);
+    await registerAs(second!.email, event.id);
+    const waiting = (await registrationOf(event.id, second!.id))!;
+    expect(waiting.status).toBe("waitlisted");
+
+    const page = new EventPage(await pageAs(manager));
+    await page.goto(event.id);
+    await expect(page.registrationCount()).toHaveText("1 / 1 registered · 1 on waitlist");
+    await page.registrationsFilter("waitlisted").click();
+    await expect(page.registrationRow(waiting.id)).toHaveAttribute("data-status", "waitlisted");
+
+    // Same page, no reload: the saved capacity promotes the waitlist and both sections refresh.
+    await page.editButton().click();
+    const form = page.form();
+    await form.capacity().fill("2");
+    await form.publish();
+    await expect(page.registrationCount()).toHaveText("2 / 2 registered");
+    await page.registrationsFilter("registered").click();
+    await expect(page.registrationRow(waiting.id)).toHaveAttribute("data-status", "registered");
+    expect(await registrationOf(event.id, second!.id)).toMatchObject({ status: "registered", notice: "promoted" });
+
+    // Over capacity shows the warning; a cancelled event keeps the count line but drops the warning.
+    await page.editButton().click();
+    await form.capacity().fill("1");
+    await form.publish();
+    await expect(page.capacityWarning()).toBeVisible();
+    await page.page.getByTestId("event-cancel-event-button").click();
+    await page.page.getByTestId("confirm-dialog-confirm-button").click();
+    await expect(page.page.getByTestId("toast-success").last()).toBeVisible();
+    await expect(page.capacityWarning()).toHaveCount(0);
+    await expect(page.registrationCount()).toHaveText("2 / 1 registered");
   });
 });
