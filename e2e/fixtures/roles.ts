@@ -9,6 +9,7 @@ import {
   type Lang,
   type ProfileStatus,
 } from "../api/SupabaseClient";
+import { cancelEventAs, createEventAs, deleteEvents, EVENT_TITLE_PREFIX, type EventSpec } from "../api/events";
 import { FRESH_PREFIX, readSeedState, type BranchName, type RoleKey, type SeedState } from "../data/users";
 import { baseUrl, emailDomain, storageFile } from "../setup/env";
 import { PROD_REF } from "../setup/guard";
@@ -29,6 +30,11 @@ type Fixtures = {
   /** A new page signed in as a seeded role or a fresh user, with this project's device settings. */
   pageAs: (who: RoleKey | TestUser, options?: { language?: Lang | null }) => Promise<Page>;
   sidebar: Sidebar;
+  /**
+   * Creates an event as `owner` (a fresh manager) through the app's RPCs; `cancelled: true` publishes then
+   * cancels it. The title gets a unique "E2E Event …" prefix. Deleted after the test.
+   */
+  freshEvent: (owner: TestUser, spec: Omit<EventSpec, "title" | "branchId"> & { label: string; branchId?: string; cancelled?: boolean }) => Promise<{ id: string; title: string }>;
 };
 
 /** Fails the test if anything tries to reach the production project; requests are aborted first. */
@@ -115,6 +121,18 @@ export const test = base.extend<Fixtures & { prodHits: string[] }>({
       return context.newPage();
     });
     for (const context of contexts) await context.close();
+  },
+
+  freshEvent: async ({}, use, testInfo) => {
+    const created: string[] = [];
+    await use(async (owner, spec) => {
+      const title = `${EVENT_TITLE_PREFIX}${runId}-${testInfo.workerIndex}-${++freshCounter} ${spec.label}`;
+      const id = await createEventAs(owner.email, { ...spec, title, branchId: spec.branchId ?? owner.branchId ?? "" });
+      created.push(id);
+      if (spec.cancelled) await cancelEventAs(owner.email, id);
+      return { id, title };
+    });
+    await deleteEvents(created).catch(() => undefined);
   },
 
   sidebar: async ({ page, isMobile }, use) => {

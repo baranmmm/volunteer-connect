@@ -13,14 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EventCard } from '@/components/events/EventCard';
 import { MonthEvents } from '@/components/events/MonthEvents';
 import { EventForm } from '@/components/events/EventForm';
+import { CalendarLegend } from '@/components/events/EventStatus';
 
-export const Route = createFileRoute('/_app/calendar')({ ssr:false, head: () => pageHead('Calendar & Events', 'View Dialogue Society branch and regional events and manage your event calendar.'), component: CalendarPage });
+export const Route = createFileRoute('/_app/calendar')({ ssr:false, validateSearch:(search: Record<string, unknown>): { view?: 'month'|'list' } => (search['view'] === 'month' || search['view'] === 'list' ? { view:search['view'] } : {}), head: () => pageHead('Calendar & Events', 'View Dialogue Society branch and regional events and manage your event calendar.'), component: CalendarPage });
 function CalendarPage() {
   const { t } = useTranslation();
   const { session, profile, isManager } = useAuth();
   const fetch = useServerFn(listEvents), navigate = useNavigate();
-  const [view,setView] = useState<'month'|'list'>('list');
-  useEffect(() => { setView(window.matchMedia('(max-width: 767px)').matches ? 'list' : 'month'); }, []);
+  // `?view=list|month` (e.g. the dashboard's "View all") wins over the screen-size default.
+  const { view:requested } = Route.useSearch();
+  const [view,setView] = useState<'month'|'list'>(requested ?? 'list');
+  useEffect(() => { if (!requested) setView(window.matchMedia('(max-width: 767px)').matches ? 'list' : 'month'); }, [requested]);
   const [past,setPast] = useState(false), [category,setCategory] = useState('all'), [organizer,setOrganizer] = useState('all');
   const [month,setMonth] = useState(() => new Date(`${londonInput(new Date()).slice(0,7)}-01T12:00:00`));
   const [creating,setCreating] = useState(false);
@@ -43,5 +46,6 @@ function CalendarPage() {
     {events.isLoading ? <p className="py-10 text-center text-muted-foreground">{t('common.loading')}</p> : events.isError ? <div role="alert" className="space-y-3"><p className="text-destructive">{t('events.loadError')}</p><Button variant="outline" onClick={() => events.refetch()}>{t('common.retry')}</Button></div> : view === 'month' ? <MonthEvents month={month} onMonth={setMonth} events={filtered} now={now} /> : <section data-testid="calendar-list-view" className="space-y-3">{filtered.length ? filtered.map(e => <EventCard key={e.id} event={e} now={now} />) : <p className="border-y py-12 text-center text-muted-foreground">{t('events.empty')}</p>}</section>}
     {creating && <EventForm onClose={() => setCreating(false)} onSaved={id => { setCreating(false); void navigate({ to:'/events/$id',params:{id} }); }} />}
     {view === 'month' && filtered.some(e => !isScheduled(e)) && <section className="space-y-3"><h2 className="text-xl font-semibold">{t('events.unscheduled')}</h2>{filtered.filter(e => !isScheduled(e)).map(e => <EventCard key={e.id} event={e} now={now} />)}</section>}
+    {!events.isLoading && !events.isError && <CalendarLegend showDraft={isManager} />}
   </div>;
 }

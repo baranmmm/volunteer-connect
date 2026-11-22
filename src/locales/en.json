@@ -95,11 +95,15 @@
     "welcomeBack": "Welcome back",
     "hello": "Hello, {{name}}",
     "branchLine": "{{branch}} branch",
-    "eventsTitle": "My upcoming events",
-    "eventsEmpty": "You have no upcoming events yet.",
     "tasksTitle": "My tasks",
     "tasksEmpty": "You have no tasks at the moment.",
-    "helloNoName": "Hello there"
+    "helloNoName": "Hello there",
+    "upcomingTitle": "Upcoming events",
+    "upcomingEmpty": "No upcoming events",
+    "viewAll": "View all",
+    "draftsTitle": "Your drafts",
+    "editDraft": "Edit",
+    "draftSaved": "Saved {{date}}"
   },
   "users": {
     "title": "Users",
@@ -392,7 +396,8 @@
     "calendarOutlook": "Outlook.com",
     "calendarOutlookWork": "Microsoft 365 (work or school)",
     "calendarIcs": "Apple Calendar / Other (.ics)",
-    "branchFixed": "Events are created for your branch."
+    "branchFixed": "Events are created for your branch.",
+    "legend": "Status key"
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
