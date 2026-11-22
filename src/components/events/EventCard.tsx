@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { CalendarDays, MapPin, MessagesSquare, Utensils, HeartHandshake, Users, GraduationCap, Tag } from 'lucide-react';
+import { CalendarDays, MapPin, MessagesSquare, Utensils, HeartHandshake, Users, GraduationCap, Tag, Repeat } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { eventStart } from '@/lib/event-rules';
 import type { HubEvent } from '@/lib/event-rules';
@@ -23,7 +23,7 @@ export function EventCard({ event, now = new Date() }: { event: HubEvent; now?: 
       {cover?.url ? <img src={cover.url} alt={event.title} className="h-full w-full object-cover" loading="lazy" /> : <CategoryIcon category={event.category} className="size-12" />}
     </div>
     <div className="min-w-0 flex-1 space-y-2 p-4">
-      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarDays className="size-4" /><span>{eventDateText(event, t)}</span></div>
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarDays className="size-4" /><span>{eventDateText(event, t)}</span>{event.series_id && <span data-testid="event-recurring-icon" title={t('events.recurring.label')} className="inline-flex shrink-0 text-muted-foreground"><Repeat className="size-4" aria-hidden /><span className="sr-only">{t('events.recurring.label')}</span></span>}</div>
       <h2 className={cn('break-words text-xl font-semibold group-hover:text-primary', cancelledTitle(event.status))}>{event.title}</h2>
       <div className="flex flex-wrap items-center gap-2"><EventStatusBadge status={event.status} /><HappeningNowBadge event={event} now={now} /></div>
       <div className="flex flex-wrap items-center gap-2"><span className="break-words text-sm">{event.organizer}</span><Badge variant="secondary">{t(`events.categories.${event.category}`)}</Badge></div>

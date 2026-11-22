@@ -9,7 +9,7 @@ import {
   type Lang,
   type ProfileStatus,
 } from "../api/SupabaseClient";
-import { cancelEventAs, createEventAs, deleteEvents, EVENT_TITLE_PREFIX, type EventSpec } from "../api/events";
+import { cancelEventAs, createEventAs, createSeriesAs, deleteEvents, deleteSeriesData, EVENT_TITLE_PREFIX, type EventSpec, type SeriesSpec } from "../api/events";
 import { FRESH_PREFIX, readSeedState, type BranchName, type RoleKey, type SeedState } from "../data/users";
 import { baseUrl, emailDomain, storageFile } from "../setup/env";
 import { PROD_REF } from "../setup/guard";
@@ -35,6 +35,10 @@ type Fixtures = {
    * cancels it. The title gets a unique "E2E Event …" prefix. Deleted after the test.
    */
   freshEvent: (owner: TestUser, spec: Omit<EventSpec, "title" | "branchId"> & { label: string; branchId?: string; cancelled?: boolean }) => Promise<{ id: string; title: string }>;
+  /** Creates a recurring series as `owner` (create_series); everything sharing its media holder is removed after the test. */
+  freshSeries: (owner: TestUser, spec: Omit<SeriesSpec, "title" | "branchId"> & { label: string; branchId?: string }) => Promise<{ seriesId: string; firstEventId: string; mediaEventId: string; count: number; title: string }>;
+  /** Registers a series created through the UI (by its media holder id) for cleanup. */
+  trackSeries: (mediaEventId: string) => void;
 };
 
 /** Fails the test if anything tries to reach the production project; requests are aborted first. */
@@ -133,6 +137,21 @@ export const test = base.extend<Fixtures & { prodHits: string[] }>({
       return { id, title };
     });
     await deleteEvents(created).catch(() => undefined);
+  },
+
+  trackSeries: async ({}, use) => {
+    const holders: string[] = [];
+    await use((id) => { holders.push(id); });
+    await deleteSeriesData(holders).catch(() => undefined);
+  },
+
+  freshSeries: async ({ trackSeries }, use, testInfo) => {
+    await use(async (owner, spec) => {
+      const title = `${EVENT_TITLE_PREFIX}${runId}-${testInfo.workerIndex}-${++freshCounter} ${spec.label}`;
+      const created = await createSeriesAs(owner.email, { ...spec, title, branchId: spec.branchId ?? owner.branchId ?? "" });
+      trackSeries(created.mediaEventId);
+      return { ...created, title };
+    });
   },
 
   sidebar: async ({ page, isMobile }, use) => {

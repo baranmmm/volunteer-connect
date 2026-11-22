@@ -31,6 +31,9 @@ export async function cleanupDeletedEvents(client: SupabaseClient<Database>, now
         failed = true;
       }
     }
+    // Series rows whose events have all been purged.
+    const series = await client.rpc('purge_expired_series');
+    if (series.error) failed = true;
   } catch { failed = true; }
   const audit = await client.from('event_cleanup_audit').update({ finished_at: new Date().toISOString(), events_purged: counts.events, users_purged: counts.users, files_purged: counts.files, outcome: failed ? 'failed' : 'completed' }).eq('id', started.data.id);
   return { counts, failed: failed || audit.error !== null };

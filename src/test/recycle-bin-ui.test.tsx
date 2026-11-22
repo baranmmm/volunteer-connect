@@ -12,7 +12,7 @@ vi.mock('@/lib/toast', () => ({ toast: { success: vi.fn() } }));
 import { setLanguage } from '@/lib/i18n';
 import { Route } from '@/routes/_app/recycle-bin';
 const Component = (Route as unknown as { options: { component: () => ReactNode } }).options.component;
-const event: RecycleRow = { id: 'event-id', type: 'event', title: 'Deleted event', branch: 'London', region: 'London region', deleted_by_name: 'Manager', deleted_at: '2026-11-21T12:00:00Z', days_left: 30, can_restore: true, role: null, self_requested: false, total_count: 1 };
+const event: RecycleRow = { id: 'event-id', type: 'event', title: 'Deleted event', branch: 'London', region: 'London region', deleted_by_name: 'Manager', deleted_at: '2026-11-21T12:00:00Z', days_left: 30, can_restore: true, role: null, self_requested: false, event_count: null, total_count: 1 };
 beforeEach(() => { vi.clearAllMocks(); setLanguage('en'); mocks.manager = true; mocks.rows = [event]; mocks.restore.mockResolvedValue({ ok: true }); mocks.remove.mockResolvedValue({ ok: true }); });
 afterEach(() => { cleanup(); setLanguage('en'); });
 describe('Recycle Bin actions and access', () => {

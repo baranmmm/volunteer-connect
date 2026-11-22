@@ -250,7 +250,7 @@ export type Database = {
           },
         ]
       }
-      events: {
+      event_series: {
         Row: {
           all_day: boolean
           branch_id: string | null
@@ -261,6 +261,130 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           description: string
+          dtstart_local: string
+          duration_minutes: number | null
+          generated_until: string | null
+          id: string
+          location: string
+          location_type: string
+          media_event_id: string | null
+          online_url: string | null
+          organizer: string
+          region_id: string
+          rule: string
+          scope: string
+          span_days: number
+          status: string
+          timezone: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          branch_id?: string | null
+          capacity?: number | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string
+          dtstart_local: string
+          duration_minutes?: number | null
+          generated_until?: string | null
+          id?: string
+          location?: string
+          location_type?: string
+          media_event_id?: string | null
+          online_url?: string | null
+          organizer: string
+          region_id: string
+          rule: string
+          scope: string
+          span_days?: number
+          status?: string
+          timezone?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          branch_id?: string | null
+          capacity?: number | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string
+          dtstart_local?: string
+          duration_minutes?: number | null
+          generated_until?: string | null
+          id?: string
+          location?: string
+          location_type?: string
+          media_event_id?: string | null
+          online_url?: string | null
+          organizer?: string
+          region_id?: string
+          rule?: string
+          scope?: string
+          span_days?: number
+          status?: string
+          timezone?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_series_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_series_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_series_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_series_media_event_id_fkey"
+            columns: ["media_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_series_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          all_day: boolean
+          branch_id: string | null
+          capacity: number | null
+          category: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_with_series: boolean
+          description: string
           end_at: string | null
           end_date: string | null
           id: string
@@ -268,8 +392,12 @@ export type Database = {
           location_type: string
           online_url: string | null
           organizer: string
+          recurrence_key: string | null
           region_id: string
           scope: string
+          series_exception: boolean
+          series_id: string | null
+          series_template: boolean
           start_at: string | null
           start_date: string | null
           status: string
@@ -285,6 +413,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          deleted_with_series?: boolean
           description?: string
           end_at?: string | null
           end_date?: string | null
@@ -293,8 +422,12 @@ export type Database = {
           location_type?: string
           online_url?: string | null
           organizer: string
+          recurrence_key?: string | null
           region_id: string
           scope: string
+          series_exception?: boolean
+          series_id?: string | null
+          series_template?: boolean
           start_at?: string | null
           start_date?: string | null
           status?: string
@@ -310,6 +443,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          deleted_with_series?: boolean
           description?: string
           end_at?: string | null
           end_date?: string | null
@@ -318,8 +452,12 @@ export type Database = {
           location_type?: string
           online_url?: string | null
           organizer?: string
+          recurrence_key?: string | null
           region_id?: string
           scope?: string
+          series_exception?: boolean
+          series_id?: string | null
+          series_template?: boolean
           start_at?: string | null
           start_date?: string | null
           status?: string
@@ -346,6 +484,13 @@ export type Database = {
             columns: ["region_id"]
             isOneToOne: false
             referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
             referencedColumns: ["id"]
           },
         ]
@@ -605,16 +750,23 @@ export type Database = {
       can_read_event_file: { Args: { _path: string }; Returns: boolean }
       can_restore_event: { Args: { _event: string }; Returns: boolean }
       can_view_event: { Args: { _event: string }; Returns: boolean }
+      can_view_event_media: { Args: { _event: string }; Returns: boolean }
+      can_view_series: { Args: { _series: string }; Returns: boolean }
       can_write_event_file: { Args: { _path: string }; Returns: boolean }
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       create_event: { Args: { _data: Json }; Returns: string }
+      create_series: { Args: { _data: Json; _rule: string }; Returns: Json }
       delete_event: {
         Args: { _complete?: boolean; _event: string; _title?: string }
         Returns: Json
       }
       delete_event_media: { Args: { _media: string }; Returns: undefined }
+      delete_series: { Args: { _event: string; _mode: string }; Returns: Json }
       event_has_registrations: { Args: { _event: string }; Returns: boolean }
+      extend_all_series: { Args: never; Returns: number }
+      finish_series_deletion: { Args: { _series: string }; Returns: Json }
+      finish_series_purge: { Args: { _series: string }; Returns: undefined }
       finish_user_recycle_operation: {
         Args: { _id: string; _operation: string }
         Returns: undefined
@@ -660,6 +812,7 @@ export type Database = {
           days_left: number
           deleted_at: string
           deleted_by_name: string
+          event_count: number
           id: string
           region: string
           role: string
@@ -669,6 +822,7 @@ export type Database = {
           type: string
         }[]
       }
+      open_series: { Args: { _series: string }; Returns: Json }
       permanent_delete_item: {
         Args: { _confirmation: string; _id: string; _type: string }
         Returns: Json
@@ -681,6 +835,7 @@ export type Database = {
         Args: { _event: string; _finalize?: boolean }
         Returns: Json
       }
+      purge_expired_series: { Args: never; Returns: number }
       record_user_deletion: {
         Args: { _actor: string; _audit: string; _target: string }
         Returns: undefined
@@ -699,6 +854,38 @@ export type Database = {
         Returns: Json
       }
       restore_item: { Args: { _id: string; _type: string }; Returns: Json }
+      restore_series: {
+        Args: { _finalize?: boolean; _series: string }
+        Returns: Json
+      }
+      series_expand: {
+        Args: {
+          _dtstart: string
+          _from: string
+          _limit: number
+          _rule: string
+          _to: string
+        }
+        Returns: string[]
+      }
+      series_generate: {
+        Args: { _limit?: number; _series: string }
+        Returns: number
+      }
+      series_op_begin: { Args: never; Returns: string }
+      series_op_end: { Args: { _prev: string }; Returns: undefined }
+      series_rule_count: {
+        Args: { _count: number; _rule: string }
+        Returns: string
+      }
+      series_rule_until: {
+        Args: { _all_day: boolean; _before: string; _rule: string }
+        Returns: string
+      }
+      series_timing: {
+        Args: { _data: Json }
+        Returns: Record<string, unknown>
+      }
       set_user_branch: {
         Args: { _branch: string; _target: string }
         Returns: undefined
@@ -720,6 +907,10 @@ export type Database = {
       update_event: {
         Args: { _data: Json; _event: string }
         Returns: undefined
+      }
+      update_series_event: {
+        Args: { _data: Json; _event: string; _mode: string; _rule?: string }
+        Returns: Json
       }
     }
     Enums: {

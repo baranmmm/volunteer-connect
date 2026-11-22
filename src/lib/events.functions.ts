@@ -6,6 +6,7 @@ import type { Database } from '@/integrations/supabase/types';
 import type { EventMedia, HubEvent, EventRow, MediaRow } from './event-rules';
 import { normalizeEventExtension } from './event-rules';
 import { eventDeletionState } from './event-deletion';
+import type { SeriesInfo } from './recurrence';
 
 async function active(client: SupabaseClient<Database>, uid: string) {
   const { data, error } = await client.from('profiles').select('status').eq('id', uid).single();
@@ -13,9 +14,19 @@ async function active(client: SupabaseClient<Database>, uid: string) {
 }
 async function withMedia(client: SupabaseClient<Database>, events: EventRow[]): Promise<HubEvent[]> {
   if (!events.length) return [];
+  // Occurrences of a series show the series' files, held by its media holder event (RLS: can_view_event_media).
+  const seriesIds = [...new Set(events.flatMap(e => e.series_id ? [e.series_id] : []))];
+  const holderOf = new Map<string, string>();
+  for (let i = 0; i < seriesIds.length; i += 100) {
+    const result = await client.from('event_series').select('id, media_event_id').in('id', seriesIds.slice(i, i + 100));
+    if (result.error) throw result.error;
+    for (const s of result.data) if (s.media_event_id) holderOf.set(s.id, s.media_event_id);
+  }
+  const ownerOf = (e: EventRow) => (e.series_id && holderOf.get(e.series_id)) || e.id;
+  const owners = [...new Set(events.map(ownerOf))];
   const media: MediaRow[] = [];
-  for (let i = 0; i < events.length; i += 100) {
-    const ids = events.slice(i, i + 100).map(e => e.id);
+  for (let i = 0; i < owners.length; i += 100) {
+    const ids = owners.slice(i, i + 100);
     const result = await client.from('event_media').select('*').in('event_id', ids).order('position').order('id');
     if (result.error) throw result.error;
     media.push(...result.data);
@@ -32,7 +43,7 @@ async function withMedia(client: SupabaseClient<Database>, events: EventRow[]): 
       signed.push({ ...m, url });
     }
   }
-  return events.map(e => ({ ...e, media: signed.filter(m => m.event_id === e.id).sort((a,b) => a.position-b.position) }));
+  return events.map(e => ({ ...e, media: signed.filter(m => m.event_id === ownerOf(e)).sort((a,b) => a.position-b.position) }));
 }
 export const listEvents = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await active(context.supabase, context.userId);
@@ -59,7 +70,13 @@ export const getEvent = createServerFn({ method: 'POST' }).middleware([requireSu
   ]);
   if (branch.error) throw branch.error;
   if (region.error) throw region.error;
-  return { event: (await withMedia(context.supabase, [result.data]))[0] ?? null, canManage: deletion.canManage, deletion, branchName: branch.data?.name ?? null, regionName: region.data?.name ?? null };
+  // Series details (rule, EXDATEs); opening also extends the series' 12-month horizon.
+  let series: SeriesInfo | null = null;
+  if (result.data.series_id) {
+    const opened = await context.supabase.rpc('open_series', { _series: result.data.series_id });
+    if (!opened.error) series = seriesInfo.parse(opened.data);
+  }
+  return { event: (await withMedia(context.supabase, [result.data]))[0] ?? null, canManage: deletion.canManage, deletion, branchName: branch.data?.name ?? null, regionName: region.data?.name ?? null, series };
 });
 export const eventBranches = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await active(context.supabase, context.userId);
@@ -78,6 +95,7 @@ export const eventBranches = createServerFn({ method: 'POST' }).middleware([requ
   if (result.error) throw result.error;
   return result.data;
 });
+const seriesInfo = z.object({ id: z.string().uuid(), rule: z.string(), timezone: z.string(), all_day: z.boolean(), dtstart_local: z.string(), duration_minutes: z.number().nullable(), span_days: z.number(), status: z.string(), media_event_id: z.string().uuid().nullable(), exdates: z.array(z.string()) });
 const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const input = z.object({ title: z.string().trim().min(1).max(200), description: z.string().max(10000), location: z.string().max(500), location_type: z.enum(['in_person','online']), online_url: z.string().trim().max(2000).nullable(), organizer: z.string().trim().max(200), category: z.enum(['dialogue','dinner','interfaith','community','education','other']), all_day: z.boolean(), start_date: dateOnly.nullable(), end_date: dateOnly.nullable(), start_at: z.string().datetime().nullable(), end_at: z.string().datetime().nullable(), capacity: z.number().int().positive().nullable(), scope: z.enum(['branch','region']), branch_id: z.string().uuid().nullable(), status: z.enum(['draft','published','cancelled']) }).superRefine((event, ctx) => {
   const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
@@ -94,6 +112,22 @@ export const saveEvent = createServerFn({ method: 'POST' }).middleware([requireS
   const result = data.id ? await context.supabase.rpc('update_event', { _event: data.id, _data: data.event }) : await context.supabase.rpc('create_event', { _data: data.event });
   if (result.error) throw new Error(result.error.message);
   return data.id ?? String(result.data);
+});
+const rrule = z.string().trim().min(10).max(500).regex(/^FREQ=[A-Z0-9=;,+-]+$/);
+const seriesResult = z.object({ series_id: z.string().uuid(), event_id: z.string().uuid(), media_event_id: z.string().uuid().nullable().optional() });
+/** Creates a series and its first occurrences (at most 100, 12 months ahead); returns the first occurrence. */
+export const createSeries = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ event: input, rule: rrule })).handler(async ({ data, context }) => {
+  const result = await context.supabase.rpc('create_series', { _data: data.event, _rule: data.rule });
+  if (result.error) throw new Error(result.error.message);
+  const parsed = seriesResult.parse(result.data);
+  return { seriesId: parsed.series_id, eventId: parsed.event_id, mediaEventId: parsed.media_event_id ?? null };
+});
+/** Edits one occurrence ('this'), this and the following ones ('following') or the whole series ('all'). */
+export const updateSeriesEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid(), mode: z.enum(['this', 'following', 'all']), event: input, rule: rrule.nullable() })).handler(async ({ data, context }) => {
+  const result = await context.supabase.rpc('update_series_event', { _event: data.id, _mode: data.mode, _data: data.event, ...(data.rule ? { _rule: data.rule } : {}) });
+  if (result.error) throw new Error(result.error.message);
+  const parsed = seriesResult.parse(result.data);
+  return { seriesId: parsed.series_id, eventId: parsed.event_id };
 });
 export const cancelEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('cancel_event', { _event: data.id });
