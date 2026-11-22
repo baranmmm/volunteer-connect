@@ -638,3 +638,12 @@ GRANT EXECUTE ON FUNCTION public.get_event_registrations(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_attendance(uuid, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.dismiss_registration_notice(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_registrations() TO authenticated;
+
+-- Redefined A2r/event functions keep their signatures (CREATE OR REPLACE, no new overloads), so their ACLs
+-- carry over; restated here so this migration does not depend on earlier grant state.
+REVOKE ALL ON FUNCTION public.create_event(jsonb), public.update_event(uuid, jsonb), public.create_series(jsonb, text),
+  public.update_series_event(uuid, text, jsonb, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_event(jsonb), public.update_event(uuid, jsonb), public.create_series(jsonb, text),
+  public.update_series_event(uuid, text, jsonb, text) TO authenticated;
+REVOKE ALL ON FUNCTION public.series_generate(uuid, integer), public.events_series_guard()
+  FROM PUBLIC, anon, authenticated, service_role;

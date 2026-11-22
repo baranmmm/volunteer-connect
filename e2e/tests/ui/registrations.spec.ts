@@ -111,7 +111,7 @@ test.describe("Event registrations", () => {
     await form.location().fill("E2E Community Hall");
     const start = new Date(Date.now() + IN_3_DAYS * 60_000);
     const local = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "short" }).format(start).replace(" ", "T");
-    await form.start().fill(`${local.slice(0, 10)}T18:00`);
+    await form.setStart(`${local.slice(0, 10)}T18:00`);
     await form.capacity().fill("5");
     await expect(form.registrationEnabled()).toHaveAttribute("aria-checked", "true");
     await form.registrationEnabled().click();
