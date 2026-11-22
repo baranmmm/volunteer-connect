@@ -315,7 +315,9 @@ describe("event request types (database)", () => {
         )
       ).rows[0]!.a;
       expect(a.copies).toHaveLength(3);
-      expect(a.copies[0]!.from).toBe(m1.storage_path);
+      // Images before PDFs; among images the upload order (ties possible in PGlite's coarse clock).
+      expect(a.copies.map((c) => c.from)).toContain(m1.storage_path);
+      expect(a.copies.map((c) => c.from.endsWith(".pdf"))).toEqual([false, false, true]);
       expect(a.copies.every((c) => c.to.startsWith(`${a.event_id}/`))).toBe(true);
       await as(null);
       const media = (
