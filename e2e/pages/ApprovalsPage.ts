@@ -39,6 +39,14 @@ export class ApprovalsPage {
     await expect(this.deletionsTab()).toHaveAttribute("data-state", "active");
   }
 
+  /** Opens the erasure dialog for a request without confirming (the full name must be typed first). */
+  async openProcessDialog(requestId: string): Promise<DeleteUserDialog> {
+    await this.deletionRow(requestId).getByTestId("deletion-request-process-button").click();
+    const dialog = new DeleteUserDialog(this.page);
+    await expect(dialog.root).toBeVisible();
+    return dialog;
+  }
+
   async processDeletion(requestId: string, fullName: string) {
     await this.deletionRow(requestId).getByTestId("deletion-request-process-button").click();
     await new DeleteUserDialog(this.page).deleteTyping(fullName);

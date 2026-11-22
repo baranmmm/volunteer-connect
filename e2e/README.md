@@ -38,8 +38,11 @@ npm test             # starts the app on BASE_URL against QA, then runs all proj
 | `npm run qa:seed` | Idempotently creates/resets the seeded users and writes `.auth/users.json` |
 | `npm test` | All projects: `desktop-chromium`, `mobile-pixel7`, `api` |
 | `npm run test:ui` / `npm run test:api` | UI projects only / API permission tests only |
-| `npm run qa:teardown` | Deletes leftover `fresh-*@dsvolunteer.test` users and test events: events those users created, and `E2E Event …` events whose creator no longer exists. No other event is touched. QA only (guarded). |
+| `npm run qa:teardown` | Deletes this run's `fresh-*@dsvolunteer.test` users (`E2E_RUN_ID`) and any older than 2 hours, plus their test events: events those users created, and `E2E Event …` events whose creator no longer exists. Recent users of other runs (e.g. CI running at the same time on the shared QA database) are never touched. QA only (guarded). |
 | `npm run report` | Opens the last HTML report |
+
+**Local runs share the QA database with CI.** Give each local run an id so its teardown can clean up after it
+without touching a CI run in progress: `E2E_RUN_ID=local-$(date +%s) npm test`, then the same id for `npm run qa:teardown`.
 
 ## How it works
 
