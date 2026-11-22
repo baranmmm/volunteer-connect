@@ -47,7 +47,7 @@ export function MyRegistrationsCard() {
   return (
     <>
       {notices.length > 0 && (
-        <section aria-label={t("registrations.noticesTitle")} className="space-y-2 md:col-span-2">
+        <section aria-label={t("registrations.noticesTitle")} className="space-y-2 lg:col-span-2">
           {notices.map((r) => (
             <div
               key={r.registration_id}

@@ -74,7 +74,7 @@ function Dashboard() {
           )}
         </p>
       </section>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div data-testid="dashboard-grid" className="grid gap-5 lg:grid-cols-2">
         <RequestNotices />
         <UpcomingEventsCard
           events={events.data ?? []}

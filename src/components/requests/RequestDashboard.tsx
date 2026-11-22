@@ -83,7 +83,7 @@ export function RequestNotices() {
     }
   }
   return (
-    <section aria-label={t("requests.noticesTitle")} className="space-y-2 md:col-span-2">
+    <section aria-label={t("requests.noticesTitle")} className="space-y-2 lg:col-span-2">
       {notices.map((r) => (
         <div
           key={r.id}
