@@ -1,6 +1,7 @@
-// Removes per-test users (fresh-*@<domain>) and their deletion requests.
+// Removes per-test users (fresh-*@<domain>), their deletion requests and leftover test events ("E2E Event …").
 // Seeded users stay and are reset by the next seed. Audit rows remain (user references are set to NULL).
 import { adminClient, deleteAuthUser, listAllUsers } from "../api/SupabaseClient";
+import { deleteLeftoverTestEvents } from "../api/events";
 import { FRESH_PREFIX } from "../data/users";
 import { emailDomain, isMain } from "./env";
 import { assertQaEnvironment } from "./guard";
@@ -16,8 +17,10 @@ export async function teardown(): Promise<number> {
     const { error } = await adminClient().from("account_deletion_requests").delete().in("user_id", fresh.map((u) => u.id));
     if (error) throw new Error(`delete deletion requests: ${error.message}`);
   }
+  // Events first: they are identified by their fresh-* creator, which deleting the user would null out.
+  const events = await deleteLeftoverTestEvents(fresh.map((u) => u.id));
   for (const user of fresh) await deleteAuthUser(user.id);
-  console.log(`[teardown] Removed ${fresh.length} fresh test user(s).`);
+  console.log(`[teardown] Removed ${fresh.length} fresh test user(s) and ${events} leftover test event(s).`);
   return fresh.length;
 }
 

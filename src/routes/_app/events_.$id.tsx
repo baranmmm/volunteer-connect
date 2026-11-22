@@ -18,8 +18,10 @@ import { EventForm } from '@/components/events/EventForm';
 import { EventDialog } from '@/components/events/EventDialog';
 import { CategoryIcon } from '@/components/events/EventCard';
 import { HappeningNowBadge } from '@/components/events/HappeningNowBadge';
+import { EventStatusBadge } from '@/components/events/EventStatus';
+import { cancelledTitle } from '@/components/events/event-status-styles';
 
-export const Route = createFileRoute('/_app/events_/$id')({ ssr:false, head:() => pageHead('Event details', 'View event details, private images and leaflets, and add Dialogue Society events to your calendar.'), component:EventDetail });
+export const Route = createFileRoute('/_app/events_/$id')({ ssr:false, validateSearch:(search: Record<string, unknown>): { edit?: boolean } => (search['edit'] === true || search['edit'] === 'true' ? { edit:true } : {}), head:() => pageHead('Event details', 'View event details, private images and leaflets, and add Dialogue Society events to your calendar.'), component:EventDetail });
 function EventDetail() {
   const { id } = Route.useParams(), { t } = useTranslation();
   const { session, profile } = useAuth();
@@ -30,9 +32,16 @@ function EventDetail() {
   const [editing,setEditing] = useState(false), [cancelling,setCancelling] = useState(false), [busy,setBusy] = useState(false), [error,setError] = useState('');
   const [deleting,setDeleting] = useState(false);
   const [image,setImage] = useState<number|null>(null), touch = useRef<number|null>(null);
+  // "Edit" links (dashboard drafts) open the form once the user is known to manage the event.
+  const { edit } = Route.useSearch(), canManageLoaded = !!query.data?.canManage;
+  useEffect(() => {
+    if (!edit || !canManageLoaded) return;
+    setEditing(true);
+    void navigate({ to:'/events/$id', params:{ id }, search:{}, replace:true });
+  }, [edit, canManageLoaded, id, navigate]);
   if (query.isLoading) return <p className="text-muted-foreground">{t('common.loading')}</p>;
   if (query.isError) return <div role="alert" className="space-y-3"><p className="text-destructive">{t('events.loadError')}</p><Button variant="outline" onClick={() => query.refetch()}>{t('common.retry')}</Button></div>;
-  if (!query.data?.event) return <div className="space-y-4"><p>{t('events.notFound')}</p><Button asChild variant="outline"><Link to="/calendar"><ArrowLeft />{t('events.back')}</Link></Button></div>;
+  if (!query.data?.event) return <div data-testid="event-detail-not-found" className="space-y-4"><p>{t('events.notFound')}</p><Button asChild variant="outline"><Link to="/calendar"><ArrowLeft />{t('events.back')}</Link></Button></div>;
   const { event, canManage, deletion } = query.data;
   const canDelete = deletion.canDelete;
   const images = event.media.filter(m => m.kind === 'image' && m.url), pdfs = event.media.filter(m => m.kind === 'pdf' && m.url), documents = event.media.filter(m => m.kind === 'document' && m.url);
@@ -58,9 +67,9 @@ function EventDetail() {
       await qc.invalidateQueries({ queryKey: ['event', id] });
     } finally { setBusy(false); }
   }
-  return <article className="space-y-6">
+  return <article data-status={event.status} className={`space-y-6 ${event.status === 'published' ? 'border-l-4 border-l-status-published pl-4' : event.status === 'cancelled' ? 'border-l-4 border-l-status-cancelled pl-4' : 'rounded-lg border border-dashed border-status-draft-border bg-status-draft-bg p-4'}`}>
     <Link to="/calendar" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="size-4" />{t('events.back')}</Link>
-    <header className="space-y-3"><div className="flex flex-wrap items-center gap-2"><Badge data-testid="event-detail-category" variant="secondary">{t(`events.categories.${event.category}`)}</Badge><Badge data-testid="event-detail-status-badge" variant={event.status==='cancelled'?'destructive':'outline'}>{t(`events.${event.status}`)}</Badge><HappeningNowBadge event={event} now={now} /></div><h1 data-testid="event-detail-title" className="break-words text-3xl font-bold sm:text-4xl">{event.title}</h1><p data-testid="event-detail-organizer" className="break-words text-lg text-muted-foreground">{event.organizer}</p></header>
+    <header className="space-y-3"><div className="flex flex-wrap items-center gap-2"><Badge data-testid="event-detail-category" variant="secondary">{t(`events.categories.${event.category}`)}</Badge><EventStatusBadge status={event.status} /><HappeningNowBadge event={event} now={now} /></div><h1 data-testid="event-detail-title" className={`break-words text-3xl font-bold sm:text-4xl ${cancelledTitle(event.status)}`}>{event.title}</h1><p data-testid="event-detail-organizer" className="break-words text-lg text-muted-foreground">{event.organizer}</p></header>
     <section data-testid="event-detail-gallery" aria-label={t('events.gallery')} className="space-y-3">{images.length ? <div className="grid gap-3 sm:grid-cols-2">{images.map((m,i) => <Button key={m.id} variant="ghost" data-testid="event-detail-image" data-position={m.position} aria-label={t('events.imageNumber',{position:i+1,count:images.length})} className={`h-auto overflow-hidden rounded-lg border bg-muted p-0 ${i===0?'sm:col-span-2':''}`} onClick={() => setImage(i)}><img src={m.url ?? ''} alt={event.title} className={`block w-full bg-muted object-cover ${i===0?'h-56 sm:h-80':'h-44 sm:h-48'}`} /></Button>)}</div> : <div className="flex h-36 items-center justify-center border-y bg-secondary text-secondary-foreground"><CategoryIcon category={event.category} className="size-14" /></div>}
       {documents.length > 0 && <ul aria-label={t('events.documents')} className="space-y-2">{documents.map(m => <li key={m.id} data-testid="event-media-document" className="flex min-w-0 items-center gap-3 rounded-lg border bg-card p-3"><FileText className="size-6 shrink-0 text-muted-foreground" aria-hidden /><span className="min-w-0 flex-1 break-all text-sm">{m.original_name || m.storage_path.split('/').pop()}</span><Button asChild variant="outline" size="sm"><a data-testid="event-media-download" href={m.url ?? ''} download={m.original_name || undefined} rel="noopener noreferrer"><Download />{t('events.download')}</a></Button></li>)}</ul>}
       {pdfs.map((m,i) => <Button key={m.id} asChild variant="outline"><a data-testid="event-detail-pdf-link" href={m.url ?? ''} target="_blank" rel="noopener noreferrer"><FileText />{t('events.leaflet')}{pdfs.length>1?` ${i+1}`:''}</a></Button>)}

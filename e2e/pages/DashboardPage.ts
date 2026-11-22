@@ -10,6 +10,16 @@ export class DashboardPage {
   readonly pendingSignOut = () => this.page.getByTestId("pending-sign-out-button");
   readonly appLoading = () => this.page.getByTestId("app-loading");
 
+  readonly upcomingEvents = () => this.page.getByTestId("dashboard-upcoming-events");
+  readonly upcomingItems = () => this.upcomingEvents().getByTestId("dashboard-upcoming-event-item");
+  readonly upcomingItem = (eventId: string) => this.upcomingEvents().locator(`[data-testid="dashboard-upcoming-event-item"][data-event-id="${eventId}"]`);
+  readonly upcomingStatusBadge = (eventId: string) => this.upcomingItem(eventId).getByTestId("event-status-badge");
+  readonly viewAllEvents = () => this.page.getByTestId("dashboard-view-all-events");
+  readonly createEvent = () => this.page.getByTestId("dashboard-create-event");
+  readonly drafts = () => this.page.getByTestId("dashboard-your-drafts");
+  readonly draftItem = (eventId: string) => this.drafts().locator(`[data-testid="dashboard-draft-item"][data-event-id="${eventId}"]`);
+  readonly draftEdit = (eventId: string) => this.draftItem(eventId).getByTestId("dashboard-draft-edit");
+
   async goto() {
     await this.page.goto("/dashboard");
     await this.expectLoaded();
@@ -18,5 +28,10 @@ export class DashboardPage {
   async expectLoaded() {
     await expect(this.page).toHaveURL(/\/dashboard$/);
     await expect(this.welcome()).toBeVisible();
+  }
+
+  /** Waits until the upcoming-events card has finished loading (rows or the empty state). */
+  async expectEventsLoaded() {
+    await expect(this.upcomingItems().first().or(this.page.getByTestId("dashboard-upcoming-events-empty"))).toBeVisible();
   }
 }

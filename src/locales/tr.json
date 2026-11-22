@@ -95,11 +95,15 @@
     "welcomeBack": "Hoş geldiniz",
     "hello": "Merhaba, {{name}}",
     "branchLine": "{{branch}} şubesi",
-    "eventsTitle": "Yaklaşan etkinliklerim",
-    "eventsEmpty": "Henüz yaklaşan bir etkinliğiniz yok.",
     "tasksTitle": "Görevlerim",
     "tasksEmpty": "Şu anda bir göreviniz bulunmuyor.",
-    "helloNoName": "Merhaba"
+    "helloNoName": "Merhaba",
+    "upcomingTitle": "Yaklaşan etkinlikler",
+    "upcomingEmpty": "Yaklaşan etkinlik yok",
+    "viewAll": "Tümünü gör",
+    "draftsTitle": "Taslaklarınız",
+    "editDraft": "Düzenle",
+    "draftSaved": "{{date}} tarihinde kaydedildi"
   },
   "users": {
     "title": "Kullanıcılar",
@@ -392,7 +396,8 @@
     "calendarOutlook": "Outlook.com",
     "calendarOutlookWork": "Microsoft 365 (iş veya okul)",
     "calendarIcs": "Apple Takvim / Diğer (.ics)",
-    "branchFixed": "Etkinlikler şubeniz için oluşturulur."
+    "branchFixed": "Etkinlikler şubeniz için oluşturulur.",
+    "legend": "Durum açıklaması"
   },
   "recycleBin": {
     "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",

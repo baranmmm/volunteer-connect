@@ -5,7 +5,7 @@ import type { HubEvent } from '@/lib/event-rules';
 
 const mocks = vi.hoisted(() => ({ rows: [] as HubEvent[] }));
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: unknown) => ({ options }),
+  createFileRoute: () => (options: unknown) => ({ options, useSearch: () => ({}) }),
   Link: ({ children, to: _to, params: _params, ...props }: { children: ReactNode; to: string; params: unknown }) => <a {...props}>{children}</a>,
   useNavigate: () => vi.fn(),
 }));

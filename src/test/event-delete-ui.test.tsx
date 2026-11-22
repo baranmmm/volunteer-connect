@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 const mocks = vi.hoisted(() => ({ data: {} as Record<string, unknown>, remove: vi.fn(), navigate: vi.fn(), invalidate: vi.fn(), removeQueries: vi.fn() }));
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: unknown) => ({ options, useParams: () => ({ id: 'event-id' }) }),
+  createFileRoute: () => (options: unknown) => ({ options, useParams: () => ({ id: 'event-id' }), useSearch: () => ({}) }),
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
   useNavigate: () => mocks.navigate,
 }));
