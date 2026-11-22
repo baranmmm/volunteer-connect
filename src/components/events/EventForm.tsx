@@ -184,7 +184,8 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
         // Registered occurrences are never regenerated; those the new rule no longer produces stay as exceptions.
         if (updated.keptOffRule.length) toast.error(t('registrations.keptOffRule', { count: updated.keptOffRule.length }));
       } else await save({ data: { id, event: data } });
-      await Promise.all([qc.invalidateQueries({ queryKey: ['events'] }), qc.invalidateQueries({ queryKey: ['event'] })]);
+      // Capacity or time changes can promote the waitlist or change registration rules: refresh those too.
+      await Promise.all(['events', 'event', 'registration-summary', 'registrations', 'my-registrations'].map(key => qc.invalidateQueries({ queryKey: [key] })));
       toast.success(t('events.saved')); onSaved(id);
     } catch (e) { setError(id ? `${t('events.partialError')} ${translateError(e)}` : translateError(e)); }
     finally { setBusy(false); }

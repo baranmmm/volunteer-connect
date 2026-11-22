@@ -25,7 +25,8 @@ export class EventPage {
   readonly joinWaitlistButton = () => this.page.getByTestId("event-join-waitlist-button");
   readonly cancelRegistrationButton = () => this.page.getByTestId("event-cancel-registration-button");
   readonly waitlistPosition = () => this.page.getByTestId("event-waitlist-position");
-  readonly showNameCheckbox = () => this.page.getByTestId("event-show-name-checkbox");
+  /** "Don't show my name" (names are opt-out); only while registered or waitlisted. */
+  readonly hideNameCheckbox = () => this.page.getByTestId("event-hide-name-checkbox");
   readonly attendeeList = () => this.page.getByTestId("event-attendee-list");
   // Manager section
   readonly managerRegistrations = () => this.page.getByTestId("event-manager-registrations");

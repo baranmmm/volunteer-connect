@@ -39,7 +39,7 @@ function useInvalidate(eventId: string) {
     );
 }
 
-/** Volunteer view: count, Register / Join waitlist / Cancel, waitlist position, "show my name", names shown by others. */
+/** Volunteer view: count, Register / Join waitlist / Cancel, waitlist position, "don't show my name", names shown by others. */
 export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }) {
   const { t } = useTranslation();
   const fetch = useServerFn(getRegistrationSummary),
@@ -74,6 +74,7 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
   const s = summary.data;
   const action = registrationAction(event, s, now);
   const active = s.my_status === "registered" || s.my_status === "waitlisted";
+  // Names are opt-out; the choice exists only while registered or waitlisted.
   const nameChoice = showName ?? s.my_show_name;
   async function run(fn: () => Promise<unknown>, success: string) {
     setBusy(true);
@@ -96,6 +97,7 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
     try {
       await showNameFn({ data: { eventId: event.id, showName: next } });
       await invalidate();
+      setShowName(null);
     } catch (e) {
       setShowName(!next);
       setError(translateError(e));
@@ -153,7 +155,7 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
               disabled={busy}
               onClick={() =>
                 void run(
-                  () => register({ data: { eventId: event.id, showName: nameChoice } }),
+                  () => register({ data: { eventId: event.id } }),
                   t("registrations.registered"),
                 )
               }
@@ -169,7 +171,7 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
               disabled={busy}
               onClick={() =>
                 void run(
-                  () => register({ data: { eventId: event.id, showName: nameChoice } }),
+                  () => register({ data: { eventId: event.id } }),
                   t("registrations.waitlisted"),
                 )
               }
@@ -195,16 +197,22 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
           )}
         </div>
       )}
-      {(action.kind !== "none" || active) && (
-        <div className="flex min-h-11 items-center gap-3">
-          <Checkbox
-            id="event-show-name"
-            data-testid="event-show-name-checkbox"
-            checked={nameChoice}
-            disabled={busy}
-            onCheckedChange={(v) => void toggleName(v === true)}
-          />
-          <Label htmlFor="event-show-name">{t("registrations.showName")}</Label>
+      {active && (
+        <div className="space-y-1">
+          <div className="flex min-h-11 items-center gap-3">
+            <Checkbox
+              id="event-hide-name"
+              data-testid="event-hide-name-checkbox"
+              checked={!nameChoice}
+              disabled={busy}
+              aria-describedby="event-hide-name-hint"
+              onCheckedChange={(v) => void toggleName(v !== true)}
+            />
+            <Label htmlFor="event-hide-name">{t("registrations.hideName")}</Label>
+          </div>
+          <p id="event-hide-name-hint" className="text-xs text-muted-foreground">
+            {t("registrations.hideNameHint")}
+          </p>
         </div>
       )}
       {error && (
@@ -308,7 +316,7 @@ export function ManagerRegistrations({ event, now }: { event: HubEvent; now: Dat
           {t("registrations.exportCsv")}
         </Button>
       </div>
-      {summary.data?.over_capacity && (
+      {summary.data?.over_capacity && event.status !== "cancelled" && (
         <p
           data-testid="event-capacity-warning"
           role="status"

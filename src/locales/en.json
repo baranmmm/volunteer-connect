@@ -544,7 +544,6 @@
     "waitlisted": "You joined the waitlist",
     "cancel": "Cancel registration",
     "cancelled": "Registration cancelled",
-    "showName": "Show my name to other volunteers",
     "attendees": "Going",
     "managerTitle": "Registrations",
     "exportCsv": "Export CSV",
@@ -594,7 +593,9 @@
       "notStarted": "Attendance can be recorded once the event has started.",
       "notFound": "Registration not found.",
       "invalidAttendance": "This registration cannot be marked."
-    }
+    },
+    "hideName": "Don't show my name to other volunteers",
+    "hideNameHint": "Your name is shown to other members who can see this event. Your email is never shown."
   },
   "requests": {
     "title": "Event requests",

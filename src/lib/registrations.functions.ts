@@ -26,11 +26,12 @@ export const getRegistrationSummary = createServerFn({ method: "POST" })
   });
 export const registerForEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(eventId.extend({ showName: z.boolean() }))
+  .inputValidator(eventId.extend({ showName: z.boolean().optional() }))
   .handler(async ({ data, context }) => {
+    // Without showName the database default applies: names are shown unless the volunteer hides them.
     const result = await context.supabase.rpc("register_for_event", {
       p_event_id: data.eventId,
-      p_show_name: data.showName,
+      ...(data.showName === undefined ? {} : { p_show_name: data.showName }),
     });
     fail(result.error);
     return registrationResult.parse(result.data);
