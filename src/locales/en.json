@@ -397,7 +397,75 @@
     "calendarOutlookWork": "Microsoft 365 (work or school)",
     "calendarIcs": "Apple Calendar / Other (.ics)",
     "branchFixed": "Events are created for your branch.",
-    "legend": "Status key"
+    "legend": "Status key",
+    "repeat": {
+      "label": "Repeat",
+      "freq": {
+        "none": "Does not repeat",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "custom": "Custom…"
+      },
+      "every": "Every",
+      "unitLabel": "Repeat unit",
+      "unit": {
+        "day_one": "day",
+        "day_other": "days",
+        "week_one": "week",
+        "week_other": "weeks",
+        "month_one": "month",
+        "month_other": "months"
+      },
+      "onDays": "Repeat on",
+      "monthlyLabel": "Monthly repeat",
+      "monthlyDay": "Monthly on day {{day}}",
+      "monthlyWeekday": "Monthly on the {{nth}} {{weekday}}",
+      "nth": {
+        "1": "first",
+        "2": "second",
+        "3": "third",
+        "4": "fourth",
+        "-1": "last"
+      },
+      "ends": "Ends",
+      "endsOption": {
+        "never": "Never",
+        "on": "On a date",
+        "after": "After a number of occurrences"
+      },
+      "untilLabel": "End date",
+      "countLabel": "Occurrences",
+      "untilError": "The end date cannot be before the first event.",
+      "invalidRule": "This repeat setting is not supported.",
+      "noUpcoming": "This repeat setting has no upcoming events.",
+      "summaryNone": "Does not repeat",
+      "summaryDaily_one": "Every day",
+      "summaryDaily_other": "Every {{count}} days",
+      "summaryWeekly_one": "Every {{days}}",
+      "summaryWeekly_other": "Every {{count}} weeks on {{days}}",
+      "summaryMonthlyDay_one": "Monthly on day {{day}}",
+      "summaryMonthlyDay_other": "Every {{count}} months on day {{day}}",
+      "summaryMonthlyWeekday_one": "Monthly on the {{nth}} {{weekday}}",
+      "summaryMonthlyWeekday_other": "Every {{count}} months on the {{nth}} {{weekday}}",
+      "summaryYearly_one": "Every year on {{date}}",
+      "summaryYearly_other": "Every {{count}} years on {{date}}",
+      "summaryAt": "{{text}} at {{time}}",
+      "summaryCount_one": "{{text}}, once",
+      "summaryCount_other": "{{text}}, {{count}} times",
+      "summaryUntil": "{{text}}, until {{date}}"
+    },
+    "recurring": {
+      "label": "Recurring event",
+      "editTitle": "Edit recurring event",
+      "editText": "Which events do you want to change?",
+      "deleteTitle": "Delete recurring event",
+      "deleteText": "Which events do you want to delete? Deleted events go to the Recycle Bin.",
+      "this": "This event",
+      "following": "This and following events",
+      "all": "All events"
+    }
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
@@ -410,7 +478,8 @@
     },
     "types": {
       "event": "Event",
-      "user": "User"
+      "user": "User",
+      "series": "Series"
     },
     "item": "Item",
     "branchRegion": "Branch / Region",
@@ -434,6 +503,8 @@
     "purgeUnavailable": "This item cannot be deleted right now. Please retry.",
     "restoreFailed": "The account is still hidden. Restoration could not be completed; please retry.",
     "purgeFailed": "Account erasure could not be completed. It remains blocked; please retry.",
-    "accountDeleted": "This account has been deleted and cannot sign in."
+    "accountDeleted": "This account has been deleted and cannot sign in.",
+    "seriesTitle_one": "Series: {{title}}, 1 event",
+    "seriesTitle_other": "Series: {{title}}, {{count}} events"
   }
 }

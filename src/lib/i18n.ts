@@ -52,6 +52,8 @@ export function formatDate(value: string | Date, opts: Intl.DateTimeFormatOption
 }
 
 const ERROR_KEYS: Record<string, string> = {
+  "Invalid recurrence rule": "events.repeat.invalidRule",
+  "Recurrence has no upcoming events": "events.repeat.noUpcoming",
   "Item cannot be restored": "recycleBin.restoreUnavailable",
   "Item cannot be purged": "recycleBin.purgeUnavailable",
   "Account restoration failed": "recycleBin.restoreFailed",

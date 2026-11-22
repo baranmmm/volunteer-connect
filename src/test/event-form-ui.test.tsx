@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({ save: vi.fn(), saved: vi.fn(), reorder: vi.fn(
 vi.mock('@tanstack/react-start', () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: [], isLoading: false }), useQueryClient: () => ({ invalidateQueries: mocks.invalidate }) }));
 vi.mock('@/lib/auth', () => ({ useAuth: () => ({ session: { user: { id: 'director' } }, roles: ['regional_director'], profile: { branch_id: null } }) }));
-vi.mock('@/lib/events.functions', () => ({ saveEvent: mocks.save, eventBranches: vi.fn(), reserveEventMedia: vi.fn(), deleteEventMedia: vi.fn(), reorderEventMedia: mocks.reorder }));
+vi.mock('@/lib/events.functions', () => ({ saveEvent: mocks.save, eventBranches: vi.fn(), reserveEventMedia: vi.fn(), deleteEventMedia: vi.fn(), reorderEventMedia: mocks.reorder, createSeries: vi.fn(), updateSeriesEvent: vi.fn() }));
 vi.mock('@/lib/toast', () => ({ toast: { success: vi.fn() } }));
 vi.mock('@/components/events/EventDialog', () => ({ EventDialog: ({ children }: { children: ReactNode }) => <section>{children}</section> }));
 import '@/lib/i18n';

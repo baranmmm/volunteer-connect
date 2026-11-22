@@ -7,7 +7,8 @@ import { ArrowUp, ArrowDown, Trash2, FileText, Image, Upload } from 'lucide-reac
 import { useAuth } from '@/lib/auth';
 import { EVENT_CATEGORIES, EVENT_FILE_ACCEPT, eventFileExtension, eventFileKind, type EventFileKind, londonInput, londonToIso, MAX_EVENT_FILES, type HubEvent, type EventMedia } from '@/lib/event-rules';
 import { prepareEventFile, uploadEventFile, removeStoredEventFile } from '@/lib/event-files';
-import { saveEvent, eventBranches, reserveEventMedia, deleteEventMedia, reorderEventMedia } from '@/lib/events.functions';
+import { saveEvent, eventBranches, reserveEventMedia, deleteEventMedia, reorderEventMedia, createSeries, updateSeriesEvent } from '@/lib/events.functions';
+import { buildRule, defaultRepeat, parseRule, type RepeatStart, type RepeatState, type SeriesInfo } from '@/lib/recurrence';
 import { validateEventForm } from '@/lib/event-form-rules';
 import { translateError } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
@@ -18,13 +19,17 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { EventDialog } from './EventDialog';
+import { RepeatFields } from './RepeatFields';
+import type { SeriesMode } from './RecurringScopeDialog';
 
 type Item = { key: string; name: string; kind: EventFileKind; file?: File; media?: EventMedia; preview?: string };
-export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClose: () => void; onSaved: (id: string) => void }) {
+/** With `series` + `seriesMode`, saves an occurrence of a recurring event ('this', 'following' or 'all'). */
+export function EventForm({ event, series, seriesMode, onClose, onSaved }: { event?: HubEvent; series?: SeriesInfo | null; seriesMode?: SeriesMode; onClose: () => void; onSaved: (id: string) => void }) {
   const { t } = useTranslation();
   const { session, roles, profile } = useAuth();
   const director = roles.includes('regional_director');
   const qc = useQueryClient();
+  const createSeriesFn = useServerFn(createSeries), updateSeriesFn = useServerFn(updateSeriesEvent);
   const save = useServerFn(saveEvent), branchesFn = useServerFn(eventBranches), reserve = useServerFn(reserveEventMedia), remove = useServerFn(deleteEventMedia), reorder = useServerFn(reorderEventMedia);
   const branches = useQuery({ queryKey: ['event-branches', session?.user.id], queryFn: () => branchesFn() });
   const [title, setTitle] = useState(event?.title ?? '');
@@ -54,6 +59,13 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
   const [items, setItems] = useState<Item[]>((event?.media ?? []).map(m => ({ key: m.id, name: m.original_name || (m.storage_path.split('/').pop() ?? m.id), kind: m.kind === 'pdf' ? 'pdf' : m.kind === 'document' ? 'document' : 'image', media: m })));
   const attached = useRef<EventMedia[]>(event?.media ?? []);
   const [savedId, setSavedId] = useState(event?.id ?? null);
+  // Repeat: new events, or a series edited for 'following' / 'all'. Files of a series live on its media holder.
+  const repeatEditable = !event || (!!event.series_id && (seriesMode === 'following' || seriesMode === 'all'));
+  const [repeat, setRepeatState] = useState<RepeatState>(() => (series && repeatEditable ? parseRule(series.rule) : defaultRepeat()));
+  const repeatTouched = useRef(false);
+  function setRepeat(next: RepeatState) { repeatTouched.current = true; setRepeatState(next); }
+  const mediaTarget = useRef<string | null>(event?.series_id ? (series?.media_event_id ?? null) : (event?.id ?? null));
+  const repeatStart: RepeatStart = allDay ? { date: startDate, allDay: true } : { date: start.slice(0, 10), time: start.slice(11, 16), allDay: false };
   const [busy, setBusy] = useState(false), [preparing, setPreparing] = useState(false), [error, setError] = useState('');
   const [fileErrors, setFileErrors] = useState<string[]>([]);
   const previews = useRef<string[]>([]);
@@ -91,8 +103,14 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
     if (busy) return;
     const timesChanged = !event || event.status !== 'published' || allDay !== !!event.all_day || (allDay ? startDate !== (event.start_date ?? '') || (endDate || startDate) !== (event.end_date ?? event.start_date ?? '') : start !== (event.start_at ? londonInput(event.start_at) : '') || end !== (event.end_at ? londonInput(event.end_at) : ''));
     const validation = validateEventForm({ title, allDay, start, end, startDate, endDate, locationType, location, onlineUrl, category, scope, branch, capacity, organizer }, status, { checkPast: timesChanged });
+    if (repeatEditable && repeat.freq !== 'none') {
+      // A series always needs its first date, even as a draft.
+      if (allDay ? !startDate : !start) validation[allDay ? 'start-date' : 'start'] ??= 'events.fieldRequired';
+      if (repeat.ends === 'on' && (!repeat.until || repeat.until < repeatStart.date)) validation['repeat-until'] = 'events.repeat.untilError';
+      if (repeat.ends === 'after' && !(Number.isInteger(repeat.count) && repeat.count >= 1 && repeat.count <= 1000)) validation['repeat-count'] = 'events.invalid';
+    }
     setFieldErrors(validation);
-    const first = ['title', 'location-type', 'location', 'online-url', 'organizer', 'category', 'start', 'end', 'start-date', 'end-date', 'scope', 'branch', 'capacity'].find(key => validation[key]);
+    const first = ['title', 'location-type', 'location', 'online-url', 'organizer', 'category', 'start', 'end', 'start-date', 'end-date', 'repeat-until', 'repeat-count', 'scope', 'branch', 'capacity'].find(key => validation[key]);
     if (first) {
       requestAnimationFrame(() => { const node = formRef.current?.querySelector<HTMLElement>(`[data-testid="event-form-${first}"]`); node?.scrollIntoView({ behavior: 'smooth', block: 'center' }); node?.focus(); });
       return;
@@ -103,8 +121,20 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
     try {
       const startIso = !allDay && start ? londonToIso(start) : null, endIso = !allDay && end ? londonToIso(end) : null;
       const data = { title, description, location: locationType === 'online' ? location.trim() : location, location_type: locationType, online_url: locationType === 'online' && onlineUrl.trim() ? onlineUrl.trim() : null, organizer: organizer.trim() || 'Dialogue Society', category, all_day: allDay, start_date: allDay && startDate ? startDate : null, end_date: allDay && endDate ? endDate : null, start_at: startIso, end_at: endIso, capacity: capacity ? Number(capacity) : null, scope: status === 'draft' && director && !branch ? 'region' as const : scope, branch_id: scope === 'branch' && branch ? branch : null, status };
-      // Create a recoverable draft before uploading; publish only after all file operations succeed.
-      if (!id) { id = await save({ data: { id: null, event: { ...data, status: 'draft' } } }); setSavedId(id); }
+      const rule = repeatEditable ? buildRule(repeat, repeatStart) : null;
+      let createdSeries = false;
+      if (!id) {
+        if (rule) {
+          // A series is created with its final status; its files then go to the series' media holder.
+          const created = await createSeriesFn({ data: { event: data, rule } });
+          id = created.eventId; mediaTarget.current = created.mediaEventId ?? id; createdSeries = true;
+        } else {
+          // Create a recoverable draft before uploading; publish only after all file operations succeed.
+          id = await save({ data: { id: null, event: { ...data, status: 'draft' } } }); mediaTarget.current = id;
+        }
+        setSavedId(id);
+      }
+      const mediaId = mediaTarget.current ?? id;
       for (const old of [...attached.current]) {
         if (!items.some(x => x.media?.id === old.id)) {
           await removeStoredEventFile(old.storage_path); await remove({ data: { id: old.id } });
@@ -118,7 +148,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
           if (extension !== 'jpg' && extension !== 'png' && extension !== 'webp' && extension !== 'pdf' && extension !== 'docx' && extension !== 'pptx') throw new Error('Invalid event file');
           let row: EventMedia | undefined;
           try {
-            row = { ...await reserve({ data: { eventId: id, kind: item.kind, extension, originalName: item.name.slice(0, 255) } }), url: null };
+            row = { ...await reserve({ data: { eventId: mediaId, kind: item.kind, extension, originalName: item.name.slice(0, 255) } }), url: null };
             await uploadEventFile(row.storage_path, item.file);
           } catch (e) {
             setFileErrors([t('events.fileRejected', { name: item.name, reason: translateError(e) })]);
@@ -137,9 +167,13 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
       }
       let ordered = completed;
       if (ordered[0] && ordered[0].kind !== 'image') { const cover = ordered.find(x => x.kind === 'image'); if (cover) ordered = [cover, ...ordered.filter(x => x !== cover)]; }
-      await reorder({ data: { eventId: id, ids: ordered.flatMap(x => x.media ? [x.media.id] : []) } });
-      await save({ data: { id, event: data } });
-      await Promise.all([qc.invalidateQueries({ queryKey: ['events'] }), qc.invalidateQueries({ queryKey: ['event', id] })]);
+      await reorder({ data: { eventId: mediaId, ids: ordered.flatMap(x => x.media ? [x.media.id] : []) } });
+      if (createdSeries) { /* already saved with its final status */ }
+      else if (event?.series_id && seriesMode) {
+        const updated = await updateSeriesFn({ data: { id, mode: seriesMode, event: data, rule: seriesMode !== 'this' && repeatTouched.current ? rule : null } });
+        id = updated.eventId;
+      } else await save({ data: { id, event: data } });
+      await Promise.all([qc.invalidateQueries({ queryKey: ['events'] }), qc.invalidateQueries({ queryKey: ['event'] })]);
       toast.success(t('events.saved')); onSaved(id);
     } catch (e) { setError(id ? `${t('events.partialError')} ${translateError(e)}` : translateError(e)); }
     finally { setBusy(false); }
@@ -158,6 +192,7 @@ export function EventForm({ event, onClose, onSaved }: { event?: HubEvent; onClo
         <div className="space-y-1.5"><Label>{t('events.category')} *</Label><Select value={category} disabled={busy} onValueChange={v => { const c = EVENT_CATEGORIES.find(x => x === v); if (c) setCategory(c); }}><SelectTrigger data-testid="event-form-category" aria-label={t('events.category')} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{EVENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`events.categories.${c}`)}</SelectItem>)}</SelectContent></Select>{fieldError('category')}</div>
         <div className="flex min-h-11 items-center gap-3 sm:col-span-2"><Switch id="event-form-all-day" data-testid="event-form-all-day" checked={allDay} disabled={busy} onCheckedChange={setAllDay} /><Label htmlFor="event-form-all-day">{t('events.allDay')}</Label></div>
         {allDay ? <>{field(t('events.startDate'), 'event-form-start-date', startDate, setStartDate, 'date', true)}{field(t('events.endDate'), 'event-form-end-date', endDate, setEndDate, 'date')}</> : <>{field(t('events.start'), 'event-form-start', start, setStart, 'datetime-local', true)}{field(t('events.end'), 'event-form-end', end, setEnd, 'datetime-local', true)}</>}
+        {repeatEditable && <div className="sm:col-span-2"><RepeatFields value={repeat} onChange={setRepeat} start={repeatStart} disabled={busy} errors={fieldErrors} /></div>}
         {director && <div className="space-y-1.5"><Label>{t('events.scope')} *</Label><Select value={scope} disabled={busy} onValueChange={v => setScope(v === 'region' ? 'region' : 'branch')}><SelectTrigger data-testid="event-form-scope" aria-label={t('events.scope')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="branch">{t('events.branch')}</SelectItem><SelectItem value="region">{t('events.region')}</SelectItem></SelectContent></Select>{fieldError('scope')}</div>}
         {director && scope === 'branch' && <div className="space-y-1.5"><Label>{t('events.branch')} *</Label><Select value={branch} onValueChange={setBranch} disabled={busy || branches.isLoading}><SelectTrigger data-testid="event-form-branch" aria-label={t('events.branch')} className="h-11"><SelectValue placeholder={t('auth.chooseBranch')} /></SelectTrigger><SelectContent>{(branches.data ?? []).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>{fieldError('branch')}</div>}
         {!director && <div className="space-y-1.5"><Label htmlFor="event-form-branch">{t('events.branch')} *</Label><Input id="event-form-branch" data-testid="event-form-branch" readOnly aria-readonly value={(branches.data ?? []).find(b => b.id === branch)?.name ?? profile?.branches?.name ?? ''} className="h-11 bg-muted" /><p className="text-xs text-muted-foreground">{t('events.branchFixed')}</p>{fieldError('branch')}</div>}

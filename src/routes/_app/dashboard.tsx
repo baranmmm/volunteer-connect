@@ -2,7 +2,16 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type ReactNode } from "react";
-import { CalendarDays, ListChecks, MapPin, Pencil, PencilLine, Plus, Video } from "lucide-react";
+import {
+  CalendarDays,
+  ListChecks,
+  MapPin,
+  Pencil,
+  PencilLine,
+  Plus,
+  Repeat,
+  Video,
+} from "lucide-react";
 import { useAuth, primaryRole } from "@/lib/auth";
 import { useTranslation } from "react-i18next";
 import { listEvents } from "@/lib/events.functions";
@@ -187,7 +196,19 @@ function UpcomingEventsCard({
                   STATUS_CARD[eventDisplayStatus(event, now)],
                 )}
               >
-                <p className="text-sm text-muted-foreground">{eventDateText(event, t)}</p>
+                <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                  {eventDateText(event, t)}
+                  {event.series_id && (
+                    <span
+                      data-testid="event-recurring-icon"
+                      title={t("events.recurring.label")}
+                      className="inline-flex"
+                    >
+                      <Repeat className="size-3.5" aria-hidden />
+                      <span className="sr-only">{t("events.recurring.label")}</span>
+                    </span>
+                  )}
+                </p>
                 <p className={cn("mt-0.5 break-words font-semibold", cancelledTitle(event.status))}>
                   {event.title}
                 </p>

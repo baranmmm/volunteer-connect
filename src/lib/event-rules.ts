@@ -1,5 +1,6 @@
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import type { Database } from '@/integrations/supabase/types';
+import { googleRecur, LONDON_VTIMEZONE, seriesIcsLines, type SeriesInfo } from '@/lib/recurrence';
 
 export const EVENT_CATEGORIES = ['dialogue', 'dinner', 'interfaith', 'community', 'education', 'other'] as const;
 export const MAX_EVENT_FILES = 5;
@@ -111,9 +112,17 @@ function calendarDetails(event: CalendarEvent, url: string) {
 }
 function calendarLocation(event: CalendarEvent) { return event.location_type === 'online' ? (event.online_url ?? '') : event.location; }
 function londonStamp(value: string) { return formatInTimeZone(value, LONDON, "yyyyMMdd'T'HHmmss"); }
-export function googleCalendarUrl(event: CalendarEvent, url: string) {
+/** With `series`, the link adds the whole series (recur=RRULE:…) from its first occurrence. */
+export function googleCalendarUrl(event: CalendarEvent, url: string, series?: SeriesInfo | null) {
   const start = eventStart(event);
   if (!start) throw new Error('Required publish fields missing');
+  if (series) {
+    const ics = seriesIcsLines(series);
+    const value = (prefix: string) => (ics.find(l => l.startsWith(prefix)) ?? '').split(':').pop() ?? '';
+    const params = new URLSearchParams({ action: 'TEMPLATE', text: event.title, dates: `${value('DTSTART')}/${value('DTEND')}`, details: calendarDetails(event, url), location: calendarLocation(event), recur: googleRecur(series) });
+    if (!series.all_day) params.set('ctz', LONDON);
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  }
   const dates = isDateOnly(event) ? `${start.replace(/-/g, '')}/${nextDay(londonDate(eventEnd(event) ?? start)).replace(/-/g, '')}` : `${londonStamp(start)}/${londonStamp(eventEnd(event) ?? start)}`;
   const params = new URLSearchParams({ action: 'TEMPLATE', text: event.title, dates, details: calendarDetails(event, url), location: calendarLocation(event) });
   if (!isDateOnly(event)) params.set('ctz', LONDON);
@@ -135,11 +144,15 @@ function foldLine(line: string) {
   for (const char of line) { const size = new TextEncoder().encode(char).length; if (bytes + size > 75) { result += '\r\n '; bytes = 1; } result += char; bytes += size; }
   return result;
 }
-export function eventIcs(event: CalendarEvent, url: string, now = new Date()) {
+/** With `series`, exports the whole series: London time zone, RRULE and EXDATE for deleted occurrences. */
+export function eventIcs(event: CalendarEvent, url: string, now = new Date(), series?: SeriesInfo | null) {
   const start = eventStart(event);
   if (!start) throw new Error('Required publish fields missing');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dialogue Society//Volunteer Hub//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT', `UID:${event.id}@dialoguesociety.org`, `DTSTAMP:${utcStamp(now)}`];
-  if (isDateOnly(event)) lines.push(`DTSTART;VALUE=DATE:${start.replace(/-/g, '')}`, `DTEND;VALUE=DATE:${nextDay(londonDate(eventEnd(event) ?? start)).replace(/-/g, '')}`);
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dialogue Society//Volunteer Hub//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+  if (series && !series.all_day) lines.push(...LONDON_VTIMEZONE);
+  lines.push('BEGIN:VEVENT', `UID:${series ? `series-${series.id}` : event.id}@dialoguesociety.org`, `DTSTAMP:${utcStamp(now)}`);
+  if (series) lines.push(...seriesIcsLines(series));
+  else if (isDateOnly(event)) lines.push(`DTSTART;VALUE=DATE:${start.replace(/-/g, '')}`, `DTEND;VALUE=DATE:${nextDay(londonDate(eventEnd(event) ?? start)).replace(/-/g, '')}`);
   else { lines.push(`DTSTART:${utcStamp(start)}`); const end = eventEnd(event); if (end) lines.push(`DTEND:${utcStamp(end)}`); }
   lines.push(`SUMMARY:${escapeIcs(event.title)}`, `DESCRIPTION:${escapeIcs(calendarDetails(event, url))}`, `LOCATION:${escapeIcs(calendarLocation(event))}`, `URL:${escapeIcs(url)}`, `STATUS:${event.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}`, 'END:VEVENT', 'END:VCALENDAR');
   return lines.map(foldLine).join('\r\n') + '\r\n';

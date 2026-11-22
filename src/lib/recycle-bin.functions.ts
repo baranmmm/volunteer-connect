@@ -20,10 +20,12 @@ export const restoreRecycleItem = createServerFn({ method: 'POST' })
     const prepared = await context.supabase.rpc('restore_item', { _type: data.type, _id: data.id });
     if (prepared.error) throw new Error(prepared.error.message);
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-    if (data.type === 'event') {
+    if (data.type === 'event' || data.type === 'series') {
       const { relocateEventFiles } = await import('./event-storage.server');
       await relocateEventFiles(supabaseAdmin, eventDeletionResult.parse(prepared.data).paths, true);
-      const finished = await context.supabase.rpc('restore_event', { _event: data.id, _finalize: true });
+      const finished = data.type === 'event'
+        ? await context.supabase.rpc('restore_event', { _event: data.id, _finalize: true })
+        : await context.supabase.rpc('restore_series', { _series: data.id, _finalize: true });
       if (finished.error) throw new Error(finished.error.message);
     } else {
       // Unban first; until finalization, RLS still denies all personal data and app permissions.
@@ -43,6 +45,12 @@ export const permanentlyDeleteRecycleItem = createServerFn({ method: 'POST' })
     if (prepared.error) throw new Error(prepared.error.message);
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const { purgeRecycleItem } = await import('./recycle-bin.server');
-    await purgeRecycleItem(supabaseAdmin, data.type, data.id);
+    if (data.type === 'series') {
+      // Every event deleted with the series (and its media holder) was queued for manual purge.
+      const { events } = z.object({ events: z.array(z.string().uuid()) }).parse(prepared.data);
+      for (const id of events) await purgeRecycleItem(supabaseAdmin, 'event', id);
+      const finished = await supabaseAdmin.rpc('finish_series_purge', { _series: data.id });
+      if (finished.error) throw new Error(finished.error.message);
+    } else await purgeRecycleItem(supabaseAdmin, data.type, data.id);
     return { ok: true };
   });

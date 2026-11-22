@@ -12,7 +12,7 @@ vi.mock('@tanstack/react-start', () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: mocks.data }), useQueryClient: () => ({ invalidateQueries: mocks.invalidate, removeQueries: mocks.removeQueries }) }));
 vi.mock('@/lib/auth', () => ({ useAuth: () => ({ session: { user: { id: 'user-id' } }, profile: { status: 'active' } }) }));
 vi.mock('@/lib/events.functions', () => ({ getEvent: vi.fn(), cancelEvent: vi.fn() }));
-vi.mock('@/lib/delete-event.functions', () => ({ deleteEvent: mocks.remove }));
+vi.mock('@/lib/delete-event.functions', () => ({ deleteEvent: mocks.remove, deleteSeries: vi.fn() }));
 vi.mock('@/lib/toast', () => ({ toast: { success: vi.fn() } }));
 vi.mock('@/components/events/EventForm', () => ({ EventForm: () => null }));
 vi.mock('@/components/events/EventDialog', () => ({ EventDialog: ({ open, children }: { open: boolean; children: ReactNode }) => open ? <section>{children}</section> : null }));

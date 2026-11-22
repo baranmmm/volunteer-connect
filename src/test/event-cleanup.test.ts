@@ -5,13 +5,15 @@ import { cleanupAuthorized, cleanupDeletedEvents } from '@/lib/event-cleanup.ser
 
 function client(events: { id: string }[] = [{ id: 'expired-event' }], users: { id: string }[] = []) {
   const rpc = vi.fn().mockResolvedValueOnce({ data: { paths: ['deleted/expired-event/image.png'], deleted: false }, error: null }).mockResolvedValueOnce({ data: { paths: [], deleted: true }, error: null });
+  // purge_expired_series (series rows) answers separately so the event/user call sequence stays as asserted.
+  const clientRpc = vi.fn((name: string, args?: unknown) => name === 'purge_expired_series' ? Promise.resolve({ data: 0, error: null }) : rpc(name, args));
   const remove = vi.fn().mockResolvedValue({ error: null });
   const query = { lt: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: events, error: null }) };
   const eq = vi.fn().mockResolvedValue({ error: null });
   const update = vi.fn().mockReturnValue({ eq });
   const from = vi.fn((table: string) => table === 'profiles' ? { select: () => ({ ...query, limit: vi.fn().mockResolvedValue({ data: users, error: null }) }) } : table === 'events' ? { select: () => query } : { insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'audit-run' }, error: null }) }) }), update });
   const erase = vi.fn().mockResolvedValue({ error: null });
-  return { client: { from, rpc, storage: { from: vi.fn().mockReturnValue({ remove }) }, auth: { admin: { deleteUser: erase } } } as unknown as SupabaseClient<Database>, rpc, remove, query, update, erase };
+  return { clientRpc, client: { from, rpc: clientRpc, storage: { from: vi.fn().mockReturnValue({ remove }) }, auth: { admin: { deleteUser: erase } } } as unknown as SupabaseClient<Database>, rpc, remove, query, update, erase };
 }
 describe('scheduled event cleanup', () => {
   it('fails closed for missing or mismatched authorization', () => {
@@ -28,6 +30,7 @@ describe('scheduled event cleanup', () => {
     expect(m.remove.mock.invocationCallOrder[0]).toBeLessThan(m.rpc.mock.invocationCallOrder[1] ?? 0);
     expect(result).toEqual({ counts: { events: 1, users: 0, files: 1 }, failed: false });
     expect(m.update).toHaveBeenCalledWith(expect.objectContaining({ events_purged: 1, files_purged: 1, outcome: 'completed' }));
+    expect(m.clientRpc).toHaveBeenCalledWith('purge_expired_series');
   });
   it('does not remove rows on file cleanup failure; logs a failed run', async () => {
     const m = client(); m.remove.mockResolvedValue({ error: { message: 'unavailable' } });

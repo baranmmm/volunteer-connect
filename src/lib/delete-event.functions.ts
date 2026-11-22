@@ -21,6 +21,25 @@ export const deleteEvent = createServerFn({ method: 'POST' })
     if (!eventDeletionResult.parse(finalized.data).deleted) throw new Error('Event deletion cleanup failed');
   });
 
+/** Deletes 'following' (splits first) or 'all' occurrences into the Recycle Bin as one series item. */
+export const deleteSeries = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ id: z.string().uuid(), mode: z.enum(['following', 'all']) }))
+  .handler(async ({ data, context }) => {
+    // Authorization precedes privileged Storage access.
+    const prepared = await context.supabase.rpc('delete_series', { _event: data.id, _mode: data.mode });
+    if (prepared.error) throw new Error(prepared.error.message);
+    const { series_id, paths } = z.object({ series_id: z.string().uuid(), paths: z.array(z.string()) }).parse(prepared.data);
+    if (paths.length) {
+      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      const { relocateEventFiles } = await import('./event-storage.server');
+      await relocateEventFiles(supabaseAdmin, paths);
+    }
+    const finished = await context.supabase.rpc('finish_series_deletion', { _series: series_id });
+    if (finished.error) throw new Error(finished.error.message);
+    return { seriesId: series_id };
+  });
+
 export const listDeletedEvents = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ offset: z.number().int().min(0).max(1000000) }))

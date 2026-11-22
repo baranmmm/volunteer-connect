@@ -397,7 +397,75 @@
     "calendarOutlookWork": "Microsoft 365 (iş veya okul)",
     "calendarIcs": "Apple Takvim / Diğer (.ics)",
     "branchFixed": "Etkinlikler şubeniz için oluşturulur.",
-    "legend": "Durum açıklaması"
+    "legend": "Durum açıklaması",
+    "repeat": {
+      "label": "Tekrar",
+      "freq": {
+        "none": "Tekrarlamaz",
+        "daily": "Her gün",
+        "weekly": "Her hafta",
+        "monthly": "Her ay",
+        "yearly": "Her yıl",
+        "custom": "Özel…"
+      },
+      "every": "Her",
+      "unitLabel": "Tekrar birimi",
+      "unit": {
+        "day_one": "gün",
+        "day_other": "gün",
+        "week_one": "hafta",
+        "week_other": "hafta",
+        "month_one": "ay",
+        "month_other": "ay"
+      },
+      "onDays": "Tekrar günleri",
+      "monthlyLabel": "Aylık tekrar",
+      "monthlyDay": "Her ay {{day}}. gün",
+      "monthlyWeekday": "Her ayın {{nth}} {{weekday}}",
+      "nth": {
+        "1": "1.",
+        "2": "2.",
+        "3": "3.",
+        "4": "4.",
+        "-1": "son"
+      },
+      "ends": "Bitiş",
+      "endsOption": {
+        "never": "Hiçbir zaman",
+        "on": "Belirli bir tarihte",
+        "after": "Belirli sayıda tekrardan sonra"
+      },
+      "untilLabel": "Bitiş tarihi",
+      "countLabel": "Tekrar sayısı",
+      "untilError": "Bitiş tarihi ilk etkinlikten önce olamaz.",
+      "invalidRule": "Bu tekrar ayarı desteklenmiyor.",
+      "noUpcoming": "Bu tekrar ayarıyla yaklaşan etkinlik oluşmuyor.",
+      "summaryNone": "Tekrarlamaz",
+      "summaryDaily_one": "Her gün",
+      "summaryDaily_other": "{{count}} günde bir",
+      "summaryWeekly_one": "Her {{days}}",
+      "summaryWeekly_other": "{{count}} haftada bir, {{days}}",
+      "summaryMonthlyDay_one": "Her ay {{day}}. gün",
+      "summaryMonthlyDay_other": "{{count}} ayda bir, {{day}}. gün",
+      "summaryMonthlyWeekday_one": "Her ayın {{nth}} {{weekday}}",
+      "summaryMonthlyWeekday_other": "{{count}} ayda bir, ayın {{nth}} {{weekday}}",
+      "summaryYearly_one": "Her yıl {{date}}",
+      "summaryYearly_other": "{{count}} yılda bir, {{date}}",
+      "summaryAt": "{{text}} {{time}}",
+      "summaryCount_one": "{{text}}, 1 kez",
+      "summaryCount_other": "{{text}}, {{count}} kez",
+      "summaryUntil": "{{text}}, {{date}} tarihine kadar"
+    },
+    "recurring": {
+      "label": "Tekrarlanan etkinlik",
+      "editTitle": "Tekrarlanan etkinliği düzenle",
+      "editText": "Hangi etkinlikleri değiştirmek istiyorsunuz?",
+      "deleteTitle": "Tekrarlanan etkinliği sil",
+      "deleteText": "Hangi etkinlikleri silmek istiyorsunuz? Silinen etkinlikler Geri Dönüşüm Kutusu'na gider.",
+      "this": "Bu etkinlik",
+      "following": "Bu ve sonraki etkinlikler",
+      "all": "Tüm etkinlikler"
+    }
   },
   "recycleBin": {
     "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",
@@ -410,7 +478,8 @@
     },
     "types": {
       "event": "Etkinlik",
-      "user": "Kullanıcı"
+      "user": "Kullanıcı",
+      "series": "Seri"
     },
     "item": "Öğe",
     "branchRegion": "Şube / Bölge",
@@ -434,6 +503,8 @@
     "purgeUnavailable": "Bu öğe şu anda silinemiyor. Lütfen tekrar deneyin.",
     "restoreFailed": "Hesap gizli kalıyor. Geri yükleme tamamlanamadı; lütfen tekrar deneyin.",
     "purgeFailed": "Hesap kalıcı olarak silinemedi. Giriş engeli devam ediyor; lütfen tekrar deneyin.",
-    "accountDeleted": "Bu hesap silinmiştir ve giriş yapamaz."
+    "accountDeleted": "Bu hesap silinmiştir ve giriş yapamaz.",
+    "seriesTitle_one": "Seri: {{title}}, 1 etkinlik",
+    "seriesTitle_other": "Seri: {{title}}, {{count}} etkinlik"
   }
 }

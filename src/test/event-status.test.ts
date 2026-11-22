@@ -27,6 +27,11 @@ const base: HubEvent = {
   end_date: null,
   location_type: "in_person",
   online_url: null,
+  series_id: null,
+  recurrence_key: null,
+  series_exception: false,
+  series_template: false,
+  deleted_with_series: false,
   media: [],
 };
 const ev = (over: Partial<HubEvent>): HubEvent => ({ ...base, ...over });

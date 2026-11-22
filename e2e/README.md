@@ -50,6 +50,8 @@ without touching a CI run in progress: `E2E_RUN_ID=local-$(date +%s) npm test`, 
   Medway and in Brighton, and one disposable user. Tests never modify them.
 - **Fresh events**: `freshEvent()` creates events as a fresh manager through the app's RPCs (`create_event`,
   `cancel_event`), titled `E2E Event …`, and deletes them after the test.
+  `freshSeries()` does the same for recurring series (`create_series`); `trackSeries()` registers a series created
+  through the UI. Both remove every occurrence, split part, series row and media holder after the test.
 - **Screenshots** for ad-hoc UI review go to `e2e/screenshots/` (git-ignored).
 - **Fresh users**: every test that changes data creates its own user with the `freshUser()` fixture
   (`fresh-<run>-…@dsvolunteer.test`). It is deleted after the test; `qa:teardown` removes leftovers.
