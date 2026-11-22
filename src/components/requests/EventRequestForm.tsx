@@ -51,7 +51,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EventDialog } from "@/components/events/EventDialog";
-import { TimeSelect } from "@/components/events/TimeSelect";
+import { DateField, DateTimeField } from "@/components/events/DateTimeField";
 
 const P = "event-request-form";
 const ORDER = [
@@ -277,6 +277,7 @@ export function EventRequestForm({
     ) : null;
   const describe = (key: string) =>
     errors[key] ? { "aria-invalid": true, "aria-describedby": `${P}-${key}-error` } : {};
+  /** Same Start/End controls as the event form; `value` is London "YYYY-MM-DDTHH:mm" (or a partial). */
   function dateTime(
     key: "start" | "end" | "alt-start" | "alt-end",
     label: string,
@@ -284,42 +285,23 @@ export function EventRequestForm({
     onChange: (v: string) => void,
     required: boolean,
   ) {
-    const day = value.slice(0, 10),
-      time = value.slice(11, 16);
     const combine = (d: string, tm: string) =>
       d && tm ? `${d}T${tm}` : d ? `${d}T` : tm ? `T${tm}` : "";
     return (
-      <fieldset className="min-w-0 space-y-1.5" disabled={busy}>
-        <legend className="mb-1.5 text-sm font-medium leading-none">
-          {label}
-          {required && " *"}
-        </legend>
-        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-2">
-          <Input
-            id={`${P}-${key}-date`}
-            data-testid={`${P}-${key}-date`}
-            type="date"
-            aria-label={`${label} – ${t("requests.dateLabel")}`}
-            aria-required={required}
-            {...describe(key)}
-            value={day}
-            onChange={(e) => onChange(combine(e.target.value, time))}
-            className="h-11 min-w-0"
-          />
-          <TimeSelect
-            id={`${P}-${key}-time`}
-            testId={`${P}-${key}-time`}
-            label={`${label} – ${t("requests.timeLabel")}`}
-            placeholder={t("events.timePlaceholder")}
-            value={time}
-            onChange={(tm) => onChange(combine(day, tm))}
-            disabled={busy}
-            invalid={!!errors[key]}
-            describedBy={errors[key] ? `${P}-${key}-error` : undefined}
-          />
-        </div>
-        {fieldError(key)}
-      </fieldset>
+      <DateTimeField
+        testIdPrefix={`${P}-${key}`}
+        legend={label}
+        dateLabel={`${label} – ${t("requests.dateLabel")}`}
+        timeLabel={`${label} – ${t("requests.timeLabel")}`}
+        placeholder={t("events.timePlaceholder")}
+        day={value.slice(0, 10)}
+        time={value.slice(11, 16)}
+        onChange={(d, tm) => onChange(combine(d, tm))}
+        required={required}
+        disabled={busy}
+        errorId={errors[key] ? `${P}-${key}-error` : undefined}
+        error={fieldError(key)}
+      />
     );
   }
   function dateField(
@@ -330,24 +312,16 @@ export function EventRequestForm({
     required: boolean,
   ) {
     return (
-      <div className="space-y-1.5">
-        <Label htmlFor={`${P}-${key}`}>
-          {label}
-          {required && " *"}
-        </Label>
-        <Input
-          id={`${P}-${key}`}
-          data-testid={`${P}-${key}`}
-          type="date"
-          aria-required={required}
-          {...describe(key)}
-          value={value}
-          disabled={busy}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-11 min-w-0"
-        />
-        {fieldError(key)}
-      </div>
+      <DateField
+        testId={`${P}-${key}`}
+        label={label}
+        value={value}
+        onChange={onChange}
+        required={required}
+        disabled={busy}
+        errorId={errors[key] ? `${P}-${key}-error` : undefined}
+        error={fieldError(key)}
+      />
     );
   }
   function text(

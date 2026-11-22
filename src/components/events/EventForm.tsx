@@ -20,7 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { EventDialog } from './EventDialog';
 import { RepeatFields } from './RepeatFields';
-import { TimeSelect } from './TimeSelect';
+import { DateField, DateTimeField } from './DateTimeField';
 import type { SeriesMode } from './RecurringScopeDialog';
 
 type Item = { key: string; name: string; kind: EventFileKind; file?: File; media?: EventMedia; preview?: string };
@@ -195,15 +195,10 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
   }
   /** Timed Start/End: date input + quarter-hour time list side by side (also at 375px). */
   function dateTime(key: 'start' | 'end', day: string, time: string, setter: (day: string, time: string) => void) {
-    const invalid = !!fieldErrors[key], describedBy = invalid ? `event-form-${key}-error` : undefined;
-    return <fieldset className="min-w-0 space-y-1.5" disabled={busy}>
-      <legend className="mb-1.5 text-sm font-medium leading-none">{t(`events.${key}`)} *</legend>
-      <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-2">
-        <Input id={`event-form-${key}-date`} data-testid={`event-form-${key}-date`} type="date" aria-label={t(`events.${key}DateLabel`)} aria-required aria-invalid={invalid} aria-describedby={describedBy} value={day} onChange={e => setter(e.target.value, time)} className="h-11 min-w-0" />
-        <TimeSelect id={`event-form-${key}-time`} testId={`event-form-${key}-time`} label={t(`events.${key}Time`)} placeholder={t('events.timePlaceholder')} value={time} onChange={value => setter(day, value)} disabled={busy} invalid={invalid} describedBy={describedBy} />
-      </div>
-      {fieldError(key)}
-    </fieldset>;
+    return <DateTimeField testIdPrefix={`event-form-${key}`} legend={t(`events.${key}`)} dateLabel={t(`events.${key}DateLabel`)} timeLabel={t(`events.${key}Time`)} placeholder={t('events.timePlaceholder')} day={day} time={time} onChange={setter} required disabled={busy} errorId={fieldErrors[key] ? `event-form-${key}-error` : undefined} error={fieldError(key)} />;
+  }
+  function dateField(key: 'start-date' | 'end-date', label: string, value: string, setter: (value: string) => void, required: boolean) {
+    return <DateField testId={`event-form-${key}`} label={label} value={value} onChange={setter} required={required} disabled={busy} errorId={fieldErrors[key] ? `event-form-${key}-error` : undefined} error={fieldError(key)} />;
   }
   return <EventDialog open onClose={() => { if (!busy && !preparing) onClose(); }} title={event ? t('events.edit') : t('events.create')}>
     <form ref={formRef} noValidate data-testid="event-form" className="space-y-4" onSubmit={e => { e.preventDefault(); void submit(event?.status === 'cancelled' ? 'cancelled' : 'published'); }}>
@@ -215,7 +210,7 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
       <div className="grid gap-4 sm:grid-cols-2">{field(t('events.organizer'), 'event-form-organizer', organizer, setOrganizer, 'text')}
         <div className="space-y-1.5"><Label>{t('events.category')} *</Label><Select value={category} disabled={busy} onValueChange={v => { const c = EVENT_CATEGORIES.find(x => x === v); if (c) setCategory(c); }}><SelectTrigger data-testid="event-form-category" aria-label={t('events.category')} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{EVENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`events.categories.${c}`)}</SelectItem>)}</SelectContent></Select>{fieldError('category')}</div>
         <div className="flex min-h-11 items-center gap-3 sm:col-span-2"><Switch id="event-form-all-day" data-testid="event-form-all-day" checked={allDay} disabled={busy} onCheckedChange={setAllDay} /><Label htmlFor="event-form-all-day">{t('events.allDay')}</Label></div>
-        {allDay ? <>{field(t('events.startDate'), 'event-form-start-date', startDate, setStartDate, 'date', true)}{field(t('events.endDate'), 'event-form-end-date', endDate, setEndDate, 'date')}</> : <>{dateTime('start', startDay, startTime, setStart)}{dateTime('end', endDay, endTime, setEnd)}</>}
+        {allDay ? <>{dateField('start-date', t('events.startDate'), startDate, setStartDate, true)}{dateField('end-date', t('events.endDate'), endDate, setEndDate, false)}</> : <>{dateTime('start', startDay, startTime, setStart)}{dateTime('end', endDay, endTime, setEnd)}</>}
         {repeatEditable && <div className="sm:col-span-2"><RepeatFields value={repeat} onChange={setRepeat} start={repeatStart} disabled={busy} errors={fieldErrors} /></div>}
         {director && <div className="space-y-1.5"><Label>{t('events.scope')} *</Label><Select value={scope} disabled={busy} onValueChange={v => setScope(v === 'region' ? 'region' : 'branch')}><SelectTrigger data-testid="event-form-scope" aria-label={t('events.scope')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="branch">{t('events.branch')}</SelectItem><SelectItem value="region">{t('events.region')}</SelectItem></SelectContent></Select>{fieldError('scope')}</div>}
         {director && scope === 'branch' && <div className="space-y-1.5"><Label>{t('events.branch')} *</Label><Select value={branch} onValueChange={setBranch} disabled={busy || branches.isLoading}><SelectTrigger data-testid="event-form-branch" aria-label={t('events.branch')} className="h-11"><SelectValue placeholder={t('auth.chooseBranch')} /></SelectTrigger><SelectContent>{(branches.data ?? []).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>{fieldError('branch')}</div>}
