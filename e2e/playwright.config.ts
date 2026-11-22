@@ -19,7 +19,8 @@ export default defineConfig({
   workers: CI ? 2 : undefined,
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  reporter: [["list"], ["html", { open: "never", outputFolder: reportDir }]],
+  // CI runs in shards: each writes a blob report and the workflow merges them into one HTML report.
+  reporter: CI ? [["list"], ["blob"]] : [["list"], ["html", { open: "never", outputFolder: reportDir }]],
   use: {
     baseURL: BASE_URL,
     locale: "en-GB",
