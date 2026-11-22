@@ -18,6 +18,12 @@ beforeEach(() => {
   HTMLElement.prototype.scrollIntoView = vi.fn();
 });
 afterEach(cleanup);
+/** Radix Select keeps a hidden native <select> next to its trigger inside a form; changing it selects the option. */
+function pickTime(testId: string, value: string) {
+  const native = screen.getByTestId(testId).parentElement?.querySelector('select');
+  if (!native) throw new Error(`no native select for ${testId}`);
+  fireEvent.change(native, { target: { value } });
+}
 describe('event form actionable validation', () => {
   it('empty Save draft and Publish remain enabled, validate on click and focus the title', async () => {
     render(<EventForm onClose={vi.fn()} onSaved={mocks.saved} />);
@@ -41,18 +47,25 @@ describe('event form actionable validation', () => {
     render(<EventForm onClose={vi.fn()} onSaved={mocks.saved} />);
     fireEvent.change(screen.getByTestId('event-form-title'), { target: { value: 'Publish me' } });
     fireEvent.click(screen.getByTestId('event-form-publish'));
-    await waitFor(() => expect(screen.getByTestId('event-form-start').getAttribute('aria-invalid')).toBe('true'));
-    expect(screen.getByTestId('event-form-end').getAttribute('aria-invalid')).toBe('true');
+    await waitFor(() => expect(screen.getByTestId('event-form-start-date').getAttribute('aria-invalid')).toBe('true'));
+    for (const id of ['event-form-start-time', 'event-form-end-date', 'event-form-end-time']) expect(screen.getByTestId(id).getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByTestId('event-form-location').getAttribute('aria-invalid')).toBe('true');
     expect(mocks.save).not.toHaveBeenCalled();
   });
 });describe('A2a form controls', () => {
   it('All day hides time inputs and shows date pickers; End follows Start + 2 hours', () => {
     render(<EventForm onClose={vi.fn()} onSaved={mocks.saved} />);
-    fireEvent.change(screen.getByTestId('event-form-start'), { target: { value: '2027-01-10T18:00' } });
-    expect((screen.getByTestId('event-form-end') as HTMLInputElement).value).toBe('2027-01-10T20:00');
+    fireEvent.change(screen.getByTestId('event-form-start-date'), { target: { value: '2027-01-10' } });
+    pickTime('event-form-start-time', '18:00');
+    expect((screen.getByTestId('event-form-end-date') as HTMLInputElement).value).toBe('2027-01-10');
+    expect(screen.getByTestId('event-form-end-time').textContent).toBe('20:00');
+    // Late start: End moves to the next day.
+    pickTime('event-form-start-time', '23:15');
+    expect((screen.getByTestId('event-form-end-date') as HTMLInputElement).value).toBe('2027-01-11');
+    expect(screen.getByTestId('event-form-end-time').textContent).toBe('01:15');
     fireEvent.click(screen.getByTestId('event-form-all-day'));
-    expect(screen.queryByTestId('event-form-start')).toBeNull();
+    expect(screen.queryByTestId('event-form-start-time')).toBeNull();
+    expect(screen.queryByTestId('event-form-end-time')).toBeNull();
     expect((screen.getByTestId('event-form-start-date') as HTMLInputElement).type).toBe('date');
     expect((screen.getByTestId('event-form-end-date') as HTMLInputElement).type).toBe('date');
   });
@@ -62,5 +75,25 @@ describe('event form actionable validation', () => {
     const accept = (screen.getByTestId('event-form-file-input') as HTMLInputElement).accept;
     expect(accept).toContain('.docx');
     expect(accept).toContain('.pptx');
+  });
+});
+describe('quarter-hour time picker', () => {
+  it('lists 00:00..23:45 in 15-minute steps and keeps an off-grid time of an existing event', async () => {
+    const { QUARTER_HOURS, timeOptions } = await import('@/lib/time-options');
+    expect(QUARTER_HOURS).toHaveLength(96);
+    expect(QUARTER_HOURS.slice(0, 3)).toEqual(['00:00', '00:15', '00:30']);
+    expect(QUARTER_HOURS.at(-1)).toBe('23:45');
+    const withOdd = timeOptions(['21:51']);
+    expect(withOdd).toHaveLength(97);
+    expect(withOdd.slice(withOdd.indexOf('21:45'), withOdd.indexOf('21:45') + 3)).toEqual(['21:45', '21:51', '22:00']);
+    const event = { id: 'e1', title: 'Old', description: '', location: 'Hall', location_type: 'in_person', online_url: null, organizer: 'Dialogue Society', category: 'dialogue', status: 'published', all_day: false, start_date: null, end_date: null, start_at: '2027-01-10T21:51:00Z', end_at: '2027-01-10T23:07:00Z', capacity: null, scope: 'branch', branch_id: 'b1', media: [] };
+    render(<EventForm event={event as never} onClose={vi.fn()} onSaved={mocks.saved} />);
+    expect(screen.getByTestId('event-form-start-time').textContent).toBe('21:51');
+    expect(screen.getByTestId('event-form-end-time').textContent).toBe('23:07');
+    // Changing to a quarter hour and back: the original 21:51 is still an option.
+    pickTime('event-form-start-time', '22:00');
+    expect(screen.getByTestId('event-form-start-time').textContent).toBe('22:00');
+    pickTime('event-form-start-time', '21:51');
+    expect(screen.getByTestId('event-form-start-time').textContent).toBe('21:51');
   });
 });

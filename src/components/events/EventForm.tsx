@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { EventDialog } from './EventDialog';
 import { RepeatFields } from './RepeatFields';
+import { TimeSelect } from './TimeSelect';
 import type { SeriesMode } from './RecurringScopeDialog';
 
 type Item = { key: string; name: string; kind: EventFileKind; file?: File; media?: EventMedia; preview?: string };
@@ -39,20 +40,23 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
   const initialCategory = EVENT_CATEGORIES.find(c => c === event?.category) ?? 'dialogue';
   const [category, setCategory] = useState<typeof initialCategory>(initialCategory);
   const [allDay, setAllDay] = useState(!!event?.all_day);
-  const [start, setStartValue] = useState(event?.start_at ? londonInput(event.start_at) : '');
-  const [end, setEndValue] = useState(event?.end_at ? londonInput(event.end_at) : '');
+  // Timed events: a date input plus a quarter-hour time list per side; `start`/`end` are London "YYYY-MM-DDTHH:mm".
+  const initialStart = event?.start_at ? londonInput(event.start_at) : '', initialEnd = event?.end_at ? londonInput(event.end_at) : '';
+  const [startDay, setStartDay] = useState(initialStart.slice(0, 10)), [startTime, setStartTime] = useState(initialStart.slice(11, 16));
+  const [endDay, setEndDay] = useState(initialEnd.slice(0, 10)), [endTime, setEndTime] = useState(initialEnd.slice(11, 16));
+  const start = startDay && startTime ? `${startDay}T${startTime}` : '', end = endDay && endTime ? `${endDay}T${endTime}` : '';
   const [startDate, setStartDate] = useState(event?.start_date ?? '');
   const [endDate, setEndDate] = useState(event?.end_date && event.end_date !== event.start_date ? event.end_date : '');
   const [locationType, setLocationType] = useState<'in_person' | 'online'>(event?.location_type === 'online' ? 'online' : 'in_person');
   const [onlineUrl, setOnlineUrl] = useState(event?.online_url ?? '');
   // End follows Start + 2 hours until the user edits End themselves.
   const endTouched = useRef(!!event?.end_at);
-  function setStart(value: string) {
-    setStartValue(value);
-    if (endTouched.current || !value) return;
-    try { setEndValue(londonInput(new Date(Date.parse(londonToIso(value)) + 2 * 3600 * 1000))); } catch { /* invalid London time is reported on submit */ }
+  function setStart(day: string, time: string) {
+    setStartDay(day); setStartTime(time);
+    if (endTouched.current || !day || !time) return;
+    try { const value = londonInput(new Date(Date.parse(londonToIso(`${day}T${time}`)) + 2 * 3600 * 1000)); setEndDay(value.slice(0, 10)); setEndTime(value.slice(11, 16)); } catch { /* invalid London time is reported on submit */ }
   }
-  function setEnd(value: string) { endTouched.current = true; setEndValue(value); }
+  function setEnd(day: string, time: string) { endTouched.current = true; setEndDay(day); setEndTime(time); }
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? '');
   const [scope, setScope] = useState<'branch' | 'region'>(event?.scope === 'region' ? 'region' : 'branch');
   const [branch, setBranch] = useState(event?.branch_id ?? (director ? '' : profile?.branch_id ?? ''));
@@ -65,7 +69,7 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
   const repeatTouched = useRef(false);
   function setRepeat(next: RepeatState) { repeatTouched.current = true; setRepeatState(next); }
   const mediaTarget = useRef<string | null>(event?.series_id ? (series?.media_event_id ?? null) : (event?.id ?? null));
-  const repeatStart: RepeatStart = allDay ? { date: startDate, allDay: true } : { date: start.slice(0, 10), time: start.slice(11, 16), allDay: false };
+  const repeatStart: RepeatStart = allDay ? { date: startDate, allDay: true } : { date: startDay, time: startTime, allDay: false };
   const [busy, setBusy] = useState(false), [preparing, setPreparing] = useState(false), [error, setError] = useState('');
   const [fileErrors, setFileErrors] = useState<string[]>([]);
   const previews = useRef<string[]>([]);
@@ -103,6 +107,8 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
     if (busy) return;
     const timesChanged = !event || event.status !== 'published' || allDay !== !!event.all_day || (allDay ? startDate !== (event.start_date ?? '') || (endDate || startDate) !== (event.end_date ?? event.start_date ?? '') : start !== (event.start_at ? londonInput(event.start_at) : '') || end !== (event.end_at ? londonInput(event.end_at) : ''));
     const validation = validateEventForm({ title, allDay, start, end, startDate, endDate, locationType, location, onlineUrl, category, scope, branch, capacity, organizer }, status, { checkPast: timesChanged });
+    // A date without a time (or a time without a date) is never saved silently, even as a draft.
+    if (!allDay) for (const [key, day, time] of [['start', startDay, startTime], ['end', endDay, endTime]] as const) if (!day !== !time) validation[key] ??= 'events.fieldRequired';
     if (repeatEditable && repeat.freq !== 'none') {
       // A series always needs its first date, even as a draft.
       if (allDay ? !startDate : !start) validation[allDay ? 'start-date' : 'start'] ??= 'events.fieldRequired';
@@ -112,7 +118,9 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
     setFieldErrors(validation);
     const first = ['title', 'location-type', 'location', 'online-url', 'organizer', 'category', 'start', 'end', 'start-date', 'end-date', 'repeat-until', 'repeat-count', 'scope', 'branch', 'capacity'].find(key => validation[key]);
     if (first) {
-      requestAnimationFrame(() => { const node = formRef.current?.querySelector<HTMLElement>(`[data-testid="event-form-${first}"]`); node?.scrollIntoView({ behavior: 'smooth', block: 'center' }); node?.focus(); });
+      // Timed Start/End errors focus the missing half (date first).
+      const target = !allDay && (first === 'start' || first === 'end') ? `${first}-${(first === 'start' ? startDay : endDay) ? 'time' : 'date'}` : first;
+      requestAnimationFrame(() => { const node = formRef.current?.querySelector<HTMLElement>(`[data-testid="event-form-${target}"]`); node?.scrollIntoView({ behavior: 'smooth', block: 'center' }); node?.focus(); });
       return;
     }
     if (preparing) { setError(t('events.filePreparing')); return; }
@@ -181,6 +189,18 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
   function field(label: string, testId: string, value: string, setter: (value: string) => void, type = 'text', required = false) {
     return <div className="space-y-1.5"><Label htmlFor={testId}>{label}{required && ' *'}</Label><Input id={testId} data-testid={testId} type={type} value={value} onChange={e => setter(e.target.value)} aria-required={required} aria-invalid={!!fieldErrors[testId.replace('event-form-', '')]} aria-describedby={fieldErrors[testId.replace('event-form-', '')] ? `${testId}-error` : undefined} disabled={busy} className="min-w-0 h-11" {...(type === 'number' ? { min: 1, step: 1, placeholder: t('events.unlimited') } : {})} {...(testId === 'event-form-title' || testId === 'event-form-organizer' ? { maxLength: 200 } : {})} />{fieldError(testId.replace('event-form-', ''))}</div>;
   }
+  /** Timed Start/End: date input + quarter-hour time list side by side (also at 375px). */
+  function dateTime(key: 'start' | 'end', day: string, time: string, setter: (day: string, time: string) => void) {
+    const invalid = !!fieldErrors[key], describedBy = invalid ? `event-form-${key}-error` : undefined;
+    return <fieldset className="min-w-0 space-y-1.5" disabled={busy}>
+      <legend className="mb-1.5 text-sm font-medium leading-none">{t(`events.${key}`)} *</legend>
+      <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-2">
+        <Input id={`event-form-${key}-date`} data-testid={`event-form-${key}-date`} type="date" aria-label={t(`events.${key}DateLabel`)} aria-required aria-invalid={invalid} aria-describedby={describedBy} value={day} onChange={e => setter(e.target.value, time)} className="h-11 min-w-0" />
+        <TimeSelect id={`event-form-${key}-time`} testId={`event-form-${key}-time`} label={t(`events.${key}Time`)} placeholder={t('events.timePlaceholder')} value={time} onChange={value => setter(day, value)} disabled={busy} invalid={invalid} describedBy={describedBy} />
+      </div>
+      {fieldError(key)}
+    </fieldset>;
+  }
   return <EventDialog open onClose={() => { if (!busy && !preparing) onClose(); }} title={event ? t('events.edit') : t('events.create')}>
     <form ref={formRef} noValidate data-testid="event-form" className="space-y-4" onSubmit={e => { e.preventDefault(); void submit(event?.status === 'cancelled' ? 'cancelled' : 'published'); }}>
       <p className="text-sm text-muted-foreground">{t('events.requiredNote')}</p>
@@ -191,7 +211,7 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
       <div className="grid gap-4 sm:grid-cols-2">{field(t('events.organizer'), 'event-form-organizer', organizer, setOrganizer, 'text')}
         <div className="space-y-1.5"><Label>{t('events.category')} *</Label><Select value={category} disabled={busy} onValueChange={v => { const c = EVENT_CATEGORIES.find(x => x === v); if (c) setCategory(c); }}><SelectTrigger data-testid="event-form-category" aria-label={t('events.category')} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{EVENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`events.categories.${c}`)}</SelectItem>)}</SelectContent></Select>{fieldError('category')}</div>
         <div className="flex min-h-11 items-center gap-3 sm:col-span-2"><Switch id="event-form-all-day" data-testid="event-form-all-day" checked={allDay} disabled={busy} onCheckedChange={setAllDay} /><Label htmlFor="event-form-all-day">{t('events.allDay')}</Label></div>
-        {allDay ? <>{field(t('events.startDate'), 'event-form-start-date', startDate, setStartDate, 'date', true)}{field(t('events.endDate'), 'event-form-end-date', endDate, setEndDate, 'date')}</> : <>{field(t('events.start'), 'event-form-start', start, setStart, 'datetime-local', true)}{field(t('events.end'), 'event-form-end', end, setEnd, 'datetime-local', true)}</>}
+        {allDay ? <>{field(t('events.startDate'), 'event-form-start-date', startDate, setStartDate, 'date', true)}{field(t('events.endDate'), 'event-form-end-date', endDate, setEndDate, 'date')}</> : <>{dateTime('start', startDay, startTime, setStart)}{dateTime('end', endDay, endTime, setEnd)}</>}
         {repeatEditable && <div className="sm:col-span-2"><RepeatFields value={repeat} onChange={setRepeat} start={repeatStart} disabled={busy} errors={fieldErrors} /></div>}
         {director && <div className="space-y-1.5"><Label>{t('events.scope')} *</Label><Select value={scope} disabled={busy} onValueChange={v => setScope(v === 'region' ? 'region' : 'branch')}><SelectTrigger data-testid="event-form-scope" aria-label={t('events.scope')} className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="branch">{t('events.branch')}</SelectItem><SelectItem value="region">{t('events.region')}</SelectItem></SelectContent></Select>{fieldError('scope')}</div>}
         {director && scope === 'branch' && <div className="space-y-1.5"><Label>{t('events.branch')} *</Label><Select value={branch} onValueChange={setBranch} disabled={busy || branches.isLoading}><SelectTrigger data-testid="event-form-branch" aria-label={t('events.branch')} className="h-11"><SelectValue placeholder={t('auth.chooseBranch')} /></SelectTrigger><SelectContent>{(branches.data ?? []).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>{fieldError('branch')}</div>}
