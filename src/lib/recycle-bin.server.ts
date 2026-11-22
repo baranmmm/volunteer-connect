@@ -4,7 +4,7 @@ import { eventDeletionResult } from './event-deletion';
 import type { RecycleType } from './recycle-bin';
 
 /** Only call after the user-scoped prepare RPC, or from the secret-authenticated scheduler. */
-export async function purgeRecycleItem(client: SupabaseClient<Database>, type: Exclude<RecycleType, 'series'>, id: string) {
+export async function purgeRecycleItem(client: SupabaseClient<Database>, type: Exclude<RecycleType, 'series' | 'event_request'>, id: string) {
   if (type === 'user') {
     const prepared = await client.rpc('prepare_user_purge', { _id: id });
     if (prepared.error) throw new Error(prepared.error.message);

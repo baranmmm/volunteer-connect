@@ -12,7 +12,7 @@ export function cleanupAuthorized(header: string | null, secret: string | undefi
 }
 
 export async function cleanupDeletedEvents(client: SupabaseClient<Database>, now = new Date()) {
-  const counts = { events: 0, users: 0, files: 0 };
+  const counts = { events: 0, users: 0, files: 0, requests: 0 };
   const started = await client.from('event_cleanup_audit').insert({}).select('id').single();
   if (started.error) throw new Error('Cleanup unavailable');
   let failed = false;
@@ -34,7 +34,10 @@ export async function cleanupDeletedEvents(client: SupabaseClient<Database>, now
     // Series rows whose events have all been purged.
     const series = await client.rpc('purge_expired_series');
     if (series.error) failed = true;
+    // Event requests have no files: one service-only RPC removes those past the 30 days.
+    const requests = await client.rpc('purge_expired_event_requests');
+    if (requests.error) failed = true; else counts.requests = requests.data ?? 0;
   } catch { failed = true; }
-  const audit = await client.from('event_cleanup_audit').update({ finished_at: new Date().toISOString(), events_purged: counts.events, users_purged: counts.users, files_purged: counts.files, outcome: failed ? 'failed' : 'completed' }).eq('id', started.data.id);
+  const audit = await client.from('event_cleanup_audit').update({ finished_at: new Date().toISOString(), events_purged: counts.events, users_purged: counts.users, files_purged: counts.files, requests_purged: counts.requests, outcome: failed ? 'failed' : 'completed' }).eq('id', started.data.id);
   return { counts, failed: failed || audit.error !== null };
 }

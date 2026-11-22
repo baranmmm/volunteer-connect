@@ -6,7 +6,7 @@ import { eventDeletionResult } from './event-deletion';
 
 export const listRecycleBin = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ type: z.enum(['all', 'event', 'user']), search: z.string().max(200), offset: z.number().int().min(0).max(1000000) }))
+  .inputValidator(z.object({ type: z.enum(['all', 'event', 'user', 'event_request']), search: z.string().max(200), offset: z.number().int().min(0).max(1000000) }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc('list_recycle_bin', { _type: data.type, _search: data.search, _offset: data.offset });
     if (result.error) throw new Error(result.error.message);
@@ -19,6 +19,8 @@ export const restoreRecycleItem = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const prepared = await context.supabase.rpc('restore_item', { _type: data.type, _id: data.id });
     if (prepared.error) throw new Error(prepared.error.message);
+    // Event requests have no files or Auth account: restore_item already finished the restore.
+    if (data.type === 'event_request') return { ok: true };
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     if (data.type === 'event' || data.type === 'series') {
       const { relocateEventFiles } = await import('./event-storage.server');
@@ -43,6 +45,8 @@ export const permanentlyDeleteRecycleItem = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const prepared = await context.supabase.rpc('permanent_delete_item', { _type: data.type, _id: data.id, _confirmation: data.confirmation });
     if (prepared.error) throw new Error(prepared.error.message);
+    // Event requests are deleted by the RPC itself (no external resources).
+    if (data.type === 'event_request') return { ok: true };
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const { purgeRecycleItem } = await import('./recycle-bin.server');
     if (data.type === 'series') {

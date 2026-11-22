@@ -28,7 +28,8 @@ export async function runPreflight() {
   if (!region.data) throw new MissingSchemaError(migrateHint(`bölge: ${REGION}`));
   const regionId = (region.data as { id: string }).id;
 
-  const branches = await db.from("branches").select("id, name").eq("region_id", regionId).order("name");
+  // Temporary per-test branches (e2e/api/eventRequests.ts) are never seed candidates.
+  const branches = await db.from("branches").select("id, name").eq("region_id", regionId).not("name", "like", "E2E Temp Branch %").order("name");
   if (branches.error) throw new Error(`Preflight: ${branches.error.message}`);
   const regionBranches = (branches.data ?? []) as { id: string; name: string }[];
   const missingBranches = REQUIRED_BRANCHES.filter((b) => !regionBranches.some((r) => r.name === b));

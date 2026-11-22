@@ -9,6 +9,7 @@ import { NAV_ITEMS, MOBILE_PRIMARY } from "@/components/app/nav";
 import { Logo } from "@/components/app/Logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { usePendingRequestCount } from "@/lib/use-event-requests";
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
@@ -36,6 +37,7 @@ function AppLayout() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const pending = usePendingRequestCount().data?.total ?? 0;
 
   useEffect(() => { void refresh().catch(() => undefined); }, [pathname, refresh]);
 
@@ -74,7 +76,7 @@ function AppLayout() {
       <aside data-testid="app-sidebar" className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-5 text-sidebar-foreground lg:flex">
         <Logo className="mb-8 w-full" />
         <nav aria-label={t("navigation.main")} className="flex-1 space-y-1">
-          {items.map(({ to, testId, labelKey, icon: Icon }) => (
+          {items.map(({ to, testId, labelKey, icon: Icon, badge }) => (
             <Link
               key={to}
               to={to}
@@ -82,6 +84,7 @@ function AppLayout() {
               className="flex min-h-11 items-center gap-3 rounded-xl border-l-2 border-transparent px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent data-[status=active]:border-l-sidebar-primary data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-foreground"
             >
               <Icon className="h-5 w-5" aria-hidden /> {t(labelKey)}
+              {badge === "requests" && <NavCount count={pending} />}
             </Link>
           ))}
         </nav>
@@ -118,9 +121,10 @@ function AppLayout() {
         <SheetContent data-testid="mobile-nav-more-sheet" side="bottom" className="rounded-t-3xl">
           <SheetHeader><SheetTitle>{t("navigation.more")}</SheetTitle></SheetHeader>
           <div className="grid gap-1 p-4 pt-0">
-            {more.map(({ to, testId, labelKey, icon: Icon }) => (
+            {more.map(({ to, testId, labelKey, icon: Icon, badge }) => (
               <Link key={to} to={to} data-testid={testId} onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted data-[status=active]:bg-secondary data-[status=active]:text-primary">
                 <Icon className="h-5 w-5" aria-hidden /> {t(labelKey)}
+                {badge === "requests" && <NavCount count={pending} />}
               </Link>
             ))}
             <button data-testid="mobile-nav-sign-out" onClick={signOut} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted">
@@ -130,5 +134,17 @@ function AppLayout() {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+/** Pending event requests next to the "Requests" menu item (hidden at zero). */
+function NavCount({ count }: { count: number }) {
+  const { t } = useTranslation();
+  if (!count) return null;
+  return (
+    <span data-testid="nav-requests-badge" data-count={count} className="ml-auto min-w-6 rounded-full bg-primary px-2 py-0.5 text-center text-xs font-semibold text-primary-foreground">
+      <span aria-hidden>{count > 99 ? "99+" : count}</span>
+      <span className="sr-only">{t("requests.pendingBadge", { count })}</span>
+    </span>
   );
 }

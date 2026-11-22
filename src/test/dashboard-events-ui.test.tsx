@@ -36,6 +36,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/events.functions", () => ({ listEvents: vi.fn() }));
 vi.mock("@/components/events/EventForm", () => ({ EventForm: () => null }));
 vi.mock("@/components/events/MyRegistrations", () => ({ MyRegistrationsCard: () => null }));
+vi.mock("@/components/requests/RequestDashboard", () => ({ PendingRequestsCard: () => null, RequestNotices: () => null }));
 import { setLanguage } from "@/lib/i18n";
 import { Route } from "@/routes/_app/dashboard";
 

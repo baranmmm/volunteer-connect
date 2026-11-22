@@ -16,9 +16,13 @@ export class CalendarPage {
     await expect(view === "list" ? this.listView() : this.monthView()).toBeVisible();
   }
 
-  /** An event entry in the current view (list card or month-grid entry). */
+  /**
+   * An event entry in the current view (list card or month-grid entry). An event that crosses midnight has an
+   * entry in every day cell it covers (e.g. one created at 20:00 for "in 4 hours"), so month view uses its first.
+   */
   card(view: CalendarView, eventId: string): Locator {
-    return (view === "list" ? this.listView() : this.monthView()).locator(`[data-testid="event-card"][data-event-id="${eventId}"]`);
+    const entries = (view === "list" ? this.listView() : this.monthView()).locator(`[data-testid="event-card"][data-event-id="${eventId}"]`);
+    return view === "list" ? entries : entries.first();
   }
 
   statusBadge(view: CalendarView, eventId: string): Locator {

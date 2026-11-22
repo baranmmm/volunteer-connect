@@ -27,7 +27,7 @@ function RecycleBinPage() {
   const { t } = useTranslation(), { isManager, profile, session } = useAuth();
   const qc = useQueryClient();
   const list = useServerFn(listRecycleBin), restore = useServerFn(restoreRecycleItem), remove = useServerFn(permanentlyDeleteRecycleItem);
-  const [type, setType] = useState<'all' | 'event' | 'user'>('all'), [search, setSearch] = useState(''), [offset, setOffset] = useState(0);
+  const [type, setType] = useState<'all' | 'event' | 'user' | 'event_request'>('all'), [search, setSearch] = useState(''), [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState<string | null>(null), [error, setError] = useState('');
   const [target, setTarget] = useState<RecycleRow | null>(null), [typed, setTyped] = useState('');
   const allowed = isManager && profile?.status === 'active';
@@ -44,7 +44,7 @@ function RecycleBinPage() {
       setTarget(null); setTyped('');
       qc.removeQueries({ queryKey: ['event', item.id] });
       qc.removeQueries({ queryKey: ['member', item.id] });
-      await Promise.all(['recycle-bin', 'events', 'members', 'member-history', 'deletion-requests'].map(key => qc.invalidateQueries({ queryKey: [key] })));
+      await Promise.all(['recycle-bin', 'events', 'managed-event-requests', 'my-event-requests', 'pending-event-requests', 'members', 'member-history', 'deletion-requests'].map(key => qc.invalidateQueries({ queryKey: [key] })));
       toast.success(t(permanent ? 'recycleBin.permanentlyDeleted' : 'recycleBin.restored'));
     } catch (e) { setError(translateError(e)); }
     finally { setBusy(null); }
@@ -54,9 +54,9 @@ function RecycleBinPage() {
   return <div className="space-y-6">
     <header className="space-y-2"><h1 className="flex items-center gap-3 text-3xl font-bold"><Trash2 className="size-7 text-primary" />{t('navigation.recycleBin')}</h1><p className="text-sm text-muted-foreground">{t('recycleBin.note')}</p></header>
     <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row">
-      <Select value={type} onValueChange={value => { if (value === 'all' || value === 'event' || value === 'user') { setType(value); setOffset(0); } }}>
+      <Select value={type} onValueChange={value => { if (value === 'all' || value === 'event' || value === 'user' || value === 'event_request') { setType(value); setOffset(0); } }}>
         <SelectTrigger data-testid="recycle-bin-type-filter" aria-label={t('recycleBin.typeFilter')} className="h-11 sm:w-48"><SelectValue /></SelectTrigger>
-        <SelectContent>{(['all', 'event', 'user'] as const).map(value => <SelectItem key={value} value={value}>{t(`recycleBin.filters.${value}`)}</SelectItem>)}</SelectContent>
+        <SelectContent>{(['all', 'event', 'user', 'event_request'] as const).map(value => <SelectItem key={value} value={value}>{t(`recycleBin.filters.${value}`)}</SelectItem>)}</SelectContent>
       </Select>
       <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3.5 size-4 text-muted-foreground" /><Input data-testid="recycle-bin-search" aria-label={t('recycleBin.search')} placeholder={t('recycleBin.search')} className="h-11 pl-9" maxLength={200} value={search} onChange={e => { setSearch(e.target.value); setOffset(0); }} /></div>
     </div>

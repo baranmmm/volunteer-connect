@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "users" | "profile";
+export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "requests" | "users" | "profile";
 const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
 
 /** Desktop sidebar (`app-sidebar`) or mobile bottom nav (`mobile-bottom-nav`) + "More" sheet (`mobile-nav-more-sheet`). */
@@ -40,6 +40,12 @@ export class Sidebar {
 
   link(key: NavKey) {
     return this.container(key).getByTestId(`nav-${key}`);
+  }
+
+  /** Pending-request count next to "Requests" (absent at zero); opens the More sheet on phones. */
+  async requestsBadge(): Promise<Locator> {
+    if (this.inMore("requests")) await this.openMore();
+    return this.link("requests").getByTestId("nav-requests-badge");
   }
 
   async go(key: NavKey) {

@@ -10,6 +10,7 @@ import {
   type ProfileStatus,
 } from "../api/SupabaseClient";
 import { cancelEventAs, createEventAs, createSeriesAs, deleteEvents, deleteSeriesData, EVENT_TITLE_PREFIX, type EventSpec, type SeriesSpec } from "../api/events";
+import { createTempBranch, deleteRequestsOfUsers, deleteTempBranch } from "../api/eventRequests";
 import { FRESH_PREFIX, readSeedState, type BranchName, type RoleKey, type SeedState } from "../data/users";
 import { baseUrl, emailDomain, storageFile } from "../setup/env";
 import { PROD_REF } from "../setup/guard";
@@ -39,6 +40,8 @@ type Fixtures = {
   freshSeries: (owner: TestUser, spec: Omit<SeriesSpec, "title" | "branchId"> & { label: string; branchId?: string }) => Promise<{ seriesId: string; firstEventId: string; mediaEventId: string; count: number; title: string }>;
   /** Registers a series created through the UI (by its media holder id) for cleanup. */
   trackSeries: (mediaEventId: string) => void;
+  /** A branch in the seed region just for this test (counts no other test can change); removed afterwards. */
+  freshBranch: (label: string) => Promise<string>;
 };
 
 /** Fails the test if anything tries to reach the production project; requests are aborted first. */
@@ -108,7 +111,19 @@ export const test = base.extend<Fixtures & { prodHits: string[] }>({
       created.push(id);
       return { id, ...user };
     });
+    // Event requests (and drafts created by approving them) first: deleting a user only nulls its references.
+    await deleteRequestsOfUsers(created).catch(() => undefined);
     for (const id of created) await deleteAuthUser(id).catch(() => undefined);
+  },
+
+  freshBranch: async ({ seed }, use, testInfo) => {
+    const created: string[] = [];
+    await use(async (label) => {
+      const id = await createTempBranch(seed.regionId, runId, `${testInfo.workerIndex}-${++freshCounter}-${label}`);
+      created.push(id);
+      return id;
+    });
+    for (const id of created) await deleteTempBranch(id, seed.branches.Medway).catch(() => undefined);
   },
 
   pageAs: async ({ browser, seed, prodHits }, use, testInfo) => {
