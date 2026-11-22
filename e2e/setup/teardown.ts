@@ -17,8 +17,9 @@ export async function teardown(): Promise<number> {
     const { error } = await adminClient().from("account_deletion_requests").delete().in("user_id", fresh.map((u) => u.id));
     if (error) throw new Error(`delete deletion requests: ${error.message}`);
   }
+  // Events first: they are identified by their fresh-* creator, which deleting the user would null out.
+  const events = await deleteLeftoverTestEvents(fresh.map((u) => u.id));
   for (const user of fresh) await deleteAuthUser(user.id);
-  const events = await deleteLeftoverTestEvents();
   console.log(`[teardown] Removed ${fresh.length} fresh test user(s) and ${events} leftover test event(s).`);
   return fresh.length;
 }

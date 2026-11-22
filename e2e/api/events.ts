@@ -58,9 +58,21 @@ export async function deleteEvents(ids: string[]): Promise<void> {
   if (error) throw new Error(`delete events: ${error.message}`);
 }
 
-/** Leftovers from interrupted runs (titles start with EVENT_TITLE_PREFIX). */
-export async function deleteLeftoverTestEvents(): Promise<number> {
-  const { data, error } = await adminClient().from("events").delete().like("title", `${EVENT_TITLE_PREFIX}%`).select("id");
-  if (error) throw new Error(`delete leftover events: ${error.message}`);
-  return data?.length ?? 0;
+/**
+ * Teardown of test events left by interrupted runs. Deletes ONLY:
+ *  1. events created by the given fresh-* users (call this before deleting those users), and
+ *  2. events titled with EVENT_TITLE_PREFIX whose creator no longer exists (created_by is NULL because
+ *     created_by is ON DELETE SET NULL, i.e. a fresh user deleted before its events).
+ * Any other event, including a prefixed one created by a real or seeded user, is never touched.
+ */
+export async function deleteLeftoverTestEvents(freshUserIds: string[]): Promise<number> {
+  let deleted = 0;
+  for (let i = 0; i < freshUserIds.length; i += 100) {
+    const { data, error } = await adminClient().from("events").delete().in("created_by", freshUserIds.slice(i, i + 100)).select("id");
+    if (error) throw new Error(`delete fresh users' events: ${error.message}`);
+    deleted += data?.length ?? 0;
+  }
+  const { data, error } = await adminClient().from("events").delete().like("title", `${EVENT_TITLE_PREFIX}%`).is("created_by", null).select("id");
+  if (error) throw new Error(`delete orphaned test events: ${error.message}`);
+  return deleted + (data?.length ?? 0);
 }

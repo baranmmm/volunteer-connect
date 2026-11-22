@@ -38,13 +38,16 @@ npm test             # starts the app on BASE_URL against QA, then runs all proj
 | `npm run qa:seed` | Idempotently creates/resets the seeded users and writes `.auth/users.json` |
 | `npm test` | All projects: `desktop-chromium`, `mobile-pixel7`, `api` |
 | `npm run test:ui` / `npm run test:api` | UI projects only / API permission tests only |
-| `npm run qa:teardown` | Deletes leftover `fresh-*@dsvolunteer.test` users |
+| `npm run qa:teardown` | Deletes leftover `fresh-*@dsvolunteer.test` users and test events: events those users created, and `E2E Event …` events whose creator no longer exists. No other event is touched. QA only (guarded). |
 | `npm run report` | Opens the last HTML report |
 
 ## How it works
 
 - **Seeded users** (`data/users.ts`): regional director (South of England), manager + volunteer + pending in
   Medway and in Brighton, and one disposable user. Tests never modify them.
+- **Fresh events**: `freshEvent()` creates events as a fresh manager through the app's RPCs (`create_event`,
+  `cancel_event`), titled `E2E Event …`, and deletes them after the test.
+- **Screenshots** for ad-hoc UI review go to `e2e/screenshots/` (git-ignored).
 - **Fresh users**: every test that changes data creates its own user with the `freshUser()` fixture
   (`fresh-<run>-…@dsvolunteer.test`). It is deleted after the test; `qa:teardown` removes leftovers.
 - **Auth**: `setup/auth.setup.ts` writes one storageState per role. Only `tests/ui/auth.spec.ts` signs in through the UI.

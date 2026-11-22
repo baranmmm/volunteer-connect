@@ -40,3 +40,5 @@ e2e/.auth/
 e2e/playwright-report/
 e2e/test-results/
 e2e/node_modules/
+# Local screenshots (UI review, page.screenshot in ad-hoc scripts) are never committed
+e2e/screenshots/

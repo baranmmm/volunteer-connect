@@ -41,7 +41,7 @@ function EventDetail() {
   }, [edit, canManageLoaded, id, navigate]);
   if (query.isLoading) return <p className="text-muted-foreground">{t('common.loading')}</p>;
   if (query.isError) return <div role="alert" className="space-y-3"><p className="text-destructive">{t('events.loadError')}</p><Button variant="outline" onClick={() => query.refetch()}>{t('common.retry')}</Button></div>;
-  if (!query.data?.event) return <div className="space-y-4"><p>{t('events.notFound')}</p><Button asChild variant="outline"><Link to="/calendar"><ArrowLeft />{t('events.back')}</Link></Button></div>;
+  if (!query.data?.event) return <div data-testid="event-detail-not-found" className="space-y-4"><p>{t('events.notFound')}</p><Button asChild variant="outline"><Link to="/calendar"><ArrowLeft />{t('events.back')}</Link></Button></div>;
   const { event, canManage, deletion } = query.data;
   const canDelete = deletion.canDelete;
   const images = event.media.filter(m => m.kind === 'image' && m.url), pdfs = event.media.filter(m => m.kind === 'pdf' && m.url), documents = event.media.filter(m => m.kind === 'document' && m.url);

@@ -55,6 +55,31 @@ test.describe("Event status and dashboard cards", () => {
     await expect(page.getByTestId("event-form")).toBeVisible();
   });
 
+  test("?edit=true never opens the form for users who cannot manage the event", async ({ freshUser, freshEvent, pageAs }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const volunteer = await freshUser();
+    const otherBranchManager = await freshUser({ role: "branch_manager", branch: "Brighton" });
+    const event = await freshEvent(manager, { label: "edit guard", status: "published", startInMinutes: DAY });
+
+    // Volunteer of the same branch: can view the event, cannot manage it.
+    const volunteerPage = await pageAs(volunteer);
+    await volunteerPage.goto(`/events/${event.id}?edit=true`);
+    await expect(volunteerPage.getByTestId("event-detail-title")).toBeVisible();
+    await expect(volunteerPage.getByTestId("event-edit-button")).toHaveCount(0);
+    await expect(volunteerPage.getByTestId("event-form")).toHaveCount(0);
+
+    // Manager of another branch: RLS hides the event entirely.
+    const otherPage = await pageAs(otherBranchManager);
+    await otherPage.goto(`/events/${event.id}?edit=true`);
+    await expect(otherPage.getByTestId("event-detail-not-found")).toBeVisible();
+    await expect(otherPage.getByTestId("event-form")).toHaveCount(0);
+
+    // Control: the owning manager does get the form from the same link.
+    const managerPage = await pageAs(manager);
+    await managerPage.goto(`/events/${event.id}?edit=true`);
+    await expect(managerPage.getByTestId("event-form")).toBeVisible();
+  });
+
   test("a cancelled event within 7 days shows on the dashboard as Cancelled; a later one does not", async ({ freshUser, freshEvent, pageAs }) => {
     const manager = await freshUser({ role: "branch_manager", branch: "Brighton" });
     const volunteer = await freshUser({ branch: "Brighton" });
