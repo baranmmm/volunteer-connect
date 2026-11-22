@@ -53,6 +53,12 @@ export function formatDate(value: string | Date, opts: Intl.DateTimeFormatOption
 
 const ERROR_KEYS: Record<string, string> = {
   "Invalid recurrence rule": "events.repeat.invalidRule",
+  "Registration is closed": "registrations.errors.closed",
+  "Event has ended": "registrations.errors.ended",
+  "Event has started": "registrations.errors.started",
+  "Event has not started": "registrations.errors.notStarted",
+  "Registration not found": "registrations.errors.notFound",
+  "Invalid attendance status": "registrations.errors.invalidAttendance",
   "Recurrence has no upcoming events": "events.repeat.noUpcoming",
   "Item cannot be restored": "recycleBin.restoreUnavailable",
   "Item cannot be purged": "recycleBin.purgeUnavailable",

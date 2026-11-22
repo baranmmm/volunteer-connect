@@ -28,6 +28,8 @@ export class EventFormDialog {
   readonly repeatUntil = () => this.root.getByTestId("event-form-repeat-until");
   readonly summary = () => this.root.getByTestId("event-repeat-summary");
   readonly publishButton = () => this.root.getByTestId("event-form-publish");
+  readonly capacity = () => this.root.getByTestId("event-form-capacity");
+  readonly registrationEnabled = () => this.root.getByTestId("event-form-registration-enabled");
 
   async chooseTime(side: "start" | "end", time: string) {
     await pickOption(this.page, `event-form-${side}-time`, `event-form-${side}-time-option`, time);

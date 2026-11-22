@@ -7,6 +7,7 @@ import type { EventMedia, HubEvent, EventRow, MediaRow } from './event-rules';
 import { normalizeEventExtension } from './event-rules';
 import { eventDeletionState } from './event-deletion';
 import type { SeriesInfo } from './recurrence';
+import type { RegistrationStatus } from './registrations';
 
 async function active(client: SupabaseClient<Database>, uid: string) {
   const { data, error } = await client.from('profiles').select('status').eq('id', uid).single();
@@ -54,7 +55,15 @@ export const listEvents = createServerFn({ method: 'POST' }).middleware([require
     events.push(...result.data);
     if (result.data.length < 200) break;
   }
-  return withMedia(context.supabase, events);
+  // The viewer's own registration status per event (RLS: own rows only), for the Registered/Waitlisted badges.
+  const mine = new Map<string, string>();
+  for (let offset = 0; ; offset += 1000) {
+    const result = await context.supabase.from('event_registrations').select('event_id, status').eq('user_id', context.userId).in('status', ['registered', 'waitlisted', 'attended']).order('id').range(offset, offset + 999);
+    if (result.error) throw result.error;
+    for (const r of result.data) mine.set(r.event_id, r.status);
+    if (result.data.length < 1000) break;
+  }
+  return (await withMedia(context.supabase, events)).map(e => ({ ...e, my_registration: (mine.get(e.id) ?? null) as RegistrationStatus | null }));
 });
 export const getEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
   await active(context.supabase, context.userId);
@@ -97,7 +106,7 @@ export const eventBranches = createServerFn({ method: 'POST' }).middleware([requ
 });
 const seriesInfo = z.object({ id: z.string().uuid(), rule: z.string(), timezone: z.string(), all_day: z.boolean(), dtstart_local: z.string(), duration_minutes: z.number().nullable(), span_days: z.number(), status: z.string(), media_event_id: z.string().uuid().nullable(), exdates: z.array(z.string()) });
 const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const input = z.object({ title: z.string().trim().min(1).max(200), description: z.string().max(10000), location: z.string().max(500), location_type: z.enum(['in_person','online']), online_url: z.string().trim().max(2000).nullable(), organizer: z.string().trim().max(200), category: z.enum(['dialogue','dinner','interfaith','community','education','other']), all_day: z.boolean(), start_date: dateOnly.nullable(), end_date: dateOnly.nullable(), start_at: z.string().datetime().nullable(), end_at: z.string().datetime().nullable(), capacity: z.number().int().positive().nullable(), scope: z.enum(['branch','region']), branch_id: z.string().uuid().nullable(), status: z.enum(['draft','published','cancelled']) }).superRefine((event, ctx) => {
+const input = z.object({ title: z.string().trim().min(1).max(200), description: z.string().max(10000), location: z.string().max(500), location_type: z.enum(['in_person','online']), online_url: z.string().trim().max(2000).nullable(), organizer: z.string().trim().max(200), category: z.enum(['dialogue','dinner','interfaith','community','education','other']), all_day: z.boolean(), start_date: dateOnly.nullable(), end_date: dateOnly.nullable(), start_at: z.string().datetime().nullable(), end_at: z.string().datetime().nullable(), capacity: z.number().int().positive().nullable(), registration_enabled: z.boolean(), scope: z.enum(['branch','region']), branch_id: z.string().uuid().nullable(), status: z.enum(['draft','published','cancelled']) }).superRefine((event, ctx) => {
   const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
   if (event.online_url && !/^https:\/\/[^\s/?#]+\.[^\s]*$/.test(event.online_url)) issue('online_url', 'Online meeting link must use https');
   if (!event.all_day && event.start_at && event.end_at && Date.parse(event.end_at) <= Date.parse(event.start_at)) issue('end_at', 'Event end must be after start');
@@ -114,7 +123,7 @@ export const saveEvent = createServerFn({ method: 'POST' }).middleware([requireS
   return data.id ?? String(result.data);
 });
 const rrule = z.string().trim().min(10).max(500).regex(/^FREQ=[A-Z0-9=;,+-]+$/);
-const seriesResult = z.object({ series_id: z.string().uuid(), event_id: z.string().uuid(), media_event_id: z.string().uuid().nullable().optional() });
+const seriesResult = z.object({ series_id: z.string().uuid(), event_id: z.string().uuid(), media_event_id: z.string().uuid().nullable().optional(), kept_off_rule: z.array(z.string().uuid()).optional() });
 /** Creates a series and its first occurrences (at most 100, 12 months ahead); returns the first occurrence. */
 export const createSeries = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ event: input, rule: rrule })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('create_series', { _data: data.event, _rule: data.rule });
@@ -127,7 +136,8 @@ export const updateSeriesEvent = createServerFn({ method: 'POST' }).middleware([
   const result = await context.supabase.rpc('update_series_event', { _event: data.id, _mode: data.mode, _data: data.event, ...(data.rule ? { _rule: data.rule } : {}) });
   if (result.error) throw new Error(result.error.message);
   const parsed = seriesResult.parse(result.data);
-  return { seriesId: parsed.series_id, eventId: parsed.event_id };
+  // Registered occurrences the new rule no longer produces are kept as exceptions; the form warns about them.
+  return { seriesId: parsed.series_id, eventId: parsed.event_id, keptOffRule: parsed.kept_off_rule ?? [] };
 });
 export const cancelEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('cancel_event', { _event: data.id });

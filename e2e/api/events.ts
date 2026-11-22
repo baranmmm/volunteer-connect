@@ -15,6 +15,9 @@ export type EventSpec = {
   /** Timed event at an exact London wall-clock start, "YYYY-MM-DDTHH:mm" (instead of startInMinutes). */
   startLocal?: string;
   durationMinutes?: number;
+  /** NULL / omitted = unlimited. */
+  capacity?: number | null;
+  registrationEnabled?: boolean;
 };
 
 function payload(spec: EventSpec) {
@@ -33,7 +36,8 @@ function payload(spec: EventSpec) {
     end_date: null,
     start_at: start?.toISOString() ?? null,
     end_at: end?.toISOString() ?? null,
-    capacity: null,
+    capacity: spec.capacity ?? null,
+    registration_enabled: spec.registrationEnabled ?? true,
     scope: "branch",
     branch_id: spec.branchId,
     status: spec.status,
@@ -41,6 +45,11 @@ function payload(spec: EventSpec) {
 }
 
 /** create_event as `email` (a branch manager or regional director); returns the new event id. */
+/** The create/update_event payload for a spec (start/end from startLocal or startInMinutes). */
+export function eventPayload(spec: EventSpec) {
+  return payload(spec);
+}
+
 export async function createEventAs(email: string, spec: EventSpec): Promise<string> {
   const { data, error } = await (await clientAs(email)).rpc("create_event", { _data: payload(spec) });
   if (error || !data) throw new Error(`create_event "${spec.title}": ${error?.message ?? "no id"}`);
@@ -137,6 +146,11 @@ export async function deleteEvents(ids: string[]): Promise<void> {
  */
 export async function deleteLeftoverTestEvents(freshUserIds: string[]): Promise<number> {
   let deleted = 0;
+  // Registrations of fresh users (on any event); registrations on deleted test events go with them (CASCADE).
+  for (let i = 0; i < freshUserIds.length; i += 100) {
+    const r = await adminClient().from("event_registrations").delete().in("user_id", freshUserIds.slice(i, i + 100));
+    if (r.error) throw new Error(`delete fresh users' registrations: ${r.error.message}`);
+  }
   for (let i = 0; i < freshUserIds.length; i += 100) {
     const { data, error } = await adminClient().from("events").delete().in("created_by", freshUserIds.slice(i, i + 100)).select("id");
     if (error) throw new Error(`delete fresh users' events: ${error.message}`);

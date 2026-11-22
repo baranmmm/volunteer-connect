@@ -511,5 +511,86 @@
     "accountDeleted": "Bu hesap silinmiştir ve giriş yapamaz.",
     "seriesTitle_one": "Seri: {{title}}, 1 etkinlik",
     "seriesTitle_other": "Seri: {{title}}, {{count}} etkinlik"
+  },
+  "registrations": {
+    "title": "Kayıt",
+    "loadError": "Kayıt bilgileri yüklenemedi.",
+    "countUnlimited_one": "{{count}} kayıtlı",
+    "countUnlimited_other": "{{count}} kayıtlı",
+    "countLimited_one": "{{count}} / {{capacity}} kayıtlı",
+    "countLimited_other": "{{count}} / {{capacity}} kayıtlı",
+    "waitlistCount_one": "bekleme listesinde {{count}} kişi",
+    "waitlistCount_other": "bekleme listesinde {{count}} kişi",
+    "waitlistPosition": "Bekleme listesinde {{position}}. sıradasınız",
+    "myStatus": {
+      "registered": "Kaydınız var",
+      "attended": "Katıldınız",
+      "no_show": "Katılmadı olarak işaretlendi"
+    },
+    "unavailable": {
+      "cancelled": "Bu etkinlik iptal edildi, kayıt kapalı.",
+      "past": "Bu etkinlik sona erdi.",
+      "closed": "Bu etkinlik için kayıt açık değil.",
+      "started": "Etkinlik başladığı için kayıt artık iptal edilemez.",
+      "attended": "Bu etkinlik için katılım kaydedildi.",
+      "draft": "Kayıt, etkinlik yayınlandığında açılır."
+    },
+    "register": "Kayıt ol",
+    "registered": "Kaydınız alındı",
+    "joinWaitlist": "Bekleme listesine katıl",
+    "waitlisted": "Bekleme listesine katıldınız",
+    "cancel": "Kaydı iptal et",
+    "cancelled": "Kayıt iptal edildi",
+    "showName": "Adımı diğer gönüllülere göster",
+    "attendees": "Katılanlar",
+    "managerTitle": "Kayıtlar",
+    "exportCsv": "CSV olarak indir",
+    "overCapacity": "{{count}} kişi kayıtlı ama kapasite {{capacity}}. Kimse çıkarılmadı; yeni kayıtlar bekleme listesine alınıyor.",
+    "filter": "Kayıtları filtrele",
+    "filters": {
+      "registered": "Kayıtlı",
+      "waitlisted": "Bekleme listesi",
+      "cancelled": "İptal"
+    },
+    "empty": "Burada henüz kayıt yok.",
+    "anonymised": "Silinmiş kullanıcı",
+    "registeredAt": "Kayıt: {{date}}",
+    "cancelledAt": "iptal: {{date}}",
+    "status": {
+      "registered": "Kayıtlı",
+      "waitlisted": "Bekleme listesinde",
+      "cancelled": "İptal",
+      "attended": "Katıldı",
+      "no_show": "Gelmedi"
+    },
+    "attended": "Katıldı",
+    "noShow": "Gelmedi",
+    "badge": {
+      "registered": "Kayıtlı",
+      "waitlisted": "Bekleme listesinde"
+    },
+    "noticesTitle": "Kayıt bildirimleri",
+    "notice": {
+      "promoted": "Yer açıldı: “{{title}}” etkinliğine artık kayıtlısınız.",
+      "event_cancelled": "“{{title}}” iptal edildi.",
+      "event_removed": "“{{title}}” düzenleyenler tarafından kaldırıldı.",
+      "event_changed": "“{{title}}” etkinliğinin tarihi, saati veya yeri değişti."
+    },
+    "viewEvent": "Etkinliği gör",
+    "dismiss": "Kapat",
+    "myTitle": "Kayıtlarım",
+    "myEmpty": "Yaklaşan bir kaydınız yok.",
+    "keptOffRule_one": "Kaydı olan {{count}} tekrar yeni tekrar kuralına artık uymuyor. Değiştirilmeden korundu; takvimde kontrol edin.",
+    "keptOffRule_other": "Kaydı olan {{count}} tekrar yeni tekrar kuralına artık uymuyor. Değiştirilmeden korundu; takvimde kontrol edin.",
+    "capacityHint": "Sınırsız yer için boş bırakın.",
+    "open": "Kayıt açık",
+    "errors": {
+      "closed": "Bu etkinlik için kayıt açık değil.",
+      "ended": "Bu etkinlik sona erdi.",
+      "started": "Bu etkinlik zaten başladı.",
+      "notStarted": "Katılım, etkinlik başladıktan sonra kaydedilebilir.",
+      "notFound": "Kayıt bulunamadı.",
+      "invalidAttendance": "Bu kayıt işaretlenemez."
+    }
   }
 }

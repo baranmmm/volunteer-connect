@@ -16,6 +16,25 @@ export class EventPage {
   readonly scopeDialog = () => this.page.getByTestId("recurring-scope-dialog");
   readonly form = () => new EventFormDialog(this.page);
 
+  // Registration (A2b)
+  readonly registration = () => this.page.getByTestId("event-registration");
+  readonly registrationCount = () => this.page.getByTestId("event-registration-count");
+  readonly registrationStatus = () => this.page.getByTestId("event-registration-status");
+  readonly registrationUnavailable = () => this.page.getByTestId("event-registration-unavailable");
+  readonly registerButton = () => this.page.getByTestId("event-register-button");
+  readonly joinWaitlistButton = () => this.page.getByTestId("event-join-waitlist-button");
+  readonly cancelRegistrationButton = () => this.page.getByTestId("event-cancel-registration-button");
+  readonly waitlistPosition = () => this.page.getByTestId("event-waitlist-position");
+  readonly showNameCheckbox = () => this.page.getByTestId("event-show-name-checkbox");
+  readonly attendeeList = () => this.page.getByTestId("event-attendee-list");
+  // Manager section
+  readonly managerRegistrations = () => this.page.getByTestId("event-manager-registrations");
+  readonly registrationRow = (registrationId: string) => this.page.getByTestId(`event-registration-row-${registrationId}`);
+  readonly attendanceButton = (registrationId: string, status: "attended" | "no_show") => this.page.getByTestId(`event-attendance-${registrationId}-${status}`);
+  readonly registrationsFilter = (filter: "registered" | "waitlisted" | "cancelled") => this.page.getByTestId(`event-registrations-filter-${filter}`);
+  readonly exportCsvButton = () => this.page.getByTestId("event-registrations-export-csv");
+  readonly capacityWarning = () => this.page.getByTestId("event-capacity-warning");
+
   async goto(eventId: string) {
     await this.page.goto(`/events/${eventId}`);
     await expect(this.title().or(this.notFound())).toBeVisible();

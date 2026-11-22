@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { eventTimeState, eventOccursOn, eventFileExtension, eventUploadError, normalizeEventExtension, eventIcs, filterEvents, imageDimensions, londonInput, londonToIso, validateEventFile, type HubEvent } from '@/lib/event-rules';
 
-const event: HubEvent = { id:'11111111-1111-4111-8111-111111111111', title:'Community dinner',description:'A shared meal',location:'London',organizer:'Dialogue Society',category:'dinner',start_at:'2027-06-01T17:00:00Z',end_at:null,capacity:null,scope:'branch',branch_id:null,region_id:'r',status:'published',created_by:null,created_at:'',updated_at:'',deleted_at:null,deleted_by:null,all_day:false,start_date:null,end_date:null,location_type:'in_person',online_url:null,series_id:null,recurrence_key:null,series_exception:false,series_template:false,deleted_with_series:false,media:[] };
+const event: HubEvent = { id:'11111111-1111-4111-8111-111111111111', title:'Community dinner',description:'A shared meal',location:'London',organizer:'Dialogue Society',category:'dinner',start_at:'2027-06-01T17:00:00Z',end_at:null,capacity:null,registration_enabled:true,scope:'branch',branch_id:null,region_id:'r',status:'published',created_by:null,created_at:'',updated_at:'',deleted_at:null,deleted_by:null,all_day:false,start_date:null,end_date:null,location_type:'in_person',online_url:null,series_id:null,recurrence_key:null,series_exception:false,series_template:false,deleted_with_series:false,media:[] };
 describe('event rules', () => {
   it('an event starting now and ending in two hours stays Upcoming through its end, then moves to Past', () => {
     const ongoing = { ...event, start_at: '2026-11-21T22:05:00Z', end_at: '2026-11-22T00:05:00Z' };

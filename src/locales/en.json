@@ -511,5 +511,86 @@
     "accountDeleted": "This account has been deleted and cannot sign in.",
     "seriesTitle_one": "Series: {{title}}, 1 event",
     "seriesTitle_other": "Series: {{title}}, {{count}} events"
+  },
+  "registrations": {
+    "title": "Registration",
+    "loadError": "Registration details could not be loaded.",
+    "countUnlimited_one": "{{count}} registered",
+    "countUnlimited_other": "{{count}} registered",
+    "countLimited_one": "{{count}} / {{capacity}} registered",
+    "countLimited_other": "{{count}} / {{capacity}} registered",
+    "waitlistCount_one": "{{count}} on waitlist",
+    "waitlistCount_other": "{{count}} on waitlist",
+    "waitlistPosition": "You are #{{position}} on the waitlist",
+    "myStatus": {
+      "registered": "You are registered",
+      "attended": "You attended",
+      "no_show": "Marked as not attended"
+    },
+    "unavailable": {
+      "cancelled": "This event was cancelled, so registration is closed.",
+      "past": "This event has ended.",
+      "closed": "Registration is not open for this event.",
+      "started": "This event has started, so registrations can no longer be cancelled.",
+      "attended": "Attendance for this event has been recorded.",
+      "draft": "Registration opens when the event is published."
+    },
+    "register": "Register",
+    "registered": "You are registered",
+    "joinWaitlist": "Join waitlist",
+    "waitlisted": "You joined the waitlist",
+    "cancel": "Cancel registration",
+    "cancelled": "Registration cancelled",
+    "showName": "Show my name to other volunteers",
+    "attendees": "Going",
+    "managerTitle": "Registrations",
+    "exportCsv": "Export CSV",
+    "overCapacity": "{{count}} people are registered but capacity is {{capacity}}. Nobody was removed; new registrations join the waitlist.",
+    "filter": "Filter registrations",
+    "filters": {
+      "registered": "Registered",
+      "waitlisted": "Waitlist",
+      "cancelled": "Cancelled"
+    },
+    "empty": "No registrations here yet.",
+    "anonymised": "Deleted user",
+    "registeredAt": "Registered {{date}}",
+    "cancelledAt": "cancelled {{date}}",
+    "status": {
+      "registered": "Registered",
+      "waitlisted": "Waitlisted",
+      "cancelled": "Cancelled",
+      "attended": "Attended",
+      "no_show": "No-show"
+    },
+    "attended": "Attended",
+    "noShow": "No-show",
+    "badge": {
+      "registered": "Registered",
+      "waitlisted": "Waitlisted"
+    },
+    "noticesTitle": "Registration updates",
+    "notice": {
+      "promoted": "A place opened up: you are now registered for “{{title}}”.",
+      "event_cancelled": "“{{title}}” was cancelled.",
+      "event_removed": "“{{title}}” was removed by the organisers.",
+      "event_changed": "The date, time or place of “{{title}}” changed."
+    },
+    "viewEvent": "View event",
+    "dismiss": "Dismiss",
+    "myTitle": "My registrations",
+    "myEmpty": "You have no upcoming registrations.",
+    "keptOffRule_one": "{{count}} occurrence with registrations no longer matches the new repeat rule. It was kept unchanged; check it on the calendar.",
+    "keptOffRule_other": "{{count}} occurrences with registrations no longer match the new repeat rule. They were kept unchanged; check them on the calendar.",
+    "capacityHint": "Leave empty for unlimited places.",
+    "open": "Registration open",
+    "errors": {
+      "closed": "Registration is not open for this event.",
+      "ended": "This event has ended.",
+      "started": "This event has already started.",
+      "notStarted": "Attendance can be recorded once the event has started.",
+      "notFound": "Registration not found.",
+      "invalidAttendance": "This registration cannot be marked."
+    }
   }
 }
