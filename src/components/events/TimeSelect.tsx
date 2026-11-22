@@ -1,4 +1,4 @@
-import { useRef, useState, type FocusEvent } from "react";
+import { useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import {
   Select,
   SelectContent,
@@ -6,7 +6,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DEFAULT_OPEN_TIME, QUARTER_HOURS, timeOptions } from "@/lib/time-options";
+import {
+  DEFAULT_OPEN_TIME,
+  QUARTER_HOURS,
+  stepTime,
+  timeOptions,
+  typeaheadTime,
+} from "@/lib/time-options";
 
 /**
  * Quarter-hour time picker. Type to jump ("18" → 18:00); with no value the list opens at 18:00.
@@ -43,6 +49,8 @@ export function TimeSelect({
   const interacted = useRef(false);
   const onOpenChange = (next: boolean) => {
     interacted.current = false;
+    stepped.current = false;
+    typed.current = { text: "", at: 0 };
     setOpen(next);
   };
   const onFocusCapture = (e: FocusEvent) => {
@@ -53,6 +61,40 @@ export function TimeSelect({
   };
   const onInteract = () => {
     interacted.current = true;
+  };
+  // Own typeahead and first arrow step (Radix's typeahead fights the 18:00 focus redirect): digits build a buffer
+  // that resets after a second; the first arrow press moves one step from the chosen (or default) time.
+  const typed = useRef({ text: "", at: 0 }),
+    stepped = useRef(false);
+  const content = useRef<HTMLDivElement>(null);
+  const focusTime = (time: string | null) => {
+    if (!time) return;
+    const item = content.current?.querySelector<HTMLElement>(
+      `[data-testid="${testId}-option-${time}"]`,
+    );
+    item?.focus();
+    item?.scrollIntoView({ block: "nearest" });
+  };
+  const onKeyDownCapture = (e: KeyboardEvent) => {
+    interacted.current = true;
+    if (/^[0-9:]$/.test(e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const now = Date.now();
+      typed.current = {
+        text: (now - typed.current.at > 1000 ? "" : typed.current.text) + e.key,
+        at: now,
+      };
+      focusTime(typeaheadTime(typed.current.text, options));
+      stepped.current = true;
+      return;
+    }
+    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !stepped.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      stepped.current = true;
+      focusTime(stepTime(value, e.key === "ArrowDown" ? 1 : -1, options));
+    }
   };
   return (
     <Select
@@ -74,7 +116,8 @@ export function TimeSelect({
       </SelectTrigger>
       <SelectContent
         onFocusCapture={onFocusCapture}
-        onKeyDownCapture={onInteract}
+        ref={content}
+        onKeyDownCapture={onKeyDownCapture}
         onPointerMoveCapture={onInteract}
         className="max-h-[min(18rem,var(--radix-select-content-available-height))]"
       >
