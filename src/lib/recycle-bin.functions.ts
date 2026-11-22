@@ -45,8 +45,14 @@ export const permanentlyDeleteRecycleItem = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const prepared = await context.supabase.rpc('permanent_delete_item', { _type: data.type, _id: data.id, _confirmation: data.confirmation });
     if (prepared.error) throw new Error(prepared.error.message);
-    // Event requests are deleted by the RPC itself (no external resources).
-    if (data.type === 'event_request') return { ok: true };
+    // Event requests without stored attachments are deleted by the RPC; otherwise remove the files, then the row.
+    if (data.type === 'event_request') {
+      if (eventDeletionResult.parse(prepared.data).deleted) return { ok: true };
+      const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      const { purgeEventRequest } = await import('./recycle-bin.server');
+      await purgeEventRequest(supabaseAdmin, data.id);
+      return { ok: true };
+    }
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const { purgeRecycleItem } = await import('./recycle-bin.server');
     if (data.type === 'series') {

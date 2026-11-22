@@ -309,6 +309,44 @@ export type Database = {
           },
         ]
       }
+      event_request_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          original_name: string | null
+          request_id: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          original_name?: string | null
+          request_id: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          original_name?: string | null
+          request_id?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_request_media_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "event_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_requests: {
         Row: {
           all_day: boolean
@@ -343,6 +381,15 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          category: string | null
+          last_edited_at: string | null
+          last_edited_by: string | null
+          notes: string | null
+          organizer_name: string | null
+          purge_requested_at: string | null
+          request_type: string
+          source: string | null
+          source_url: string | null
         }
         Insert: {
           all_day?: boolean
@@ -377,6 +424,15 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          category?: string | null
+          last_edited_at?: string | null
+          last_edited_by?: string | null
+          notes?: string | null
+          organizer_name?: string | null
+          purge_requested_at?: string | null
+          request_type?: string
+          source?: string | null
+          source_url?: string | null
         }
         Update: {
           all_day?: boolean
@@ -411,6 +467,15 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          category?: string | null
+          last_edited_at?: string | null
+          last_edited_by?: string | null
+          notes?: string | null
+          organizer_name?: string | null
+          purge_requested_at?: string | null
+          request_type?: string
+          source?: string | null
+          source_url?: string | null
         }
         Relationships: [
           {
@@ -550,6 +615,7 @@ export type Database = {
       }
       events: {
         Row: {
+          is_external: boolean
           all_day: boolean
           branch_id: string | null
           capacity: number | null
@@ -581,6 +647,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          is_external?: boolean
           all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
@@ -612,6 +679,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          is_external?: boolean
           all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
@@ -895,7 +963,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_event_request: { Args: { p_id: string; p_overrides?: Json }; Returns: Json }
+      add_event_request_media: { Args: { p_extension: string; p_kind: string; p_original_name?: string; p_request_id: string }; Returns: Json }
+      can_read_event_request_file: { Args: { _path: string }; Returns: boolean }
+      can_write_event_request_file: { Args: { _path: string }; Returns: boolean }
+      delete_event_request_media: { Args: { p_media_id: string }; Returns: undefined }
+      get_event_request_duplicates: { Args: { p_id: string }; Returns: Json }
+      list_event_request_media: { Args: { p_request_id: string }; Returns: Json }
+      manager_update_event_request: { Args: { p: Json; p_id: string }; Returns: undefined }
+      purge_event_request: { Args: { _finalize?: boolean; _id: string }; Returns: Json }
+      approve_event_request: { Args: { p_id: string }; Returns: Json }
       decline_event_request: { Args: { p_id: string; p_reason: string }; Returns: undefined }
       delete_event_request: { Args: { p_id: string }; Returns: undefined }
       dismiss_event_request_notice: { Args: { p_id: string }; Returns: undefined }

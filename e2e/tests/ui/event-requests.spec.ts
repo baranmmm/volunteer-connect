@@ -25,7 +25,7 @@ test.describe("Event requests", () => {
     await page.goto("/calendar?view=list");
     await page.getByTestId("event-request-open-button").click();
     const form = new EventRequestFormDialog(page);
-    await expect(form.root).toBeVisible();
+    await form.chooseType("proposal");
     await expect(form.scope()).toHaveAttribute("data-scope", "branch");
     // Required fields are checked before anything is sent.
     await form.submitButton().click();
@@ -62,6 +62,7 @@ test.describe("Event requests", () => {
     await asManager.goto();
     await asManager.openButton().click();
     const form = new EventRequestFormDialog(managerPage);
+    await form.chooseType("proposal");
     await expect(form.scope()).toHaveAttribute("data-scope", "region");
     const name = title("regional");
     await form.title().fill(name);

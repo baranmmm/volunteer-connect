@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { HappeningNowBadge } from './HappeningNowBadge';
 import { EventStatusBadge } from './EventStatus';
+import { ExternalBadge } from './ExternalBadge';
 import { STATUS_CARD, cancelledTitle } from './event-status-styles';
 import { eventDateText } from './event-display';
 import { RegistrationBadge } from './RegistrationBadge';
@@ -26,8 +27,8 @@ export function EventCard({ event, now = new Date() }: { event: HubEvent; now?: 
     <div className="min-w-0 flex-1 space-y-2 p-4">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarDays className="size-4" /><span>{eventDateText(event, t)}</span>{event.series_id && <span data-testid="event-recurring-icon" title={t('events.recurring.label')} className="inline-flex shrink-0 text-muted-foreground"><Repeat className="size-4" aria-hidden /><span className="sr-only">{t('events.recurring.label')}</span></span>}</div>
       <h2 className={cn('break-words text-xl font-semibold group-hover:text-primary', cancelledTitle(event.status))}>{event.title}</h2>
-      <div className="flex flex-wrap items-center gap-2"><EventStatusBadge status={event.status} /><HappeningNowBadge event={event} now={now} /><RegistrationBadge status={event.my_registration} /></div>
-      <div className="flex flex-wrap items-center gap-2"><span className="break-words text-sm">{event.organizer}</span><Badge variant="secondary">{t(`events.categories.${event.category}`)}</Badge></div>
+      <div className="flex flex-wrap items-center gap-2"><EventStatusBadge status={event.status} /><HappeningNowBadge event={event} now={now} /><RegistrationBadge status={event.my_registration} />{event.is_external && <ExternalBadge />}</div>
+      <div className="flex flex-wrap items-center gap-2"><span className="break-words text-sm">{event.is_external ? t('events.organisedBy', { organizer: event.organizer }) : event.organizer}</span><Badge variant="secondary">{t(`events.categories.${event.category}`)}</Badge></div>
       {event.location_type === 'online' ? <p className="text-sm text-muted-foreground">{t('events.online')}</p> : event.location && <p className="flex items-start gap-1 text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" /><span className="break-words">{event.location}</span></p>}
     </div>
   </Link>;

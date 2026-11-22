@@ -11,7 +11,7 @@ function client(events: { id: string }[] = [{ id: 'expired-event' }], users: { i
   const query = { lt: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: events, error: null }) };
   const eq = vi.fn().mockResolvedValue({ error: null });
   const update = vi.fn().mockReturnValue({ eq });
-  const from = vi.fn((table: string) => table === 'profiles' ? { select: () => ({ ...query, limit: vi.fn().mockResolvedValue({ data: users, error: null }) }) } : table === 'events' ? { select: () => query } : { insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'audit-run' }, error: null }) }) }), update });
+  const from = vi.fn((table: string) => table === 'profiles' ? { select: () => ({ ...query, limit: vi.fn().mockResolvedValue({ data: users, error: null }) }) } : table === 'events' ? { select: () => query } : table === 'event_requests' ? { select: () => ({ ...query, limit: vi.fn().mockResolvedValue({ data: [], error: null }) }) } : { insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'audit-run' }, error: null }) }) }), update });
   const erase = vi.fn().mockResolvedValue({ error: null });
   return { clientRpc, client: { from, rpc: clientRpc, storage: { from: vi.fn().mockReturnValue({ remove }) }, auth: { admin: { deleteUser: erase } } } as unknown as SupabaseClient<Database>, rpc, remove, query, update, erase };
 }

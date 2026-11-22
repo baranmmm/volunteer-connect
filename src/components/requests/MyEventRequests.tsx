@@ -17,6 +17,7 @@ import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { EventDialog } from "@/components/events/EventDialog";
 import { RequestStatusBadge } from "./RequestStatusBadge";
+import { RequestTypeBadge } from "./RequestParts";
 import { EventRequestForm } from "./EventRequestForm";
 
 /** Proposed (and alternative) dates of a request in London time. */
@@ -121,8 +122,19 @@ export function MyEventRequests() {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <h3 className="min-w-0 break-words font-semibold">{r.title}</h3>
-                <RequestStatusBadge status={r.status} testId={`my-request-status-${r.id}`} />
+                <span className="flex flex-wrap gap-2">
+                  <RequestTypeBadge type={r.request_type} testId={`request-type-badge-${r.id}`} />
+                  <RequestStatusBadge status={r.status} testId={`my-request-status-${r.id}`} />
+                </span>
               </div>
+              {r.edited_by_manager && (
+                <p
+                  data-testid={`my-request-edited-${r.id}`}
+                  className="text-xs text-muted-foreground"
+                >
+                  {t("requests.editedByManager")}
+                </p>
+              )}
               <RequestWhen request={r} />
               <p className="text-xs text-muted-foreground">
                 {t("requests.submittedOn", {

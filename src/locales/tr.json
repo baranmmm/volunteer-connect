@@ -471,7 +471,9 @@
       "this": "Bu etkinlik",
       "following": "Bu ve sonraki etkinlikler",
       "all": "Tüm etkinlikler"
-    }
+    },
+    "external": "Dış etkinlik",
+    "organisedBy": "Düzenleyen: {{organizer}}"
   },
   "recycleBin": {
     "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",
@@ -693,11 +695,53 @@
       "underReview": "Bu talep zaten inceleniyor.",
       "declineReason": "En az 10 karakterlik bir gerekçe yazın.",
       "ownReview": "Kendi talebinizi inceleyemezsiniz.",
-      "notFound": "Bu talebe erişilemiyor."
+      "notFound": "Bu talebe erişilemiyor.",
+      "sourceUrl": "Geçerli bir https:// bağlantısı girin.",
+      "tooManyFiles": "Talep başına en fazla 3 dosya.",
+      "organizer": "Düzenleyeni girin.",
+      "source": "Etkinliği nereden duyduğunuzu seçin.",
+      "invalidFile": "JPG, PNG, WebP veya PDF dosyası kullanın.",
+      "scopeType": "Talebin türü ve kapsamı değiştirilemez.",
+      "filesLoad": "Dosyalar yüklenemedi."
     },
     "dateLabel": "tarih",
     "timeLabel": "saat",
     "requiredNote": "* Zorunlu",
-    "requester": "Talep eden"
+    "requester": "Talep eden",
+    "types": {
+      "external": "Dış etkinlik",
+      "proposal": "Öneri"
+    },
+    "typeChoice": {
+      "external": "Gördüğüm veya davet edildiğim bir etkinliği ekle",
+      "externalHint": "Başka biri düzenliyor (el ilanı, davetiye, web sitesi). Onaylanınca takvimde görünür.",
+      "proposal": "Düzenleyebileceğimiz bir etkinlik öner",
+      "proposalHint": "Şubemiz veya bölgemiz için bir fikir. Onaylanınca bir yönetici taslak olarak hazırlar."
+    },
+    "organizer": "Düzenleyen",
+    "sourceQuestion": "Etkinliği nereden duydunuz?",
+    "sources": {
+      "leaflet": "El ilanı",
+      "invitation": "Davetiye",
+      "website": "Web sitesi",
+      "other": "Diğer"
+    },
+    "source": "Kaynak",
+    "sourceUrl": "Etkinlik sayfası bağlantısı",
+    "notes": "Notlar",
+    "when": "Tarih ve saat",
+    "choose": "Seçin…",
+    "attachments": "Ekler",
+    "attachment": "Ek",
+    "attachmentsLabel": "El ilanı veya davetiye",
+    "attachmentsHint": "İsteğe bağlı. En fazla 3 dosya: JPG, PNG, WebP veya PDF, her biri 10 MB.",
+    "editRequest": "Talebi düzenle",
+    "editedBy": "Son düzenleyen: {{name}}",
+    "editedByManager": "Bir yönetici tarafından düzenlendi",
+    "duplicateWarning": "Olası mükerrer kayıt: aynı gün benzer başlıklı bir etkinlik var.",
+    "approvePublish": "Onayla ve yayınla",
+    "publishedToast": "Talepten etkinlik yayınlandı",
+    "copyFailed": "{{count}} dosya etkinliğe kopyalanamadı.",
+    "filesNotSaved": "{{count}} dosya kaydedilemedi. Talebin kendisi kaydedildi."
   }
 }

@@ -26,6 +26,12 @@ export class RequestsPage {
   readonly detailStatus = () => this.detail().getByTestId("manager-request-status");
   readonly startReview = () => this.detail().getByTestId("manager-request-start-review");
   readonly approve = () => this.detail().getByTestId("manager-request-approve");
+  readonly approvePublish = () => this.detail().getByTestId("manager-request-approve-publish");
+  readonly editRequest = () => this.detail().getByTestId("manager-request-edit");
+  readonly attachments = () => this.detail().getByTestId("manager-request-attachments");
+  readonly duplicateWarning = () => this.detail().getByTestId("manager-request-duplicate-warning");
+  readonly typeBadge = (id: string) => this.page.getByTestId(`request-type-badge-${id}`).first();
+  readonly myEditedNote = (id: string) => this.page.getByTestId(`my-request-edited-${id}`);
   readonly decline = () => this.detail().getByTestId("manager-request-decline");
   readonly declineReason = () => this.detail().getByTestId("manager-request-decline-reason");
   readonly declineConfirm = () => this.detail().getByTestId("manager-request-decline-confirm");

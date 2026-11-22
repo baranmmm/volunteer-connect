@@ -201,7 +201,7 @@ describe("event requests (database)", () => {
       await as(ids.rd);
       const approved = (
         await db.query<{ a: { event_id: string } }>(
-          "SELECT public.approve_event_request($1, '{\"capacity\": 30}') a",
+          "SELECT public.approve_event_request($1) a",
           [r],
         )
       ).rows[0]!.a;
@@ -222,7 +222,7 @@ describe("event requests (database)", () => {
         status: "draft",
         scope: "region",
         created_by: ids.rd,
-        capacity: 30,
+        capacity: null,
         title: "Community iftar",
       });
       expect(await stored(r)).toMatchObject({
@@ -291,7 +291,7 @@ describe("event requests (database)", () => {
         [v],
         "permission denied",
       );
-      await fails("SELECT public.event_request_fields('{}'::jsonb)", [], "permission denied");
+      await fails("SELECT public.event_request_fields('{}'::jsonb, 'proposal')", [], "permission denied");
       await fails("SELECT public.restore_event_request($1)", [v], "permission denied");
       await fails("SELECT public.purge_expired_event_requests()", [], "permission denied");
       await as(ids.vol2);

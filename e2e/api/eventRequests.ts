@@ -59,6 +59,14 @@ export async function deleteRequests(ids: string[]): Promise<void> {
   if (!ids.length) return;
   const { data } = await adminClient().from("event_requests").select("event_id").in("id", ids);
   const events = (data ?? []).flatMap((r: { event_id: string | null }) => (r.event_id ? [r.event_id] : []));
+  // Storage first: request attachments and the files copied to the drafts/published events.
+  for (const [bucket, prefixes] of [["event-request-files", ids], ["event-media", events]] as const) {
+    for (const prefix of prefixes) {
+      const listed = await adminClient().storage.from(bucket).list(prefix);
+      const paths = (listed.data ?? []).map((o) => `${prefix}/${o.name}`);
+      if (paths.length) await adminClient().storage.from(bucket).remove(paths);
+    }
+  }
   const removed = await adminClient().from("event_requests").delete().in("id", ids);
   if (removed.error) throw new Error(`delete requests: ${removed.error.message}`);
   if (events.length) await adminClient().from("events").delete().in("id", events);
@@ -117,4 +125,29 @@ export async function deleteTempBranch(id: string, fallbackBranch?: string): Pro
   if (fallback) await db.from("profiles").update({ branch_id: fallback }).eq("branch_id", id);
   const { error } = await db.from("branches").delete().eq("id", id);
   if (error) throw new Error(`delete branch: ${error.message}`);
+}
+
+/** A valid external request (an event someone else organises) `days` from now. */
+export function externalInput(title: string, extra: Record<string, unknown> = {}, days = 7) {
+  const { proposed_start, proposed_end } = requestInput(title, {}, days);
+  return {
+    request_type: "external", title, organizer_name: "E2E Community Centre", source: "leaflet", source_url: "https://example.org/e2e",
+    notes: "Seen on a leaflet", all_day: false, proposed_start, proposed_end, location_text: "", is_online: false, ...extra,
+  };
+}
+/** A 1×1 PNG and a minimal PDF for upload tests. */
+export const TINY_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+export const TINY_PDF = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
+/** Reserves a server-generated path (RPC) and uploads to the private bucket with `email`'s own token. */
+export async function attachAs(email: string, requestId: string, file: { kind: "image" | "pdf"; ext: string; body: Buffer; mime: string; name?: string }) {
+  const reserved = await rpcAs<{ id: string; storage_path: string }>(email, "add_event_request_media", { p_request_id: requestId, p_kind: file.kind, p_extension: file.ext, p_original_name: file.name ?? `file.${file.ext}` });
+  if (reserved.error) return { error: reserved.error, path: null, id: null };
+  const up = await (await clientAs(email)).storage.from("event-request-files").upload(reserved.data.storage_path, file.body, { contentType: file.mime, upsert: false });
+  return { error: up.error?.message ?? null, path: reserved.data.storage_path, id: reserved.data.id };
+}
+/** Service-role check whether a stored object exists. */
+export async function storedObject(bucket: string, path: string): Promise<boolean> {
+  const dir = path.split("/").slice(0, -1).join("/"), name = path.split("/").pop()!;
+  const { data } = await adminClient().storage.from(bucket).list(dir, { search: name });
+  return (data ?? []).some((o) => o.name === name);
 }

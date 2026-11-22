@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-import { purgeRecycleItem } from './recycle-bin.server';
+import { purgeEventRequest, purgeRecycleItem } from './recycle-bin.server';
 
 export const CLEANUP_EVENT_BATCH = 25;
 export const CLEANUP_FILE_BATCH = 100;
@@ -34,9 +34,17 @@ export async function cleanupDeletedEvents(client: SupabaseClient<Database>, now
     // Series rows whose events have all been purged.
     const series = await client.rpc('purge_expired_series');
     if (series.error) failed = true;
-    // Event requests have no files: one service-only RPC removes those past the 30 days.
+    // Event requests past their 30 days: those with attachments one by one (Storage first), then the rest at once.
+    const expiredRequests = await client.from('event_requests').select('id').lt('deleted_at', cutoff).order('deleted_at').order('id').limit(CLEANUP_EVENT_BATCH);
+    if (expiredRequests.error) failed = true;
+    for (const request of expiredRequests.data ?? []) {
+      try {
+        const purged = await purgeEventRequest(client, request.id);
+        counts.requests += purged.requests; counts.files += purged.files;
+      } catch { failed = true; }
+    }
     const requests = await client.rpc('purge_expired_event_requests');
-    if (requests.error) failed = true; else counts.requests = requests.data ?? 0;
+    if (requests.error) failed = true; else counts.requests += requests.data ?? 0;
   } catch { failed = true; }
   const audit = await client.from('event_cleanup_audit').update({ finished_at: new Date().toISOString(), events_purged: counts.events, users_purged: counts.users, files_purged: counts.files, requests_purged: counts.requests, outcome: failed ? 'failed' : 'completed' }).eq('id', started.data.id);
   return { counts, failed: failed || audit.error !== null };

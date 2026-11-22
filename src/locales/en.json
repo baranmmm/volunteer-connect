@@ -471,7 +471,9 @@
       "this": "This event",
       "following": "This and following events",
       "all": "All events"
-    }
+    },
+    "external": "External",
+    "organisedBy": "Organised by {{organizer}}"
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
@@ -693,11 +695,53 @@
       "underReview": "This request is already under review.",
       "declineReason": "Give a reason of at least 10 characters.",
       "ownReview": "You cannot review your own request.",
-      "notFound": "This request is not available."
+      "notFound": "This request is not available.",
+      "sourceUrl": "Enter a valid https:// link.",
+      "tooManyFiles": "Up to 3 files per request.",
+      "organizer": "Enter the organiser.",
+      "source": "Choose how you heard about it.",
+      "invalidFile": "Use a JPG, PNG, WebP or PDF file.",
+      "scopeType": "The request type and scope cannot be changed.",
+      "filesLoad": "The files could not be loaded."
     },
     "dateLabel": "date",
     "timeLabel": "time",
     "requiredNote": "* Required",
-    "requester": "Requested by"
+    "requester": "Requested by",
+    "types": {
+      "external": "External",
+      "proposal": "Proposal"
+    },
+    "typeChoice": {
+      "external": "Add an event I saw or was invited to",
+      "externalHint": "Someone else organises it (a leaflet, an invitation, a website). Once approved it appears in the calendar.",
+      "proposal": "Suggest an event we could organise",
+      "proposalHint": "An idea for our branch or region. Once approved, a manager prepares it as a draft."
+    },
+    "organizer": "Organiser",
+    "sourceQuestion": "How did you hear about it?",
+    "sources": {
+      "leaflet": "Leaflet",
+      "invitation": "Invitation",
+      "website": "Website",
+      "other": "Other"
+    },
+    "source": "Source",
+    "sourceUrl": "Link to event page",
+    "notes": "Notes",
+    "when": "Date & time",
+    "choose": "Choose…",
+    "attachments": "Attachments",
+    "attachment": "Attachment",
+    "attachmentsLabel": "Leaflet or invitation",
+    "attachmentsHint": "Optional. Up to 3 files: JPG, PNG, WebP or PDF, 10 MB each.",
+    "editRequest": "Edit request",
+    "editedBy": "Last edited by {{name}}",
+    "editedByManager": "Edited by a manager",
+    "duplicateWarning": "Possible duplicate: an event on the same day has a similar title.",
+    "approvePublish": "Approve and publish",
+    "publishedToast": "Event published from the request",
+    "copyFailed": "{{count}} file(s) could not be copied to the event.",
+    "filesNotSaved": "{{count}} file(s) could not be saved. The request itself was saved."
   }
 }
