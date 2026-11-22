@@ -2,6 +2,7 @@ name: E2E (QA)
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 # The QA database is shared: never run two e2e/migrate jobs at the same time, never cancel a running one.
