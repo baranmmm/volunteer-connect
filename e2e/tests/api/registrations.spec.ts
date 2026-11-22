@@ -126,7 +126,12 @@ test.describe("Event registrations API", () => {
     expect(await reason(cancelled.id)).toMatch(/Registration is closed/);
     expect(await reason(closed.id)).toMatch(/Registration is closed/);
     expect(await reason(deleted.id)).toMatch(/Not allowed/);
-    await expect.poll(() => reason(ending.id), { timeout: 70_000, intervals: [5_000] }).toMatch(/Event has ended/);
+    // Registration stays open until the end, so only try once the end has passed (an earlier try would register).
+    const { data: timing } = await adminClient().from("events").select("end_at").eq("id", ending.id).single();
+    const endsAt = Date.parse(timing!.end_at!);
+    await expect.poll(() => Date.now(), { timeout: 90_000, intervals: [2_000] }).toBeGreaterThan(endsAt + 2_000);
+    expect(await reason(ending.id)).toMatch(/Event has ended/);
+    expect(await registrationsOf(ending.id)).toEqual([]);
     expect(await registrationsOf(cancelled.id)).toEqual([]);
   });
 
