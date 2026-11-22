@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const recycleType = z.enum(['event', 'user', 'series']);
+export const recycleType = z.enum(['event', 'user', 'series', 'event_request']);
 export type RecycleType = z.infer<typeof recycleType>;
 export const recycleItemInput = z.object({ type: recycleType, id: z.string().uuid() });
 export const permanentDeleteInput = recycleItemInput.extend({ confirmation: z.literal('DELETE') });

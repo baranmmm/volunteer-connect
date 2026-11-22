@@ -15,6 +15,8 @@ vi.mock('@/lib/auth', () => ({ useAuth: () => ({ session: { user: { id: 'volunte
 vi.mock('@/lib/events.functions', () => ({ listEvents: vi.fn() }));
 vi.mock('@/components/events/EventForm', () => ({ EventForm: () => null }));
 vi.mock('@/components/events/RecentlyDeletedEvents', () => ({ RecentlyDeletedEvents: () => null }));
+vi.mock('@/components/requests/RequestEventButton', () => ({ RequestEventButton: () => null }));
+vi.mock('@/lib/use-event-requests', () => ({ useCanRequestEvents: () => false }));
 import { setLanguage } from '@/lib/i18n';
 import { Route } from '@/routes/_app/calendar';
 

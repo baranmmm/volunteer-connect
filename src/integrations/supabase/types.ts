@@ -140,6 +140,7 @@ export type Database = {
           finished_at: string | null
           id: string
           outcome: string
+          requests_purged: number
           started_at: string
           users_purged: number
         }
@@ -149,6 +150,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           outcome?: string
+          requests_purged?: number
           started_at?: string
           users_purged?: number
         }
@@ -158,6 +160,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           outcome?: string
+          requests_purged?: number
           started_at?: string
           users_purged?: number
         }
@@ -299,6 +302,119 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_requests: {
+        Row: {
+          all_day: boolean
+          alt_end: string | null
+          alt_end_date: string | null
+          alt_start: string | null
+          alt_start_date: string | null
+          branch_id: string | null
+          created_at: string
+          decline_reason: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          event_id: string | null
+          expected_attendees: number | null
+          id: string
+          is_online: boolean
+          location_text: string | null
+          notice: string | null
+          notice_seen_at: string | null
+          online_url: string | null
+          proposed_end: string | null
+          proposed_end_date: string | null
+          proposed_start: string | null
+          proposed_start_date: string | null
+          reason: string | null
+          region_id: string
+          requester_id: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          scope: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          alt_end?: string | null
+          alt_end_date?: string | null
+          alt_start?: string | null
+          alt_start_date?: string | null
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          event_id?: string | null
+          expected_attendees?: number | null
+          id?: string
+          is_online?: boolean
+          location_text?: string | null
+          notice?: string | null
+          notice_seen_at?: string | null
+          online_url?: string | null
+          proposed_end?: string | null
+          proposed_end_date?: string | null
+          proposed_start?: string | null
+          proposed_start_date?: string | null
+          reason?: string | null
+          region_id: string
+          requester_id?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          scope: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          alt_end?: string | null
+          alt_end_date?: string | null
+          alt_start?: string | null
+          alt_start_date?: string | null
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          event_id?: string | null
+          expected_attendees?: number | null
+          id?: string
+          is_online?: boolean
+          location_text?: string | null
+          notice?: string | null
+          notice_seen_at?: string | null
+          online_url?: string | null
+          proposed_end?: string | null
+          proposed_end_date?: string | null
+          proposed_start?: string | null
+          proposed_start_date?: string | null
+          reason?: string | null
+          region_id?: string
+          requester_id?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          scope?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_requests_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -779,6 +895,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_event_request: { Args: { p_id: string; p_overrides?: Json }; Returns: Json }
+      decline_event_request: { Args: { p_id: string; p_reason: string }; Returns: undefined }
+      delete_event_request: { Args: { p_id: string }; Returns: undefined }
+      dismiss_event_request_notice: { Args: { p_id: string }; Returns: undefined }
+      get_event_request: { Args: { p_id: string }; Returns: Json }
+      get_pending_event_request_count: { Args: never; Returns: Json }
+      list_managed_event_requests: { Args: { p_offset?: number; p_status?: string }; Returns: Json }
+      list_my_event_requests: { Args: never; Returns: Json }
+      purge_expired_event_requests: { Args: never; Returns: number }
+      start_review_event_request: { Args: { p_id: string }; Returns: undefined }
+      submit_event_request: { Args: { p: Json }; Returns: string }
+      update_event_request: { Args: { p: Json; p_id: string }; Returns: undefined }
+      withdraw_event_request: { Args: { p_id: string }; Returns: undefined }
       cancel_registration: { Args: { p_event_id: string }; Returns: Json }
       dismiss_registration_notice: {
         Args: { p_registration_id: string }

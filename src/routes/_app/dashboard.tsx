@@ -27,6 +27,7 @@ import { EventStatusBadge } from "@/components/events/EventStatus";
 import { STATUS_CARD, cancelledTitle } from "@/components/events/event-status-styles";
 import { HappeningNowBadge } from "@/components/events/HappeningNowBadge";
 import { MyRegistrationsCard } from "@/components/events/MyRegistrations";
+import { PendingRequestsCard, RequestNotices } from "@/components/requests/RequestDashboard";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => pageHead("Dashboard", "Your volunteer dashboard."),
@@ -74,6 +75,7 @@ function Dashboard() {
         </p>
       </section>
       <div className="grid gap-5 md:grid-cols-2">
+        <RequestNotices />
         <UpcomingEventsCard
           events={events.data ?? []}
           loading={events.isLoading}
@@ -82,6 +84,7 @@ function Dashboard() {
           now={now}
           canCreate={isManager}
         />
+        {isManager && <PendingRequestsCard />}
         {drafts.length > 0 && <DraftsCard drafts={drafts} />}
         <MyRegistrationsCard />
         <EmptyCard

@@ -1,9 +1,9 @@
 import {
   LayoutDashboard, CalendarDays, ListChecks, Users2, Image, GraduationCap, Contact, UserCheck, Users, UserCircle,
-  Trash2, type LucideIcon,
+  Trash2, Inbox, type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { to: string; testId: string; labelKey: string; icon: LucideIcon; managerOnly?: boolean };
+export type NavItem = { to: string; testId: string; labelKey: string; icon: LucideIcon; managerOnly?: boolean; badge?: "requests" };
 
 export const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", testId: "nav-dashboard", labelKey: "navigation.dashboard", icon: LayoutDashboard },
@@ -14,6 +14,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/training", testId: "nav-training", labelKey: "navigation.training", icon: GraduationCap },
   { to: "/contacts", testId: "nav-contacts", labelKey: "navigation.contacts", icon: Contact },
   { to: "/approvals", testId: "nav-approvals", labelKey: "navigation.approvals", icon: UserCheck, managerOnly: true },
+  { to: "/requests", testId: "nav-requests", labelKey: "navigation.requests", icon: Inbox, managerOnly: true, badge: "requests" },
   { to: "/users", testId: "nav-users", labelKey: "navigation.users", icon: Users, managerOnly: true },
   { to: "/recycle-bin", testId: "nav-recycle-bin", labelKey: "navigation.recycleBin", icon: Trash2, managerOnly: true },
   { to: "/profile", testId: "nav-profile", labelKey: "navigation.profile", icon: UserCircle },
