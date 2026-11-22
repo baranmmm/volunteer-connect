@@ -12,7 +12,7 @@ const base: HubEvent = {
   category: "dialogue",
   start_at: "2026-11-22T18:00:00Z",
   end_at: "2026-11-22T20:00:00Z",
-  capacity: null,
+  capacity: null, registration_enabled: true,
   scope: "branch",
   branch_id: "b",
   region_id: "r",

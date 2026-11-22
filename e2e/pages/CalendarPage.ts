@@ -25,6 +25,11 @@ export class CalendarPage {
     return this.card(view, eventId).getByTestId("event-status-badge");
   }
 
+  /** The viewer's own "Registered" / "Waitlisted" badge on an entry. */
+  registrationBadge(view: CalendarView, eventId: string, kind: "registered" | "waitlisted"): Locator {
+    return this.card(view, eventId).getByTestId(`calendar-event-badge-${kind}`);
+  }
+
   happeningNowBadge(view: CalendarView, eventId: string): Locator {
     return this.card(view, eventId).getByTestId("event-badge-happening-now");
   }

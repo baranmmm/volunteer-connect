@@ -41,7 +41,8 @@ export function eventUploadError(error: unknown): Error {
 export type EventRow = Database['public']['Tables']['events']['Row'];
 export type MediaRow = Database['public']['Tables']['event_media']['Row'];
 export type EventMedia = MediaRow & { url: string | null };
-export type HubEvent = EventRow & { media: EventMedia[] };
+/** `my_registration`: the viewer's own registration status (set by listEvents only). */
+export type HubEvent = EventRow & { media: EventMedia[]; my_registration?: 'registered' | 'waitlisted' | 'cancelled' | 'attended' | 'no_show' | null };
 export type EventInput = { title: string; description: string; location: string; location_type: 'in_person' | 'online'; online_url: string | null; organizer: string; category: string; all_day: boolean; start_date: string | null; end_date: string | null; start_at: string | null; end_at: string | null; scope: string; branch_id: string | null; capacity: number | null; status: string };
 export const LONDON = 'Europe/London';
 export function londonInput(value: string | Date) { return formatInTimeZone(value, LONDON, "yyyy-MM-dd'T'HH:mm"); }
@@ -62,7 +63,7 @@ export function validateEventFile(file: { type: string; size: number; name?: str
   if (!kind || (file.type && EVENT_FILE_MIMES[ext] !== file.type) || (kind === 'document' && nameExt !== ext)) throw new Error('Invalid event file');
   if (file.size > MAX_FILE_BYTES) throw new Error('Event file exceeds 10 MB');
 }
-type EventTime = { start_at: string | null; end_at: string | null; all_day?: boolean | null; start_date?: string | null; end_date?: string | null };
+export type EventTime = { start_at: string | null; end_at: string | null; all_day?: boolean | null; start_date?: string | null; end_date?: string | null };
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 export function londonDate(value: string | Date) {
   // Date-only values are calendar dates, not UTC midnight instants.

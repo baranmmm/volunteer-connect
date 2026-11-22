@@ -58,6 +58,7 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
   }
   function setEnd(day: string, time: string) { endTouched.current = true; setEndDay(day); setEndTime(time); }
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? '');
+  const [registrationEnabled, setRegistrationEnabled] = useState(event?.registration_enabled ?? true);
   const [scope, setScope] = useState<'branch' | 'region'>(event?.scope === 'region' ? 'region' : 'branch');
   const [branch, setBranch] = useState(event?.branch_id ?? (director ? '' : profile?.branch_id ?? ''));
   const [items, setItems] = useState<Item[]>((event?.media ?? []).map(m => ({ key: m.id, name: m.original_name || (m.storage_path.split('/').pop() ?? m.id), kind: m.kind === 'pdf' ? 'pdf' : m.kind === 'document' ? 'document' : 'image', media: m })));
@@ -128,7 +129,7 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
     let id = savedId;
     try {
       const startIso = !allDay && start ? londonToIso(start) : null, endIso = !allDay && end ? londonToIso(end) : null;
-      const data = { title, description, location: locationType === 'online' ? location.trim() : location, location_type: locationType, online_url: locationType === 'online' && onlineUrl.trim() ? onlineUrl.trim() : null, organizer: organizer.trim() || 'Dialogue Society', category, all_day: allDay, start_date: allDay && startDate ? startDate : null, end_date: allDay && endDate ? endDate : null, start_at: startIso, end_at: endIso, capacity: capacity ? Number(capacity) : null, scope: status === 'draft' && director && !branch ? 'region' as const : scope, branch_id: scope === 'branch' && branch ? branch : null, status };
+      const data = { title, description, location: locationType === 'online' ? location.trim() : location, location_type: locationType, online_url: locationType === 'online' && onlineUrl.trim() ? onlineUrl.trim() : null, organizer: organizer.trim() || 'Dialogue Society', category, all_day: allDay, start_date: allDay && startDate ? startDate : null, end_date: allDay && endDate ? endDate : null, start_at: startIso, end_at: endIso, capacity: capacity ? Number(capacity) : null, registration_enabled: registrationEnabled, scope: status === 'draft' && director && !branch ? 'region' as const : scope, branch_id: scope === 'branch' && branch ? branch : null, status };
       const rule = repeatEditable ? buildRule(repeat, repeatStart) : null;
       let createdSeries = false;
       if (!id) {
@@ -180,6 +181,8 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
       else if (event?.series_id && seriesMode) {
         const updated = await updateSeriesFn({ data: { id, mode: seriesMode, event: data, rule: seriesMode !== 'this' && repeatTouched.current ? rule : null } });
         id = updated.eventId;
+        // Registered occurrences are never regenerated; those the new rule no longer produces stay as exceptions.
+        if (updated.keptOffRule.length) toast.error(t('registrations.keptOffRule', { count: updated.keptOffRule.length }));
       } else await save({ data: { id, event: data } });
       await Promise.all([qc.invalidateQueries({ queryKey: ['events'] }), qc.invalidateQueries({ queryKey: ['event'] })]);
       toast.success(t('events.saved')); onSaved(id);
@@ -217,7 +220,8 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
         {director && scope === 'branch' && <div className="space-y-1.5"><Label>{t('events.branch')} *</Label><Select value={branch} onValueChange={setBranch} disabled={busy || branches.isLoading}><SelectTrigger data-testid="event-form-branch" aria-label={t('events.branch')} className="h-11"><SelectValue placeholder={t('auth.chooseBranch')} /></SelectTrigger><SelectContent>{(branches.data ?? []).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>{fieldError('branch')}</div>}
         {!director && <div className="space-y-1.5"><Label htmlFor="event-form-branch">{t('events.branch')} *</Label><Input id="event-form-branch" data-testid="event-form-branch" readOnly aria-readonly value={(branches.data ?? []).find(b => b.id === branch)?.name ?? profile?.branches?.name ?? ''} className="h-11 bg-muted" /><p className="text-xs text-muted-foreground">{t('events.branchFixed')}</p>{fieldError('branch')}</div>}
         {scope === 'region' && <div className="space-y-1.5"><Label>{t('events.region')} *</Label><p className="text-sm">{profile?.branches?.regions?.name ?? t('events.region')}</p></div>}
-        {field(t('events.capacity'), 'event-form-capacity', capacity, setCapacity, 'number')}
+        <div className="space-y-1">{field(t('events.capacity'), 'event-form-capacity', capacity, setCapacity, 'number')}<p className="text-xs text-muted-foreground">{t('registrations.capacityHint')}</p></div>
+        <div className="flex min-h-11 items-center gap-3"><Switch id="event-form-registration-enabled" data-testid="event-form-registration-enabled" checked={registrationEnabled} disabled={busy} onCheckedChange={setRegistrationEnabled} /><Label htmlFor="event-form-registration-enabled">{t('registrations.open')}</Label></div>
       </div>
       {branches.isError && <p role="alert" className="text-sm text-destructive">{t('errors.branchesLoad')}</p>}
       <section className="space-y-3 border-t pt-4"><h3 className="font-semibold">{t('events.files')}</h3><p className="text-xs text-muted-foreground">{t('events.fileLimits')}</p>

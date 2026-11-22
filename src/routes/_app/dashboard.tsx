@@ -26,6 +26,7 @@ import { eventDateText } from "@/components/events/event-display";
 import { EventStatusBadge } from "@/components/events/EventStatus";
 import { STATUS_CARD, cancelledTitle } from "@/components/events/event-status-styles";
 import { HappeningNowBadge } from "@/components/events/HappeningNowBadge";
+import { MyRegistrationsCard } from "@/components/events/MyRegistrations";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => pageHead("Dashboard", "Your volunteer dashboard."),
@@ -82,6 +83,7 @@ function Dashboard() {
           canCreate={isManager}
         />
         {drafts.length > 0 && <DraftsCard drafts={drafts} />}
+        <MyRegistrationsCard />
         <EmptyCard
           icon={ListChecks}
           title={t("dashboard.tasksTitle")}

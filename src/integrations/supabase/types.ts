@@ -250,11 +250,68 @@ export type Database = {
           },
         ]
       }
+      event_registrations: {
+        Row: {
+          attendance_marked_at: string | null
+          attendance_marked_by: string | null
+          cancelled_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          notice: string | null
+          notice_seen_at: string | null
+          registered_at: string
+          show_name: boolean
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          attendance_marked_at?: string | null
+          attendance_marked_by?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          notice?: string | null
+          notice_seen_at?: string | null
+          registered_at?: string
+          show_name?: boolean
+          status: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          attendance_marked_at?: string | null
+          attendance_marked_by?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          notice?: string | null
+          notice_seen_at?: string | null
+          registered_at?: string
+          show_name?: boolean
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_series: {
         Row: {
           all_day: boolean
           branch_id: string | null
           capacity: number | null
+          registration_enabled: boolean
           category: string
           created_at: string
           created_by: string | null
@@ -283,6 +340,7 @@ export type Database = {
           all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
+          registration_enabled?: boolean
           category: string
           created_at?: string
           created_by?: string | null
@@ -311,6 +369,7 @@ export type Database = {
           all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
+          registration_enabled?: boolean
           category?: string
           created_at?: string
           created_by?: string | null
@@ -378,6 +437,7 @@ export type Database = {
           all_day: boolean
           branch_id: string | null
           capacity: number | null
+          registration_enabled: boolean
           category: string
           created_at: string
           created_by: string | null
@@ -408,6 +468,7 @@ export type Database = {
           all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
+          registration_enabled?: boolean
           category: string
           created_at?: string
           created_by?: string | null
@@ -438,6 +499,7 @@ export type Database = {
           all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
+          registration_enabled?: boolean
           category?: string
           created_at?: string
           created_by?: string | null
@@ -717,6 +779,61 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_registration: { Args: { p_event_id: string }; Returns: Json }
+      dismiss_registration_notice: {
+        Args: { p_registration_id: string }
+        Returns: undefined
+      }
+      get_event_registration_summary: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
+      get_event_registrations: {
+        Args: { p_event_id: string }
+        Returns: {
+          attendance_marked_at: string | null
+          attendance_marked_by_name: string | null
+          cancelled_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          registered_at: string
+          show_name: boolean
+          status: string
+          user_id: string | null
+          waitlist_position: number | null
+        }[]
+      }
+      get_my_registrations: {
+        Args: never
+        Returns: {
+          all_day: boolean
+          end_at: string | null
+          end_date: string | null
+          event_id: string
+          event_removed: boolean
+          event_status: string
+          notice: string | null
+          registration_id: string
+          start_at: string | null
+          start_date: string | null
+          status: string
+          title: string
+          waitlist_position: number | null
+        }[]
+      }
+      mark_attendance: {
+        Args: { p_registration_id: string; p_status: string }
+        Returns: undefined
+      }
+      register_for_event: {
+        Args: { p_event_id: string; p_show_name?: boolean }
+        Returns: Json
+      }
+      set_registration_show_name: {
+        Args: { p_event_id: string; p_show_name: boolean }
+        Returns: undefined
+      }
       add_event_media: {
         Args: {
           _event: string

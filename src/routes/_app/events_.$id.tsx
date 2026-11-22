@@ -22,6 +22,7 @@ import { HappeningNowBadge } from '@/components/events/HappeningNowBadge';
 import { RecurringScopeDialog, type SeriesMode } from '@/components/events/RecurringScopeDialog';
 import { EventStatusBadge } from '@/components/events/EventStatus';
 import { cancelledTitle } from '@/components/events/event-status-styles';
+import { ManagerRegistrations, RegistrationPanel } from '@/components/events/EventRegistration';
 
 export const Route = createFileRoute('/_app/events_/$id')({ ssr:false, validateSearch:(search: Record<string, unknown>): { edit?: boolean } => (search['edit'] === true || search['edit'] === 'true' ? { edit:true } : {}), head:() => pageHead('Event details', 'View event details, private images and leaflets, and add Dialogue Society events to your calendar.'), component:EventDetail });
 function EventDetail() {
@@ -99,6 +100,8 @@ function EventDetail() {
     </div>
     {event.description && <p className="whitespace-pre-wrap break-words leading-relaxed">{event.description}</p>}
     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><AddToCalendarMenu event={event} url={url} series={series} /><Button asChild variant="outline" className="h-11"><a data-testid="event-share-whatsapp-button" href={`https://wa.me/?text=${encodeURIComponent(`${event.title}\n${(when ? `${when.text}${when.allDay ? ` · ${t('events.allDay')}` : ''}` : t('events.unscheduled'))}\n${url}`)}`} target="_blank" rel="noopener noreferrer"><Share2 />{t('events.whatsapp')}</a></Button></div>
+    <RegistrationPanel event={event} now={now} />
+    {canManage && <ManagerRegistrations event={event} now={now} />}
     {canManage && <section className="space-y-3 border-t pt-5"><div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">{!deletion.pending && <><Button data-testid="event-edit-button" variant="outline" className="h-11" onClick={() => { setError(''); if (event.series_id) setScopeAction('edit'); else setEditing(true); }}><Pencil />{t('events.edit')}</Button>{event.status!=='cancelled' && <Button data-testid="event-cancel-event-button" variant="outline" className="h-11 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => { setError('');setCancelling(true); }}><X />{t('events.cancelEvent')}</Button>}</>}{canDelete && <Button data-testid="event-delete-button" variant="destructive" className="h-11" disabled={busy} onClick={() => { setError(''); if (event.series_id) setScopeAction('delete'); else setDeleting(true); }}><Trash2 />{t('events.deleteEvent')}</Button>}</div>{deletion.pending && <p className="text-sm text-muted-foreground">{t('events.deletePending')}</p>}</section>}
     {editing && canManage && <EventForm event={event} series={series} {...(event.series_id && editMode ? { seriesMode: editMode } : {})} onClose={() => setEditing(false)} onSaved={savedId => { setEditing(false); if (savedId !== id) void navigate({ to: '/events/$id', params: { id: savedId } }); }} />}
     <RecurringScopeDialog open={scopeAction !== null && canManage} action={scopeAction ?? 'edit'} busy={busy} error={scopeAction === 'delete' ? error : ''} onChoose={mode => void chooseScope(mode)} onClose={() => { if (!busy) setScopeAction(null); }} />

@@ -3,7 +3,10 @@ import { formatDate } from "@/lib/i18n";
 import type { HubEvent } from "@/lib/event-rules";
 
 /** "12 Dec 2026 · 18:30", or the date range plus "All day"; London time. */
-export function eventDateText(event: HubEvent, t: TFunction) {
+export function eventDateText(
+  event: Pick<HubEvent, "all_day" | "start_date" | "end_date" | "start_at">,
+  t: TFunction,
+) {
   if (event.all_day && event.start_date) {
     const range =
       event.end_date && event.end_date !== event.start_date

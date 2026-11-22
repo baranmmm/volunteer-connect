@@ -17,7 +17,6 @@ beforeAll(async () => {
  UPDATE user_roles SET role='regional_director',region_id='${ids.region}' WHERE user_id='${ids.director}';
  UPDATE user_roles SET role='branch_manager' WHERE user_id='${ids.manager}';
  SELECT set_config('request.jwt.claim.sub','${ids.director}',false);`);
- await db.exec('CREATE TABLE public.event_registrations(id uuid DEFAULT gen_random_uuid(),event_id uuid REFERENCES public.events(id),status text)');
  branchEvent=await create(data());draftEvent=await create(data('branch',ids.branch,'draft'));regionEvent=await create(data('region',null));otherEvent=await create(data('branch',ids.branch2));
 },20000);
 afterAll(async()=>db.close());
@@ -53,8 +52,8 @@ describe('events database rules',()=>{
  it('registrations no longer prevent soft deletion and are retained',async()=>transaction(ids.manager,async()=>{
    await db.query('SELECT delete_event($1,$2)',[branchEvent,'Community gathering']);
    await db.exec('RESET ROLE');
-   expect((await db.query('SELECT count(*)::int AS count FROM event_registrations WHERE event_id=$1',[branchEvent])).rows).toEqual([{count:1}]);
- },async()=>{await db.query("INSERT INTO event_registrations(event_id,status) VALUES($1,'confirmed')",[branchEvent]);}));
+   expect((await db.query('SELECT status,notice FROM event_registrations WHERE event_id=$1',[branchEvent])).rows).toEqual([{status:'registered',notice:'event_removed'}]);
+ },async()=>{await db.query("INSERT INTO event_registrations(event_id,user_id,status) VALUES($1,$2,'registered')",[branchEvent,ids.volunteer]);}));
  it('a director restores within 30 days with an audit entry',async()=>transaction(ids.manager,async()=>{
    await db.query('SELECT delete_event($1)',[draftEvent]);
    await db.query('SELECT delete_event($1,NULL,true)',[draftEvent]);

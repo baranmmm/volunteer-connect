@@ -19,6 +19,10 @@ export class DashboardPage {
   readonly drafts = () => this.page.getByTestId("dashboard-your-drafts");
   readonly draftItem = (eventId: string) => this.drafts().locator(`[data-testid="dashboard-draft-item"][data-event-id="${eventId}"]`);
   readonly draftEdit = (eventId: string) => this.draftItem(eventId).getByTestId("dashboard-draft-edit");
+  readonly myRegistrations = () => this.page.getByTestId("dashboard-my-registrations");
+  readonly myRegistrationItem = (eventId: string) => this.myRegistrations().locator(`[data-testid="dashboard-my-registration-item"][data-event-id="${eventId}"]`);
+  readonly registrationNotice = (registrationId: string) => this.page.getByTestId(`dashboard-registration-notice-${registrationId}`);
+  readonly dismissRegistrationNotice = (registrationId: string) => this.page.getByTestId(`dashboard-registration-notice-dismiss-${registrationId}`);
 
   async goto() {
     await this.page.goto("/dashboard");

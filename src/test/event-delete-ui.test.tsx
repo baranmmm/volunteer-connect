@@ -15,6 +15,7 @@ vi.mock('@/lib/events.functions', () => ({ getEvent: vi.fn(), cancelEvent: vi.fn
 vi.mock('@/lib/delete-event.functions', () => ({ deleteEvent: mocks.remove, deleteSeries: vi.fn() }));
 vi.mock('@/lib/toast', () => ({ toast: { success: vi.fn() } }));
 vi.mock('@/components/events/EventForm', () => ({ EventForm: () => null }));
+vi.mock('@/components/events/EventRegistration', () => ({ RegistrationPanel: () => null, ManagerRegistrations: () => null }));
 vi.mock('@/components/events/EventDialog', () => ({ EventDialog: ({ open, children }: { open: boolean; children: ReactNode }) => open ? <section>{children}</section> : null }));
 import '@/lib/i18n';
 import { Route } from '@/routes/_app/events_.$id';
