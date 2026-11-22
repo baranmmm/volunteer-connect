@@ -82,7 +82,7 @@ function check<T>(res: { data: T; error: { message: string } | null }, what: str
 }
 
 export async function listAllUsers() {
-  const users: { id: string; email?: string }[] = [];
+  const users: { id: string; email?: string; created_at: string }[] = [];
   for (let page = 1; ; page++) {
     const { data, error } = await adminClient().auth.admin.listUsers({ page, perPage: 1000 });
     if (error) throw new Error(`listUsers: ${error.message}`);
@@ -131,6 +131,10 @@ export async function ensureUser(spec: UserSpec, existingId?: string | null): Pr
 }
 
 export async function deleteAuthUser(id: string): Promise<void> {
+  // A soft-deleted (Recycle Bin) test user has a user_deletion_state row with no foreign key to the user; the
+  // app's purge removes it, so do the same here instead of leaving an orphan behind.
+  const state = await adminClient().from("user_deletion_state").delete().eq("target_id", id);
+  if (state.error) throw new Error(`delete deletion state ${id}: ${state.error.message}`);
   const { error } = await adminClient().auth.admin.deleteUser(id);
   if (error && !/not.?found/i.test(error.message)) throw new Error(`deleteUser ${id}: ${error.message}`);
 }
