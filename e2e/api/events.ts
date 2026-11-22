@@ -12,12 +12,13 @@ export type EventSpec = {
   status: EventStatus;
   /** Timed event: start relative to now. Omit both for an unscheduled draft. */
   startInMinutes?: number;
+  /** Timed event at an exact London wall-clock start, "YYYY-MM-DDTHH:mm" (instead of startInMinutes). */
+  startLocal?: string;
   durationMinutes?: number;
 };
 
 function payload(spec: EventSpec) {
-  const timed = spec.startInMinutes !== undefined;
-  const start = timed ? new Date(Date.now() + spec.startInMinutes! * 60_000) : null;
+  const start = spec.startLocal ? new Date(londonIso(spec.startLocal)) : spec.startInMinutes !== undefined ? new Date(Date.now() + spec.startInMinutes * 60_000) : null;
   const end = start ? new Date(start.getTime() + (spec.durationMinutes ?? 60) * 60_000) : null;
   return {
     title: spec.title,

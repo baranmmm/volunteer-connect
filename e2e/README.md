@@ -39,7 +39,7 @@ npm test             # starts the app on BASE_URL against QA, then runs all proj
 | `npm test` | All projects: `desktop-chromium`, `mobile-pixel7`, `api` |
 | `npm run test:ui` / `npm run test:api` | UI projects only / API permission tests only |
 | `npm run qa:teardown` | Deletes this run's `fresh-*@dsvolunteer.test` users (`E2E_RUN_ID`) and any older than 2 hours, plus their test events: events those users created, and `E2E Event …` events whose creator no longer exists. Recent users of other runs (e.g. CI running at the same time on the shared QA database) are never touched. QA only (guarded). |
-| `npm run report` | Opens the last HTML report |
+| `npm run report` | Opens the newest HTML report (`npm run report -- <run-id>` for a given run). Locally every run writes to its own `test-results/<run-id>/` and `playwright-report/<run-id>/` (`E2E_RUN_ID`, or a timestamp), so traces of earlier runs are kept; folders older than 7 days are removed when a run starts. CI keeps the flat `test-results/` and `playwright-report/`. |
 
 **Local runs share the QA database with CI.** Give each local run an id so its teardown can clean up after it
 without touching a CI run in progress: `E2E_RUN_ID=local-$(date +%s) npm test`, then the same id for `npm run qa:teardown`.

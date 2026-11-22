@@ -25,7 +25,7 @@ test.describe("Recurring events", () => {
     await expect(form.root).toBeVisible();
     await form.title().fill(`${EVENT_TITLE_PREFIX}ui-${Date.now()} Tuesday dialogue`);
     await form.location().fill("E2E Community Hall");
-    await form.start().fill(`${tuesday(1)}T18:00`);
+    await form.setStart(`${tuesday(1)}T18:00`);
     await form.chooseRepeat("weekly");
     await form.chooseEnds("after");
     await form.repeatCount().fill("8");

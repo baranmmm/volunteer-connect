@@ -1,23 +1,25 @@
 import { defineConfig, devices } from "@playwright/test";
 import { baseUrl } from "./setup/env";
 import { assertQaEnvironment } from "./setup/guard";
+import { outputDirs } from "./setup/output-dirs";
 
 // Abort before anything starts if the environment is not unambiguously QA.
 assertQaEnvironment();
 
 const CI = !!process.env["CI"];
 const BASE_URL = baseUrl();
+const { outputDir, reportDir } = outputDirs(CI);
 
 export default defineConfig({
   testDir: "./tests",
-  outputDir: "./test-results",
+  outputDir,
   fullyParallel: true,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
   workers: CI ? 2 : undefined,
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
+  reporter: [["list"], ["html", { open: "never", outputFolder: reportDir }]],
   use: {
     baseURL: BASE_URL,
     locale: "en-GB",

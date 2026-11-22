@@ -14,11 +14,19 @@ screens and design, and still syncs two-way on `main`.
   `supabase/` until they say it has finished.
 - Never rewrite pushed history (Lovable mirrors it), and keep `main` buildable.
 
-### Before opening a PR
-Run these locally and put the results in the PR description:
-1. `npx tsc --noEmit` (repo root; and inside `e2e/` when it changed).
-2. ESLint on the changed files only: `npx eslint <changed files>`. The rest of `src/` has known formatting issues.
-3. The Playwright specs related to the change, against QA (`cd e2e && npx playwright test <specs>`).
+### Risk levels
+**Low risk**: UI and test work that does not touch migrations, RLS, grants, auth or the deletion/GDPR flow.
+1. Run `npx tsc --noEmit` at the repo root, and inside `e2e/` when it changed.
+2. Run ESLint on the changed files only: `npx eslint <changed files>`. The rest of `src/` has known formatting issues.
+3. Run only the Playwright specs related to the change, against QA (`cd e2e && npx playwright test <specs>`).
+   Do not run the full suite locally; CI runs it.
+4. Push and open the PR without asking. The description has a short summary and the test results.
+5. Report back only the PR link.
+
+**High risk**: migrations, RLS, grants, SECURITY DEFINER functions, auth, and deletion/GDPR.
+1. Do a rolled-back dry run on QA and write a migration summary.
+2. Run the checks from the low-risk steps 1-3.
+3. Show the summary and wait for approval before pushing.
 
 ### Always ask first
 - Pushing to `main`, force pushing, `git reset --hard`, rebase.
