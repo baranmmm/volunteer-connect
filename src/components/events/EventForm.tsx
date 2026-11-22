@@ -81,7 +81,7 @@ export function EventForm({ event, series, seriesMode, onClose, onSaved }: { eve
   async function addFiles(files: FileList | null) {
     if (!files) return;
     setPreparing(true); setError(''); setFileErrors([]);
-    let next = [...items];
+    const next = [...items];
     const rejected: string[] = [];
     for (const original of Array.from(files)) {
       try {
