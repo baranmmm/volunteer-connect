@@ -1,7 +1,7 @@
 // A2b registrations through the UI. Fresh managers/volunteers and events only; removed after each test.
 import { test, expect } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
-import { EVENT_TITLE_PREFIX } from "../../api/events";
+import { cancelEventAs, EVENT_TITLE_PREFIX } from "../../api/events";
 import { cancelRegistrationAs, registerAs, registrationOf, registrationsOf } from "../../api/registrations";
 import { EventPage } from "../../pages/EventPage";
 import { CalendarPage } from "../../pages/CalendarPage";
@@ -173,5 +173,27 @@ test.describe("Event registrations", () => {
     await expect(page.page.getByTestId("toast-success").last()).toBeVisible();
     await expect(page.capacityWarning()).toHaveCount(0);
     await expect(page.registrationCount()).toHaveText("2 / 1 registered");
+  });
+
+  test("a cancelled event keeps only the count and the cancellation message; the dashboard lists it as Cancelled", async ({ freshUser, freshEvent, pageAs }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const volunteer = await freshUser();
+    const event = await freshEvent(manager, { label: "ui cancelled", status: "published", startInMinutes: IN_3_DAYS, capacity: 10 });
+    await registerAs(volunteer.email, event.id);
+    await cancelEventAs(manager.email, event.id);
+    const page = new EventPage(await pageAs(volunteer));
+    await page.goto(event.id);
+    await expect(page.page.getByTestId("event-share-actions")).toHaveCount(0);
+    await expect(page.page.getByTestId("event-share-whatsapp-button")).toHaveCount(0);
+    await expect(page.registrationCount()).toHaveText("1 / 10 registered");
+    await expect(page.registrationUnavailable()).toHaveAttribute("data-reason", "cancelled");
+    await expect(page.registrationStatus()).toHaveCount(0);
+    await expect(page.hideNameCheckbox()).toHaveCount(0);
+    await expect(page.attendeeList()).toHaveCount(0);
+    const dashboard = new DashboardPage(page.page);
+    await dashboard.goto();
+    const item = dashboard.myRegistrationItem(event.id);
+    await expect(item).toHaveAttribute("data-event-status", "cancelled");
+    await expect(item.getByTestId("event-status-badge")).toHaveAttribute("data-status", "cancelled");
   });
 });

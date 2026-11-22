@@ -11,6 +11,8 @@ import { translateError } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { eventDateText } from "./event-display";
 import { RegistrationBadge } from "./RegistrationBadge";
+import { EventStatusBadge } from "./EventStatus";
+import { eventTimeState } from "@/lib/event-rules";
 
 /** Dashboard: notices (promoted / cancelled / removed / changed) and the "My registrations" card. */
 export function MyRegistrationsCard() {
@@ -29,10 +31,11 @@ export function MyRegistrationsCard() {
   const [error, setError] = useState("");
   const rows = query.data ?? [];
   const notices = rows.filter((r) => r.notice);
+  // Registrations of events that have not ended; a cancelled event stays listed with its "Cancelled" badge.
   const upcoming = rows.filter(
     (r) =>
       !r.event_removed &&
-      r.event_status !== "cancelled" &&
+      !eventTimeState(r).past &&
       (r.status === "registered" || r.status === "waitlisted"),
   );
   async function close(r: MyRegistration) {
@@ -124,12 +127,17 @@ export function MyRegistrationsCard() {
                   data-testid="dashboard-my-registration-item"
                   data-event-id={r.event_id}
                   data-status={r.status}
+                  data-event-status={r.event_status}
                   className="block rounded-lg border p-3 transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <p className="text-sm text-muted-foreground">{eventDateText(r, t)}</p>
                   <p className="mt-0.5 break-words font-semibold">{r.title}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                    <RegistrationBadge status={r.status} />
+                    {r.event_status === "cancelled" ? (
+                      <EventStatusBadge status="cancelled" />
+                    ) : (
+                      <RegistrationBadge status={r.status} />
+                    )}
                     {r.status === "waitlisted" && r.waitlist_position && (
                       <span>
                         {t("registrations.waitlistPosition", { position: r.waitlist_position })}
