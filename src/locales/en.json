@@ -641,7 +641,7 @@
     "withdrawnToast": "Request withdrawn",
     "delete": "Delete",
     "deleteTitle": "Delete this request?",
-    "deleteText": "“{{title}}” moves to the Recycle Bin. Managers can restore it within 30 days.",
+    "deleteText": "“{{title}}” moves to the Recycle Bin. An open request is withdrawn first; managers can restore it within 30 days, but it stays withdrawn.",
     "deleteConfirm": "Delete request",
     "deletedToast": "Request moved to the Recycle Bin",
     "submittedOn": "Submitted {{date}}",

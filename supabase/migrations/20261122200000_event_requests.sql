@@ -209,7 +209,7 @@ BEGIN
   RETURN r;
 END $$;
 
--- Recycle Bin restore (called by restore_item).
+-- Recycle Bin restore (called by restore_item). The status is kept: open requests were withdrawn on delete.
 CREATE FUNCTION public.restore_event_request(_id uuid) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE r public.event_requests;
@@ -401,7 +401,13 @@ DECLARE _uid uuid := public.event_request_actor(); cur public.event_requests;
 BEGIN
   cur := public.event_request_locked(p_id);
   IF NOT ((cur.requester_id = _uid AND cur.status <> 'approved') OR public.can_review_event_request(cur)) THEN RAISE EXCEPTION 'Not allowed'; END IF;
-  UPDATE public.event_requests SET deleted_at = now(), deleted_by = _uid WHERE id = p_id;
+  -- An open request is withdrawn first, so a restore never reopens it: the 5-open limit cannot be bypassed by
+  -- delete / submit / restore, and nothing reappears unannounced in a reviewer's queue.
+  UPDATE public.event_requests SET deleted_at = now(), deleted_by = _uid,
+    status = CASE WHEN status IN ('submitted', 'under_review') THEN 'withdrawn' ELSE status END,
+    notice = CASE WHEN status IN ('submitted', 'under_review') THEN NULL ELSE notice END,
+    notice_seen_at = CASE WHEN status IN ('submitted', 'under_review') THEN NULL ELSE notice_seen_at END
+  WHERE id = p_id;
   INSERT INTO public.recycle_bin_audit_log (actor_id, item_type, item_id, action, branch_id, region_id)
     VALUES (_uid, 'event_request', p_id, 'delete', cur.branch_id, cur.region_id);
 END $$;

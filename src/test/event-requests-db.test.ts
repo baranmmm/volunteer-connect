@@ -316,7 +316,8 @@ describe("event requests (database)", () => {
       ).rows;
       expect(bin).toEqual([{ id: v, type: "event_request" }]);
       await db.query("SELECT public.restore_item('event_request',$1)", [v]);
-      expect((await stored(v))?.status).toBe("submitted");
+      // Deleting an open request withdrew it; restoring never reopens it.
+      expect((await stored(v))?.status).toBe("withdrawn");
       await as(ids.bm);
       await db.query("SELECT public.delete_event_request($1)", [v]);
       const gone = (
@@ -342,5 +343,41 @@ describe("event requests (database)", () => {
       await db.query("DELETE FROM auth.users WHERE id=$1", [ids.vol]);
       expect(await stored(open)).toMatchObject({ status: "withdrawn", requester_id: null });
       expect(await stored(a)).toMatchObject({ status: "approved", requester_id: null });
+    }));
+  it("delete, new requests, restore: the open-request limit holds and nothing reopens", () =>
+    tx(async () => {
+      const old: string[] = [];
+      for (let i = 0; i < 5; i++) old.push(await submit(ids.vol2, { title: `Old ${i}` }));
+      await as(ids.bm2);
+      await db.query("SELECT public.start_review_event_request($1)", [old[0]]);
+      await as(ids.vol2);
+      for (const id of old) await db.query("SELECT public.delete_event_request($1)", [id]);
+      for (const id of old) expect((await stored(id))?.status).toBe("withdrawn");
+      for (let i = 0; i < 5; i++) await submit(ids.vol2, { title: `New ${i}` });
+      await as(ids.bm2);
+      for (const id of old) await db.query("SELECT public.restore_item('event_request',$1)", [id]);
+      await as(null);
+      const open = (
+        await db.query<{ n: number }>(
+          "SELECT count(*)::int n FROM public.event_requests WHERE requester_id=$1 AND status IN ('submitted','under_review') AND deleted_at IS NULL",
+          [ids.vol2],
+        )
+      ).rows[0]!.n;
+      expect(open).toBe(5);
+      for (const id of old) expect((await stored(id))?.status).toBe("withdrawn");
+      await as(ids.vol2);
+      await fails(
+        "SELECT public.submit_event_request($1::jsonb)",
+        [request()],
+        "Too many open requests",
+      );
+      // The restored, formerly under-review request is not back in the reviewer's queue.
+      await as(ids.bm2);
+      const queue = (
+        await db.query<{ r: { rows: { id: string }[] } }>(
+          "SELECT public.list_managed_event_requests('under_review',0) r",
+        )
+      ).rows[0]!.r.rows;
+      expect(queue.map((x) => x.id)).not.toContain(old[0]);
     }));
 });

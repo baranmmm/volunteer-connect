@@ -162,7 +162,8 @@ test.describe("Event requests API", () => {
     const bin = await rpcAs<{ id: string; type: string; can_restore: boolean }[]>(manager.email, "list_recycle_bin", { _type: "event_request", _search: REQUEST_TITLE_PREFIX, _offset: 0 });
     expect(bin.data.find((r) => r.id === id)).toMatchObject({ type: "event_request", can_restore: true });
     expect((await rpcAs(manager.email, "restore_item", { _type: "event_request", _id: id })).error).toBeNull();
-    expect(await requestRow(id)).toMatchObject({ status: "submitted", deleted_at: null });
+    // Deleting the open request withdrew it; the restore brings it back withdrawn, never open.
+    expect(await requestRow(id)).toMatchObject({ status: "withdrawn", deleted_at: null });
     expect((await rpcAs(manager.email, "delete_event_request", { p_id: id })).error).toBeNull();
     const purged = await rpcAs<{ deleted: boolean }>(manager.email, "permanent_delete_item", { _type: "event_request", _id: id, _confirmation: "DELETE" });
     expect(purged.data).toMatchObject({ deleted: true });
@@ -171,6 +172,25 @@ test.describe("Event requests API", () => {
     const approved = await submitRequestAs(volunteer.email, title("approved keep"));
     expect((await rpcAs(manager.email, "approve_event_request", { p_id: approved })).error).toBeNull();
     expect((await rpcAs(volunteer.email, "delete_event_request", { p_id: approved })).error).toBe("Not allowed");
+  });
+
+  test("delete, new requests, restore: open requests come back withdrawn and the limit of 5 holds", async ({ freshUser }) => {
+    const volunteer = await freshUser();
+    const manager = await freshUser({ role: "branch_manager" });
+    const old: string[] = [];
+    for (let i = 0; i < 5; i++) old.push(await submitRequestAs(volunteer.email, title(`old ${i}`)));
+    expect((await rpcAs(manager.email, "start_review_event_request", { p_id: old[0] })).error).toBeNull();
+    for (const id of old) expect((await rpcAs(volunteer.email, "delete_event_request", { p_id: id })).error).toBeNull();
+    for (const id of old) expect(await requestRow(id)).toMatchObject({ status: "withdrawn", notice: null });
+    for (let i = 0; i < 5; i++) await submitRequestAs(volunteer.email, title(`new ${i}`));
+    for (const id of old) expect((await rpcAs(manager.email, "restore_item", { _type: "event_request", _id: id })).error).toBeNull();
+    for (const id of old) expect(await requestRow(id)).toMatchObject({ status: "withdrawn", deleted_at: null });
+    const mine = (await rpcAs<{ status: string }[]>(volunteer.email, "list_my_event_requests")).data;
+    expect(mine.filter((r) => r.status === "submitted" || r.status === "under_review")).toHaveLength(5);
+    expect((await rpcAs(volunteer.email, "submit_event_request", { p: requestInput(title("sixth")) })).error).toBe("Too many open requests");
+    // The formerly under-review request does not reappear in the reviewer's queue.
+    const queue = await rpcAs<{ rows: { id: string }[] }>(manager.email, "list_managed_event_requests", { p_status: "under_review", p_offset: 0 });
+    expect(queue.data.rows.map((r) => r.id)).not.toContain(old[0]);
   });
 
   test("user deletion withdraws open requests; the real purge chain keeps them with requester_id NULL", async ({ freshUser }) => {

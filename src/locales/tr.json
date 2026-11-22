@@ -641,7 +641,7 @@
     "withdrawnToast": "Talep geri çekildi",
     "delete": "Sil",
     "deleteTitle": "Bu talep silinsin mi?",
-    "deleteText": "“{{title}}” Geri Dönüşüm Kutusu'na taşınır. Yöneticiler 30 gün içinde geri yükleyebilir.",
+    "deleteText": "“{{title}}” Geri Dönüşüm Kutusu'na taşınır. Açık bir talep önce geri çekilir; yöneticiler 30 gün içinde geri yükleyebilir, ancak talep geri çekilmiş olarak kalır.",
     "deleteConfirm": "Talebi sil",
     "deletedToast": "Talep Geri Dönüşüm Kutusu'na taşındı",
     "submittedOn": "{{date}} tarihinde gönderildi",
