@@ -136,6 +136,61 @@ export type Database = {
           },
         ]
       }
+      email_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          notification_id: string | null
+          payload: NonNullable<Json>
+          sent_at: string | null
+          status: string
+          template: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          notification_id?: string | null
+          payload?: NonNullable<Json>
+          sent_at?: string | null
+          status?: string
+          template: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          notification_id?: string | null
+          payload?: NonNullable<Json>
+          sent_at?: string | null
+          status?: string
+          template?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_outbox_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_audit_log: {
         Row: {
           action: string
@@ -854,6 +909,456 @@ export type Database = {
           },
         ]
       }
+      meeting_agenda_items: {
+        Row: {
+          created_at: string
+          id: string
+          meeting_id: string
+          notes: string | null
+          position: number
+          title: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          id?: string
+          meeting_id: string
+          notes?: string | null
+          position: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          notes?: string | null
+          position?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_agenda_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_decisions: {
+        Row: {
+          agenda_item_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          meeting_id: string
+          text: string
+        }
+        ComputedFields: never
+        Insert: {
+          agenda_item_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meeting_id: string
+          text: string
+        }
+        Update: {
+          agenda_item_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meeting_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_decisions_agenda_item_id_fkey"
+            columns: ["agenda_item_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_agenda_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_decisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_decisions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_files: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          meeting_id: string
+          original_name: string
+          storage_path: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          meeting_id: string
+          original_name: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          meeting_id?: string
+          original_name?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_files_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_files_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_invitees: {
+        Row: {
+          created_at: string
+          invited_by: string | null
+          meeting_id: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          invited_by?: string | null
+          meeting_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          invited_by?: string | null
+          meeting_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_invitees_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_invitees_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_invitees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_requests: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          decline_reason: string | null
+          id: string
+          meeting_id: string | null
+          note: string | null
+          proposed_times: NonNullable<Json>
+          region_id: string | null
+          requester_id: string | null
+          reviewed_at: string | null
+          scope: string
+          status: string
+          target_id: string | null
+          topic: string
+          updated_at: string
+          meeting_request_json: Json | null
+        }
+        ComputedFields: "meeting_request_json"
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          meeting_id?: string | null
+          note?: string | null
+          proposed_times?: NonNullable<Json>
+          region_id?: string | null
+          requester_id?: string | null
+          reviewed_at?: string | null
+          scope: string
+          status?: string
+          target_id?: string | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          meeting_id?: string | null
+          note?: string | null
+          proposed_times?: NonNullable<Json>
+          region_id?: string | null
+          requester_id?: string | null
+          reviewed_at?: string | null
+          scope?: string
+          status?: string
+          target_id?: string | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_requests_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_requests_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_requests_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          ends_at: string
+          id: string
+          location: string | null
+          location_type: string
+          online_url: string | null
+          purge_requested_at: string | null
+          region_id: string | null
+          scope: string
+          source_request_id: string | null
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+          meeting_json: Json | null
+        }
+        ComputedFields: "meeting_json"
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          ends_at: string
+          id?: string
+          location?: string | null
+          location_type?: string
+          online_url?: string | null
+          purge_requested_at?: string | null
+          region_id?: string | null
+          scope: string
+          source_request_id?: string | null
+          starts_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          ends_at?: string
+          id?: string
+          location?: string | null
+          location_type?: string
+          online_url?: string | null
+          purge_requested_at?: string | null
+          region_id?: string | null
+          scope?: string
+          source_request_id?: string | null
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          task_reminder_emails: boolean
+          updated_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          task_reminder_emails?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          task_reminder_emails?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          kind: string
+          link: string
+          payload: NonNullable<Json>
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          kind: string
+          link: string
+          payload?: NonNullable<Json>
+          read_at?: string | null
+          title?: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          kind?: string
+          link?: string
+          payload?: NonNullable<Json>
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       privacy_notice_acceptances: {
         Row: {
           accepted_at: string
@@ -998,6 +1503,324 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      task_assignees: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          reminders_muted: boolean
+          task_id: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          reminders_muted?: boolean
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          reminders_muted?: boolean
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_reminder_log: {
+        Row: {
+          created_at: string
+          day: string
+          kind: string
+          task_id: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string
+          day: string
+          kind: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          kind?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_reminder_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_reminder_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_requests: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          decline_reason: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          region_id: string | null
+          requester_id: string | null
+          reviewed_at: string | null
+          scope: string
+          status: string
+          target_id: string | null
+          task_id: string | null
+          title: string
+          updated_at: string
+          task_request_json: Json | null
+        }
+        ComputedFields: "task_request_json"
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          region_id?: string | null
+          requester_id?: string | null
+          reviewed_at?: string | null
+          scope: string
+          status?: string
+          target_id?: string | null
+          task_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          region_id?: string | null
+          requester_id?: string | null
+          reviewed_at?: string | null
+          scope?: string
+          status?: string
+          target_id?: string | null
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          branch_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          decision_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          due_date: string | null
+          event_id: string | null
+          id: string
+          meeting_id: string | null
+          overdue_every_days: number | null
+          priority: string
+          region_id: string | null
+          remind_before_days: number[]
+          repeat_every_days: number | null
+          repeat_kind: string
+          repeat_start: string | null
+          scope: string
+          self_task: boolean
+          source_request_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          task_json: Json | null
+        }
+        ComputedFields: "task_json"
+        Insert: {
+          branch_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          overdue_every_days?: number | null
+          priority?: string
+          region_id?: string | null
+          remind_before_days?: number[]
+          repeat_every_days?: number | null
+          repeat_kind?: string
+          repeat_start?: string | null
+          scope: string
+          self_task?: boolean
+          source_request_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          overdue_every_days?: number | null
+          priority?: string
+          region_id?: string | null
+          remind_before_days?: number[]
+          repeat_every_days?: number | null
+          repeat_kind?: string
+          repeat_start?: string | null
+          scope?: string
+          self_task?: boolean
+          source_request_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_audit_log: {
         Row: {
@@ -1183,9 +2006,97 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_task_request: { Args: { p_id: string }; Returns: string }
+      add_agenda_item: {
+        Args: { p_meeting: string; p_notes?: string; p_title: string }
+        Returns: string
+      }
+      add_meeting_decision: {
+        Args: { p_item: string; p_text: string }
+        Returns: string
+      }
+      add_meeting_file: {
+        Args: {
+          p_extension: string
+          p_meeting: string
+          p_original_name: string
+        }
+        Returns: Json
+      }
+      approve_meeting_request: {
+        Args: { p_id: string; p_meeting: Json }
+        Returns: string
+      }
       authorize_follower_self_deletion: {
         Args: { _target: string }
         Returns: string
+      }
+      create_meeting: { Args: { p: Json }; Returns: string }
+      create_task: { Args: { p: Json }; Returns: string }
+      decline_meeting_request: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      decline_task_request: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      delete_agenda_item: { Args: { p_id: string }; Returns: undefined }
+      delete_meeting: { Args: { p_id: string }; Returns: undefined }
+      delete_meeting_decision: { Args: { p_id: string }; Returns: undefined }
+      delete_meeting_file: { Args: { p_id: string }; Returns: undefined }
+      delete_task: { Args: { p_id: string }; Returns: undefined }
+      get_event_tasks: { Args: { p_event: string }; Returns: Json }
+      get_meeting: { Args: { p_id: string }; Returns: Json }
+      get_my_task_summary: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_notification_preferences: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_task: { Args: { p_id: string }; Returns: Json }
+      get_unread_notification_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_work_request_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      list_meeting_people: {
+        Args: { p_branch?: string; p_region?: string; p_scope: string }
+        Returns: Json
+      }
+      list_meeting_requests_to_review: {
+        Args: { p_filter?: string }
+        Returns: Json
+      }
+      list_meetings: {
+        Args: { p_limit?: number; p_when?: string }
+        Returns: Json
+      }
+      list_my_meeting_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      list_my_notifications: { Args: { p_limit?: number }; Returns: Json }
+      list_my_task_requests: { Args: Record<PropertyKey, never>; Returns: Json }
+      list_request_targets: { Args: Record<PropertyKey, never>; Returns: Json }
+      list_task_people: {
+        Args: { p_branch?: string; p_region?: string; p_scope: string }
+        Returns: Json
+      }
+      list_task_requests_to_review: {
+        Args: { p_filter?: string }
+        Returns: Json
+      }
+      list_tasks: { Args: Record<PropertyKey, never>; Returns: Json }
+      mark_notifications_read: {
+        Args: { p_entity_id?: string; p_entity_type?: string; p_id?: string }
+        Returns: number
+      }
+      move_agenda_item: {
+        Args: { p_direction: number; p_id: string }
+        Returns: undefined
       }
       purge_expired_structure: { Args: never; Returns: number }
       purge_expired_volunteer_applications: { Args: never; Returns: number }
@@ -1231,11 +2142,47 @@ export type Database = {
         Args: { p_filter?: string }
         Returns: Json
       }
+      purge_expired_work_items: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      purge_meeting: {
+        Args: { _finalize?: boolean; _id: string }
+        Returns: Json
+      }
       rename_branch: { Args: { p_id: string; p_name: string }; Returns: undefined }
       rename_region: { Args: { p_id: string; p_name: string }; Returns: undefined }
+      run_task_reminders: { Args: { p_now?: string }; Returns: number }
       session_ok: { Args: never; Returns: boolean }
+      set_meeting_status: {
+        Args: { p_id: string; p_status: string }
+        Returns: string
+      }
+      set_task_reminder_emails: { Args: { p_on: boolean }; Returns: boolean }
+      set_task_reminder_mute: {
+        Args: { p_id: string; p_muted: boolean }
+        Returns: boolean
+      }
+      set_task_status: {
+        Args: { p_id: string; p_status: string }
+        Returns: string
+      }
+      submit_meeting_request: { Args: { p: Json }; Returns: string }
+      submit_task_request: { Args: { p: Json }; Returns: string }
       submit_volunteer_application: { Args: { p: Json }; Returns: string }
       unfollow_branch: { Args: { p_branch_id: string }; Returns: undefined }
+      update_agenda_item: {
+        Args: { p_id: string; p_notes?: string; p_title: string }
+        Returns: undefined
+      }
+      update_meeting: { Args: { p: Json; p_id: string }; Returns: string }
+      update_meeting_decision: {
+        Args: { p_id: string; p_text: string }
+        Returns: undefined
+      }
+      update_task: { Args: { p: Json; p_id: string }; Returns: string }
+      withdraw_meeting_request: { Args: { p_id: string }; Returns: undefined }
+      withdraw_task_request: { Args: { p_id: string }; Returns: undefined }
       withdraw_volunteer_application: {
         Args: { p_id: string }
         Returns: undefined
