@@ -54,7 +54,8 @@
     "inactiveTitle": "Your account is not active",
     "inactiveText": "Please contact your Branch Manager if you think this is a mistake.",
     "recycleBin": "Recycle Bin",
-    "requests": "Requests"
+    "requests": "Requests",
+    "myRequests": "My Requests"
   },
   "auth": {
     "heroTitle": "Bringing communities together, one conversation at a time.",
@@ -471,7 +472,9 @@
       "this": "This event",
       "following": "This and following events",
       "all": "All events"
-    }
+    },
+    "external": "External",
+    "organisedBy": "Organised by {{organizer}}"
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
@@ -693,11 +696,94 @@
       "underReview": "This request is already under review.",
       "declineReason": "Give a reason of at least 10 characters.",
       "ownReview": "You cannot review your own request.",
-      "notFound": "This request is not available."
+      "notFound": "This request is not available.",
+      "sourceUrl": "Enter a valid https:// link.",
+      "tooManyFiles": "Up to 3 files per request.",
+      "organizer": "Enter the organiser.",
+      "source": "Choose how you heard about it.",
+      "invalidFile": "Use a JPG, PNG, WebP or PDF file.",
+      "scopeType": "The request type and scope cannot be changed.",
+      "filesLoad": "The files could not be loaded."
     },
     "dateLabel": "date",
     "timeLabel": "time",
     "requiredNote": "* Required",
-    "requester": "Requested by"
+    "requester": "Requested by",
+    "types": {
+      "external": "External",
+      "proposal": "Proposal"
+    },
+    "typeChoice": {
+      "external": "Add an event I saw or was invited to",
+      "externalHint": "Someone else organises it (a leaflet, an invitation, a website). Once approved it appears in the calendar.",
+      "proposal": "Suggest an event we could organise",
+      "proposalHint": "An idea for our branch or region. Once approved, a manager prepares it as a draft."
+    },
+    "organizer": "Organiser",
+    "sourceQuestion": "How did you hear about it?",
+    "sources": {
+      "leaflet": "Leaflet",
+      "invitation": "Invitation",
+      "website": "Website",
+      "other": "Other"
+    },
+    "source": "Source",
+    "sourceUrl": "Link to event page",
+    "notes": "Notes",
+    "when": "Date & time",
+    "choose": "Choose…",
+    "attachments": "Attachments",
+    "attachment": "Attachment",
+    "attachmentsLabel": "Leaflet or invitation",
+    "attachmentsHint": "Optional. Up to 3 files: JPG, PNG, WebP or PDF, 10 MB each.",
+    "editRequest": "Edit request",
+    "editedBy": "Last edited by {{name}}",
+    "editedByManager": "Edited by a manager",
+    "duplicateWarning": "Possible duplicate: an event on the same day has a similar title.",
+    "approvePublish": "Approve and publish",
+    "publishedToast": "Event published from the request",
+    "copyFailed": "{{count}} file(s) could not be copied to the event.",
+    "filesNotSaved": "{{count}} file(s) could not be saved. The request itself was saved.",
+    "kinds": {
+      "event": "Event",
+      "task": "Task",
+      "meeting": "Meeting"
+    },
+    "newRequest": "New request",
+    "comingSoon": "Coming soon",
+    "filterLabel": "Show requests",
+    "filters": {
+      "all": "All",
+      "open": "Open",
+      "decided": "Decided"
+    },
+    "reviewOnly": "Only Branch Managers and Regional Directors review requests here."
+  },
+  "privacy": {
+    "gateTitle": "Please read our privacy notice",
+    "gateFirst": "Before you continue, please read how the Volunteer Hub uses your information and confirm.",
+    "gateUpdated": "Our privacy notice has changed (version {{version}}). Please read it and confirm to continue.",
+    "noticeLabel": "Privacy notice",
+    "readAndUnderstood": "I have read and understood the Privacy Notice",
+    "confirm": "Confirm and continue",
+    "signupLegend": "Privacy",
+    "signupRead": "I have read and understood the",
+    "noticeLink": "Privacy Notice",
+    "signupRequired": "Please confirm that you have read the Privacy Notice.",
+    "optionalIntro": "Optional. You can change these at any time in your profile.",
+    "photoConsent": "You may use photos or videos of me from events",
+    "updatesConsent": "Send me occasional updates by email",
+    "profileTitle": "Privacy",
+    "readNotice": "Read the Privacy Notice",
+    "confirmedOn": "You confirmed version {{version}} on {{date}}.",
+    "notConfirmed": "You have not confirmed the current Privacy Notice yet.",
+    "preferencesSaved": "Privacy preferences saved",
+    "back": "Back to the Hub",
+    "errors": {
+      "mustAccept": "Please confirm that you have read the Privacy Notice.",
+      "outdated": "The Privacy Notice has been updated. Please read the new version.",
+      "notAccepted": "Please confirm the Privacy Notice first.",
+      "invalidConsent": "Check your privacy preferences and try again."
+    }
   }
 }

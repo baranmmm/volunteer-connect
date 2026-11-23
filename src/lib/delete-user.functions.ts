@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireMember } from '@/lib/require-member';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Soft deletion and audit are atomic in the existing RPC; Auth blocking precedes completion.
 export const deleteUser = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator((d: { userId: string; requestId?: string | null }) => {
     if (!UUID.test(d.userId) || (d.requestId != null && !UUID.test(d.requestId))) throw new Error("Invalid request");
     return { userId: d.userId, requestId: d.requestId ?? null };

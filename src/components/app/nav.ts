@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CalendarDays, ListChecks, Users2, Image, GraduationCap, Contact, UserCheck, Users, UserCircle,
-  Trash2, Inbox, type LucideIcon,
+  Trash2, Inbox, Send, type LucideIcon,
 } from "lucide-react";
 
 export type NavItem = { to: string; testId: string; labelKey: string; icon: LucideIcon; managerOnly?: boolean; badge?: "requests" };
@@ -14,6 +14,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/training", testId: "nav-training", labelKey: "navigation.training", icon: GraduationCap },
   { to: "/contacts", testId: "nav-contacts", labelKey: "navigation.contacts", icon: Contact },
   { to: "/approvals", testId: "nav-approvals", labelKey: "navigation.approvals", icon: UserCheck, managerOnly: true },
+  { to: "/my-requests", testId: "nav-my-requests", labelKey: "navigation.myRequests", icon: Send },
   { to: "/requests", testId: "nav-requests", labelKey: "navigation.requests", icon: Inbox, managerOnly: true, badge: "requests" },
   { to: "/users", testId: "nav-users", labelKey: "navigation.users", icon: Users, managerOnly: true },
   { to: "/recycle-bin", testId: "nav-recycle-bin", labelKey: "navigation.recycleBin", icon: Trash2, managerOnly: true },

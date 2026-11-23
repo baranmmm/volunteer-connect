@@ -76,6 +76,8 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
   const active = s.my_status === "registered" || s.my_status === "waitlisted";
   // Names are opt-out; the choice exists only while registered or waitlisted.
   const nameChoice = showName ?? s.my_show_name;
+  // A cancelled event keeps only the count and the cancellation message.
+  const cancelledEvent = event.status === "cancelled";
   async function run(fn: () => Promise<unknown>, success: string) {
     setBusy(true);
     setError("");
@@ -120,7 +122,7 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
           {registrationCountText(s, t)}
         </span>
       </div>
-      {s.my_status && s.my_status !== "cancelled" && (
+      {!cancelledEvent && s.my_status && s.my_status !== "cancelled" && (
         <p
           data-testid="event-registration-status"
           data-status={s.my_status}
@@ -197,7 +199,7 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
           )}
         </div>
       )}
-      {active && (
+      {active && !cancelledEvent && (
         <div className="space-y-1">
           <div className="flex min-h-11 items-center gap-3">
             <Checkbox
@@ -220,7 +222,7 @@ export function RegistrationPanel({ event, now }: { event: HubEvent; now: Date }
           {error}
         </p>
       )}
-      {s.names_visible && s.names.length > 0 && (
+      {!cancelledEvent && s.names_visible && s.names.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-muted-foreground">
             {t("registrations.attendees")}

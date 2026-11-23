@@ -15,7 +15,6 @@ import { MonthEvents } from '@/components/events/MonthEvents';
 import { EventForm } from '@/components/events/EventForm';
 import { CalendarLegend } from '@/components/events/EventStatus';
 import { RequestEventButton } from '@/components/requests/RequestEventButton';
-import { useCanRequestEvents } from '@/lib/use-event-requests';
 
 export const Route = createFileRoute('/_app/calendar')({ ssr:false, validateSearch:(search: Record<string, unknown>): { view?: 'month'|'list' } => (search['view'] === 'month' || search['view'] === 'list' ? { view:search['view'] } : {}), head: () => pageHead('Calendar & Events', 'View Dialogue Society branch and regional events and manage your event calendar.'), component: CalendarPage });
 function CalendarPage() {
@@ -29,7 +28,6 @@ function CalendarPage() {
   const [past,setPast] = useState(false), [category,setCategory] = useState('all'), [organizer,setOrganizer] = useState('all');
   const [month,setMonth] = useState(() => new Date(`${londonInput(new Date()).slice(0,7)}-01T12:00:00`));
   const [creating,setCreating] = useState(false);
-  const canRequest = useCanRequestEvents();
   const [now, setNow] = useState(() => new Date());
   // Advance cached events through start/end boundaries without another network read.
   useEffect(() => {
@@ -40,7 +38,7 @@ function CalendarPage() {
   const filtered = filterEvents(events.data ?? [],view === 'month' ? null : past,category,organizer,now);
   const organizers = [...new Set((events.data ?? []).map(e => e.organizer))].sort();
   return <div className="space-y-6">
-    <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-3xl font-bold">{t('events.title')}</h1><div className="flex flex-wrap items-center gap-2">{canRequest && <Button asChild variant="link" className="h-11"><Link to="/requests" data-testid="calendar-my-requests-link">{t('requests.myTitle')}</Link></Button>}<RequestEventButton variant={isManager ? 'outline' : 'default'} />{isManager && <Button data-testid="calendar-create-event-button" className="h-11" onClick={() => setCreating(true)}><Plus />{t('events.create')}</Button>}</div></header>
+    <header className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-3xl font-bold">{t('events.title')}</h1><div className="flex flex-wrap items-center gap-2"><Button asChild variant="link" className="h-11"><Link to="/my-requests" data-testid="calendar-my-requests-link">{t('requests.myTitle')}</Link></Button><RequestEventButton variant={isManager ? 'outline' : 'default'} />{isManager && <Button data-testid="calendar-create-event-button" className="h-11" onClick={() => setCreating(true)}><Plus />{t('events.create')}</Button>}</div></header>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
       <div data-testid="calendar-view-toggle" role="group" aria-label={t('events.title')} className="flex gap-1"><Button variant={view==='month'?'secondary':'ghost'} aria-pressed={view==='month'} onClick={() => setView('month')}><CalendarDays />{t('events.month')}</Button><Button variant={view==='list'?'secondary':'ghost'} aria-pressed={view==='list'} onClick={() => setView('list')}><List />{t('events.list')}</Button></div>
       {view === 'list' && <div className="flex flex-wrap gap-2"><Button data-testid="calendar-filter-upcoming" variant={!past?'default':'outline'} aria-pressed={!past} onClick={() => setPast(false)}>{t('events.upcoming')}</Button><Button data-testid="calendar-filter-past" variant={past?'default':'outline'} aria-pressed={past} onClick={() => setPast(true)}>{t('events.past')}</Button></div>}

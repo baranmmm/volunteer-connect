@@ -65,11 +65,10 @@ test.describe("Event requests API", () => {
     const manager = await freshUser({ role: "branch_manager" });
     const director = await freshUser({ role: "regional_director" });
     const id = await submitRequestAs(volunteer.email, title("approve"));
-    const approved = await rpcAs<{ event_id: string }>(manager.email, "approve_event_request", { p_id: id, p_overrides: { capacity: 30, scope: "region" } });
+    const approved = await rpcAs<{ event_id: string }>(manager.email, "approve_event_request", { p_id: id });
     expect(approved.error).toBeNull();
     const { data: event } = await adminClient().from("events").select("status, scope, branch_id, created_by, capacity").eq("id", approved.data.event_id).single();
-    // Overrides cannot change the scope; the draft keeps the request's branch.
-    expect(event).toEqual({ status: "draft", scope: "branch", branch_id: volunteer.branchId, created_by: manager.id, capacity: 30 });
+    expect(event).toEqual({ status: "draft", scope: "branch", branch_id: volunteer.branchId, created_by: manager.id, capacity: null });
     expect(await requestRow(id)).toMatchObject({ status: "approved", event_id: approved.data.event_id, notice: "approved", reviewer_id: manager.id });
     expect((await rpcAs(director.email, "approve_event_request", { p_id: id })).error).toBe("Request already decided");
 

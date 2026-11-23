@@ -92,6 +92,33 @@ export type Database = {
           },
         ]
       }
+      consent_preferences: {
+        Row: {
+          photo_consent: boolean
+          photo_consent_changed_at: string | null
+          updated_at: string
+          updates_email_consent: boolean
+          updates_email_consent_changed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          photo_consent?: boolean
+          photo_consent_changed_at?: string | null
+          updated_at?: string
+          updates_email_consent?: boolean
+          updates_email_consent_changed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          photo_consent?: boolean
+          photo_consent_changed_at?: string | null
+          updated_at?: string
+          updates_email_consent?: boolean
+          updates_email_consent_changed_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       event_audit_log: {
         Row: {
           action: string
@@ -309,6 +336,44 @@ export type Database = {
           },
         ]
       }
+      event_request_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          original_name: string | null
+          request_id: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          original_name?: string | null
+          request_id: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          original_name?: string | null
+          request_id?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_request_media_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "event_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_requests: {
         Row: {
           all_day: boolean
@@ -343,6 +408,15 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          category: string | null
+          last_edited_at: string | null
+          last_edited_by: string | null
+          notes: string | null
+          organizer_name: string | null
+          purge_requested_at: string | null
+          request_type: string
+          source: string | null
+          source_url: string | null
         }
         Insert: {
           all_day?: boolean
@@ -377,6 +451,15 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          category?: string | null
+          last_edited_at?: string | null
+          last_edited_by?: string | null
+          notes?: string | null
+          organizer_name?: string | null
+          purge_requested_at?: string | null
+          request_type?: string
+          source?: string | null
+          source_url?: string | null
         }
         Update: {
           all_day?: boolean
@@ -411,6 +494,15 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          category?: string | null
+          last_edited_at?: string | null
+          last_edited_by?: string | null
+          notes?: string | null
+          organizer_name?: string | null
+          purge_requested_at?: string | null
+          request_type?: string
+          source?: string | null
+          source_url?: string | null
         }
         Relationships: [
           {
@@ -550,6 +642,7 @@ export type Database = {
       }
       events: {
         Row: {
+          is_external: boolean
           all_day: boolean
           branch_id: string | null
           capacity: number | null
@@ -581,6 +674,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          is_external?: boolean
           all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
@@ -612,6 +706,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          is_external?: boolean
           all_day?: boolean
           branch_id?: string | null
           capacity?: number | null
@@ -672,6 +767,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      privacy_notice_acceptances: {
+        Row: {
+          accepted_at: string
+          id: string
+          notice_version: string
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          notice_version: string
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          notice_version?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -895,7 +1011,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_event_request: { Args: { p_id: string; p_overrides?: Json }; Returns: Json }
+      accept_privacy_notice: { Args: { p_version: string }; Returns: Json }
+      get_privacy_status: { Args: never; Returns: Json }
+      has_accepted_privacy_notice: { Args: never; Returns: boolean }
+      privacy_notice_version: { Args: never; Returns: string }
+      set_consent_preferences: { Args: { p_photo_consent: boolean; p_updates_email_consent: boolean }; Returns: Json }
+      add_event_request_media: { Args: { p_extension: string; p_kind: string; p_original_name?: string; p_request_id: string }; Returns: Json }
+      can_read_event_request_file: { Args: { _path: string }; Returns: boolean }
+      can_write_event_request_file: { Args: { _path: string }; Returns: boolean }
+      delete_event_request_media: { Args: { p_media_id: string }; Returns: undefined }
+      get_event_request_duplicates: { Args: { p_id: string }; Returns: Json }
+      list_event_request_media: { Args: { p_request_id: string }; Returns: Json }
+      manager_update_event_request: { Args: { p: Json; p_id: string }; Returns: undefined }
+      purge_event_request: { Args: { _finalize?: boolean; _id: string }; Returns: Json }
+      approve_event_request: { Args: { p_id: string }; Returns: Json }
       decline_event_request: { Args: { p_id: string; p_reason: string }; Returns: undefined }
       delete_event_request: { Args: { p_id: string }; Returns: undefined }
       dismiss_event_request_notice: { Args: { p_id: string }; Returns: undefined }

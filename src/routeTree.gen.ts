@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
@@ -19,6 +20,7 @@ import { Route as AppContactsRouteImport } from './routes/_app/contacts'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppMediaRouteImport } from './routes/_app/media'
 import { Route as AppMeetingsRouteImport } from './routes/_app/meetings'
+import { Route as AppMyRequestsRouteImport } from './routes/_app/my-requests'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppRecycleBinRouteImport } from './routes/_app/recycle-bin'
 import { Route as AppRequestsRouteImport } from './routes/_app/requests'
@@ -41,6 +43,11 @@ const AppRouteRoute = AppRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -76,6 +83,11 @@ const AppMediaRoute = AppMediaRouteImport.update({
 const AppMeetingsRoute = AppMeetingsRouteImport.update({
   id: '/meetings',
   path: '/meetings',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppMyRequestsRoute = AppMyRequestsRouteImport.update({
+  id: '/my-requests',
+  path: '/my-requests',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppProfileRoute = AppProfileRouteImport.update({
@@ -128,6 +140,7 @@ const ApiPublicCleanupDeletedEventsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/approvals': typeof AppApprovalsRoute
   '/calendar': typeof AppCalendarRoute
@@ -135,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/media': typeof AppMediaRoute
   '/meetings': typeof AppMeetingsRoute
+  '/my-requests': typeof AppMyRequestsRoute
   '/profile': typeof AppProfileRoute
   '/recycle-bin': typeof AppRecycleBinRoute
   '/requests': typeof AppRequestsRoute
@@ -148,6 +162,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/approvals': typeof AppApprovalsRoute
   '/calendar': typeof AppCalendarRoute
@@ -155,6 +170,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/media': typeof AppMediaRoute
   '/meetings': typeof AppMeetingsRoute
+  '/my-requests': typeof AppMyRequestsRoute
   '/profile': typeof AppProfileRoute
   '/recycle-bin': typeof AppRecycleBinRoute
   '/requests': typeof AppRequestsRoute
@@ -170,6 +186,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/calendar': typeof AppCalendarRoute
@@ -177,6 +194,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/media': typeof AppMediaRoute
   '/_app/meetings': typeof AppMeetingsRoute
+  '/_app/my-requests': typeof AppMyRequestsRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/recycle-bin': typeof AppRecycleBinRoute
   '/_app/requests': typeof AppRequestsRoute
@@ -192,6 +210,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/reset-password'
     | '/approvals'
     | '/calendar'
@@ -199,6 +218,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/media'
     | '/meetings'
+    | '/my-requests'
     | '/profile'
     | '/recycle-bin'
     | '/requests'
@@ -212,6 +232,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/reset-password'
     | '/approvals'
     | '/calendar'
@@ -219,6 +240,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/media'
     | '/meetings'
+    | '/my-requests'
     | '/profile'
     | '/recycle-bin'
     | '/requests'
@@ -233,6 +255,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/auth'
+    | '/privacy'
     | '/reset-password'
     | '/_app/approvals'
     | '/_app/calendar'
@@ -240,6 +263,7 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/media'
     | '/_app/meetings'
+    | '/_app/my-requests'
     | '/_app/profile'
     | '/_app/recycle-bin'
     | '/_app/requests'
@@ -255,6 +279,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicCleanupDeletedEventsRoute: typeof ApiPublicCleanupDeletedEventsRoute
 }
@@ -280,6 +305,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -329,6 +361,13 @@ declare module '@tanstack/react-router' {
       path: '/meetings'
       fullPath: '/meetings'
       preLoaderRoute: typeof AppMeetingsRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/my-requests': {
+      id: '/_app/my-requests'
+      path: '/my-requests'
+      fullPath: '/my-requests'
+      preLoaderRoute: typeof AppMyRequestsRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/profile': {
@@ -404,6 +443,7 @@ interface AppRouteRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppMediaRoute: typeof AppMediaRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
+  AppMyRequestsRoute: typeof AppMyRequestsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppRecycleBinRoute: typeof AppRecycleBinRoute
   AppRequestsRoute: typeof AppRequestsRoute
@@ -421,6 +461,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppMediaRoute: AppMediaRoute,
   AppMeetingsRoute: AppMeetingsRoute,
+  AppMyRequestsRoute: AppMyRequestsRoute,
   AppProfileRoute: AppProfileRoute,
   AppRecycleBinRoute: AppRecycleBinRoute,
   AppRequestsRoute: AppRequestsRoute,
@@ -439,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicCleanupDeletedEventsRoute: ApiPublicCleanupDeletedEventsRoute,
 }

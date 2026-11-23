@@ -5,9 +5,10 @@ on:
     branches: [main]
   pull_request:
 
-# The QA database is shared: never run two e2e/migrate jobs at the same time, never cancel a running one.
+# The QA database is shared: never run two e2e/migrate runs at the same time, never cancel a running one.
 # A newer queued run may cancel an older *pending* one (GitHub keeps one pending run per group). That is fine:
 # every run migrates QA before its tests, so the run that does go ahead also applies the cancelled run's migrations.
+# The group is at workflow level, so the jobs of ONE run (migrate, three shards, report) share it.
 concurrency:
   group: qa-db
   cancel-in-progress: false
@@ -15,14 +16,19 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  CI: "true"
+  SUPABASE_PROJECT_REF: impdbvwsaancutwlrmac
+  E2E_EMAIL_DOMAIN: dsvolunteer.test
+  BASE_URL: http://localhost:3100
+
 jobs:
-  e2e:
+  # Once per run, before any shard: guard, migrate (this commit's pending migrations, feature branches included), seed.
+  migrate:
     runs-on: ubuntu-latest
     environment: qa
-    timeout-minutes: 30
+    timeout-minutes: 15
     env:
-      CI: "true"
-      SUPABASE_PROJECT_REF: impdbvwsaancutwlrmac
       SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
       SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QA_SUPABASE_SERVICE_ROLE_KEY }}
@@ -30,68 +36,127 @@ jobs:
       SUPABASE_DB_POOLER_URL: ${{ secrets.QA_SUPABASE_DB_POOLER_URL }}
       SUPABASE_DB_PASSWORD: ${{ secrets.QA_SUPABASE_DB_PASSWORD }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
-      E2E_EMAIL_DOMAIN: dsvolunteer.test
-      BASE_URL: http://localhost:3100
       E2E_RUN_ID: gh${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: e2e/package-lock.json
-
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Install app dependencies (root)
-        run: bun install --frozen-lockfile
-
       - name: Install e2e dependencies
         working-directory: e2e
         run: npm ci
-
-      - name: Install Playwright Chromium
-        working-directory: e2e
-        run: npx playwright install --with-deps chromium
-
       # Pinned: same CLI as QA DB migrate and local runs. Update deliberately; 3.x needs --yes for db push.
       - uses: supabase/setup-cli@v1
         with:
           version: 3.2.0
-
       - name: Guard — QA only (including pooler URL)
         working-directory: e2e
         run: npm run guard
-
       - name: Check the Session pooler resolves over IPv4
         run: |
           host=$(node -e "console.log(new URL(process.env.SUPABASE_DB_POOLER_URL).hostname)")
           echo "Pooler host: $host"
           getent ahostsv4 "$host" | tee /tmp/ipv4.txt
           test -s /tmp/ipv4.txt || { echo "::error::Pooler host has no IPv4 address"; exit 1; }
-
-      # Applies this commit's pending migrations (feature branches included) before the tests run against them.
       # Logs "No pending migrations" and applies nothing when QA is already up to date.
       - name: Migrate QA (rls_auto_enable check, db push dry-run, db push only if pending)
         working-directory: e2e
         run: npm run qa:migrate
-
       - name: Seed QA users
         working-directory: e2e
         run: npm run qa:seed
+      # Seeded user ids and emails only (no sessions or keys): every shard signs in for itself.
+      - name: Share the seed state with the shards
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-state
+          path: e2e/.auth/users.json
+          retention-days: 1
 
-      - name: Run Playwright tests
+  e2e:
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: qa
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      SUPABASE_URL: ${{ secrets.QA_SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.QA_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QA_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_POOLER_URL: ${{ secrets.QA_SUPABASE_DB_POOLER_URL }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.QA_SUPABASE_DB_PASSWORD }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      # One run id per shard, so shards never share (or tear down) each other's fresh users.
+      E2E_RUN_ID: gh${{ github.run_id }}-${{ github.run_attempt }}-s${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - uses: oven-sh/setup-bun@v2
+      - name: Install app dependencies (root)
+        run: bun install --frozen-lockfile
+      - name: Install e2e dependencies
         working-directory: e2e
-        run: npx playwright test
-
-      - name: Teardown per-test users
+        run: npm ci
+      - name: Install Playwright Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+      - name: Guard — QA only (including pooler URL)
+        working-directory: e2e
+        run: npm run guard
+      - name: Get the seed state
+        uses: actions/download-artifact@v4
+        with:
+          name: seed-state
+          path: e2e/.auth
+      - name: Run Playwright tests (shard ${{ matrix.shard }}/3)
+        working-directory: e2e
+        run: npx playwright test --shard=${{ matrix.shard }}/3
+      - name: Teardown this shard's users
         if: always()
         working-directory: e2e
         run: npm run qa:teardown
-
-      - name: Upload HTML report
+      - name: Upload blob report
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: e2e/blob-report
+          retention-days: 1
+
+  report:
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Download shard reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: e2e/all-blob-reports
+          merge-multiple: true
+      - name: Merge into one HTML report
+        working-directory: e2e
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - name: Upload HTML report
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

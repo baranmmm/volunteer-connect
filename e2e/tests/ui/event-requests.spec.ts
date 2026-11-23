@@ -25,7 +25,7 @@ test.describe("Event requests", () => {
     await page.goto("/calendar?view=list");
     await page.getByTestId("event-request-open-button").click();
     const form = new EventRequestFormDialog(page);
-    await expect(form.root).toBeVisible();
+    await form.chooseType("proposal");
     await expect(form.scope()).toHaveAttribute("data-scope", "branch");
     // Required fields are checked before anything is sent.
     await form.submitButton().click();
@@ -40,7 +40,7 @@ test.describe("Event requests", () => {
     await form.reason().fill("Neighbourhood dialogue evening");
     await form.submit();
     await expect(page.getByTestId("toast-success")).toBeVisible();
-    await expect(page).toHaveURL(/\/requests$/);
+    await expect(page).toHaveURL(/\/my-requests$/);
 
     const requests = new RequestsPage(page);
     const id = await listedId(requests, name);
@@ -59,9 +59,10 @@ test.describe("Event requests", () => {
     const director = await freshUser({ role: "regional_director" });
     const managerPage = await pageAs(manager);
     const asManager = new RequestsPage(managerPage);
-    await asManager.goto();
-    await asManager.openButton().click();
+    await asManager.gotoMine();
+    await asManager.newEventRequest();
     const form = new EventRequestFormDialog(managerPage);
+    await form.chooseType("proposal");
     await expect(form.scope()).toHaveAttribute("data-scope", "region");
     const name = title("regional");
     await form.title().fill(name);
@@ -94,7 +95,7 @@ test.describe("Event requests", () => {
     const dashboard = new DashboardPage(managerPage);
     await dashboard.goto();
     await expect(dashboard.requestNotice(id)).toHaveAttribute("data-notice", "approved");
-    await asManager.goto();
+    await asManager.gotoMine();
     await expect(asManager.myStatus(id)).toHaveAttribute("data-status", "approved");
   });
 
@@ -122,7 +123,7 @@ test.describe("Event requests", () => {
     await dashboard.dismissRequestNotice(id).click();
     await expect(dashboard.requestNotice(id)).toHaveCount(0);
     const mine = new RequestsPage(volunteerPage);
-    await mine.goto();
+    await mine.gotoMine();
     await expect(mine.myStatus(id)).toHaveAttribute("data-status", "declined");
     await expect(mine.myDeclineReason(id)).toBeVisible();
     await dashboard.goto();

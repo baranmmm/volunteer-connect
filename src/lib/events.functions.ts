@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
-import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { requireMember } from '@/lib/require-member';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import type { EventMedia, HubEvent, EventRow, MediaRow } from './event-rules';
@@ -46,7 +46,7 @@ async function withMedia(client: SupabaseClient<Database>, events: EventRow[]): 
   }
   return events.map(e => ({ ...e, media: signed.filter(m => m.event_id === ownerOf(e)).sort((a,b) => a.position-b.position) }));
 }
-export const listEvents = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+export const listEvents = createServerFn({ method: 'POST' }).middleware([requireMember]).handler(async ({ context }) => {
   await active(context.supabase, context.userId);
   const events: EventRow[] = [];
   for (let offset = 0; ; offset += 200) {
@@ -65,7 +65,7 @@ export const listEvents = createServerFn({ method: 'POST' }).middleware([require
   }
   return (await withMedia(context.supabase, events)).map(e => ({ ...e, my_registration: (mine.get(e.id) ?? null) as RegistrationStatus | null }));
 });
-export const getEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
+export const getEvent = createServerFn({ method: 'POST' }).middleware([requireMember]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
   await active(context.supabase, context.userId);
   const result = await context.supabase.from('events').select('*').eq('id', data.id).maybeSingle();
   if (result.error) throw result.error;
@@ -87,7 +87,7 @@ export const getEvent = createServerFn({ method: 'POST' }).middleware([requireSu
   }
   return { event: (await withMedia(context.supabase, [result.data]))[0] ?? null, canManage: deletion.canManage, deletion, branchName: branch.data?.name ?? null, regionName: region.data?.name ?? null, series };
 });
-export const eventBranches = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+export const eventBranches = createServerFn({ method: 'POST' }).middleware([requireMember]).handler(async ({ context }) => {
   await active(context.supabase, context.userId);
   const roles = await context.supabase.from('user_roles').select('role,region_id').eq('user_id', context.userId);
   if (roles.error) throw roles.error;
@@ -117,7 +117,7 @@ const input = z.object({ title: z.string().trim().min(1).max(200), description: 
     if (event.scope === 'branch' && !event.branch_id) issue('branch_id', 'Required publish fields missing');
   }
 });
-export const saveEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid().nullable(), event: input })).handler(async ({ data, context }) => {
+export const saveEvent = createServerFn({ method: 'POST' }).middleware([requireMember]).inputValidator(z.object({ id: z.string().uuid().nullable(), event: input })).handler(async ({ data, context }) => {
   const result = data.id ? await context.supabase.rpc('update_event', { _event: data.id, _data: data.event }) : await context.supabase.rpc('create_event', { _data: data.event });
   if (result.error) throw new Error(result.error.message);
   return data.id ?? String(result.data);
@@ -125,36 +125,36 @@ export const saveEvent = createServerFn({ method: 'POST' }).middleware([requireS
 const rrule = z.string().trim().min(10).max(500).regex(/^FREQ=[A-Z0-9=;,+-]+$/);
 const seriesResult = z.object({ series_id: z.string().uuid(), event_id: z.string().uuid(), media_event_id: z.string().uuid().nullable().optional(), kept_off_rule: z.array(z.string().uuid()).optional() });
 /** Creates a series and its first occurrences (at most 100, 12 months ahead); returns the first occurrence. */
-export const createSeries = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ event: input, rule: rrule })).handler(async ({ data, context }) => {
+export const createSeries = createServerFn({ method: 'POST' }).middleware([requireMember]).inputValidator(z.object({ event: input, rule: rrule })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('create_series', { _data: data.event, _rule: data.rule });
   if (result.error) throw new Error(result.error.message);
   const parsed = seriesResult.parse(result.data);
   return { seriesId: parsed.series_id, eventId: parsed.event_id, mediaEventId: parsed.media_event_id ?? null };
 });
 /** Edits one occurrence ('this'), this and the following ones ('following') or the whole series ('all'). */
-export const updateSeriesEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid(), mode: z.enum(['this', 'following', 'all']), event: input, rule: rrule.nullable() })).handler(async ({ data, context }) => {
+export const updateSeriesEvent = createServerFn({ method: 'POST' }).middleware([requireMember]).inputValidator(z.object({ id: z.string().uuid(), mode: z.enum(['this', 'following', 'all']), event: input, rule: rrule.nullable() })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('update_series_event', { _event: data.id, _mode: data.mode, _data: data.event, ...(data.rule ? { _rule: data.rule } : {}) });
   if (result.error) throw new Error(result.error.message);
   const parsed = seriesResult.parse(result.data);
   // Registered occurrences the new rule no longer produces are kept as exceptions; the form warns about them.
   return { seriesId: parsed.series_id, eventId: parsed.event_id, keptOffRule: parsed.kept_off_rule ?? [] };
 });
-export const cancelEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
+export const cancelEvent = createServerFn({ method: 'POST' }).middleware([requireMember]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('cancel_event', { _event: data.id });
   if (result.error) throw new Error(result.error.message);
 });
-export const reserveEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ eventId: z.string().uuid(), kind: z.enum(['image','pdf','document']), extension: z.enum(['jpg','jpeg','png','webp','pdf','docx','pptx']), originalName: z.string().max(255).optional() })).handler(async ({ data, context }) => {
+export const reserveEventMedia = createServerFn({ method: 'POST' }).middleware([requireMember]).inputValidator(z.object({ eventId: z.string().uuid(), kind: z.enum(['image','pdf','document']), extension: z.enum(['jpg','jpeg','png','webp','pdf','docx','pptx']), originalName: z.string().max(255).optional() })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('add_event_media', { _event: data.eventId, _kind: data.kind, _extension: normalizeEventExtension(data.extension), _original_name: data.originalName ?? '' });
   if (result.error) throw new Error(result.error.message);
   const row = await context.supabase.from('event_media').select('*').eq('id', result.data).single();
   if (row.error) throw row.error;
   return row.data;
 });
-export const reorderEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ eventId: z.string().uuid(), ids: z.array(z.string().uuid()).max(5) })).handler(async ({ data, context }) => {
+export const reorderEventMedia = createServerFn({ method: 'POST' }).middleware([requireMember]).inputValidator(z.object({ eventId: z.string().uuid(), ids: z.array(z.string().uuid()).max(5) })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('reorder_event_media', { _event: data.eventId, _ids: data.ids });
   if (result.error) throw new Error(result.error.message);
 });
-export const deleteEventMedia = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
+export const deleteEventMedia = createServerFn({ method: 'POST' }).middleware([requireMember]).inputValidator(z.object({ id: z.string().uuid() })).handler(async ({ data, context }) => {
   const result = await context.supabase.rpc('delete_event_media', { _media: data.id });
   if (result.error) throw new Error(result.error.message);
 });

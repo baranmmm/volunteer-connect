@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "requests" | "users" | "profile";
+export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "my-requests" | "requests" | "users" | "profile";
 const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
 
 /** Desktop sidebar (`app-sidebar`) or mobile bottom nav (`mobile-bottom-nav`) + "More" sheet (`mobile-nav-more-sheet`). */

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireMember } from '@/lib/require-member';
 import {
   registrationResult,
   registrationSummary,
@@ -15,7 +15,7 @@ const fail = (error: { message: string } | null) => {
 };
 
 export const getRegistrationSummary = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(eventId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("get_event_registration_summary", {
@@ -25,7 +25,7 @@ export const getRegistrationSummary = createServerFn({ method: "POST" })
     return registrationSummary.parse(result.data);
   });
 export const registerForEvent = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(eventId.extend({ showName: z.boolean().optional() }))
   .handler(async ({ data, context }) => {
     // Without showName the database default applies: names are shown unless the volunteer hides them.
@@ -37,7 +37,7 @@ export const registerForEvent = createServerFn({ method: "POST" })
     return registrationResult.parse(result.data);
   });
 export const cancelRegistration = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(eventId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("cancel_registration", { p_event_id: data.eventId });
@@ -45,7 +45,7 @@ export const cancelRegistration = createServerFn({ method: "POST" })
     return registrationResult.parse(result.data);
   });
 export const setRegistrationShowName = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(eventId.extend({ showName: z.boolean() }))
   .handler(async ({ data, context }) => {
     fail(
@@ -59,7 +59,7 @@ export const setRegistrationShowName = createServerFn({ method: "POST" })
   });
 /** Managers only (the RPC checks can_manage_event_scope). */
 export const listRegistrations = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(eventId)
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("get_event_registrations", {
@@ -69,7 +69,7 @@ export const listRegistrations = createServerFn({ method: "POST" })
     return (result.data ?? []) as ManagerRegistration[];
   });
 export const markAttendance = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(
     z.object({ registrationId: z.string().uuid(), status: z.enum(["attended", "no_show"]) }),
   )
@@ -84,14 +84,14 @@ export const markAttendance = createServerFn({ method: "POST" })
     );
   });
 export const myRegistrations = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .handler(async ({ context }) => {
     const result = await context.supabase.rpc("get_my_registrations");
     fail(result.error);
     return (result.data ?? []) as MyRegistration[];
   });
 export const dismissRegistrationNotice = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(z.object({ registrationId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     fail(

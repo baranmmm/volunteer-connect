@@ -16,10 +16,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
-  workers: CI ? 2 : undefined,
+  // CI runs 3 shards at once against the shared QA database: one worker each keeps it under its limits.
+  workers: CI ? 1 : undefined,
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  reporter: [["list"], ["html", { open: "never", outputFolder: reportDir }]],
+  // CI runs in shards: each writes a blob report and the workflow merges them into one HTML report.
+  reporter: CI ? [["list"], ["blob"]] : [["list"], ["html", { open: "never", outputFolder: reportDir }]],
   use: {
     baseURL: BASE_URL,
     locale: "en-GB",

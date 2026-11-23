@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRedirect } from "@/lib/use-redirect";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "@/lib/toast";
@@ -118,6 +119,9 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const mismatch = confirm.length > 0 && password !== confirm;
+  // The privacy notice must be confirmed (the server refuses the account otherwise); the two consents are optional.
+  const [privacyRead, setPrivacyRead] = useState(false), [privacyError, setPrivacyError] = useState(false);
+  const [photoConsent, setPhotoConsent] = useState(false), [updatesConsent, setUpdatesConsent] = useState(false);
   useEffect(() => {
     fetchRegionGroups().then(setGroups).catch(() => toast.error(t("errors.branchesLoad")));
   }, []);
@@ -128,13 +132,16 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
     const branch_id = String(f.get("branch") || "");
     if (password !== confirm) return;
     if (!branch_id) { toast.error(t("errors.chooseBranch")); return; }
+    if (!privacyRead) { setPrivacyError(true); document.getElementById("signup-privacy")?.focus(); return; }
     setBusy(true);
+    const version = await supabase.rpc("privacy_notice_version");
+    if (version.error || !version.data) { setBusy(false); toast.error(translateError(version.error)); return; }
     const { data, error } = await supabase.auth.signUp({
       email: String(f.get("email")),
       password: String(f.get("password")),
       options: {
         emailRedirectTo: window.location.origin,
-        data: { full_name: String(f.get("full_name")), phone: String(f.get("phone")), branch_id, preferred_language: currentLang() },
+        data: { full_name: String(f.get("full_name")), phone: String(f.get("phone")), branch_id, preferred_language: currentLang(), privacy_notice_version: version.data, photo_consent: photoConsent, updates_email_consent: updatesConsent },
       },
     });
     setBusy(false);
@@ -182,6 +189,26 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
           ))}
         </select>
       </div>
+      <fieldset className="space-y-3 rounded-xl border p-4">
+        <legend className="px-1 text-sm font-medium">{t("privacy.signupLegend")}</legend>
+        <div className="flex items-start gap-3">
+          <Checkbox id="signup-privacy" data-testid="signup-privacy-checkbox" checked={privacyRead} aria-required aria-invalid={privacyError} aria-describedby={privacyError ? "signup-privacy-error" : undefined} onCheckedChange={(v) => { setPrivacyRead(v === true); setPrivacyError(false); }} />
+          <Label htmlFor="signup-privacy" className="leading-snug">
+            {t("privacy.signupRead")}{" "}
+            <Link to="/privacy" target="_blank" className="font-medium text-primary underline underline-offset-4">{t("privacy.noticeLink")}</Link> *
+          </Label>
+        </div>
+        {privacyError && <p id="signup-privacy-error" role="alert" className="text-sm font-medium text-destructive">{t("privacy.signupRequired")}</p>}
+        <p className="text-xs text-muted-foreground">{t("privacy.optionalIntro")}</p>
+        <div className="flex items-start gap-3">
+          <Checkbox id="signup-photo" data-testid="signup-photo-consent" checked={photoConsent} onCheckedChange={(v) => setPhotoConsent(v === true)} />
+          <Label htmlFor="signup-photo" className="leading-snug">{t("privacy.photoConsent")}</Label>
+        </div>
+        <div className="flex items-start gap-3">
+          <Checkbox id="signup-updates" data-testid="signup-updates-consent" checked={updatesConsent} onCheckedChange={(v) => setUpdatesConsent(v === true)} />
+          <Label htmlFor="signup-updates" className="leading-snug">{t("privacy.updatesConsent")}</Label>
+        </div>
+      </fieldset>
       <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy || password !== confirm}>
         {busy ? t("auth.creatingAccount") : t("auth.createAccount")}
       </Button>

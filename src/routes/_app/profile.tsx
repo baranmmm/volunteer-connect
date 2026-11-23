@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { PrivacyPreferences } from "@/components/app/PrivacyPreferences";
+
 export const Route = createFileRoute("/_app/profile")({
   head: () => pageHead("Profile", "Manage your volunteer profile."),
   component: ProfilePage,
@@ -92,6 +94,7 @@ function ProfilePage() {
         {!isDirector && <p className="text-xs text-muted-foreground">{t(roles.includes("branch_manager") ? "profile.roleNoteBranchManager" : "profile.roleNote")}</p>}
         <Button data-testid="profile-save-button" type="submit" className="h-12 rounded-xl px-6" disabled={busy}>{busy ? t("common.saving") : t("common.save")}</Button>
       </form>
+      <PrivacyPreferences />
       <section aria-labelledby="delete-h" className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft">
         <h2 id="delete-h" className="text-xl font-semibold">{t("profile.deleteTitle")}</h2>
         {isDirector ? (

@@ -81,7 +81,7 @@ beforeAll(async () => {
   await initializeRecycleDatabase(db);
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.branch}','Branch','${ids.region}'),('${ids.branch2}','Branch 2','${ids.region}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name', 'User ' || left(x::text, 1)) FROM unnest(ARRAY['${ids.rd}','${ids.bm}','${ids.bm2}','${ids.vol}','${ids.vol2}']::uuid[]) x;
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name', 'User ' || left(x::text, 1), 'privacy_notice_version', '1.0') FROM unnest(ARRAY['${ids.rd}','${ids.bm}','${ids.bm2}','${ids.vol}','${ids.vol2}']::uuid[]) x;
     UPDATE profiles SET status='active', branch_id='${ids.branch}';
     UPDATE profiles SET branch_id='${ids.branch2}' WHERE id IN ('${ids.bm2}','${ids.vol2}');
     UPDATE user_roles SET role='branch_manager' WHERE user_id IN ('${ids.bm}','${ids.bm2}');
@@ -201,7 +201,7 @@ describe("event requests (database)", () => {
       await as(ids.rd);
       const approved = (
         await db.query<{ a: { event_id: string } }>(
-          "SELECT public.approve_event_request($1, '{\"capacity\": 30}') a",
+          "SELECT public.approve_event_request($1) a",
           [r],
         )
       ).rows[0]!.a;
@@ -222,7 +222,7 @@ describe("event requests (database)", () => {
         status: "draft",
         scope: "region",
         created_by: ids.rd,
-        capacity: 30,
+        capacity: null,
         title: "Community iftar",
       });
       expect(await stored(r)).toMatchObject({
@@ -291,7 +291,7 @@ describe("event requests (database)", () => {
         [v],
         "permission denied",
       );
-      await fails("SELECT public.event_request_fields('{}'::jsonb)", [], "permission denied");
+      await fails("SELECT public.event_request_fields('{}'::jsonb, 'proposal')", [], "permission denied");
       await fails("SELECT public.restore_event_request($1)", [v], "permission denied");
       await fails("SELECT public.purge_expired_event_requests()", [], "permission denied");
       await as(ids.vol2);

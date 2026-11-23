@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), deleteUser: vi.fn(), blockUser: vi.fn(), permission: vi.fn() }));
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => ({ middleware: () => ({ inputValidator: () => ({ handler: (handler: unknown) => handler }) }) }) }));
 vi.mock("@/integrations/supabase/auth-middleware", () => ({ requireSupabaseAuth: {} }));
+vi.mock("@/lib/require-member", () => ({ requireMember: {} }));
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: { rpc: mocks.rpc, auth: { admin: { deleteUser: mocks.deleteUser, updateUserById: mocks.blockUser } } } }));
 import { deleteUser } from "@/lib/delete-user.functions";
 

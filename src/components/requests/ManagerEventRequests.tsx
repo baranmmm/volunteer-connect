@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { Ban, CircleCheck, MapPin, Search, Trash2, Users, Video } from "lucide-react";
+import { Ban, CircleCheck, MapPin, Pencil, Search, Trash2, Users, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   DECLINE_REASON_MIN,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/event-requests";
 import {
   approveEventRequest,
+  eventRequestDuplicates,
   declineEventRequest,
   deleteEventRequest,
   getEventRequest,
@@ -28,6 +29,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { EventDialog } from "@/components/events/EventDialog";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 import { RequestWhen } from "./MyEventRequests";
+import { RequestAttachments, RequestTypeBadge } from "./RequestParts";
+import { EventRequestForm } from "./EventRequestForm";
 
 const TAB_ID: Record<ManagerTab, string> = {
   submitted: "pending",
@@ -107,41 +110,49 @@ export function ManagerEventRequests() {
           </Button>
         </div>
       ) : (
-        <ul data-testid="manager-requests-list" role="tabpanel" className="space-y-3">
-          {rows.length === 0 && (
-            <li className="border-y py-10 text-center text-muted-foreground">
-              {t("requests.emptyTab")}
-            </li>
-          )}
-          {rows.map((r) => (
-            <li key={r.id}>
-              <button
-                type="button"
-                data-testid={`manager-request-row-${r.id}`}
-                data-request-id={r.id}
-                data-status={r.status}
-                onClick={() => setOpen(r.id)}
-                className={cn(
-                  "block w-full space-y-1.5 rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-ring",
-                  r.status === "submitted" && "border-dashed border-status-draft-border",
-                )}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <span className="min-w-0 break-words font-semibold">{r.title}</span>
-                  <RequestStatusBadge status={r.status} />
-                </div>
-                <RequestWhen request={r} />
-                <p className="text-xs text-muted-foreground">
-                  {r.scope === "region" ? r.region_name : r.branch_name} ·{" "}
-                  {t("requests.requestedBy", {
-                    name: r.requester_name ?? t("common.formerMember"),
-                  })}{" "}
-                  · {formatDate(r.created_at, { dateStyle: "medium" })}
-                </p>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div role="tabpanel" aria-label={t(`requests.tabs.${tab}`)}>
+          <ul data-testid="manager-requests-list" className="space-y-3">
+            {rows.length === 0 && (
+              <li className="border-y py-10 text-center text-muted-foreground">
+                {t("requests.emptyTab")}
+              </li>
+            )}
+            {rows.map((r) => (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  data-testid={`manager-request-row-${r.id}`}
+                  data-request-id={r.id}
+                  data-status={r.status}
+                  onClick={() => setOpen(r.id)}
+                  className={cn(
+                    "block w-full space-y-1.5 rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-ring",
+                    r.status === "submitted" && "border-dashed border-status-draft-border",
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <span className="min-w-0 break-words font-semibold">{r.title}</span>
+                    <span className="flex flex-wrap gap-2">
+                      <RequestTypeBadge
+                        type={r.request_type}
+                        testId={`request-type-badge-${r.id}`}
+                      />
+                      <RequestStatusBadge status={r.status} />
+                    </span>
+                  </div>
+                  <RequestWhen request={r} />
+                  <p className="text-xs text-muted-foreground">
+                    {r.scope === "region" ? r.region_name : r.branch_name} ·{" "}
+                    {t("requests.requestedBy", {
+                      name: r.requester_name ?? t("common.formerMember"),
+                    })}{" "}
+                    · {formatDate(r.created_at, { dateStyle: "medium" })}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {query.data && rows.length < query.data.total && (
         <Button
@@ -172,6 +183,14 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
     queryFn: () => fetch({ data: { id } }),
     staleTime: 0,
   });
+  const duplicatesFn = useServerFn(eventRequestDuplicates);
+  const duplicates = useQuery({
+    queryKey: ["event-request-duplicates", id, session?.user.id],
+    queryFn: () => duplicatesFn({ data: { id } }),
+    enabled: !!query.data?.can_review,
+    staleTime: 0,
+  });
+  const [editing, setEditing] = useState(false);
   const [declining, setDeclining] = useState(false),
     [reason, setReason] = useState(""),
     [busy, setBusy] = useState(false),
@@ -217,8 +236,34 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
             >
               {r.title}
             </h3>
-            <RequestStatusBadge status={r.status} testId="manager-request-status" />
+            <div className="flex flex-wrap gap-2">
+              <RequestTypeBadge type={r.request_type} testId={`request-type-badge-${r.id}`} />
+              <RequestStatusBadge status={r.status} testId="manager-request-status" />
+            </div>
           </div>
+          {r.can_review && (duplicates.data?.length ?? 0) > 0 && (
+            <div
+              data-testid="manager-request-duplicate-warning"
+              role="status"
+              className="rounded-md border border-status-live bg-status-live-bg p-3 text-sm"
+            >
+              <p className="font-medium">{t("requests.duplicateWarning")}</p>
+              <ul className="mt-1 list-disc pl-5">
+                {duplicates.data?.map((d) => (
+                  <li key={d.id} data-event-id={d.id}>
+                    <a
+                      href={`/events/${d.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      {d.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">{t("events.scope")}</dt>
@@ -241,6 +286,40 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
                 {formatDate(r.created_at, { dateStyle: "medium" })}
               </dd>
             </div>
+            {r.request_type === "external" && (
+              <div>
+                <dt className="text-muted-foreground">{t("requests.organizer")}</dt>
+                <dd data-testid="manager-request-organizer">{r.organizer_name}</dd>
+              </div>
+            )}
+            {r.source && (
+              <div>
+                <dt className="text-muted-foreground">{t("requests.source")}</dt>
+                <dd>
+                  {t(`requests.sources.${r.source}`)}
+                  {r.source_url && (
+                    <>
+                      {" · "}
+                      <a
+                        data-testid="manager-request-source-url"
+                        href={r.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="break-all text-primary underline-offset-4 hover:underline"
+                      >
+                        {t("requests.sourceUrl")}
+                      </a>
+                    </>
+                  )}
+                </dd>
+              </div>
+            )}
+            {r.category && (
+              <div>
+                <dt className="text-muted-foreground">{t("events.category")}</dt>
+                <dd>{t(`events.categories.${r.category}`)}</dd>
+              </div>
+            )}
             {r.expected_attendees && (
               <div>
                 <dt className="sr-only">{t("requests.expectedAttendees")}</dt>
@@ -271,6 +350,18 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
               <p className="font-medium">{t("requests.reason")}</p>
               <p className="whitespace-pre-wrap break-words text-muted-foreground">{r.reason}</p>
             </div>
+          )}
+          {r.notes && (
+            <div className="text-sm">
+              <p className="font-medium">{t("requests.notes")}</p>
+              <p className="whitespace-pre-wrap break-words text-muted-foreground">{r.notes}</p>
+            </div>
+          )}
+          <RequestAttachments requestId={r.id} testId="manager-request-attachments" />
+          {r.edited_by_manager && r.last_edited_by_name && (
+            <p className="text-xs text-muted-foreground">
+              {t("requests.editedBy", { name: r.last_edited_by_name })}
+            </p>
           )}
           {r.decline_reason && (
             <p className="break-words rounded-md bg-status-cancelled-bg p-2 text-sm">
@@ -328,6 +419,17 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
                 {t("requests.delete")}
               </Button>
             )}
+            {r.can_review && !declining && (
+              <Button
+                variant="outline"
+                data-testid="manager-request-edit"
+                disabled={busy}
+                onClick={() => setEditing(true)}
+              >
+                <Pencil />
+                {t("requests.editRequest")}
+              </Button>
+            )}
             {r.can_review && !declining && r.status === "submitted" && (
               <Button
                 variant="outline"
@@ -383,29 +485,66 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
                     {t("requests.decline")}
                   </Button>
                   <Button
-                    data-testid="manager-request-approve"
+                    data-testid={
+                      r.request_type === "external"
+                        ? "manager-request-approve-publish"
+                        : "manager-request-approve"
+                    }
                     disabled={busy}
                     onClick={async () => {
-                      let eventId = "";
+                      let approved: {
+                        eventId: string;
+                        published: boolean;
+                        failedCopies: number;
+                      } | null = null;
+                      const external = r.request_type === "external";
                       if (
-                        await run(async () => {
-                          eventId = await approve({ data: { id } });
-                        }, "requests.approvedToast")
-                      )
+                        await run(
+                          async () => {
+                            approved = await approve({ data: { id } });
+                          },
+                          external ? "requests.publishedToast" : "requests.approvedToast",
+                        )
+                      ) {
+                        const done = approved as {
+                          eventId: string;
+                          published: boolean;
+                          failedCopies: number;
+                        } | null;
+                        if (!done) return;
+                        if (done.failedCopies)
+                          toast.error(t("requests.copyFailed", { count: done.failedCopies }));
+                        // External events are published as they are; drafts open in the edit form.
                         await navigate({
                           to: "/events/$id",
-                          params: { id: eventId },
-                          search: { edit: true },
+                          params: { id: done.eventId },
+                          search: done.published ? {} : { edit: true },
                         });
+                      }
                     }}
                   >
                     <CircleCheck />
-                    {t("requests.approve")}
+                    {r.request_type === "external"
+                      ? t("requests.approvePublish")
+                      : t("requests.approve")}
                   </Button>
                 </>
               ))}
           </div>
         </div>
+      )}
+      {editing && r && (
+        <EventRequestForm
+          request={r}
+          mode="manager"
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            void Promise.all(REFRESH.map((key) => qc.invalidateQueries({ queryKey: [key] })));
+            void qc.invalidateQueries({ queryKey: ["event-request-duplicates", id] });
+            void qc.invalidateQueries({ queryKey: ["event-request-media", id] });
+          }}
+        />
       )}
     </EventDialog>
   );

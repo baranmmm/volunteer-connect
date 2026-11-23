@@ -63,6 +63,34 @@ test.describe("Event form time picker", () => {
     await expect(form.startDate()).toBeVisible();
   });
 
+  test("keyboard in the open list: '19' → 19:00, '1930' and '19:30' → 19:30, the first arrow moves one step", async ({ freshUser, pageAs }) => {
+    const page = await pageAs(await freshUser({ role: "branch_manager" }));
+    const form = await openCreateForm(page);
+    await form.startTime().click();
+    await page.keyboard.type("19");
+    await expect(form.timeOption("start", "19:00")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(form.startTime()).toHaveText("19:00");
+    for (const typed of ["1930", "19:30"]) {
+      await form.startTime().click();
+      await page.keyboard.type(typed);
+      await expect(form.timeOption("start", "19:30")).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(form.startTime()).toHaveText("19:30");
+    }
+    // With 19:30 chosen, the first ArrowDown goes to 19:45 and the first ArrowUp (on a new opening) to 19:15.
+    await form.startTime().click();
+    await page.keyboard.press("ArrowDown");
+    await expect(form.timeOption("start", "19:45")).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(form.timeOption("start", "20:00")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await form.startTime().click();
+    await page.keyboard.press("ArrowUp");
+    await expect(form.timeOption("start", "19:15")).toBeFocused();
+    await page.keyboard.press("Escape");
+  });
+
   test("an existing event at 21:51 shows and keeps its off-grid time when edited", async ({ freshUser, freshEvent, pageAs }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const startLocal = `${londonDay(10)}T21:51`;

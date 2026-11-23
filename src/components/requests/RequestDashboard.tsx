@@ -83,7 +83,7 @@ export function RequestNotices() {
     }
   }
   return (
-    <section aria-label={t("requests.noticesTitle")} className="space-y-2 md:col-span-2">
+    <section aria-label={t("requests.noticesTitle")} className="space-y-2 lg:col-span-2">
       {notices.map((r) => (
         <div
           key={r.id}
@@ -101,7 +101,7 @@ export function RequestNotices() {
               </p>
             )}
             <Link
-              to="/requests"
+              to="/my-requests"
               className="mt-1 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               {t("requests.viewRequests")}

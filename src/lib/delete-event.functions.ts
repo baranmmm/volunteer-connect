@@ -1,10 +1,10 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
-import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
+import { requireMember } from '@/lib/require-member';
 import { eventDeletionResult } from './event-deletion';
 
 export const deleteEvent = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(z.object({ id: z.string().uuid(), title: z.string().max(200).optional() }))
   .handler(async ({ data, context }) => {
     // Authorization and eligibility must precede privileged Storage access.
@@ -23,7 +23,7 @@ export const deleteEvent = createServerFn({ method: 'POST' })
 
 /** Deletes 'following' (splits first) or 'all' occurrences into the Recycle Bin as one series item. */
 export const deleteSeries = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(z.object({ id: z.string().uuid(), mode: z.enum(['following', 'all']) }))
   .handler(async ({ data, context }) => {
     // Authorization precedes privileged Storage access.
@@ -41,7 +41,7 @@ export const deleteSeries = createServerFn({ method: 'POST' })
   });
 
 export const listDeletedEvents = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(z.object({ offset: z.number().int().min(0).max(1000000) }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc('list_deleted_events', { _offset: data.offset });
@@ -50,7 +50,7 @@ export const listDeletedEvents = createServerFn({ method: 'POST' })
   });
 
 export const restoreEvent = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireMember])
   .inputValidator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const prepared = await context.supabase.rpc('restore_event', { _event: data.id });

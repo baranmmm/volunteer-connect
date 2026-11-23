@@ -1,6 +1,9 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useRedirect } from "@/lib/use-redirect";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getPrivacyStatus } from "@/lib/privacy.functions";
+import { PrivacyGate } from "@/components/app/PrivacyGate";
 import { useEffect, useState } from "react";
 import { Clock, LogOut, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -38,6 +41,14 @@ function AppLayout() {
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const pending = usePendingRequestCount().data?.total ?? 0;
+  // The current privacy notice must be confirmed before the app (the server enforces it too: requireMember, RLS).
+  const privacyFn = useServerFn(getPrivacyStatus);
+  const privacy = useQuery({
+    queryKey: ["privacy-status", session?.user.id],
+    queryFn: () => privacyFn(),
+    enabled: !!session && profile?.status === "active",
+    staleTime: 300000,
+  });
 
   useEffect(() => { void refresh().catch(() => undefined); }, [pathname, refresh]);
 
@@ -66,6 +77,9 @@ function AppLayout() {
     );
   }
 
+  if (privacy.isLoading) return <div data-testid="app-loading" className="flex min-h-screen items-center justify-center text-muted-foreground">{t("common.loading")}</div>;
+  if (privacy.data && !privacy.data.current_accepted) return <PrivacyGate status={privacy.data} onSignOut={signOut} />;
+
   const items = NAV_ITEMS.filter((i) => !i.managerOnly || isManager);
   const primary = items.filter((i) => MOBILE_PRIMARY.includes(i.to));
   const more = items.filter((i) => !MOBILE_PRIMARY.includes(i.to));
@@ -75,7 +89,7 @@ function AppLayout() {
     <div className="min-h-screen lg:flex">
       <aside data-testid="app-sidebar" className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-5 text-sidebar-foreground lg:flex">
         <Logo className="mb-8 w-full" />
-        <nav aria-label={t("navigation.main")} className="flex-1 space-y-1">
+        <nav aria-label={t("navigation.main")} className="-mx-1 min-h-0 flex-1 space-y-1 overflow-y-auto px-1">
           {items.map(({ to, testId, labelKey, icon: Icon, badge }) => (
             <Link
               key={to}
@@ -88,7 +102,7 @@ function AppLayout() {
             </Link>
           ))}
         </nav>
-        <button data-testid="nav-sign-out" onClick={signOut} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium hover:bg-sidebar-accent">
+        <button data-testid="nav-sign-out" onClick={signOut} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent">
           <LogOut className="h-5 w-5" aria-hidden /> {t("navigation.signOut")}
         </button>
       </aside>

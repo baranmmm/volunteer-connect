@@ -96,10 +96,22 @@ export async function listAllUsers() {
  * Creates (or resets) a confirmed user through the Admin API and forces its profile, status and
  * single role with the service role. `existingId` skips the lookup for brand-new users.
  */
+let privacyVersion: Promise<string> | undefined;
+/** The privacy notice version the database requires (defined once, in privacy_notice_version()). */
+export function currentPrivacyVersion(): Promise<string> {
+  privacyVersion ??= Promise.resolve(adminClient().rpc("privacy_notice_version")).then(({ data, error }) => {
+    if (error || !data) throw new Error(`privacy_notice_version: ${error?.message ?? "no version"}`);
+    return data as string;
+  });
+  return privacyVersion;
+}
+
 export async function ensureUser(spec: UserSpec, existingId?: string | null): Promise<string> {
   const db = adminClient();
   const language = spec.language ?? "en";
-  const metadata = { full_name: spec.fullName, phone: spec.phone ?? "07000000000", branch_id: spec.branchId ?? "", preferred_language: language };
+  // Test users have confirmed the current privacy notice (sign-up refuses accounts without it).
+  const privacyVersion = await currentPrivacyVersion();
+  const metadata = { full_name: spec.fullName, phone: spec.phone ?? "07000000000", branch_id: spec.branchId ?? "", preferred_language: language, privacy_notice_version: privacyVersion };
   let id = existingId ?? null;
   if (!id) {
     const created = await db.auth.admin.createUser({ email: spec.email, password: userPassword(), email_confirm: true, user_metadata: metadata });
@@ -125,6 +137,8 @@ export async function ensureUser(spec: UserSpec, existingId?: string | null): Pr
     await db.from("user_roles").insert({ user_id: id, role: spec.role, region_id: spec.role === "regional_director" ? (spec.regionId ?? null) : null }),
     `insert role ${spec.email}`,
   );
+  // Existing (seeded) users confirm the current version too; new users got it from the sign-up trigger.
+  check(await db.from("privacy_notice_acceptances").upsert({ user_id: id, notice_version: privacyVersion }, { onConflict: "user_id,notice_version", ignoreDuplicates: true }), `confirm privacy notice ${spec.email}`);
   // A seeded user must not carry a leftover deletion request from an earlier run.
   check(await db.from("account_deletion_requests").update({ status: "cancelled", handled_at: new Date().toISOString() }).eq("user_id", id).eq("status", "pending"), `reset deletion requests ${spec.email}`);
   return id;

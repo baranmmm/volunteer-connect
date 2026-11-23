@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { londonInput, londonToIso } from "./event-rules";
 import { ONLINE_URL } from "./event-form-rules";
+import { EVENT_CATEGORIES } from "./event-rules";
 
 export const REQUEST_STATUSES = [
   "submitted",
@@ -11,6 +12,13 @@ export const REQUEST_STATUSES = [
 ] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export const REQUEST_NOTICES = ["under_review", "approved", "declined"] as const;
+export const REQUEST_TYPES = ["external", "proposal"] as const;
+export type RequestType = (typeof REQUEST_TYPES)[number];
+export const REQUEST_SOURCES = ["leaflet", "invitation", "website", "other"] as const;
+export type RequestSource = (typeof REQUEST_SOURCES)[number];
+export const MAX_REQUEST_FILES = 3;
+export const REQUEST_ORGANIZER_MAX = 120;
+export const REQUEST_NOTES_MAX = 1000;
 export const OPEN_REQUEST_LIMIT = 5;
 export const REQUEST_TITLE_MAX = 120;
 export const REQUEST_DESCRIPTION_MAX = 2000;
@@ -24,6 +32,16 @@ const text = z.string().nullable();
 /** One request as get_event_request / list_* return it (event_request_json). */
 export const eventRequest = z.object({
   id: z.string().uuid(),
+  request_type: z.enum(REQUEST_TYPES),
+  organizer_name: z.string().nullable(),
+  source: z.enum(REQUEST_SOURCES).nullable(),
+  source_url: z.string().nullable(),
+  notes: z.string().nullable(),
+  category: z.string().nullable(),
+  edited_by_manager: z.boolean(),
+  last_edited_at: z.string().nullable(),
+  last_edited_by_name: z.string().nullable(),
+  attachment_count: z.number().int(),
   scope: z.enum(["branch", "region"]),
   branch_id: z.string().uuid().nullable(),
   region_id: z.string().uuid(),
@@ -72,6 +90,7 @@ export type PendingRequestCount = z.infer<typeof pendingRequestCount>;
 
 /** RPC payload (submit_event_request / update_event_request); timed values are UTC instants. */
 export const requestPayloadSchema = z.object({
+  request_type: z.enum(REQUEST_TYPES),
   title: z.string().max(REQUEST_TITLE_MAX),
   description: z.string().max(REQUEST_DESCRIPTION_MAX),
   reason: z.string().max(REQUEST_REASON_MAX),
@@ -88,11 +107,18 @@ export const requestPayloadSchema = z.object({
   is_online: z.boolean(),
   online_url: z.string().max(2000).nullable(),
   expected_attendees: z.number().int().min(1).max(100000).nullable(),
+  organizer_name: z.string().max(REQUEST_ORGANIZER_MAX).nullable(),
+  source: z.enum(REQUEST_SOURCES).nullable(),
+  source_url: z.string().max(2000).nullable(),
+  notes: z.string().max(REQUEST_NOTES_MAX).nullable(),
+  /** Reviewers only (manager_update_event_request); the requester's RPCs ignore it. */
+  category: z.enum(EVENT_CATEGORIES).nullable(),
 });
 export type RequestPayload = z.infer<typeof requestPayloadSchema>;
 
 /** Form state: timed values are London "YYYY-MM-DDTHH:mm", all-day values "YYYY-MM-DD". */
 export type RequestFormFields = {
+  type: RequestType;
   title: string;
   description: string;
   reason: string;
@@ -110,8 +136,14 @@ export type RequestFormFields = {
   location: string;
   onlineUrl: string;
   expectedAttendees: string;
+  organizer: string;
+  source: RequestSource | "";
+  sourceUrl: string;
+  notes: string;
+  category: string;
 };
-export const emptyRequestForm = (): RequestFormFields => ({
+export const emptyRequestForm = (type: RequestType = "proposal"): RequestFormFields => ({
+  type,
   title: "",
   description: "",
   reason: "",
@@ -129,10 +161,16 @@ export const emptyRequestForm = (): RequestFormFields => ({
   location: "",
   onlineUrl: "",
   expectedAttendees: "",
+  organizer: "",
+  source: "",
+  sourceUrl: "",
+  notes: "",
+  category: "",
 });
 export function requestFormFromRow(r: EventRequest): RequestFormFields {
   const local = (v: string | null) => (v ? londonInput(v) : "");
   return {
+    type: r.request_type,
     title: r.title,
     description: r.description ?? "",
     reason: r.reason ?? "",
@@ -153,6 +191,11 @@ export function requestFormFromRow(r: EventRequest): RequestFormFields {
     location: r.location_text ?? "",
     onlineUrl: r.online_url ?? "",
     expectedAttendees: r.expected_attendees?.toString() ?? "",
+    organizer: r.organizer_name ?? "",
+    source: r.source ?? "",
+    sourceUrl: r.source_url ?? "",
+    notes: r.notes ?? "",
+    category: r.category ?? "",
   };
 }
 
@@ -202,10 +245,19 @@ export function validateRequestForm(f: RequestFormFields, now = new Date()) {
     else if (s !== null && e <= s) errors[`${prefix}end`] = "events.dateError";
   };
   pair("", true);
-  if (f.hasAlt) pair("alt-", false);
+  // External requests: an organiser and where it was seen; no alternative date or attendee estimate.
+  if (f.type === "external") {
+    if (!f.organizer.trim()) errors["organizer"] = "events.fieldRequired";
+    else if (f.organizer.trim().length > REQUEST_ORGANIZER_MAX)
+      errors["organizer"] = "events.invalid";
+    if (!f.source) errors["source"] = "events.fieldRequired";
+    if (f.sourceUrl.trim() && !ONLINE_URL.test(f.sourceUrl.trim()))
+      errors["source-url"] = "requests.errors.sourceUrl";
+    if (f.notes.length > REQUEST_NOTES_MAX) errors["notes"] = "events.invalid";
+  } else if (f.hasAlt) pair("alt-", false);
   if (f.isOnline && f.onlineUrl.trim() && !ONLINE_URL.test(f.onlineUrl.trim()))
     errors["online-url"] = "events.onlineUrlError";
-  if (f.expectedAttendees) {
+  if (f.type === "proposal" && f.expectedAttendees) {
     const n = Number(f.expectedAttendees);
     if (!Number.isInteger(n) || n < 1 || n > 100000)
       errors["expected-attendees"] = "events.invalid";
@@ -216,11 +268,13 @@ export function validateRequestForm(f: RequestFormFields, now = new Date()) {
 /** Builds the RPC payload from a validated form. */
 export function requestPayload(f: RequestFormFields): RequestPayload {
   const iso = (v: string) => (v ? londonToIso(v) : null);
-  const alt = f.hasAlt;
+  const external = f.type === "external";
+  const alt = f.hasAlt && !external;
   return {
+    request_type: f.type,
     title: f.title.trim(),
     description: f.description.trim(),
-    reason: f.reason.trim(),
+    reason: external ? "" : f.reason.trim(),
     all_day: f.allDay,
     proposed_start: f.allDay ? null : iso(f.start),
     proposed_end: f.allDay ? null : iso(f.end),
@@ -233,7 +287,12 @@ export function requestPayload(f: RequestFormFields): RequestPayload {
     location_text: f.location.trim(),
     is_online: f.isOnline,
     online_url: f.isOnline && f.onlineUrl.trim() ? f.onlineUrl.trim() : null,
-    expected_attendees: f.expectedAttendees ? Number(f.expectedAttendees) : null,
+    expected_attendees: !external && f.expectedAttendees ? Number(f.expectedAttendees) : null,
+    organizer_name: external ? f.organizer.trim() : null,
+    source: external && f.source ? f.source : null,
+    source_url: external && f.sourceUrl.trim() ? f.sourceUrl.trim() : null,
+    notes: external && f.notes.trim() ? f.notes.trim() : null,
+    category: EVENT_CATEGORIES.find((c) => c === f.category) ?? null,
   };
 }
 
@@ -257,3 +316,25 @@ export function requestTime(r: EventRequest, alt = false) {
 }
 export const isOpenRequest = (status: RequestStatus) =>
   status === "submitted" || status === "under_review";
+
+/** An attachment as list_event_request_media returns it, plus a 5-minute signed URL. */
+export const requestMedia = z.object({
+  id: z.string().uuid(),
+  storage_path: z.string(),
+  kind: z.enum(["image", "pdf"]),
+  original_name: z.string().nullable(),
+  uploaded: z.boolean(),
+});
+export type RequestMedia = z.infer<typeof requestMedia> & { url: string | null };
+export const duplicateEvent = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  status: z.string(),
+  all_day: z.boolean(),
+  start_at: z.string().nullable(),
+  start_date: z.string().nullable(),
+});
+export type DuplicateEvent = z.infer<typeof duplicateEvent>;
+/** Request attachments: images (re-encoded in the browser) and PDFs only. */
+export const REQUEST_FILE_EXTENSIONS = ["jpg", "png", "webp", "pdf"] as const;
+export const REQUEST_FILE_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";

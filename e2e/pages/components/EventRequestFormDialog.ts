@@ -9,6 +9,12 @@ export class EventRequestFormDialog {
     return this.page.getByTestId("event-request-form");
   }
   readonly scope = () => this.root.getByTestId("event-request-form-scope");
+  readonly organizer = () => this.root.getByTestId("event-request-form-organizer");
+  readonly sourceUrl = () => this.root.getByTestId("event-request-form-source-url");
+  readonly notes = () => this.root.getByTestId("event-request-form-notes");
+  readonly attachments = () => this.root.getByTestId("event-request-form-attachments");
+  readonly attachmentItems = () => this.root.getByTestId("event-request-form-attachment");
+  readonly saveAsManager = () => this.root.getByTestId("manager-request-edit-save");
   readonly title = () => this.root.getByTestId("event-request-form-title");
   readonly description = () => this.root.getByTestId("event-request-form-description");
   readonly allDay = () => this.root.getByTestId("event-request-form-all-day");
@@ -31,6 +37,18 @@ export class EventRequestFormDialog {
   async setDateTime(key: "start" | "end" | "alt-start" | "alt-end", local: string) {
     await this.root.getByTestId(`event-request-form-${key}-date`).fill(local.slice(0, 10));
     await pickOption(this.page, `event-request-form-${key}-time`, `event-request-form-${key}-time-option`, local.slice(11, 16));
+  }
+
+  /** New requests open with the type choice. */
+  async chooseType(type: "external" | "proposal") {
+    await this.page.getByTestId(`event-request-type-${type}`).click();
+    await expect(this.root).toHaveAttribute("data-type", type);
+  }
+  async chooseSource(source: "leaflet" | "invitation" | "website" | "other") {
+    await pickOption(this.page, "event-request-form-source", "event-request-form-source-option", source);
+  }
+  async chooseCategory(category: string) {
+    await pickOption(this.page, "event-request-form-category", "event-request-form-category-option", category);
   }
 
   async submit() {
