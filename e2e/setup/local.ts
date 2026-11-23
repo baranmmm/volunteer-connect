@@ -6,14 +6,19 @@
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { E2E_DIR, LOCAL_ENV_FILE, REPO_ROOT } from "./env";
+import { E2E_DIR, LOCAL_ENV_FILE, REPO_ROOT, isLocalTarget } from "./env";
 
 const WORKDIR = path.join(E2E_DIR, "local");
 
+const PROJECT_ID = "dsvh-e2e-local";
+
 function run(cmd: string, args: string[], opts: { capture?: boolean; env?: NodeJS.ProcessEnv } = {}): string {
+  // The Supabase CLI runs inside e2e/local with its project id set explicitly: run from the repo root it also reads
+  // the root .env, whose project id (production) would name the local containers. Node scripts run inside e2e/.
+  const supabase = cmd === "supabase";
   const result = spawnSync(cmd, args, {
-    cwd: REPO_ROOT,
-    env: { ...process.env, ...opts.env },
+    cwd: supabase ? WORKDIR : E2E_DIR,
+    env: { ...process.env, ...(supabase ? { SUPABASE_PROJECT_ID: PROJECT_ID } : {}), ...opts.env },
     encoding: "utf8",
     stdio: opts.capture ? ["ignore", "pipe", "inherit"] : "inherit",
   });
@@ -61,6 +66,11 @@ function migrateAndSeed() {
 }
 
 const command = process.argv[2];
+// Started through the npm scripts (E2E_TARGET=local), so e2e/.env.qa was never loaded into this process.
+if (!isLocalTarget()) {
+  console.error("[local] Run through npm (npm run local:up|reset|down), which sets E2E_TARGET=local.");
+  process.exit(2);
+}
 try {
   if (command === "up") {
     checkDocker();

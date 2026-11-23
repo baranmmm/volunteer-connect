@@ -21,6 +21,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EventDialog } from "@/components/events/EventDialog";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 import { RequestWhen } from "./MyEventRequests";
@@ -159,6 +166,8 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
     staleTime: 0,
   });
   const [editing, setEditing] = useState(false);
+  // External requests are published on approval: the reviewer chooses who sees the event (members by default).
+  const [audience, setAudience] = useState<"members" | "public">("members");
   const [declining, setDeclining] = useState(false),
     [reason, setReason] = useState(""),
     [busy, setBusy] = useState(false),
@@ -452,6 +461,40 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
                     <Ban />
                     {t("requests.decline")}
                   </Button>
+                  {r.request_type === "external" && (
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="manager-request-audience" className="text-sm">
+                        {t("events.visibleTo")}
+                      </Label>
+                      <Select
+                        value={audience}
+                        disabled={busy}
+                        onValueChange={(v) => setAudience(v === "public" ? "public" : "members")}
+                      >
+                        <SelectTrigger
+                          id="manager-request-audience"
+                          data-testid="manager-request-audience"
+                          className="h-11 w-48"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            value="members"
+                            data-testid="manager-request-audience-option-members"
+                          >
+                            {t("events.audience.members")}
+                          </SelectItem>
+                          <SelectItem
+                            value="public"
+                            data-testid="manager-request-audience-option-public"
+                          >
+                            {t("events.audience.public")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button
                     data-testid={
                       r.request_type === "external"
@@ -469,7 +512,9 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
                       if (
                         await run(
                           async () => {
-                            approved = await approve({ data: { id } });
+                            approved = await approve({
+                              data: { id, ...(external ? { audience } : {}) },
+                            });
                           },
                           external ? "requests.publishedToast" : "requests.approvedToast",
                         )

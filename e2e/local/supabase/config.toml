@@ -19,7 +19,7 @@ additional_redirect_urls = ["http://localhost:3100"]
 enable_signup = true
 
 [auth.email]
-enable_signup = true
+enabled = true
 enable_confirmations = false
 
 [studio]
@@ -30,3 +30,8 @@ enabled = false
 
 [edge_runtime]
 enabled = false
+
+# National Coordinators sign in with an authenticator app (TOTP), as on the hosted projects.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

@@ -32,6 +32,8 @@ jobs:
       SUPABASE_DB_POOLER_URL: ${{ secrets.QA_SUPABASE_DB_POOLER_URL }}
       SUPABASE_DB_PASSWORD: ${{ secrets.QA_SUPABASE_DB_PASSWORD }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      # The seeded National Coordinator's authenticator (npm run qa:nc-mfa); optional: fresh NCs enrol their own.
+      E2E_NC_TOTP_SECRET: ${{ secrets.E2E_NC_TOTP_SECRET }}
       E2E_EMAIL_DOMAIN: dsvolunteer.test
       BASE_URL: http://localhost:3100
       E2E_RUN_ID: mig${{ github.run_id }}-${{ github.run_attempt }}

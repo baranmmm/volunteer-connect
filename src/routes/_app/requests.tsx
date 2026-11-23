@@ -8,6 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { EventDialog } from "@/components/events/EventDialog";
 import { EventRequestForm } from "@/components/requests/EventRequestForm";
 import { useAuth } from "@/lib/auth";
+import { isFollowerRoles } from "@/lib/roles";
+import {
+  MyVolunteerApplications,
+  ReviewVolunteerApplications,
+  VolunteerApplicationForm,
+} from "@/components/requests/VolunteerApplications";
+import { useMyApplications } from "@/lib/volunteer-applications";
 import { requestViewSearch, resolveRequestView } from "@/lib/request-view";
 import { ManagerEventRequests } from "@/components/requests/ManagerEventRequests";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -30,7 +37,11 @@ export const Route = createFileRoute("/_app/requests")({
 function RequestsPage() {
   const { t } = useTranslation();
   const canRequestEvents = useCanRequestEvents();
-  const { isManager, roles } = useAuth();
+  const { isManager, roles, session } = useAuth();
+  // Followers apply to become volunteers (one open application at a time); members request events.
+  const follower = isFollowerRoles(roles);
+  const applications = useMyApplications(session?.user.id, follower);
+  const hasOpenApplication = !!applications.data?.some((a) => a.status === "submitted");
   const director = roles.includes("regional_director");
   const pending = usePendingRequestCount();
   const { tab: requested } = Route.useSearch();
@@ -41,7 +52,7 @@ function RequestsPage() {
       void navigate({ to: "/requests", search: { tab }, replace: true, resetScroll: false });
   };
   const [choosing, setChoosing] = useState(false),
-    [form, setForm] = useState<"event" | null>(null),
+    [form, setForm] = useState<"event" | "volunteer" | null>(null),
     [filter, setFilter] = useState<RequestListFilter>("all");
   function mineList() {
     return (
@@ -63,7 +74,8 @@ function RequestsPage() {
             </Button>
           ))}
         </div>
-        <MyEventRequests filter={filter} />
+        {!follower && <MyEventRequests filter={filter} />}
+        <MyVolunteerApplications />
       </>
     );
   }
@@ -113,10 +125,12 @@ function RequestsPage() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="review">
+            <ReviewVolunteerApplications filter="open" />
             <ManagerEventRequests group="review" />
           </TabsContent>
           {!director && <TabsContent value="mine">{mineList()}</TabsContent>}
           <TabsContent value="decided">
+            <ReviewVolunteerApplications filter="decided" />
             <ManagerEventRequests group="decided" />
           </TabsContent>
         </Tabs>
@@ -128,9 +142,12 @@ function RequestsPage() {
         onClose={() => setChoosing(false)}
         title={t("requests.newRequest")}
       >
-        <ul className="grid gap-3 sm:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-2">
           {REQUEST_KINDS.map((kind) => {
-            const available = kind.enabled && (kind.id !== "event" || canRequestEvents);
+            const available =
+              kind.id === "volunteer"
+                ? follower && !hasOpenApplication
+                : kind.enabled && !follower && (kind.id !== "event" || canRequestEvents);
             const Icon = kind.icon;
             return (
               <li key={kind.id}>
@@ -141,7 +158,7 @@ function RequestsPage() {
                   onClick={() => {
                     if (!available) return;
                     setChoosing(false);
-                    if (kind.id === "event") setForm("event");
+                    if (kind.id === "event" || kind.id === "volunteer") setForm(kind.id);
                   }}
                   className="flex h-auto min-h-28 w-full flex-col items-start gap-2 whitespace-normal rounded-lg bg-card p-4 text-left aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                 >
@@ -151,7 +168,15 @@ function RequestsPage() {
                     <Badge variant="secondary">{t("requests.comingSoon")}</Badge>
                   ) : !available ? (
                     <span className="text-xs text-muted-foreground">
-                      {t("requests.errors.directorsCreate")}
+                      {t(
+                        kind.id === "volunteer"
+                          ? follower
+                            ? "applications.alreadyOpen"
+                            : "applications.onlyFollowers"
+                          : follower
+                            ? "applications.followersApply"
+                            : "requests.errors.directorsCreate",
+                      )}
                     </span>
                   ) : null}
                 </Button>
@@ -160,6 +185,9 @@ function RequestsPage() {
           })}
         </ul>
       </EventDialog>
+      {form === "volunteer" && (
+        <VolunteerApplicationForm onClose={() => setForm(null)} onSaved={() => setForm(null)} />
+      )}
       {form === "event" && (
         <EventRequestForm
           onClose={() => setForm(null)}

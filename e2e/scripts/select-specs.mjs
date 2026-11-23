@@ -34,12 +34,14 @@ export const AREAS = {
   layout: ["ui/dashboard-layout", "ui/accessibility", "ui/language"],
   dashboard: ["ui/dashboard-layout", "ui/event-status-dashboard"],
   i18n: ["ui/language", "ui/accessibility"],
+  roles: ["api/roles", "ui/public-events", "ui/followers", "ui/national-coordinator", "api/permissions", "ui/users-isolation", "ui/accessibility"],
 };
 
 /** src/ path patterns → areas. Checked in order; the first match wins. */
 const SRC_RULES = [
   [/^src\/test\/|^src\/integrations\/supabase\/types\.ts$|^src\/routeTree\.gen\.ts$/, []],
   [/^src\/integrations\/supabase\/client|^src\/lib\/supabase/, "full"],
+  [/public-events|routes\/events\.|routes\/api\/ics|followed-branches|FollowedBranches|volunteer-applications|VolunteerApplications|national|regions|MfaGate|RoleDashboards|\/roles\.ts|components\/app\/nav|components\/public\//i, ["roles"]],
   [/requests?[-./]|\/requests\/|my-requests/i, ["requests"]],
   [/registration/i, ["registrations"]],
   [/series|recurr/i, ["recurring", "events"]],
@@ -62,6 +64,7 @@ const SQL_RULES = [
   [/^(events|event_media|event-media|(create|update|cancel|delete|validate)_event\w*|\w*_event_media|can_(view|manage)_event\w*)$/i, ["events"]],
   [/recycle|purge|restore_|permanent_delete|deletion_job/i, ["recycle"]],
   [/privacy|consent/i, ["privacy"]],
+  [/follow|volunteer_application|public_event|get_public|national|_nc|nc_|region|branch|is_member|is_follower|session_ok|app_role/i, ["roles"]],
   [/^(profiles|user_roles|regions|branches)$|set_user_|account_deletion|audit|handle_new_user|delete_user|user_purge/i, ["users"]],
 ];
 

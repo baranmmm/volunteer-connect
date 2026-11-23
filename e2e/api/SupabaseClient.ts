@@ -6,7 +6,7 @@ import { assertQaEnvironment } from "../setup/guard";
 
 assertQaEnvironment();
 
-export type AppRole = "regional_director" | "branch_manager" | "volunteer";
+export type AppRole = "regional_director" | "branch_manager" | "volunteer" | "follower" | "national_coordinator";
 export type ProfileStatus = "pending" | "active" | "inactive";
 export type Lang = "en" | "tr";
 
@@ -76,6 +76,8 @@ export type UserSpec = {
   regionId?: string | null;
   status: ProfileStatus;
   language?: Lang;
+  /** Followed branch (sign-up requires one). Followers keep exactly this one; defaults to branchId or any branch. */
+  followBranchId?: string | null;
 };
 
 function check<T>(res: { data: T; error: { message: string } | null }, what: string): T {
@@ -113,7 +115,8 @@ export async function ensureUser(spec: UserSpec, existingId?: string | null): Pr
   const language = spec.language ?? "en";
   // Test users have confirmed the current privacy notice (sign-up refuses accounts without it).
   const privacyVersion = await currentPrivacyVersion();
-  const metadata = { full_name: spec.fullName, phone: spec.phone ?? "07000000000", branch_id: spec.branchId ?? "", preferred_language: language, privacy_notice_version: privacyVersion };
+  const followBranchId = spec.followBranchId ?? spec.branchId ?? (await anyBranchId());
+  const metadata = { full_name: spec.fullName, phone: spec.phone ?? "07000000000", branch_id: followBranchId, preferred_language: language, privacy_notice_version: privacyVersion };
   let id = existingId ?? null;
   if (!id) {
     const created = await db.auth.admin.createUser({ email: spec.email, password: userPassword(), email_confirm: true, user_metadata: metadata });
@@ -134,16 +137,85 @@ export async function ensureUser(spec: UserSpec, existingId?: string | null): Pr
   );
   if (!updated?.length) throw new Error(`Profile for ${spec.email} was not created by the handle_new_user trigger. Has migrate run?`);
 
-  check(await db.from("user_roles").delete().eq("user_id", id), `clear roles ${spec.email}`);
+  // Exactly one role. The kept role is never deleted and re-inserted: the last active National Coordinator's role
+  // cannot be removed, not even for a moment.
+  check(await db.from("user_roles").delete().eq("user_id", id).neq("role", spec.role), `clear roles ${spec.email}`);
   check(
-    await db.from("user_roles").insert({ user_id: id, role: spec.role, region_id: spec.role === "regional_director" ? (spec.regionId ?? null) : null }),
-    `insert role ${spec.email}`,
+    await db.from("user_roles").upsert(
+      { user_id: id, role: spec.role, region_id: spec.role === "regional_director" ? (spec.regionId ?? null) : null },
+      { onConflict: "user_id,role" },
+    ),
+    `set role ${spec.email}`,
   );
+  // Followers follow exactly their one branch (reset for seeded users); members follow their own branch implicitly.
+  if (spec.role === "follower") {
+    check(await db.from("user_followed_branches").delete().eq("user_id", id), `reset followed branches ${spec.email}`);
+    check(await db.from("user_followed_branches").insert({ user_id: id, branch_id: followBranchId }), `follow branch ${spec.email}`);
+  }
   // Existing (seeded) users confirm the current version too; new users got it from the sign-up trigger.
   check(await db.from("privacy_notice_acceptances").upsert({ user_id: id, notice_version: privacyVersion }, { onConflict: "user_id,notice_version", ignoreDuplicates: true }), `confirm privacy notice ${spec.email}`);
   // A seeded user must not carry a leftover deletion request from an earlier run.
   check(await db.from("account_deletion_requests").update({ status: "cancelled", handled_at: new Date().toISOString() }).eq("user_id", id).eq("status", "pending"), `reset deletion requests ${spec.email}`);
   return id;
+}
+
+let someBranch: Promise<string> | undefined;
+/** Any live branch, for accounts without one (sign-up needs a followed branch). */
+function anyBranchId(): Promise<string> {
+  someBranch ??= Promise.resolve(adminClient().from("branches").select("id").is("deleted_at", null).order("name").limit(1).single()).then(({ data, error }) => {
+    if (error || !data) throw new Error(`no branch: ${error?.message ?? "none"}`);
+    return (data as { id: string }).id;
+  });
+  return someBranch;
+}
+
+/**
+ * National Coordinators act only with MFA: enrols a TOTP factor for the user (removing earlier ones) and returns its
+ * secret, which stays in memory (fresh NCs) or goes to the caller's secret store (the seeded NC). Never printed.
+ */
+export async function enrollTotp(email: string, password = userPassword()): Promise<string> {
+  const client = make(requireEnv("SUPABASE_PUBLISHABLE_KEY"));
+  const signedIn = await client.auth.signInWithPassword({ email, password });
+  if (signedIn.error || !signedIn.data.user) throw new Error(`enrol sign-in ${email}: ${signedIn.error?.message}`);
+  const existing = await adminClient().auth.admin.mfa.listFactors({ userId: signedIn.data.user.id });
+  for (const f of existing.data?.factors ?? []) await adminClient().auth.admin.mfa.deleteFactor({ userId: signedIn.data.user.id, id: f.id });
+  const enrolled = await client.auth.mfa.enroll({ factorType: "totp", friendlyName: `e2e-${Date.now()}` });
+  if (enrolled.error) throw new Error(`enrol ${email}: ${enrolled.error.message}`);
+  const secret = enrolled.data.totp.secret;
+  const { totp } = await import("./totp");
+  const verified = await client.auth.mfa.challengeAndVerify({ factorId: enrolled.data.id, code: totp(secret) });
+  if (verified.error) throw new Error(`verify ${email}: ${verified.error.message}`);
+  return secret;
+}
+
+const aal2Sessions = new Map<string, Promise<Session>>();
+/** Password sign-in plus the TOTP step: an aal2 session (cached per process). */
+export function signInAal2(email: string, secret: string): Promise<Session> {
+  let session = aal2Sessions.get(email);
+  if (!session) {
+    session = (async () => {
+      const client = make(requireEnv("SUPABASE_PUBLISHABLE_KEY"));
+      const signedIn = await client.auth.signInWithPassword({ email, password: userPassword() });
+      if (signedIn.error) throw new Error(`Sign-in failed for ${email}: ${signedIn.error.message}`);
+      const factors = await client.auth.mfa.listFactors();
+      const factor = factors.data?.totp.find((f) => f.status === "verified");
+      if (!factor) throw new Error(`${email} has no verified TOTP factor`);
+      const { totp } = await import("./totp");
+      const verified = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code: totp(secret) });
+      if (verified.error) throw new Error(`MFA failed for ${email}: ${verified.error.message}`);
+      const { data } = await client.auth.getSession();
+      if (!data.session) throw new Error(`No aal2 session for ${email}`);
+      return data.session;
+    })();
+    aal2Sessions.set(email, session);
+    session.catch(() => aal2Sessions.delete(email));
+  }
+  return session;
+}
+
+/** A client acting as a National Coordinator with an aal2 (MFA) session. */
+export async function clientAsAal2(email: string, secret: string): Promise<SupabaseClient> {
+  return userClient((await signInAal2(email, secret)).access_token);
 }
 
 export async function deleteAuthUser(id: string): Promise<void> {

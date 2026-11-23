@@ -1,12 +1,14 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { APP_LOAD_TIMEOUT } from "../app";
 
-export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "my-requests" | "requests" | "users" | "profile";
-const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
+export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "my-requests" | "requests" | "users" | "regions" | "recycle-bin" | "profile" | "donate";
+/** Bottom-nav items on phones (members); followers have dashboard, calendar and requests there. */
+export const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
+export const FOLLOWER_MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "requests"];
 
 /** Desktop sidebar (`app-sidebar`) or mobile bottom nav (`mobile-bottom-nav`) + "More" sheet (`mobile-nav-more-sheet`). */
 export class Sidebar {
-  constructor(private readonly page: Page, private readonly isMobile: boolean) {}
+  constructor(private readonly page: Page, private readonly isMobile: boolean, private readonly primary: NavKey[] = MOBILE_PRIMARY) {}
 
   private get desktopNav() {
     return this.page.getByTestId("app-sidebar");
@@ -19,7 +21,7 @@ export class Sidebar {
   }
 
   private inMore(key: NavKey) {
-    return this.isMobile && !MOBILE_PRIMARY.includes(key);
+    return this.isMobile && !this.primary.includes(key);
   }
 
   private async openMore() {

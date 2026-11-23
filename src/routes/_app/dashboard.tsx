@@ -12,7 +12,10 @@ import {
   Repeat,
   Video,
 } from "lucide-react";
-import { useAuth, primaryRole } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
+import { FollowerCards, NcDashboard } from "@/components/app/RoleDashboards";
+import { inFollowedBranches, useFollowedBranches } from "@/lib/followed-branches";
 import { useTranslation } from "react-i18next";
 import { listEvents } from "@/lib/events.functions";
 import { eventDisplayStatus, ownDrafts, upcomingDashboardEvents } from "@/lib/event-status";
@@ -52,7 +55,14 @@ function Dashboard() {
     const timer = window.setInterval(() => setNow(new Date()), 30000);
     return () => window.clearInterval(timer);
   }, []);
-  const drafts = isManager ? ownDrafts(events.data ?? [], session?.user.id) : [];
+  const follower = isFollowerRoles(roles),
+    nc = isNationalCoordinator(roles);
+  // Upcoming events of followed branches (members: their own scope plus followed public events).
+  const followed = useFollowedBranches(session?.user.id);
+  const upcoming = nc
+    ? (events.data ?? [])
+    : (events.data ?? []).filter((e) => inFollowedBranches(e, followed.data ?? []));
+  const drafts = isManager || nc ? ownDrafts(events.data ?? [], session?.user.id) : [];
   return (
     <div className="space-y-8">
       <section className="rounded-3xl bg-hero p-7 text-primary-foreground shadow-soft sm:p-10">
@@ -75,23 +85,31 @@ function Dashboard() {
         </p>
       </section>
       <div data-testid="dashboard-grid" className="grid gap-5 lg:grid-cols-2">
-        <RequestNotices />
+        {nc && <NcDashboard />}
+        {follower && (
+          <div data-testid="follower-dashboard" className="grid gap-5 lg:col-span-2 lg:grid-cols-2">
+            <FollowerCards />
+          </div>
+        )}
+        {!follower && !nc && <RequestNotices />}
         <UpcomingEventsCard
-          events={events.data ?? []}
+          events={upcoming}
           loading={events.isLoading}
           error={events.isError}
           onRetry={() => void events.refetch()}
           now={now}
-          canCreate={isManager}
+          canCreate={isManager || nc}
         />
         {isManager && <PendingRequestsCard />}
         {drafts.length > 0 && <DraftsCard drafts={drafts} />}
         <MyRegistrationsCard />
-        <EmptyCard
-          icon={ListChecks}
-          title={t("dashboard.tasksTitle")}
-          text={t("dashboard.tasksEmpty")}
-        />
+        {!follower && (
+          <EmptyCard
+            icon={ListChecks}
+            title={t("dashboard.tasksTitle")}
+            text={t("dashboard.tasksEmpty")}
+          />
+        )}
       </div>
     </div>
   );

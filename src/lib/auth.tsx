@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -22,7 +30,6 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
@@ -40,7 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       // Only replace state when the signed-in user actually changes, so token refreshes
       // and focus events don't cause re-renders or refetches.
-      setSession((prev) => (prev?.user.id === s?.user.id && prev?.access_token === s?.access_token ? prev : s));
+      setSession((prev) =>
+        prev?.user.id === s?.user.id && prev?.access_token === s?.access_token ? prev : s,
+      );
       setSessionReady(true);
       // Defer reads to the effect; never await Supabase inside its auth callback.
       if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") setRefreshVersion((v) => v + 1);
@@ -61,7 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = useCallback(async (uid: string) => {
     const id = ++requestId.current;
     const [p, r] = await Promise.all([
-      supabase.from("profiles").select("*, branches(name, regions(name))").eq("id", uid).maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("*, branches(name, regions(name))")
+        .eq("id", uid)
+        .maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", uid),
     ]);
     if (id !== requestId.current) return; // a newer request (or sign-out) superseded this one
@@ -121,8 +134,4 @@ export function useAuth() {
   return ctx;
 }
 
-export function primaryRole(roles: AppRole[]): AppRole {
-  if (roles.includes("regional_director")) return "regional_director";
-  if (roles.includes("branch_manager")) return "branch_manager";
-  return "volunteer";
-}
+export { ROLE_RANK, primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";

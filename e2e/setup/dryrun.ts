@@ -12,7 +12,9 @@ import { isLocalTarget, requireEnv } from "./env";
 import { assertQaEnvironment } from "./guard";
 
 assertQaEnvironment(process.env, { requireDb: true });
-const files = process.argv.slice(2).map((f) => path.resolve(f));
+// --allow-anon=fn1,fn2: SECURITY DEFINER functions the spec deliberately opens to anon (e.g. public event pages).
+const allowAnon = new Set(process.argv.slice(2).filter((a) => a.startsWith("--allow-anon=")).flatMap((a) => a.slice(13).split(",")));
+const files = process.argv.slice(2).filter((a) => !a.startsWith("--")).map((f) => path.resolve(f));
 if (!files.length) { console.error("usage: dryrun.ts <migration.sql> [...]"); process.exit(2); }
 
 if (!isLocalTarget()) {
@@ -48,6 +50,17 @@ const client = new pg.Client(connectionConfig());
 const t0 = Date.now();
 let problems = 0;
 await client.connect();
+// A dry run is only meaningful before the migration is applied (write it, dry-run it, then local:migrate).
+const versions = files.map((f) => path.basename(f).split("_")[0]!);
+const applied = (await client.query<{ version: string }>(
+  "SELECT version FROM supabase_migrations.schema_migrations WHERE version = ANY($1)", [versions],
+).catch(() => ({ rows: [] as { version: string }[] }))).rows.map((r) => r.version);
+if (applied.length) {
+  console.error(`[dryrun] Already applied here: ${applied.join(", ")}. Dry-run a migration before applying it` +
+    (isLocalTarget() ? " (local:up applies every migration in supabase/migrations: write the new one after local:up)." : "."));
+  await client.end();
+  process.exit(2);
+}
 try {
   await client.query("BEGIN");
   await client.query("SET LOCAL statement_timeout = '60s'; SET LOCAL lock_timeout = '5s'");
@@ -74,7 +87,8 @@ try {
     const r = p.a.get(k)!;
     if (!r["secdef"]) continue;
     if (!/search_path=/.test(String(r["config"]))) { console.log(`  PROBLEM ${k}: SECURITY DEFINER without a pinned search_path`); problems++; }
-    if (r["anon"]) { console.log(`  PROBLEM ${k}: anon can execute it`); problems++; }
+    if (r["anon"] && !allowAnon.has(k.replace(/\(.*$/, ""))) { console.log(`  PROBLEM ${k}: anon can execute it`); problems++; }
+    else if (r["anon"]) console.log(`  note    ${k}: anon can execute it (allowed with --allow-anon)`);
     if (String(r["acl"]).startsWith("(default") || /(^|[{,])=X/.test(String(r["acl"]))) { console.log(`  PROBLEM ${k}: PUBLIC can execute it`); problems++; }
   }
 } catch (e) {

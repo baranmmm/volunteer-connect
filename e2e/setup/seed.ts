@@ -1,9 +1,9 @@
 // Idempotent QA seed: verifies the schema, then creates/resets the fixed test users.
 // Order on a fresh QA project: npm run qa:migrate → npm run qa:seed → npm test
 import { mkdirSync, writeFileSync } from "node:fs";
-import { ensureUser, listAllUsers } from "../api/SupabaseClient";
+import { enrollTotp, ensureUser, listAllUsers } from "../api/SupabaseClient";
 import { SEED_USERS, seedEmail, type RoleKey, type SeedState, type SeededUser } from "../data/users";
-import { AUTH_DIR, SEED_STATE_FILE, isMain, userPassword } from "./env";
+import { AUTH_DIR, NC_TOTP_FILE, SEED_STATE_FILE, isLocalTarget, isMain, userPassword } from "./env";
 import { assertQaEnvironment } from "./guard";
 import { runPreflight } from "./preflight";
 
@@ -21,11 +21,22 @@ export async function seed(): Promise<SeedState> {
     const email = seedEmail(key);
     const branchId = def.branch ? branches[def.branch] : null;
     const id = await ensureUser(
-      { email, fullName: def.fullName, branchId, role: def.role, regionId, status: def.status, language: "en" },
+      { email, fullName: def.fullName, branchId, role: def.role, regionId, status: def.status, language: "en", followBranchId: branchId ?? branches.Medway },
       existing.get(email.toLowerCase()) ?? null,
     );
     users[key] = { key, id, email, fullName: def.fullName, branchId };
     console.log(`[seed] ${existing.has(email.toLowerCase()) ? "reset  " : "created"} ${key.padEnd(18)} ${email}`);
+  }
+
+  // The NC needs a TOTP factor. Locally the seed enrols one and keeps the secret in e2e/.auth/local (throwaway stack);
+  // on QA the factor and E2E_NC_TOTP_SECRET come from `npm run qa:nc-mfa`, which the seed never changes.
+  if (isLocalTarget()) {
+    const secret = await enrollTotp(users.nationalCoordinator.email);
+    mkdirSync(AUTH_DIR, { recursive: true });
+    writeFileSync(NC_TOTP_FILE, JSON.stringify({ secret }));
+    console.log("[seed] NC authenticator enrolled (local)");
+  } else if (!process.env["E2E_NC_TOTP_SECRET"]) {
+    console.log("[seed] E2E_NC_TOTP_SECRET is not set: NC tests need it (run npm run qa:nc-mfa once, then add the GitHub secret).");
   }
 
   const state: SeedState = { regionId, branches, regionBranches, users };

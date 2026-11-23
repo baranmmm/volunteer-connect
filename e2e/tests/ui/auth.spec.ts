@@ -2,17 +2,18 @@
 import { test, expect, toastError } from "../../fixtures/roles";
 import { AuthPage } from "../../pages/AuthPage";
 import { DashboardPage } from "../../pages/DashboardPage";
-import { QA_HOST } from "../../setup/guard";
-import { userPassword } from "../../setup/env";
+import { requireEnv, userPassword } from "../../setup/env";
 
 test.describe("Sign in and sign out", () => {
-  test("a volunteer signs in through the UI against the QA project and signs out", { tag: "@smoke" }, async ({ page, seed, sidebar }) => {
+  test("a volunteer signs in through the UI against the test project and signs out", { tag: "@smoke" }, async ({ page, seed, sidebar }) => {
     const auth = new AuthPage(page);
     await auth.goto();
 
-    const qaRequest = page.waitForRequest((r) => new URL(r.url()).hostname === QA_HOST);
+    // QA, or the local stack: the guard has already checked SUPABASE_URL is one of them.
+    const apiHost = new URL(requireEnv("SUPABASE_URL")).hostname;
+    const apiRequest = page.waitForRequest((r) => new URL(r.url()).hostname === apiHost);
     await auth.signIn(seed.users.volunteerMedway.email, userPassword());
-    await qaRequest; // proves the app reads the QA URL from the environment, not the committed .env
+    await apiRequest; // proves the app reads the test project's URL from the environment, not the committed .env
 
     const dashboard = new DashboardPage(page);
     await dashboard.expectLoaded();

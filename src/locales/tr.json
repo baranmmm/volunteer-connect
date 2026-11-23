@@ -26,14 +26,17 @@
     "roles": {
       "regional_director": "Bölge Direktörü",
       "branch_manager": "Şube Yöneticisi",
-      "volunteer": "Gönüllü"
+      "volunteer": "Gönüllü",
+      "follower": "Takipçi",
+      "national_coordinator": "Ulusal Koordinatör"
     },
     "status": {
       "pending": "Onay bekliyor",
       "active": "Aktif",
       "inactive": "Pasif"
     },
-    "hubName": "Gönüllü Platformu"
+    "hubName": "Gönüllü Platformu",
+    "opensInNewTab": "(yeni sekmede açılır)"
   },
   "navigation": {
     "main": "Ana menü",
@@ -55,7 +58,9 @@
     "inactiveText": "Bir hata olduğunu düşünüyorsanız lütfen Şube Yöneticinizle iletişime geçin.",
     "recycleBin": "Geri Dönüşüm Kutusu",
     "requests": "Talepler",
-    "myRequests": "Taleplerim"
+    "myRequests": "Taleplerim",
+    "regions": "Bölgeler ve şubeler",
+    "donate": "Bağış yap"
   },
   "auth": {
     "heroTitle": "Toplulukları her sohbetle biraz daha yakınlaştırıyoruz.",
@@ -91,7 +96,9 @@
     "sendReset": "Sıfırlama bağlantısı gönder",
     "setNewTitle": "Yeni şifre belirleyin",
     "updatePassword": "Şifreyi güncelle",
-    "passwordUpdated": "Şifreniz güncellendi"
+    "passwordUpdated": "Şifreniz güncellendi",
+    "followBranch": "Takip edilecek şube",
+    "followBranchHelp": "Bu şubenin herkese açık etkinliklerini görürsünüz. Profilinizden başka şubeleri de takip edebilirsiniz."
   },
   "dashboard": {
     "welcomeBack": "Hoş geldiniz",
@@ -121,7 +128,9 @@
     "noMatch": "Bu filtrelere uyan kullanıcı yok.",
     "empty": "Henüz kullanıcı yok.",
     "viewDetails": "Ayrıntıları görün",
-    "viewDetailsFor": "{{name}} için ayrıntıları görün"
+    "viewDetailsFor": "{{name}} için ayrıntıları görün",
+    "volunteerCounts": "Şubelere göre gönüllüler",
+    "branchCount": "{{branch}} ({{region}}): {{volunteers}} gönüllü, {{followers}} takipçi"
   },
   "userDetails": {
     "confirmEventTitle": "Onaylamak için etkinlik başlığını yazın: {{title}}",
@@ -186,7 +195,9 @@
     "noNameText": "Bu kullanıcının kayıtlı bir adı olmadığı için buradan silinemez.",
     "deleting": "Siliniyor…",
     "deletePermanently": "Kalıcı olarak sil",
-    "userDeleted": "Kullanıcı silindi"
+    "userDeleted": "Kullanıcı silindi",
+    "newRegion": "Bölge",
+    "chooseRegion": "Bir bölge seçin"
   },
   "approvals": {
     "title": "Onaylar",
@@ -229,7 +240,22 @@
     "requestDeletion": "Silme talebi gönder",
     "sending": "Gönderiliyor…",
     "requestSent": "Silme talebiniz gönderildi",
-    "requestCancelled": "Silme talebiniz iptal edildi"
+    "requestCancelled": "Silme talebiniz iptal edildi",
+    "followedTitle": "Takip ettiğiniz şubeler",
+    "followedIntro": "Takip ettiğiniz şubelerin herkese açık etkinliklerini görürsünüz. En az bir şube kalmalı.",
+    "ownBranch": "şubeniz",
+    "unfollow": "{{branch}} takibini bırak",
+    "unfollowed": "Şube kaldırıldı.",
+    "followBranch": "Şubeyi takip et",
+    "followed": "Şube eklendi.",
+    "chooseBranchToFollow": "Bir şube seçin",
+    "coordinatorNote": "Ulusal Koordinatörler hesaplarını uygulamadan silemez. Lütfen Dialogue Society ofisiyle iletişime geçin.",
+    "followerDeleteIntro": "Hesabınızı ve kişisel bilgilerinizi silin. Bu işlem geri alınamaz.",
+    "followerDeleteTitle": "Hesabınız silinsin mi?",
+    "followerDeleteText": "Hesabınız hemen silinir ve geri yüklenemez.",
+    "typeYourName": "Onaylamak için tam adınızı yazın: {{name}}",
+    "deleteNow": "Hesabımı sil",
+    "followerDeleted": "Hesabınız silindi."
   },
   "history": {
     "title": "Geçmiş",
@@ -278,7 +304,36 @@
     "deleteNotLogged": "Silme işlemi kayda alınamadı. Hesap silinmedi.",
     "deleteFailedRecorded": "Hesap silinemedi. Başarısız deneme kaydedildi; ilgili silme talebi beklemede kalıyor. Lütfen tekrar deneyin.",
     "deleteFailedUnrecorded": "Hesap silinemedi ve başarısız deneme kaydedilemedi. Lütfen tekrar deneyin.",
-    "deleteRequestNotCompleted": "Hesap silindi ve geçmişi kaydedildi, ancak silme talebi tamamlandı olarak işaretlenemedi."
+    "deleteRequestNotCompleted": "Hesap silindi ve geçmişi kaydedildi, ancak silme talebi tamamlandı olarak işaretlenemedi.",
+    "chooseFollowBranch": "Takip edilecek bir şube seçin.",
+    "notFollower": "Yalnızca takipçiler gönüllü başvurusu yapabilir.",
+    "openApplication": "Zaten açık bir başvurunuz var.",
+    "applicationClosed": "Bu başvuru artık açık değil.",
+    "applicantChanged": "Başvuran artık takipçi değil.",
+    "declineShort": "Gerekçe en az 10 karakter olmalı.",
+    "followOne": "En az bir şubeyi takip edin.",
+    "branchNotFound": "Şube bulunamadı.",
+    "regionNotFound": "Bölge bulunamadı.",
+    "membersOnlyRequests": "Yalnızca üyeler etkinlik talep edebilir.",
+    "noRegistrantDetails": "Kayıt olanların bilgileri görüntülenemez.",
+    "roleNotAssignable": "Bu rol uygulama içinden atanamaz.",
+    "chooseRegion": "Bir bölge seçin.",
+    "assignBranchFirst": "Önce bir şube atayın.",
+    "lastNc": "Son aktif Ulusal Koordinatör kaldırılamaz.",
+    "ncCannotBeDeleted": "Ulusal Koordinatörler uygulamadan silinemez.",
+    "followersDeleteDirectly": "Takipçiler hesaplarını profillerinden siler.",
+    "mfaRequired": "İki adımlı doğrulama gerekli.",
+    "nameMismatch": "Ad eşleşmiyor.",
+    "branchInUse": "Bu şubede hâlâ aktif kullanıcılar var.",
+    "branchHasEvents": "Bu şubenin hâlâ yaklaşan etkinlikleri var.",
+    "regionInUse": "Bu bölgede hâlâ aktif kullanıcılar var.",
+    "regionHasEvents": "Bu bölgenin hâlâ yaklaşan etkinlikleri var.",
+    "restoreRegionFirst": "Önce bölgeyi geri yükleyin.",
+    "structureHistory": "Bu öğenin geçmişi var, bu yüzden arşivde kalır.",
+    "regionExists": "Bu adda bir bölge zaten var.",
+    "branchExists": "Bu adda bir şube zaten var.",
+    "nameLength": "Ad 2 ile 80 karakter arasında olmalı.",
+    "dateRange": "En fazla 12 ay seçin."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -474,7 +529,18 @@
       "all": "Tüm etkinlikler"
     },
     "external": "Dış etkinlik",
-    "organisedBy": "Düzenleyen: {{organizer}}"
+    "organisedBy": "Düzenleyen: {{organizer}}",
+    "allBranches": "Tüm şubeler",
+    "followedBranches": "Takip edilen şubeler",
+    "branchScope": "Şubeler",
+    "national": "Ulusal (tüm bölgeler)",
+    "public": "Herkese açık",
+    "visibleTo": "Kimler görebilir",
+    "audience": {
+      "members": "Yalnızca üyeler",
+      "public": "Herkese açık (takipçiler ve web sitesi)"
+    },
+    "audienceHint": "Herkese açık etkinlikler takipçilere ve giriş yapmadan web sitesinde gösterilir. Çevrim içi bağlantılar yalnızca giriş yapanlara görünür."
   },
   "recycleBin": {
     "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",
@@ -484,13 +550,19 @@
       "all": "Tümü",
       "event": "Etkinlikler",
       "user": "Kullanıcılar",
-      "event_request": "Etkinlik talepleri"
+      "event_request": "Etkinlik talepleri",
+      "volunteer_application": "Gönüllü başvuruları",
+      "branch": "Şubeler",
+      "region": "Bölgeler"
     },
     "types": {
       "event": "Etkinlik",
       "user": "Kullanıcı",
       "series": "Seri",
-      "event_request": "Etkinlik talebi"
+      "event_request": "Etkinlik talebi",
+      "volunteer_application": "Gönüllü başvurusu",
+      "branch": "Şube",
+      "region": "Bölge"
     },
     "item": "Öğe",
     "branchRegion": "Şube / Bölge",
@@ -748,7 +820,8 @@
     "kinds": {
       "event": "Etkinlik",
       "task": "Görev",
-      "meeting": "Toplantı"
+      "meeting": "Toplantı",
+      "volunteer": "Gönüllü başvurusu"
     },
     "newRequest": "Yeni talep",
     "comingSoon": "Yakında",
@@ -787,5 +860,141 @@
       "invalidConsent": "Gizlilik tercihlerinizi kontrol edip tekrar deneyin."
     },
     "gateDeleteAccount": "Hesabımı sil"
+  },
+  "mfa": {
+    "title": "İki adımlı doğrulama",
+    "required": "Ulusal Koordinatörler girişlerini bir doğrulama uygulamasıyla onaylamalıdır.",
+    "setupIntro": "QR kodunu bir doğrulama uygulamasıyla (örneğin Google Authenticator veya Microsoft Authenticator) tarayın, sonra gösterdiği 6 haneli kodu girin.",
+    "setupStart": "Doğrulama uygulamasını kur",
+    "qrAlt": "Doğrulama uygulamanız için QR kodu",
+    "manualKey": "Ya da bu anahtarı elle girin:",
+    "code": "6 haneli kod",
+    "verify": "Doğrula",
+    "verifyIntro": "Doğrulama uygulamanızdaki 6 haneli kodu girin.",
+    "wrongCode": "Bu kod çalışmadı. Telefonunuzun saatini kontrol edip tekrar deneyin.",
+    "on": "İki adımlı doğrulama açık."
+  },
+  "publicEvents": {
+    "title": "Etkinlikler",
+    "intro": "Dialogue Society'nin yaklaşan herkese açık etkinlikleri. Şube veya bölge seçin ya da takvime abone olun.",
+    "navLabel": "Herkese açık sayfalar",
+    "signIn": "Giriş yap",
+    "privacyLink": "Gizlilik bildirimi",
+    "filters": "Filtreler",
+    "region": "Bölge",
+    "allRegions": "Tüm bölgeler",
+    "branches": "Şubeler",
+    "allBranches": "Tüm şubeler",
+    "view": "Görünüm",
+    "list": "Liste",
+    "month": "Ay",
+    "previousMonth": "Önceki ay",
+    "nextMonth": "Sonraki ay",
+    "empty": "Bu seçim için henüz herkese açık etkinlik yok.",
+    "loadError": "Etkinlikler yüklenemedi. Lütfen tekrar deneyin.",
+    "online": "Çevrim içi etkinlik",
+    "when": "Ne zaman",
+    "branch": "Şube",
+    "location": "Yer",
+    "back": "Tüm etkinlikler",
+    "notFound": "Bu etkinlik görüntülenemiyor.",
+    "registerIntro": "Bu etkinliğe kaydolmak için giriş yapın veya hesap oluşturun.",
+    "register": "Kaydol",
+    "createAccount": "Hesap oluştur",
+    "registration": {
+      "open": "Yer var",
+      "full": "Dolu",
+      "closed": "Kayıt kapalı"
+    },
+    "subscribe": "Takvime abone ol",
+    "subscribeApp": "Takvim uygulamamda aç",
+    "subscribeLink": "Takvim bağlantısı:",
+    "subscribeGoogle": "Google Takvim: Diğer takvimler → + → URL'den, sonra bağlantıyı yapıştırın.",
+    "subscribeOutlook": "Outlook: Takvim ekle → Web'den abone ol, sonra bağlantıyı yapıştırın."
+  },
+  "applications": {
+    "title": "Gönüllü ol",
+    "intro": "Şubeye neden gönüllü olmak istediğinizi anlatın. Şube Yöneticisi burada yanıt verir.",
+    "branchHint": "Takip ettiğiniz bir şubeye başvurabilirsiniz.",
+    "submit": "Başvuruyu gönder",
+    "submitted": "Başvuru gönderildi.",
+    "fields": {
+      "branch": "Şube",
+      "motivation": "Neden gönüllü olmak istiyorsunuz?",
+      "availability": "Ne zaman müsaitsiniz?",
+      "skills": "Beceri ve deneyim",
+      "phone": "Telefon (isteğe bağlı)"
+    },
+    "errors": {
+      "branch": "Bir şube seçin.",
+      "motivation": "Lütfen neden gönüllü olmak istediğinizi yazın.",
+      "tooLong": "Bu metin çok uzun."
+    },
+    "status": {
+      "submitted": "Açık",
+      "approved": "Onaylandı",
+      "declined": "Reddedildi",
+      "withdrawn": "Geri çekildi"
+    },
+    "mine": "Gönüllü başvurularım",
+    "toBranch": "{{branch}} şubesine gönüllü başvurusu",
+    "sentOn": "{{date}} tarihinde gönderildi",
+    "declineReason": "Gerekçe: {{reason}}",
+    "withdraw": "Geri çek",
+    "withdrawn": "Başvuru geri çekildi.",
+    "delete": "Kaldır",
+    "deleted": "Başvuru kaldırıldı.",
+    "toReview": "Gönüllü başvuruları",
+    "decided": "Sonuçlanan gönüllü başvuruları",
+    "approve": "Onayla",
+    "approved": "Başvuru onaylandı: başvuran artık gönüllü.",
+    "decline": "Reddet",
+    "declined": "Başvuru reddedildi.",
+    "declineReasonLabel": "Gerekçe (en az 10 karakter, başvuran görecek)",
+    "alreadyOpen": "Zaten açık bir başvurunuz var.",
+    "onlyFollowers": "Gönüllü olmak isteyen takipçiler için.",
+    "followersApply": "Takipçiler önce gönüllü olmak için başvurabilir.",
+    "becomeVolunteer": "Gönüllü ol",
+    "becomeVolunteerText": "Takip ettiğiniz bir şubede gönüllü olun: etkinlik düzenlemeye yardım edin ve üyelere özel etkinliklere katılın.",
+    "apply": "Başvur",
+    "openFor": "{{branch}} şubesine başvurunuz inceleniyor."
+  },
+  "donate": {
+    "title": "Çalışmalarımızı destekleyin",
+    "text": "Bağışınız Dialogue Society'nin toplulukları bir araya getirmesine yardım eder.",
+    "button": "Bağış yap"
+  },
+  "nc": {
+    "overview": "Ulusal genel bakış",
+    "stats": {
+      "regions": "Bölgeler",
+      "branches": "Şubeler",
+      "volunteers": "Gönüllüler",
+      "followers": "Takipçiler",
+      "upcoming_events": "Yaklaşan etkinlikler",
+      "registrations_30d": "Kayıtlar (son 30 gün)",
+      "attended_30d": "Katılım (son 30 gün)",
+      "pending_requests": "Bekleyen talepler",
+      "open_applications": "Açık gönüllü başvuruları"
+    }
+  },
+  "regions": {
+    "title": "Bölgeler ve şubeler",
+    "newRegion": "Yeni bölge",
+    "newBranch": "Yeni şube",
+    "renameTitle": "Yeniden adlandır",
+    "name": "Ad",
+    "rename": "{{name}} adını değiştir",
+    "delete": "{{name}} sil",
+    "created": "Oluşturuldu.",
+    "saved": "Kaydedildi.",
+    "deleted": "Geri dönüşüm kutusuna taşındı.",
+    "directors": "Bölge Direktörleri",
+    "managers": "Şube Yöneticileri",
+    "nobody": "Henüz yok",
+    "regionEvents": "Bölge genelinde {{count}} yaklaşan etkinlik",
+    "branchCounts": "{{volunteers}} gönüllü · {{followers}} takipçi · {{events}} yaklaşan etkinlik",
+    "confirmDeleteRegion": "{{name}} ve şubeleri silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir.",
+    "confirmDeleteBranch": "{{name}} silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir."
   }
 }

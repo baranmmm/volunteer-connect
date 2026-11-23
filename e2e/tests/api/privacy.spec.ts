@@ -12,15 +12,17 @@ const email = () => `${FRESH_PREFIX}${process.env["E2E_RUN_ID"] ?? "local"}-priv
 const status = async (who: string) => (await rpcAs<Record<string, unknown>>(who, "get_privacy_status")).data;
 
 test.describe("Privacy notice API", () => {
-  test("accounts cannot be created without confirming the current notice version", async () => {
+  test("accounts cannot be created without confirming the current notice version (and a branch to follow)", async ({ seed }) => {
     // Every account creation goes through the handle_new_user trigger (the admin API too, which skips the
     // email-domain checks QA's public sign-up applies to test addresses).
-    for (const data of [{ full_name: "No notice" }, { full_name: "Old notice", privacy_notice_version: "0.9" }]) {
+    const { data: current } = await adminClient().rpc("privacy_notice_version");
+    for (const data of [{ full_name: "No notice", branch_id: seed.branches.Medway }, { full_name: "Old notice", privacy_notice_version: "0.9", branch_id: seed.branches.Medway },
+      { full_name: "No branch", privacy_notice_version: current }]) {
       const viaAdmin = await adminClient().auth.admin.createUser({ email: email(), password: userPassword(), email_confirm: true, user_metadata: data });
       expect(viaAdmin.error, JSON.stringify(data)).not.toBeNull();
     }
     const { data: version } = await adminClient().rpc("privacy_notice_version");
-    const created = await adminClient().auth.admin.createUser({ email: email(), password: userPassword(), email_confirm: true, user_metadata: { full_name: "Has notice", privacy_notice_version: version, photo_consent: true } });
+    const created = await adminClient().auth.admin.createUser({ email: email(), password: userPassword(), email_confirm: true, user_metadata: { full_name: "Has notice", privacy_notice_version: version, photo_consent: true, branch_id: seed.branches.Medway } });
     expect(created.error).toBeNull();
     try {
       const { data: rows } = await adminClient().from("privacy_notice_acceptances").select("notice_version").eq("user_id", created.data.user!.id);

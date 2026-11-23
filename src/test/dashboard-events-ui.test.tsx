@@ -36,7 +36,10 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/events.functions", () => ({ listEvents: vi.fn() }));
 vi.mock("@/components/events/EventForm", () => ({ EventForm: () => null }));
 vi.mock("@/components/events/MyRegistrations", () => ({ MyRegistrationsCard: () => null }));
-vi.mock("@/components/requests/RequestDashboard", () => ({ PendingRequestsCard: () => null, RequestNotices: () => null }));
+vi.mock("@/components/requests/RequestDashboard", () => ({
+  PendingRequestsCard: () => null,
+  RequestNotices: () => null,
+}));
 import { setLanguage } from "@/lib/i18n";
 import { Route } from "@/routes/_app/dashboard";
 
@@ -51,7 +54,10 @@ const base: HubEvent = {
   category: "dialogue",
   start_at: "2026-11-22T18:00:00Z",
   end_at: "2026-11-22T20:00:00Z",
-  capacity: null, registration_enabled: true, is_external: false,
+  capacity: null,
+  registration_enabled: true,
+  is_external: false,
+  audience: "members",
   scope: "branch",
   branch_id: "b",
   region_id: "r",

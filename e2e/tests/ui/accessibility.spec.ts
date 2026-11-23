@@ -1,5 +1,6 @@
 // Automated accessibility scan (axe-core, WCAG 2.x A/AA rules): the calendar, an event page, the request form and
-// the Requests pages must have no serious or critical violations.
+// the Requests pages, the public events pages, the follower dashboard and the regions page must have no serious or
+// critical violations.
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/roles";
@@ -50,5 +51,29 @@ test.describe("Accessibility (axe)", () => {
     const managerPage = await pageAs(await freshUser({ role: "branch_manager" }));
     await new RequestsPage(managerPage).goto();
     await expectNoSeriousViolations(managerPage, "requests (reviewers)");
+  });
+
+  test("public events (signed out), the follower dashboard and the regions page", async ({ browser, freshUser, freshEvent, pageAs }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const event = await freshEvent(manager, { label: "axe public", status: "published", startInMinutes: 3 * 24 * 60, audience: "public" });
+    const context = await browser.newContext();
+    const anon = await context.newPage();
+    for (const view of ["list", "month"]) {
+      await anon.goto(`/events${view === "month" ? "?view=month" : ""}`);
+      await expect(anon.getByTestId(view === "list" ? "public-events-list" : "public-events-month")).toBeVisible({ timeout: 30_000 });
+      await expectNoSeriousViolations(anon, `public events ${view}`);
+    }
+    await anon.goto(`/events/${event.id}`);
+    await expect(anon.getByTestId("public-event-detail")).toBeVisible({ timeout: 30_000 });
+    await expectNoSeriousViolations(anon, "public event detail");
+    await context.close();
+    const follower = await pageAs(await freshUser({ role: "follower" }));
+    await follower.goto("/dashboard");
+    await expect(follower.getByTestId("follower-dashboard")).toBeVisible({ timeout: 30_000 });
+    await expectNoSeriousViolations(follower, "follower dashboard");
+    const nc = await pageAs(await freshUser({ role: "national_coordinator" }));
+    await nc.goto("/regions");
+    await expect(nc.getByTestId("regions-tree")).toBeVisible({ timeout: 30_000 });
+    await expectNoSeriousViolations(nc, "regions and branches");
   });
 });

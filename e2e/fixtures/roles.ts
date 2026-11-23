@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import {
   deleteAuthUser,
   ensureUser,
+  enrollTotp,
   signIn,
+  signInAal2,
   storageStateFor,
   type AppRole,
   type Lang,
@@ -12,7 +14,7 @@ import {
 import { cancelEventAs, createEventAs, createSeriesAs, deleteEvents, deleteSeriesData, EVENT_TITLE_PREFIX, type EventSpec, type SeriesSpec } from "../api/events";
 import { createTempBranch, deleteRequestsOfUsers, deleteTempBranch } from "../api/eventRequests";
 import { FRESH_PREFIX, readSeedState, type BranchName, type RoleKey, type SeedState } from "../data/users";
-import { baseUrl, emailDomain, storageFile } from "../setup/env";
+import { baseUrl, emailDomain, ncTotpSecret, storageFile } from "../setup/env";
 import { PROD_REF } from "../setup/guard";
 import { Sidebar } from "../pages/components/Sidebar";
 
@@ -21,7 +23,8 @@ export { expect };
 /** Use at describe level: `test.use({ storageState: storageFor("managerMedway") })`. */
 export const storageFor = (role: Exclude<RoleKey, "disposable">) => storageFile(role);
 
-export type TestUser = { id: string; email: string; fullName: string; branchId: string | null; role: AppRole; status: ProfileStatus };
+/** totpSecret: fresh National Coordinators only (their authenticator, enrolled in-process, never stored). */
+export type TestUser = { id: string; email: string; fullName: string; branchId: string | null; role: AppRole; status: ProfileStatus; totpSecret?: string };
 export type FreshUserOptions = { branch?: BranchName | string; role?: AppRole; status?: ProfileStatus; language?: Lang };
 
 type Fixtures = {
@@ -91,14 +94,16 @@ export const test = base.extend<Fixtures & { prodHits: string[] }>({
   freshUser: async ({ seed }, use, testInfo) => {
     const created: string[] = [];
     await use(async (options = {}) => {
-      const branchId = !options.branch
+      const role = options.role ?? "volunteer";
+      // Followers and National Coordinators have no branch of their own (followers follow `branch`).
+      const named = !options.branch
         ? seed.branches.Medway
         : options.branch in seed.branches
           ? seed.branches[options.branch as BranchName]
           : options.branch;
+      const branchId = role === "follower" || role === "national_coordinator" ? null : named;
       const n = ++freshCounter;
       const tag = `${runId}-${testInfo.workerIndex}-${n}-${randomUUID().slice(0, 6)}`;
-      const role = options.role ?? "volunteer";
       const status = options.status ?? "active";
       const user = {
         email: `${FRESH_PREFIX}${tag}@${emailDomain()}`,
@@ -107,8 +112,9 @@ export const test = base.extend<Fixtures & { prodHits: string[] }>({
         role,
         status,
       };
-      const id = await ensureUser({ ...user, regionId: seed.regionId, language: options.language ?? "en" }, null);
+      const id = await ensureUser({ ...user, regionId: seed.regionId, language: options.language ?? "en", followBranchId: named }, null);
       created.push(id);
+      if (role === "national_coordinator") return { id, ...user, totpSecret: await enrollTotp(user.email) };
       return { id, ...user };
     });
     // Event requests (and drafts created by approving them) first: deleting a user only nulls its references.
@@ -130,7 +136,11 @@ export const test = base.extend<Fixtures & { prodHits: string[] }>({
     const contexts: BrowserContext[] = [];
     await use(async (who, options = {}) => {
       const email = typeof who === "string" ? seed.users[who].email : who.email;
-      const session = await signIn(email);
+      // National Coordinators need an aal2 (MFA) session; everyone else a password session.
+      const nc = typeof who === "string" ? who === "nationalCoordinator" : who.role === "national_coordinator";
+      const secret = typeof who === "string" ? ncTotpSecret() : who.totpSecret ?? null;
+      if (nc && !secret) throw new Error("No TOTP secret for the National Coordinator (local: npm run local:seed; QA: npm run qa:nc-mfa).");
+      const session = nc ? await signInAal2(email, secret!) : await signIn(email);
       const context = await (browser as Browser).newContext({
         ...deviceOptions(testInfo),
         storageState: storageStateFor(session, new URL(baseUrl()).origin, options.language === undefined ? "en" : options.language),

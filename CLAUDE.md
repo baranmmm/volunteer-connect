@@ -54,17 +54,30 @@ Local tests run on the local Supabase stack (Docker, `cd e2e && npm run local:up
 - Reading, showing or changing `.env`, `e2e/.env.qa` or any other key or secret file.
 
 ## Roles
-- `regional_director`: manages every branch in their region (region on `user_roles.region_id`). Only role
-  that can change roles or move users between branches. Cannot be deleted in-app.
+Ranking: follower < volunteer < branch_manager < regional_director < national_coordinator. Full matrix: `docs/roles.md`.
+- `follower`: everyone who signs up (active at once, no branch, follows at least one branch). Sees only public
+  published events (and cancelled ones they registered for), their own registrations, applications and profile.
+  Applies to volunteer (`volunteer_applications`); approval by the branch's BM or the region's RD makes them a volunteer.
+- `volunteer`: own profile; members events of their branch/region and national ones.
 - `branch_manager`: manages volunteers in their own branch (approve/reject, activate/deactivate, delete).
-- `volunteer`: own profile only. New sign-ups are `pending` volunteers until a manager approves them.
+- `regional_director`: manages every branch in their region (region on `user_roles.region_id`); volunteer ↔ BM roles
+  and branch moves within the region. Cannot be deleted in-app.
+- `national_coordinator`: assigned only with SQL (`docs/nc-setup.md`), never in the app; every NC right requires an
+  aal2 (MFA) session (`is_nc()`, `session_ok()`, `requireMember`). Manages RDs/BMs, regions/branches and national
+  events; sees volunteers and followers only as numbers. The last active NC is protected by triggers.
 
 ## Security rules
 - RLS is enabled on every table. RLS and grants are the real enforcement; UI checks are convenience only.
+- `anon` reads no table data except branch and region names (sign-up and filters). Public events reach signed-out
+  visitors only through `get_public_events`, `get_public_event` and `get_public_event_image` (the one deliberate
+  exception to "SECURITY DEFINER → authenticated only"); they return public fields only, never online links or people.
 - No direct client writes except the column-granted own-row fields `profiles.full_name`, `phone`, `preferred_language`.
 - Every other change goes through SECURITY DEFINER RPCs: `set_user_status`, `set_user_role`, `set_user_branch`,
-  `request_account_deletion`, `cancel_account_deletion`. History is read through `get_user_audit_history`.
-- User deletion only through the `deleteUser` server function (`src/lib/delete-user.functions.ts`).
+  `request_account_deletion`, `cancel_account_deletion`, the volunteer application, followed branch and structure
+  RPCs. Every client write RPC starts with `PERFORM public.require_privacy_accepted();` (Vitest guard in
+  `src/test/privacy-db.test.ts`). History is read through `get_user_audit_history`.
+- User deletion only through the `deleteUser` server function (`src/lib/delete-user.functions.ts`); followers delete
+  their own account with `deleteMyFollowerAccount` (typed full name, non-restorable).
 - The service_role key lives only in server code, e2e seed/teardown/API tests and GitHub secrets. Never in
   browser code and never in a `VITE_*` variable.
 
