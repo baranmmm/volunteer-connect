@@ -5,10 +5,12 @@ name: E2E (local)
 # no shared database, so PR runs never queue and never leave data behind.
 # QA (the shared hosted project) is used only by push to main (@smoke) and by manual runs that choose it: see e2e.yml.
 #
-# Which tests run (same rules as before):
-#   pull_request            @smoke + the specs related to the changed files (e2e/scripts/select-specs.mjs); changes
-#                           to test infrastructure or build files, or a migration with no known area, run everything.
-#   pull_request + full-ci  the full suite (add the "full-ci" label; it stays full while the label is on).
+# Which tests run:
+#   pull_request            @smoke + the specs related to the changed files (e2e/scripts/select-specs.mjs). A changed
+#                           test-infrastructure file (fixtures, setup, helpers, pages) selects the specs importing it;
+#                           build files and migrations with no known area select only @smoke (with a full-ci hint).
+#   pull_request + full-ci  the full suite: the only way a PR runs everything (it stays full while the label is on).
+# The plan writes one line into the PR description: selected specs, test runs and estimated Actions minutes.
 # A new push to a PR cancels that PR's earlier runs (cancel-superseded.yml).
 on:
   pull_request:
@@ -22,6 +24,10 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # Only to keep the "E2E plan" line in the PR description up to date.
+      pull-requests: write
     outputs:
       run: ${{ steps.plan.outputs.run }}
       mode: ${{ steps.plan.outputs.mode }}
@@ -47,11 +53,30 @@ jobs:
           fi
           echo "run=true" >> "$GITHUB_OUTPUT"
           if [ "$FULL_LABEL" = "true" ]; then
-            echo "mode=full" >> "$GITHUB_OUTPUT"; echo "grep=@smoke" >> "$GITHUB_OUTPUT"
+            { echo "mode=full"; echo "grep=@smoke"; echo "specs=all"; } >> "$GITHUB_OUTPUT"
             printf '### E2E selection\n\nMode: full (full-ci label)\n' >> "$GITHUB_STEP_SUMMARY"
+            node e2e/scripts/select-specs.mjs --estimate-full
           else
             node e2e/scripts/select-specs.mjs "origin/${BASE_REF:-main}"
           fi
+      # One line in the PR description, replaced on every run (marked with an HTML comment). Never fails the run.
+      - name: Write the E2E plan line into the PR description
+        if: steps.plan.outputs.run == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          MODE: ${{ steps.plan.outputs.mode }}
+          SPECS: ${{ steps.plan.outputs.specs }}
+          TESTS: ${{ steps.plan.outputs.tests }}
+          MINUTES: ${{ steps.plan.outputs.minutes }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$MODE" = "full" ]; then what="full suite (full-ci label)"; else what="@smoke + $SPECS related spec(s)"; fi
+          line="<!-- e2e-plan --> **E2E plan** (${SHA:0:7}): $what, $TESTS test runs, about $MINUTES Actions minutes."
+          gh pr view "$PR" --json body -q .body | grep -v -- '<!-- e2e-plan -->' > /tmp/body.md || true
+          printf '\n%s\n' "$line" >> /tmp/body.md
+          gh pr edit "$PR" --body-file /tmp/body.md
 
   # The local stack, 3 shards and the merged report: shared with the nightly run (e2e-local.yml).
   e2e:

@@ -141,12 +141,23 @@ against production by hand.
   - **Report:** one merged HTML report artifact.
 - `.github/workflows/e2e-pr.yml` (**E2E (local)**), every pull request, through `e2e-local.yml`. Which tests:
   - **pull request**: `@smoke` + the specs related to the changed files (`scripts/select-specs.mjs`, shown in the
-    run's summary). A changed migration runs every spec of each area it touches; changes to `e2e/setup`,
-    `e2e/fixtures`, the Playwright config, package files or the Supabase client run the full suite.
-  - **`full-ci` label** on the PR: the full suite (adding another label starts a run that does nothing).
+    run's summary):
+    - A changed spec selects itself; a changed `src/` file selects the specs of its area; a migration selects every
+      spec of each area it touches.
+    - A test-infrastructure file (fixtures, setup, teardown, helpers, pages) selects the specs that import it. The
+      search does not go through `e2e/fixtures` or `e2e/setup`, which every spec imports. A file no spec imports
+      (`playwright.config`, teardown) selects only `@smoke`.
+    - Package files, vite/tsconfig, the Supabase client and a migration with no known area select only `@smoke`; the
+      summary suggests `full-ci`.
+  - **`full-ci` label** on the PR: the full suite, the only way a PR runs everything (adding another label starts a
+    run that does nothing).
+  - **Plan line:** the plan writes one line into the PR description (`<!-- e2e-plan -->`): selected specs, test runs
+    (tests × projects) and estimated Actions minutes. The estimate uses measured costs: about 2.5 min of setup per
+    shard, about 24 min of tests for the full suite, plan and report.
   - A new push to the PR cancels its earlier runs (`cancel-superseded.yml`).
 - `.github/workflows/e2e.yml` (**E2E**):
-  - **Nightly 02:00 UTC** on main: the full suite on the local stack (`e2e-local.yml`). QA is not touched.
+  - **Nightly 02:00 UTC** on main: the full suite on the local stack (`e2e-local.yml`), only when main has new commits
+    since the last nightly run (otherwise the run skips). QA is not touched.
   - **push to main**: `@smoke` on **QA**: guard → **QA migrate** → seed → 3 shards (own `E2E_RUN_ID` and teardown
     each) → merged report. This is the only regular QA run: QA is a small instance with a limited disk IO budget.
   - **workflow_dispatch**: `suite` (full, smoke, selected) and `target` (`local` by default, or `qa`).

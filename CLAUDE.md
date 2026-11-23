@@ -42,16 +42,29 @@ Local tests run on the local Supabase stack (Docker, `cd e2e && npm run local:up
 - `checks.yml` on every PR and push to main: tsc (app and e2e), ESLint on changed files, Vitest.
 - `e2e-local.yml` (reusable): the local-stack e2e run. Each of three shards starts its own local Supabase stack
   (`npm run local:up`: every migration, seed, local TOTP for the NC), then one merged report. It never touches QA.
-- `e2e-pr.yml` (E2E (local)) on every PR, through `e2e-local.yml`: `@smoke` plus the specs related to the changed
-  files (`e2e/scripts/select-specs.mjs`; a changed migration runs every spec of its area, test-infrastructure changes
-  run everything). The `full-ci` label runs the full suite.
+- `e2e-pr.yml` (E2E (local)) on every PR, through `e2e-local.yml`. Test selection (`e2e/scripts/select-specs.mjs`):
+  - Every run includes `@smoke`, plus the specs related to the changed files.
+  - **Changed spec:** that spec.
+  - **Test-infrastructure file** (fixtures, setup, teardown, helpers, pages, `playwright.config`): only the specs that
+    import it, directly or through other e2e modules, never through `e2e/fixtures` or `e2e/setup`. A file that no spec
+    imports (`playwright.config`, teardown) adds nothing beyond `@smoke`.
+  - **`src/` file:** the specs of its area. **Migration:** every spec of each area it touches.
+  - **Build files, the Supabase client, a migration with no known area:** `@smoke` only, with a hint to add `full-ci`.
+  - **Full suite on a PR:** only with the `full-ci` label.
+  - The plan writes one line into the PR description, marked `<!-- e2e-plan -->`: the selected specs, test runs and
+    estimated Actions minutes.
 - `e2e.yml` (E2E):
-  - **Nightly at 02:00 UTC:** the full suite on the local stack (`e2e-local.yml`).
+  - **Nightly at 02:00 UTC:** the full suite on the local stack (`e2e-local.yml`), only when main has new commits
+    since the last nightly run; otherwise it skips.
   - **Push to main:** `@smoke` on the shared QA project, after migrating it. This is the only regular QA run.
   - **`workflow_dispatch`:** a chosen suite on a chosen target, local (default) or `qa`.
   - QA runs wait in the workflow-level `qa-db` queue and are never cancelled while running.
 - QA runs on a small instance with a limited disk IO budget: add nothing that runs on QA regularly.
 - A new push to a PR cancels that PR's earlier E2E (local) runs (`cancel-superseded.yml`).
+- **Push discipline.**
+  - Push only after the related specs are green locally, and collect fixes into one push.
+  - When CI is red, read the log and trace first and tell the user the cause before changing anything.
+  - When the cause is infrastructure (QA, runner, network), do not re-run the same code.
 - Applying migrations to remote QA by hand (`npm run qa:migrate`, `npm run qa:dryrun`) only while CI is idle:
   check that `gh run list` shows no run in progress, and set `E2E_RUN_ID` for local runs and teardown.
 

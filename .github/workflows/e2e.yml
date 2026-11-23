@@ -2,7 +2,8 @@ name: E2E
 
 # Runs on main and by hand. Pull requests use e2e-pr.yml (local stack).
 #   push to main            @smoke on the shared hosted QA project (after migrating it): the one regular QA run.
-#   schedule 02:00 UTC      the full suite on the local stack (e2e-local.yml); QA is not touched.
+#   schedule 02:00 UTC      the full suite on the local stack (e2e-local.yml), only when main has new commits since
+#                           the last nightly run (otherwise the run skips); QA is not touched.
 #   workflow_dispatch       the suite you choose, on the target you choose: local (default) or qa.
 # QA runs on a small instance with a limited disk IO budget, so nothing else runs there on a schedule.
 # tsc, ESLint and Vitest run in "Checks" (checks.yml), without QA and in parallel.
@@ -46,6 +47,10 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # Only to find the commit of the last nightly run (skip when main has not changed since).
+      actions: read
     outputs:
       run: ${{ steps.plan.outputs.run }}
       target: ${{ steps.plan.outputs.target }}
@@ -64,9 +69,25 @@ jobs:
           EVENT: ${{ github.event_name }}
           SUITE: ${{ inputs.suite }}
           TARGET: ${{ inputs.target }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
           BASE_REF: ${{ github.base_ref }}
         run: |
           run=true; mode=""
+          # Nightly: only when main has new commits since the last nightly run that was not cancelled.
+          if [ "$EVENT" = "schedule" ]; then
+            last=$(gh run list -R "$REPO" --workflow e2e.yml --event schedule --branch main --limit 20 \
+              --json databaseId,headSha,status,conclusion \
+              -q "[.[] | select(.databaseId != $RUN_ID and .status == \"completed\" and .conclusion != \"cancelled\")][0].headSha // \"\"")
+            if [ "$last" = "$SHA" ]; then
+              echo "No new commit on main since the last nightly run ($SHA): skipping."
+              printf '### E2E selection\n\nNightly skipped: no new commit on main since the last nightly run (%s).\n' "${SHA:0:7}" >> "$GITHUB_STEP_SUMMARY"
+              { echo "run=false"; echo "target=local"; echo "mode=none"; } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
           if [ "$EVENT" = "schedule" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE" = "full" ]; }; then
             mode=full
           elif [ "$EVENT" = "push" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE" = "smoke" ]; }; then
