@@ -128,4 +128,13 @@ describe("dashboard event cards", () => {
     const rows = screen.getAllByTestId("dashboard-upcoming-event-item");
     expect(rows.map((r) => r.getAttribute("data-event-id"))).toEqual(["pub"]);
   });
+  it("never lists meetings' calendar entries (meetings have their own card)", () => {
+    mocks.rows = [
+      { ...base, id: "pub" },
+      { ...base, id: "meet", category: "meeting", start_at: "2026-11-22T10:00:00Z" },
+    ];
+    render(<Component />);
+    const rows = screen.getAllByTestId("dashboard-upcoming-event-item");
+    expect(rows.map((r) => r.getAttribute("data-event-id"))).toEqual(["pub"]);
+  });
 });

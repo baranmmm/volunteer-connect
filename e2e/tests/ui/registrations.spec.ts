@@ -119,6 +119,7 @@ test.describe("Event registrations", () => {
     const start = new Date(Date.now() + IN_3_DAYS * 60_000);
     const local = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "short" }).format(start).replace(" ", "T");
     await form.setStart(`${local.slice(0, 10)}T18:00`);
+    await form.openSection("registration");
     await form.capacity().fill("5");
     await expect(form.registrationEnabled()).toHaveAttribute("aria-checked", "true");
     await form.registrationEnabled().click();
@@ -156,6 +157,7 @@ test.describe("Event registrations", () => {
     // Same page, no reload: the saved capacity promotes the waitlist and both sections refresh.
     await page.editButton().click();
     const form = page.form();
+    await form.openSection("registration");
     await form.capacity().fill("2");
     await form.publish();
     await expect(page.registrationCount()).toHaveText("2 / 2 registered");
@@ -165,6 +167,7 @@ test.describe("Event registrations", () => {
 
     // Over capacity shows the warning; a cancelled event keeps the count line but drops the warning.
     await page.editButton().click();
+    await form.openSection("registration");
     await form.capacity().fill("1");
     await form.publish();
     await expect(page.capacityWarning()).toBeVisible();

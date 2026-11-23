@@ -27,6 +27,7 @@ test.describe("Calendar smoke", () => {
     await form.title().fill(title);
     await form.location().fill("E2E Smoke Hall");
     await form.setStart(`${londonDay(6)}T18:00`);
+    await form.openSection("registration");
     await form.capacity().fill("1");
     await form.publish();
     await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/);

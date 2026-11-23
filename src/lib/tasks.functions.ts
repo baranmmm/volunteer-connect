@@ -7,7 +7,9 @@ import {
   task,
   taskDetail,
   taskInput,
+  taskNote,
   taskSummary,
+  TASK_NOTE_MAX,
   TASK_STATUSES,
   WORK_SCOPES,
 } from "./tasks";
@@ -114,7 +116,7 @@ export const getMyTaskSummary = createServerFn({ method: "GET" })
     return taskSummary.parse(result.data);
   });
 
-/** Tasks linked to an event (only its managers get any). */
+/** Tasks linked to an event, for everyone who can see the event (each task only when visible). */
 export const getEventTasks = createServerFn({ method: "GET" })
   .middleware([requireMember])
   .inputValidator(z.object({ eventId: z.string().uuid() }))
@@ -122,4 +124,84 @@ export const getEventTasks = createServerFn({ method: "GET" })
     const result = await context.supabase.rpc("get_event_tasks", { p_event: data.eventId });
     fail(result.error);
     return z.array(linkedTask).parse(result.data ?? []);
+  });
+
+// Archive ------------------------------------------------------------------------------------------------------
+
+/** Archive (only done tasks) or unarchive one task: assignees and editors. */
+export const archiveTask = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(taskId.extend({ archived: z.boolean() }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("archive_task", {
+      p_id: data.id,
+      p_archived: data.archived,
+    });
+    fail(result.error);
+    return { archived: z.boolean().parse(result.data) };
+  });
+/** "Archive all done": the given done tasks the caller may change. Returns how many were archived. */
+export const archiveDoneTasks = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ ids: z.array(z.string().uuid()).max(1000) }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("archive_done_tasks", { p_ids: data.ids });
+    fail(result.error);
+    return { archived: z.number().parse(result.data) };
+  });
+
+// Notes --------------------------------------------------------------------------------------------------------
+
+const noteBody = z.string().trim().min(1).max(TASK_NOTE_MAX);
+const mentionIds = z.array(z.string().uuid()).max(20);
+export const listTaskNotes = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(taskId)
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("list_task_notes", { p_task: data.id });
+    fail(result.error);
+    return z.array(taskNote).parse(result.data ?? []);
+  });
+/** Assignees, the creator and the scope's managers. Mentioned people (who must see the task) get a notice. */
+export const addTaskNote = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(taskId.extend({ body: noteBody, mentions: mentionIds }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("add_task_note", {
+      p_task: data.id,
+      p_body: data.body,
+      p_mentions: data.mentions,
+    });
+    fail(result.error);
+    return z.string().uuid().parse(result.data);
+  });
+/** The author only. Newly mentioned people get a notice. */
+export const updateTaskNote = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ noteId: z.string().uuid(), body: noteBody, mentions: mentionIds }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("update_task_note", {
+      p_id: data.noteId,
+      p_body: data.body,
+      p_mentions: data.mentions,
+    });
+    fail(result.error);
+    return { ok: true };
+  });
+export const deleteTaskNote = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ noteId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("delete_task_note", { p_id: data.noteId });
+    fail(result.error);
+    return { ok: true };
+  });
+/** People who can see the task (the @mention picker), without the caller. */
+export const listTaskMentionPeople = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(taskId)
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("list_task_mention_people", { p_task: data.id });
+    fail(result.error);
+    return z.array(person).parse(result.data ?? []);
   });

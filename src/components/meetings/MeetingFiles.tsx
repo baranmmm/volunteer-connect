@@ -7,20 +7,13 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
-import {
-  MEETING_FILE_ACCEPT,
-  MEETING_FILE_BUCKET,
-  meetingFileContentType,
-  meetingFileExtension,
-  validateMeetingFile,
-  type MeetingDetail,
-} from "@/lib/meetings";
+import { MEETING_FILE_ACCEPT, MEETING_FILE_BUCKET, type MeetingDetail } from "@/lib/meetings";
 import { deleteMeetingFile, reserveMeetingFile } from "@/lib/meetings.functions";
-import { prepareMeetingFile } from "./meeting-ui";
+import { uploadMeetingFiles } from "./meeting-upload";
 
 /**
- * Meeting files: each upload reserves a slot (row + path) first, then the browser uploads to that path; a failed
- * upload removes the object (if any) and the row. Deleting removes the Storage object before the row.
+ * Meeting files: uploads go through uploadMeetingFiles (reserved slot, then the browser upload). Deleting removes the
+ * Storage object before the row.
  */
 export function MeetingFiles({ meeting }: { meeting: MeetingDetail }) {
   const { t } = useTranslation();
@@ -36,48 +29,14 @@ export function MeetingFiles({ meeting }: { meeting: MeetingDetail }) {
     if (!list?.length) return;
     setBusy(true);
     setErrors([]);
-    const failed: string[] = [];
-    let count = meeting.files.length,
-      uploaded = 0;
-    for (const original of Array.from(list)) {
-      const reason = validateMeetingFile(original, count);
-      if (reason) {
-        failed.push(t("meetings.files.rejected", { name: original.name, reason: t(reason) }));
-        continue;
-      }
-      const ext = meetingFileExtension(original.type, original.name)!;
-      const contentType = meetingFileContentType(ext);
-      let slot: { id: string; storage_path: string } | null = null;
-      let stored = false;
-      try {
-        const file = await prepareMeetingFile(original, ext, contentType);
-        slot = await reserve({
-          data: {
-            meetingId: meeting.id,
-            extension: ext,
-            originalName: original.name.slice(0, 255),
-          },
-        });
-        const { error } = await supabase.storage
-          .from(MEETING_FILE_BUCKET)
-          .upload(slot.storage_path, file, { contentType, upsert: false });
-        if (error) throw error;
-        stored = true;
-        count += 1;
-        uploaded += 1;
-      } catch (e) {
-        failed.push(
-          t("meetings.files.rejected", { name: original.name, reason: translateError(e) }),
-        );
-        if (slot && !stored) {
-          await supabase.storage
-            .from(MEETING_FILE_BUCKET)
-            .remove([slot.storage_path])
-            .catch(() => undefined);
-          await removeRow({ data: { id: slot.id } }).catch(() => undefined);
-        }
-      }
-    }
+    const { uploaded, failed } = await uploadMeetingFiles({
+      meetingId: meeting.id,
+      files: Array.from(list),
+      existing: meeting.files.length,
+      reserve,
+      removeRow,
+      t,
+    });
     setErrors(failed);
     if (inputRef.current) inputRef.current.value = "";
     await qc.invalidateQueries({ queryKey: ["meeting", meeting.id] });

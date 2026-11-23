@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { ChevronDown } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
@@ -6,10 +7,12 @@ import { useAuth } from "@/lib/auth";
 import {
   BEFORE_DAY_OPTIONS,
   DEFAULT_REMINDERS,
+  NO_REMINDERS,
   REPEAT_KINDS,
   TASK_PRIORITIES,
   TASK_STATUSES,
   londonDay,
+  remindersOn,
   validateReminders,
   type ReminderErrors,
   type ReminderSettings,
@@ -32,7 +35,8 @@ import { Label } from "@/components/ui/label";
 import { EventDialog } from "@/components/events/EventDialog";
 import { DateField } from "@/components/events/DateTimeField";
 import { ScopeSelect } from "@/components/work/ScopeSelect";
-import { PersonPicker } from "@/components/work/PersonPicker";
+import { PeopleCombobox } from "@/components/work/PeopleCombobox";
+import { cn } from "@/lib/utils";
 import { formatDay, selectClass } from "./task-display";
 
 type Initial = {
@@ -41,7 +45,13 @@ type Initial = {
   region_id: string | null;
   title?: string;
   decision_id?: string;
+  /** A task from an event page: linked to this event (the scope above is the event's). */
+  event_id?: string;
+  event_title?: string;
 };
+
+/** Roles that hand out tasks; everyone else (volunteers) gets themselves preselected on a new task. */
+const MANAGER_ROLES = ["branch_manager", "regional_director", "national_coordinator"];
 
 type FieldErrors = Partial<Record<"title" | "description", string>> & ReminderErrors;
 
@@ -70,8 +80,11 @@ function buildReminders(r: {
 }
 
 /**
- * Create or edit a task. Create mode picks the scope from list_my_work_scopes (fixed when `initial` is given, e.g. a
- * task from a meeting decision); edit mode shows the scope read-only. The database checks every permission.
+ * Create or edit a task. Only the title, the assignees and the due date are shown at first; "More options" (collapsed
+ * on every open) holds the description, priority, status, linked event, scope and reminders. Create mode picks the
+ * scope from list_my_work_scopes (the caller's own branch first; fixed when `initial` is given, e.g. a task from a
+ * meeting decision or an event); edit mode shows the scope read-only. Reminders are off unless "Remind me" is turned
+ * on. The database checks every permission.
  */
 export function TaskFormDialog({
   open,
@@ -111,7 +124,7 @@ function TaskForm({
   onSaved?: ((taskId: string) => void) | undefined;
 }) {
   const { t } = useTranslation();
-  const { session, profile } = useAuth();
+  const { session, profile, roles } = useAuth();
   const uid = session?.user.id;
   const queryClient = useQueryClient();
   const editing = !!task;
@@ -128,14 +141,20 @@ function TaskForm({
   const [chosen, setChosen] = useState<WorkScopeOption | null>(null);
   const scopeOptions = useMemo(() => scopes.data ?? [], [scopes.data]);
   const scope = useMemo((): WorkScopeOption | null => {
-    if (!fixedScope) return chosen ?? scopeOptions[0] ?? null;
+    if (!fixedScope)
+      return (
+        chosen ??
+        scopeOptions.find((o) => o.scope === "branch" && o.branch_id === profile?.branch_id) ??
+        scopeOptions[0] ??
+        null
+      );
     const label =
       scopeOptions.find((o) => scopeKey(o) === scopeKey(fixedScope))?.label ??
       (task ? (task.scope === "region" ? task.region : task.branch) : null);
     return { ...fixedScope, label };
     // fixedScope is derived from task/initial on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task, initial, chosen, scopeOptions]);
+  }, [task, initial, chosen, scopeOptions, profile?.branch_id]);
 
   const [title, setTitle] = useState(task?.title ?? initial?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
@@ -143,8 +162,12 @@ function TaskForm({
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "medium");
   const [due, setDue] = useState(task?.due_date ?? "");
   const [assignees, setAssignees] = useState<string[]>(task?.assignees.map((a) => a.id) ?? []);
-  const [eventId, setEventId] = useState(task?.event_id ?? "");
-  const startReminders = task?.reminders ?? DEFAULT_REMINDERS;
+  const [eventId, setEventId] = useState(task?.event_id ?? initial?.event_id ?? "");
+  const [more, setMore] = useState(false);
+  // Reminders: off for a new task; an existing task keeps its settings unless they are turned off here.
+  const remindersWereOn = !!task && remindersOn(task.reminders);
+  const [remind, setRemind] = useState(remindersWereOn);
+  const startReminders = remindersWereOn ? task.reminders : DEFAULT_REMINDERS;
   const [before, setBefore] = useState<number[]>(
     startReminders.before_days.filter((d) => PRESETS.includes(d)),
   );
@@ -172,12 +195,12 @@ function TaskForm({
       }),
     enabled: !!scope,
   });
-  // A volunteer may only assign themselves: preselect them on a new task.
+  // A volunteer's new task is for themselves unless they choose other volunteers of their branch: preselect them.
+  const handsOut = roles.some((r) => MANAGER_ROLES.includes(r));
   useEffect(() => {
-    if (editing || !people.data) return;
-    const only = people.data.length === 1 ? people.data[0] : undefined;
-    if (only && only.id === uid) setAssignees((cur) => (cur.length ? cur : [only.id]));
-  }, [editing, people.data, uid]);
+    if (editing || handsOut || !people.data || !uid) return;
+    if (people.data.some((p) => p.id === uid)) setAssignees((cur) => (cur.length ? cur : [uid]));
+  }, [editing, handsOut, people.data, uid]);
   // Keep assignees from an earlier state of the list in edit mode (they may no longer be assignable but stay shown).
   const peopleList = useMemo(() => {
     const list = [...(people.data ?? [])];
@@ -219,8 +242,13 @@ function TaskForm({
         id: task.event_id,
         label: task.event_title ?? t("tasks.form.unknownEvent"),
       });
+    if (initial?.event_id && !options.some((o) => o.id === initial.event_id))
+      options.unshift({
+        id: initial.event_id,
+        label: initial.event_title ?? t("tasks.form.unknownEvent"),
+      });
     return options;
-  }, [events.data, scope, task, t]);
+  }, [events.data, scope, task, initial, t]);
 
   const reminders = buildReminders({ before, custom, kind, every, start, overdueOn, overdueEvery });
 
@@ -229,8 +257,14 @@ function TaskForm({
     if (!title.trim()) next.title = "tasks.form.titleRequired";
     else if (title.trim().length > 200) next.title = "tasks.form.titleTooLong";
     if (description.length > 5000) next.description = "tasks.form.descriptionTooLong";
-    if (due) Object.assign(next, validateReminders(reminders));
+    if (remind && due) Object.assign(next, validateReminders(reminders));
     return next;
+  }
+  /** What to send: the settings when on; "off" when a new task, or an existing one whose reminders were turned off. */
+  function remindersToSend(): { reminders?: ReminderSettings } {
+    if (remind && due) return { reminders };
+    if (!task || remindersWereOn) return { reminders: NO_REMINDERS };
+    return {};
   }
 
   async function submit(e: FormEvent) {
@@ -238,6 +272,8 @@ function TaskForm({
     setFormError("");
     const next = validate();
     setErrors(next);
+    // Problems in the collapsed section open it, so they can be seen.
+    if (Object.keys(next).some((k) => k !== "title")) setMore(true);
     if (Object.keys(next).length || !scope) return;
     const body = {
       title: title.trim(),
@@ -247,7 +283,7 @@ function TaskForm({
       due_date: due || null,
       event_id: eventId || null,
       assignee_ids: assignees,
-      ...(due ? { reminders } : {}),
+      ...remindersToSend(),
     };
     setBusy(true);
     try {
@@ -307,7 +343,7 @@ function TaskForm({
       noValidate
       data-testid="task-form-body"
     >
-      {fixedScope ? (
+      {fixedScope && (
         <p
           className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]"
           data-testid="task-form-scope-fixed"
@@ -320,23 +356,18 @@ function TaskForm({
               ? t("work.scope.regionNamed", { name: scope!.label ?? "" })
               : t("work.scope.branchNamed", { name: scope!.label ?? "" })}
         </p>
-      ) : (
-        <ScopeSelect
-          id="task-form-scope"
-          testId="task-form-scope"
-          options={scopeOptions}
-          value={scope}
-          disabled={busy}
-          onChange={(next) => {
-            setChosen(next);
-            setAssignees([]);
-            setEventId("");
-          }}
-        />
       )}
       {initial?.decision_id && !task && (
         <p className="text-sm text-muted-foreground" data-testid="task-form-from-decision">
           {t("tasks.form.fromDecision")}
+        </p>
+      )}
+      {initial?.event_id && !task && (
+        <p
+          className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]"
+          data-testid="task-form-from-event"
+        >
+          {t("tasks.form.fromEvent", { title: initial.event_title ?? "" })}
         </p>
       )}
       <div className="min-w-0 space-y-1.5">
@@ -354,63 +385,9 @@ function TaskForm({
         />
         {err("title")}
       </div>
-      <div className="min-w-0 space-y-1.5">
-        <Label htmlFor="task-form-description">{t("tasks.form.description")}</Label>
-        <Textarea
-          id="task-form-description"
-          data-testid="task-form-description"
-          value={description}
-          maxLength={5000}
-          rows={4}
-          aria-invalid={!!errors.description}
-          aria-describedby={errId("description")}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        {err("description")}
-      </div>
-      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="min-w-0 space-y-1.5">
-          <Label htmlFor="task-form-status">{t("tasks.form.status")}</Label>
-          <select
-            id="task-form-status"
-            data-testid="task-form-status"
-            className={selectClass}
-            value={status}
-            onChange={(e) => setStatus(e.target.value as TaskStatus)}
-          >
-            {TASK_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {t(`tasks.status.${s}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="min-w-0 space-y-1.5">
-          <Label htmlFor="task-form-priority">{t("tasks.form.priority")}</Label>
-          <select
-            id="task-form-priority"
-            data-testid="task-form-priority"
-            className={selectClass}
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as TaskPriority)}
-          >
-            {TASK_PRIORITIES.map((p) => (
-              <option key={p} value={p}>
-                {t(`tasks.priority.${p}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <DateField
-        testId="task-form-due-date"
-        label={t("tasks.form.dueDate")}
-        value={due}
-        onChange={setDue}
-      />
-      <PersonPicker
+      <PeopleCombobox
         testId="task-form-assignees"
-        legend={t("tasks.form.assignees")}
+        label={t("tasks.form.assignees")}
         people={peopleList}
         selected={assignees}
         onChange={setAssignees}
@@ -418,156 +395,277 @@ function TaskForm({
         loading={people.isLoading}
         emptyText={t("tasks.form.assigneesEmpty")}
       />
-      <div className="min-w-0 space-y-1.5">
-        <Label htmlFor="task-form-event">{t("tasks.form.event")}</Label>
-        <select
-          id="task-form-event"
-          data-testid="task-form-event"
-          className={selectClass}
-          value={eventId}
-          onChange={(e) => setEventId(e.target.value)}
+      <DateField
+        testId="task-form-due-date"
+        label={t("tasks.form.dueDate")}
+        value={due}
+        onChange={setDue}
+      />
+      <div className="min-w-0 rounded-xl border">
+        <button
+          type="button"
+          data-testid="task-form-more"
+          aria-expanded={more}
+          aria-controls="task-form-more-section"
+          onClick={() => setMore((v) => !v)}
+          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2 text-left font-medium hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <option value="">{t("tasks.form.noEvent")}</option>
-          {eventOptions.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      {due && (
-        <fieldset
-          className="min-w-0 space-y-4 rounded-xl border p-4"
-          data-testid="task-form-reminders"
-        >
-          <legend className="px-1 text-sm font-semibold">{t("tasks.form.reminders")}</legend>
-          <div className="min-w-0 space-y-2">
-            <p className="text-sm font-medium" id="task-form-before-label">
-              {t("tasks.form.remindBefore")}
-            </p>
-            <div
-              className="flex flex-wrap gap-x-4 gap-y-1"
-              role="group"
-              aria-labelledby="task-form-before-label"
-              aria-describedby={errId("before_days")}
-            >
-              {PRESETS.map((d) => (
-                <label key={d} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4"
-                    data-testid={`task-form-remind-before-${d}`}
-                    checked={before.includes(d)}
-                    onChange={(e) =>
-                      setBefore((cur) =>
-                        e.target.checked ? [...cur, d] : cur.filter((x) => x !== d),
-                      )
-                    }
-                  />
-                  {t("tasks.form.daysBefore", { count: d })}
-                </label>
-              ))}
-            </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <Label htmlFor="task-form-remind-custom" className="text-sm font-normal">
-                {t("tasks.form.customDays")}
-              </Label>
-              <Input
-                id="task-form-remind-custom"
-                data-testid="task-form-remind-custom"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={365}
-                value={custom}
-                aria-invalid={!!errors.before_days}
-                aria-describedby={errId("before_days")}
-                onChange={(e) => setCustom(e.target.value)}
-                className="h-11 w-24"
-              />
-            </div>
-            {err("before_days")}
-          </div>
-          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+          {t("tasks.form.moreOptions")}
+          <ChevronDown
+            className={cn("size-4 shrink-0 transition-transform", more && "rotate-180")}
+            aria-hidden
+          />
+        </button>
+        {more && (
+          <div
+            id="task-form-more-section"
+            data-testid="task-form-more-section"
+            className="grid min-w-0 grid-cols-1 gap-5 border-t p-4"
+          >
             <div className="min-w-0 space-y-1.5">
-              <Label htmlFor="task-form-repeat-kind">{t("tasks.form.repeat")}</Label>
+              <Label htmlFor="task-form-description">{t("tasks.form.description")}</Label>
+              <Textarea
+                id="task-form-description"
+                data-testid="task-form-description"
+                value={description}
+                maxLength={5000}
+                rows={4}
+                aria-invalid={!!errors.description}
+                aria-describedby={errId("description")}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+              {err("description")}
+            </div>
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-1.5">
+                <Label htmlFor="task-form-status">{t("tasks.form.status")}</Label>
+                <select
+                  id="task-form-status"
+                  data-testid="task-form-status"
+                  className={selectClass}
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as TaskStatus)}
+                >
+                  {TASK_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {t(`tasks.status.${s}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-0 space-y-1.5">
+                <Label htmlFor="task-form-priority">{t("tasks.form.priority")}</Label>
+                <select
+                  id="task-form-priority"
+                  data-testid="task-form-priority"
+                  className={selectClass}
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                >
+                  {TASK_PRIORITIES.map((p) => (
+                    <option key={p} value={p}>
+                      {t(`tasks.priority.${p}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <Label htmlFor="task-form-event">{t("tasks.form.event")}</Label>
               <select
-                id="task-form-repeat-kind"
-                data-testid="task-form-repeat-kind"
+                id="task-form-event"
+                data-testid="task-form-event"
                 className={selectClass}
-                value={kind}
-                onChange={(e) => setKind(e.target.value as RepeatKind)}
+                value={eventId}
+                onChange={(e) => setEventId(e.target.value)}
               >
-                {REPEAT_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {t(`tasks.form.repeatKinds.${k}`)}
+                <option value="">{t("tasks.form.noEvent")}</option>
+                {eventOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
                   </option>
                 ))}
               </select>
             </div>
-            {kind === "every_n" && (
-              <div className="min-w-0 space-y-1.5">
-                <Label htmlFor="task-form-repeat-every">{t("tasks.form.repeatEvery")}</Label>
-                <Input
-                  id="task-form-repeat-every"
-                  data-testid="task-form-repeat-every"
-                  type="number"
-                  inputMode="numeric"
-                  min={2}
-                  max={90}
-                  value={every}
-                  aria-invalid={!!errors.repeat_every_days}
-                  aria-describedby={errId("repeat_every_days")}
-                  onChange={(e) => setEvery(e.target.value)}
-                  className="h-11"
-                />
-                {err("repeat_every_days")}
-              </div>
-            )}
-            {kind !== "none" && (
-              <DateField
-                testId="task-form-repeat-start"
-                label={t("tasks.form.repeatStart")}
-                value={start}
-                onChange={setStart}
+            {!fixedScope && (
+              <ScopeSelect
+                id="task-form-scope"
+                testId="task-form-scope"
+                options={scopeOptions}
+                value={scope}
+                disabled={busy}
+                onChange={(next) => {
+                  setChosen(next);
+                  setAssignees([]);
+                  setEventId("");
+                }}
               />
             )}
-          </div>
-          <div className="min-w-0 space-y-2">
-            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                className="size-4"
-                data-testid="task-form-overdue-toggle"
-                checked={overdueOn}
-                onChange={(e) => setOverdueOn(e.target.checked)}
-              />
-              {t("tasks.form.overdue")}
-            </label>
-            {overdueOn && (
-              <div className="flex min-w-0 items-center gap-2">
-                <Label htmlFor="task-form-overdue-every" className="text-sm font-normal">
-                  {t("tasks.form.overdueEvery")}
-                </Label>
-                <Input
-                  id="task-form-overdue-every"
-                  data-testid="task-form-overdue-every"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={90}
-                  value={overdueEvery}
-                  aria-invalid={!!errors.overdue_every_days}
-                  aria-describedby={errId("overdue_every_days")}
-                  onChange={(e) => setOverdueEvery(e.target.value)}
-                  className="h-11 w-24"
+            <fieldset
+              className="min-w-0 space-y-4 rounded-xl border p-4"
+              data-testid="task-form-reminders"
+              data-on={remind && !!due}
+            >
+              <legend className="px-1 text-sm font-semibold">{t("tasks.form.reminders")}</legend>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  data-testid="task-form-reminders-toggle"
+                  checked={remind && !!due}
+                  disabled={!due}
+                  aria-describedby={due ? undefined : "task-form-reminders-need-due"}
+                  onChange={(e) => setRemind(e.target.checked)}
                 />
-              </div>
-            )}
-            {err("overdue_every_days")}
+                {t("tasks.form.remindMe")}
+              </label>
+              {!due && (
+                <p
+                  id="task-form-reminders-need-due"
+                  className="text-sm text-muted-foreground"
+                  data-testid="task-form-reminders-need-due"
+                >
+                  {t("tasks.form.remindersNeedDue")}
+                </p>
+              )}
+              {remind && due && (
+                <>
+                  <div className="min-w-0 space-y-2">
+                    <p className="text-sm font-medium" id="task-form-before-label">
+                      {t("tasks.form.remindBefore")}
+                    </p>
+                    <div
+                      className="flex flex-wrap gap-x-4 gap-y-1"
+                      role="group"
+                      aria-labelledby="task-form-before-label"
+                      aria-describedby={errId("before_days")}
+                    >
+                      {PRESETS.map((d) => (
+                        <label
+                          key={d}
+                          className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            className="size-4"
+                            data-testid={`task-form-remind-before-${d}`}
+                            checked={before.includes(d)}
+                            onChange={(e) =>
+                              setBefore((cur) =>
+                                e.target.checked ? [...cur, d] : cur.filter((x) => x !== d),
+                              )
+                            }
+                          />
+                          {t("tasks.form.daysBefore", { count: d })}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Label htmlFor="task-form-remind-custom" className="text-sm font-normal">
+                        {t("tasks.form.customDays")}
+                      </Label>
+                      <Input
+                        id="task-form-remind-custom"
+                        data-testid="task-form-remind-custom"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={365}
+                        value={custom}
+                        aria-invalid={!!errors.before_days}
+                        aria-describedby={errId("before_days")}
+                        onChange={(e) => setCustom(e.target.value)}
+                        className="h-11 w-24"
+                      />
+                    </div>
+                    {err("before_days")}
+                  </div>
+                  <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="min-w-0 space-y-1.5">
+                      <Label htmlFor="task-form-repeat-kind">{t("tasks.form.repeat")}</Label>
+                      <select
+                        id="task-form-repeat-kind"
+                        data-testid="task-form-repeat-kind"
+                        className={selectClass}
+                        value={kind}
+                        onChange={(e) => setKind(e.target.value as RepeatKind)}
+                      >
+                        {REPEAT_KINDS.map((k) => (
+                          <option key={k} value={k}>
+                            {t(`tasks.form.repeatKinds.${k}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {kind === "every_n" && (
+                      <div className="min-w-0 space-y-1.5">
+                        <Label htmlFor="task-form-repeat-every">
+                          {t("tasks.form.repeatEvery")}
+                        </Label>
+                        <Input
+                          id="task-form-repeat-every"
+                          data-testid="task-form-repeat-every"
+                          type="number"
+                          inputMode="numeric"
+                          min={2}
+                          max={90}
+                          value={every}
+                          aria-invalid={!!errors.repeat_every_days}
+                          aria-describedby={errId("repeat_every_days")}
+                          onChange={(e) => setEvery(e.target.value)}
+                          className="h-11"
+                        />
+                        {err("repeat_every_days")}
+                      </div>
+                    )}
+                    {kind !== "none" && (
+                      <DateField
+                        testId="task-form-repeat-start"
+                        label={t("tasks.form.repeatStart")}
+                        value={start}
+                        onChange={setStart}
+                      />
+                    )}
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium">
+                      <input
+                        type="checkbox"
+                        className="size-4"
+                        data-testid="task-form-overdue-toggle"
+                        checked={overdueOn}
+                        onChange={(e) => setOverdueOn(e.target.checked)}
+                      />
+                      {t("tasks.form.overdue")}
+                    </label>
+                    {overdueOn && (
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Label htmlFor="task-form-overdue-every" className="text-sm font-normal">
+                          {t("tasks.form.overdueEvery")}
+                        </Label>
+                        <Input
+                          id="task-form-overdue-every"
+                          data-testid="task-form-overdue-every"
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={90}
+                          value={overdueEvery}
+                          aria-invalid={!!errors.overdue_every_days}
+                          aria-describedby={errId("overdue_every_days")}
+                          onChange={(e) => setOverdueEvery(e.target.value)}
+                          className="h-11 w-24"
+                        />
+                      </div>
+                    )}
+                    {err("overdue_every_days")}
+                  </div>
+                </>
+              )}
+            </fieldset>
           </div>
-        </fieldset>
-      )}
+        )}
+      </div>
       {formError && (
         <p
           role="alert"

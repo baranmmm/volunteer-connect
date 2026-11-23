@@ -3,8 +3,15 @@ import { pickOption } from "./select";
 
 export type RepeatFreq = "none" | "daily" | "weekly" | "monthly" | "yearly" | "custom";
 export type RepeatEnds = "never" | "on" | "after";
+/** Collapsible sections of the form; all start collapsed every time the form opens. */
+export type EventFormSection = "description" | "registration" | "audience" | "files" | "repeat";
+export type MeetingRepeatFreq = "none" | "weekly" | "monthly";
 
-/** The create/edit event form (EventForm), including the repeat controls. */
+/**
+ * The create/edit event form (EventForm), including the repeat controls. Title, category, date/time and place are
+ * always visible; open a section (openSection) before using its fields (capacity, audience, files, repeat, ...).
+ * With the category "meeting" it becomes the meeting form (invitees, meeting repeat).
+ */
 export class EventFormDialog {
   constructor(readonly page: Page) {}
 
@@ -30,6 +37,40 @@ export class EventFormDialog {
   readonly publishButton = () => this.root.getByTestId("event-form-publish");
   readonly capacity = () => this.root.getByTestId("event-form-capacity");
   readonly registrationEnabled = () => this.root.getByTestId("event-form-registration-enabled");
+  readonly category = () => this.root.getByTestId("event-form-category");
+  readonly invitees = () => this.root.getByTestId("event-form-invitees");
+  readonly meetingRepeatCount = () => this.root.getByTestId("event-form-meeting-repeat-count");
+  section(name: EventFormSection) {
+    return this.root.getByTestId(`event-form-section-${name}`);
+  }
+  sectionToggle(name: EventFormSection) {
+    return this.root.getByTestId(`event-form-section-${name}-toggle`);
+  }
+
+  /** Expands a section (no-op when it is already open). */
+  async openSection(name: EventFormSection) {
+    const toggle = this.sectionToggle(name);
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  }
+  async chooseCategory(category: string) {
+    await pickOption(this.page, "event-form-category", "event-form-category-option", category);
+  }
+  /** Meeting form: picks an invitee in the people combobox by user id. */
+  async invite(userId: string) {
+    await this.root.getByTestId("event-form-invitees-open").click();
+    await this.page.locator(`[data-testid="event-form-invitees-option"][data-user-id="${userId}"]`).click();
+    await this.page.keyboard.press("Escape");
+    await expect(this.invitees().locator(`[data-testid="event-form-invitees-chip"][data-user-id="${userId}"]`)).toBeVisible();
+  }
+  /** Meeting form: repeat weekly/monthly every `interval`, `count` occurrences. */
+  async meetingRepeat(freq: MeetingRepeatFreq, interval = 1, count?: number) {
+    await this.openSection("repeat");
+    await pickOption(this.page, "event-form-meeting-repeat-freq", "event-form-meeting-repeat-freq-option", freq);
+    if (freq === "none") return;
+    await pickOption(this.page, "event-form-meeting-repeat-interval", "event-form-meeting-repeat-interval-option", String(interval));
+    if (count !== undefined) await this.meetingRepeatCount().fill(String(count));
+  }
 
   async chooseTime(side: "start" | "end", time: string) {
     await pickOption(this.page, `event-form-${side}-time`, `event-form-${side}-time-option`, time);
@@ -41,9 +82,11 @@ export class EventFormDialog {
   }
 
   async chooseRepeat(freq: RepeatFreq) {
+    await this.openSection("repeat");
     await pickOption(this.page, "event-form-repeat", "event-form-repeat-option", freq);
   }
   async chooseEnds(ends: RepeatEnds) {
+    await this.openSection("repeat");
     await pickOption(this.page, "event-form-repeat-ends", "event-form-repeat-ends-option", ends);
   }
 

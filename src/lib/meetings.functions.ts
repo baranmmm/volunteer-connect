@@ -3,10 +3,13 @@ import { z } from "zod";
 import { requireMember } from "@/lib/require-member";
 import {
   MEETING_FILE_BUCKET,
+  MEETING_SERIES_MODES,
   MEETING_STATUSES,
   meeting,
+  meetingCreateInput,
   meetingDetail,
   meetingInput,
+  meetingSeriesTask,
 } from "./meetings";
 import { person, WORK_SCOPES } from "./tasks";
 
@@ -60,8 +63,9 @@ export const getMeeting = createServerFn({ method: "GET" })
 
 export const createMeeting = createServerFn({ method: "POST" })
   .middleware([requireMember])
-  .inputValidator(meetingInput.extend({ scope: z.enum(WORK_SCOPES) }))
+  .inputValidator(meetingCreateInput.extend({ scope: z.enum(WORK_SCOPES) }))
   .handler(async ({ data, context }) => {
+    // Creates the calendar entry too; with recurrence, every occurrence (each with its own entry).
     const result = await context.supabase.rpc("create_meeting", { p: data });
     fail(result.error);
     return z.string().uuid().parse(result.data);
@@ -229,4 +233,88 @@ export const deleteMeetingFile = createServerFn({ method: "POST" })
     const result = await context.supabase.rpc("delete_meeting_file", { p_id: data.id });
     fail(result.error);
     return { ok: true };
+  });
+
+// Recurring meetings, agenda follow-up, invitees -----------------------------------------------------------------
+
+/** Edit a meeting: this occurrence, this and following, or all (one meeting when it is not recurring). */
+export const updateMeetingSeries = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(meetingId.extend({ mode: z.enum(MEETING_SERIES_MODES), meeting: meetingInput }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("update_meeting_series", {
+      p_id: data.id,
+      p_mode: data.mode,
+      p: data.meeting,
+    });
+    fail(result.error);
+    return { count: z.number().parse(result.data) };
+  });
+/** Delete this occurrence, this and following, or all (each occurrence goes to the Recycle Bin). */
+export const deleteMeetingSeries = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(meetingId.extend({ mode: z.enum(MEETING_SERIES_MODES) }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("delete_meeting_series", {
+      p_id: data.id,
+      p_mode: data.mode,
+    });
+    fail(result.error);
+    return { count: z.number().parse(result.data) };
+  });
+/** The series' standing agenda items; new ones are added to the upcoming occurrences. */
+export const setMeetingSeriesAgenda = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(meetingId.extend({ titles: z.array(text(200)).max(30) }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_meeting_series_agenda", {
+      p_id: data.id,
+      p_titles: data.titles,
+    });
+    fail(result.error);
+    return { updated: z.number().parse(result.data) };
+  });
+/** Several agenda items at once (the create form's agenda section). */
+export const addAgendaItems = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ meetingId: z.string().uuid(), titles: z.array(text(200)).max(30) }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("add_agenda_items", {
+      p_meeting: data.meetingId,
+      p_titles: data.titles,
+    });
+    fail(result.error);
+    return { added: z.number().parse(result.data) };
+  });
+export const setAgendaItemResolved = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ id: z.string().uuid(), resolved: z.boolean() }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_agenda_item_resolved", {
+      p_id: data.id,
+      p_resolved: data.resolved,
+    });
+    fail(result.error);
+    return { resolved: z.boolean().parse(result.data) };
+  });
+/** Invitees only (the event form of a meeting's calendar entry). New invitees are notified. */
+export const setMeetingInvitees = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(meetingId.extend({ inviteeIds: z.array(z.string().uuid()).max(100) }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_meeting_invitees", {
+      p_id: data.id,
+      p_invitee_ids: data.inviteeIds,
+    });
+    fail(result.error);
+    return { added: z.number().parse(result.data) };
+  });
+/** Every task created from a decision in the meeting's series (visible ones only). */
+export const getMeetingSeriesTasks = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(meetingId)
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("get_meeting_series_tasks", { p_id: data.id });
+    fail(result.error);
+    return z.array(meetingSeriesTask).parse(result.data ?? []);
   });

@@ -8,6 +8,10 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   invalidate: vi.fn(),
   removeQueries: vi.fn(),
+  meeting: null as Record<string, unknown> | null,
+  removeMeeting: vi.fn(),
+  removeMeetingSeries: vi.fn(),
+  linkedTasks: vi.fn(),
 }));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => ({
@@ -16,12 +20,23 @@ vi.mock("@tanstack/react-router", () => ({
     useSearch: () => ({}),
     useLoaderData: () => null,
   }),
-  Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+  Link: ({
+    children,
+    to: _to,
+    params: _params,
+    ...props
+  }: {
+    children: ReactNode;
+    to?: string;
+    params?: unknown;
+  }) => <a {...props}>{children}</a>,
   useNavigate: () => mocks.navigate,
 }));
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: mocks.data }),
+  useQuery: ({ queryKey }: { queryKey: string[] }) => ({
+    data: queryKey[0] === "meeting" ? mocks.meeting : mocks.data,
+  }),
   useQueryClient: () => ({
     invalidateQueries: mocks.invalidate,
     removeQueries: mocks.removeQueries,
@@ -38,7 +53,19 @@ vi.mock("@/lib/delete-event.functions", () => ({
 }));
 vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn() } }));
 vi.mock("@/components/events/EventForm", () => ({ EventForm: () => null }));
-vi.mock("@/components/tasks/EventLinkedTasks", () => ({ EventLinkedTasks: () => null }));
+vi.mock("@/components/tasks/EventLinkedTasks", () => ({
+  EventLinkedTasks: (props: unknown) => {
+    mocks.linkedTasks(props);
+    return null;
+  },
+}));
+vi.mock("@/lib/meetings.functions", () => ({
+  getMeeting: vi.fn(),
+  setMeetingStatus: vi.fn(),
+  deleteMeeting: mocks.removeMeeting,
+  deleteMeetingSeries: mocks.removeMeetingSeries,
+}));
+vi.mock("@/components/meetings/MeetingFormDialog", () => ({ MeetingFormDialog: () => null }));
 vi.mock("@/components/events/EventRegistration", () => ({
   RegistrationPanel: () => null,
   ManagerRegistrations: () => null,
@@ -55,6 +82,9 @@ const Component = (Route as unknown as { options: { component: () => ReactNode }
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.remove.mockResolvedValue(undefined);
+  mocks.removeMeeting.mockResolvedValue({ ok: true });
+  mocks.removeMeetingSeries.mockResolvedValue({ count: 3 });
+  mocks.meeting = null;
   mocks.data = {
     event: {
       id: "event-id",
@@ -109,5 +139,68 @@ describe("event deletion UI permissions and confirmation", () => {
     expect(screen.getByTestId("event-delete-button")).toBeDefined();
     expect(screen.queryByTestId("event-edit-button")).toBeNull();
     expect(screen.queryByTestId("event-cancel-event-button")).toBeNull();
+  });
+});
+
+describe("a meeting's calendar entry", () => {
+  const meetingEntry = () => {
+    mocks.data = {
+      event: {
+        id: "event-id",
+        title: "Team meeting",
+        organizer: "Creator",
+        category: "meeting",
+        status: "published",
+        start_at: "2099-01-01T18:00:00Z",
+        end_at: "2099-01-01T19:00:00Z",
+        scope: "branch",
+        branch_id: "b",
+        region_id: "r",
+        audience: "members",
+        media: [],
+      },
+      meetingId: "meeting-id",
+      canManage: true,
+      deletion: { canManage: true, canDelete: true, pending: false, reason: null },
+    };
+  };
+  it("links to the meeting and offers no event management to someone who cannot edit the meeting", () => {
+    meetingEntry();
+    mocks.meeting = { id: "meeting-id", can_edit: false, status: "scheduled", series_id: null };
+    render(<Component />);
+    expect(screen.getByTestId("event-open-meeting")).toBeDefined();
+    expect(screen.getByTestId("event-detail").getAttribute("data-category")).toBe("meeting");
+    expect(screen.queryByTestId("event-detail-gallery")).toBeNull();
+    expect(screen.queryByTestId("event-edit-button")).toBeNull();
+    expect(screen.queryByTestId("event-delete-button")).toBeNull();
+    expect(mocks.linkedTasks).toHaveBeenCalledWith({
+      event: {
+        id: "event-id",
+        title: "Team meeting",
+        scope: "branch",
+        branch_id: "b",
+        region_id: "r",
+      },
+    });
+  });
+  it("a meeting editor deletes the meeting, not the event; a series asks which occurrences", async () => {
+    meetingEntry();
+    mocks.meeting = { id: "meeting-id", can_edit: true, status: "scheduled", series_id: null };
+    render(<Component />);
+    fireEvent.click(screen.getByTestId("event-delete-button"));
+    fireEvent.click(screen.getByTestId("event-delete-confirm"));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith({ to: "/calendar" }));
+    expect(mocks.removeMeeting).toHaveBeenCalledWith({ data: { id: "meeting-id" } });
+    expect(mocks.remove).not.toHaveBeenCalled();
+    cleanup();
+    mocks.meeting = { id: "meeting-id", can_edit: true, status: "scheduled", series_id: "s" };
+    render(<Component />);
+    fireEvent.click(screen.getByTestId("event-delete-button"));
+    fireEvent.click(screen.getByTestId("recurring-scope-following"));
+    await waitFor(() =>
+      expect(mocks.removeMeetingSeries).toHaveBeenCalledWith({
+        data: { id: "meeting-id", mode: "following" },
+      }),
+    );
   });
 });

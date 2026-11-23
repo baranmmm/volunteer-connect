@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ChevronLeft,
+  ChevronRight,
+  MessageSquare,
+  UserCheck,
+} from "lucide-react";
 import {
   TASK_STATUSES,
   addDays,
+  archivableDoneIds,
   groupTasks,
   isOverdue,
+  mineFirst,
   type Task,
   type TaskGroup,
   type TaskStatus,
@@ -16,9 +25,80 @@ import { Button } from "@/components/ui/button";
 import { BranchName } from "@/components/app/BranchName";
 import { TaskPriorityBadge, TaskStatusBadge } from "./TaskBadges";
 import { useSetTaskStatus } from "./use-task-status";
+import { useTaskArchive } from "./use-task-archive";
+import { TASK_STATUS_CARD, TASK_STATUS_COLUMN } from "./task-status-colors";
 import { formatDay, selectClass } from "./task-display";
 
 type ViewProps = { tasks: Task[]; today: string; onOpen: (id: string) => void };
+
+/** "Assigned to you" marker on cards and rows (shown when the list is not filtered to my tasks only). */
+function MineBadge({ testId }: { testId: string }) {
+  const { t } = useTranslation();
+  return (
+    <span
+      data-testid={testId}
+      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-primary bg-card px-2 py-0.5 text-xs font-semibold text-primary"
+    >
+      <UserCheck className="size-3.5" aria-hidden />
+      {t("tasks.mine")}
+    </span>
+  );
+}
+
+/** Unarchive from a card or row (archived tasks are listed only under the "Archived" filter). */
+function UnarchiveButton({ task }: { task: Task }) {
+  const { t } = useTranslation();
+  const archive = useTaskArchive();
+  const [busy, setBusy] = useState(false);
+  if (!task.archived_at || !task.can_set_status) return null;
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-11"
+      data-testid="task-card-unarchive"
+      disabled={busy}
+      aria-label={t("tasks.archive.unarchiveTitle", { title: task.title })}
+      onClick={async () => {
+        setBusy(true);
+        await archive.setArchived(task.id, false);
+        setBusy(false);
+      }}
+    >
+      <ArchiveRestore />
+      {t("tasks.archive.unarchive")}
+    </Button>
+  );
+}
+
+/** "Archive all done" for the given tasks (the done ones the caller may change); hidden when there are none. */
+export function ArchiveDoneButton({ tasks, testId }: { tasks: Task[]; testId: string }) {
+  const { t } = useTranslation();
+  const archive = useTaskArchive();
+  const [busy, setBusy] = useState(false);
+  const ids = archivableDoneIds(tasks);
+  if (!ids.length) return null;
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-11 bg-card"
+      data-testid={testId}
+      data-count={ids.length}
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        await archive.archiveDone(ids);
+        setBusy(false);
+      }}
+    >
+      <Archive />
+      {t("tasks.archive.archiveAllDone", { count: ids.length })}
+    </Button>
+  );
+}
 
 function assigneeNames(task: Task, formerMember: string) {
   return task.assignees.map((a) => a.full_name ?? formerMember).join(", ");
@@ -46,7 +126,7 @@ function DueText({ task, today }: { task: Task; today: string }) {
 // ---------------------------------------------------------------------------------------------------------------
 // Kanban
 
-export function KanbanView({ tasks, today, onOpen }: ViewProps) {
+export function KanbanView({ tasks, today, onOpen, markMine }: ViewProps & { markMine: boolean }) {
   const { t } = useTranslation();
   const setStatus = useSetTaskStatus();
   const [dragging, setDragging] = useState<Task | null>(null);
@@ -57,7 +137,8 @@ export function KanbanView({ tasks, today, onOpen }: ViewProps) {
       className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
     >
       {TASK_STATUSES.map((status) => {
-        const column = tasks.filter((x) => x.status === status);
+        // The caller's own tasks first in every column.
+        const column = mineFirst(tasks.filter((x) => x.status === status));
         return (
           <section
             key={status}
@@ -80,22 +161,28 @@ export function KanbanView({ tasks, today, onOpen }: ViewProps) {
                 void setStatus(task.id, status);
             }}
             className={cn(
-              "flex min-w-0 flex-col gap-3 rounded-2xl border bg-muted/40 p-3",
+              "flex min-w-0 flex-col gap-3 rounded-2xl border p-3",
+              TASK_STATUS_COLUMN[status],
               over === status && "ring-2 ring-primary",
             )}
           >
-            <h2
-              id={`tasks-kanban-${status}`}
-              className="flex items-center justify-between px-1 font-semibold"
-            >
-              {t(`tasks.status.${status}`)}
-              <span
-                className="text-sm font-normal text-muted-foreground"
-                data-testid="tasks-kanban-count"
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 px-1">
+              <h2
+                id={`tasks-kanban-${status}`}
+                className="flex min-w-0 items-center gap-2 font-semibold"
               >
-                {column.length}
-              </span>
-            </h2>
+                {t(`tasks.status.${status}`)}
+                <span
+                  className="text-sm font-normal text-muted-foreground dark:text-inherit"
+                  data-testid="tasks-kanban-count"
+                >
+                  {column.length}
+                </span>
+              </h2>
+              {status === "done" && (
+                <ArchiveDoneButton tasks={column} testId="tasks-kanban-archive-done" />
+              )}
+            </div>
             {column.length === 0 && (
               <p className="px-1 py-4 text-center text-sm text-muted-foreground">
                 {t("tasks.columnEmpty")}
@@ -105,6 +192,7 @@ export function KanbanView({ tasks, today, onOpen }: ViewProps) {
               <TaskCard
                 key={task.id}
                 task={task}
+                markMine={markMine}
                 today={today}
                 onOpen={onOpen}
                 onDragStart={() => setDragging(task)}
@@ -124,6 +212,7 @@ export function KanbanView({ tasks, today, onOpen }: ViewProps) {
 
 function TaskCard({
   task,
+  markMine,
   today,
   onOpen,
   onDragStart,
@@ -131,6 +220,7 @@ function TaskCard({
   onStatus,
 }: {
   task: Task;
+  markMine: boolean;
   today: string;
   onOpen: (id: string) => void;
   onDragStart: () => void;
@@ -145,7 +235,9 @@ function TaskCard({
       data-task-id={task.id}
       data-status={task.status}
       data-overdue={isOverdue(task, today)}
-      draggable={task.can_set_status}
+      data-mine={task.mine}
+      data-archived={!!task.archived_at}
+      draggable={task.can_set_status && !task.archived_at}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", task.id);
@@ -153,8 +245,10 @@ function TaskCard({
       }}
       onDragEnd={onDragEnd}
       className={cn(
-        "min-w-0 space-y-2 rounded-xl border bg-card p-3 shadow-sm",
-        task.can_set_status && "cursor-grab active:cursor-grabbing",
+        "min-w-0 space-y-2 rounded-xl border p-3 shadow-sm",
+        TASK_STATUS_CARD[task.status],
+        task.mine && "border-l-4 border-l-primary",
+        task.can_set_status && !task.archived_at && "cursor-grab active:cursor-grabbing",
       )}
     >
       <button
@@ -168,8 +262,21 @@ function TaskCard({
         </span>
       </button>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {markMine && task.mine && <MineBadge testId="task-card-mine" />}
         <TaskPriorityBadge priority={task.priority} />
         <DueText task={task} today={today} />
+        {task.note_count > 0 && (
+          <span
+            data-testid="task-card-notes"
+            data-count={task.note_count}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground dark:text-inherit"
+            title={t("tasks.notes.count", { count: task.note_count })}
+          >
+            <MessageSquare className="size-3.5" aria-hidden />
+            <span aria-hidden>{task.note_count}</span>
+            <span className="sr-only">{t("tasks.notes.count", { count: task.note_count })}</span>
+          </span>
+        )}
       </div>
       {names && (
         <p
@@ -180,7 +287,8 @@ function TaskCard({
           {names}
         </p>
       )}
-      {task.can_set_status && (
+      <UnarchiveButton task={task} />
+      {task.can_set_status && !task.archived_at && (
         <select
           data-testid="task-card-status"
           aria-label={t("tasks.changeStatus", { title: task.title })}
@@ -202,7 +310,13 @@ function TaskCard({
 // ---------------------------------------------------------------------------------------------------------------
 // List
 
-export function ListView({ tasks, today, onOpen, group }: ViewProps & { group: TaskGroup }) {
+export function ListView({
+  tasks,
+  today,
+  onOpen,
+  group,
+  markMine,
+}: ViewProps & { group: TaskGroup; markMine: boolean }) {
   const { t } = useTranslation();
   const groups = groupTasks(tasks, group, t("tasks.unassigned"));
   return (
@@ -216,27 +330,44 @@ export function ListView({ tasks, today, onOpen, group }: ViewProps & { group: T
         >
           {group !== "none" && (
             <h2 className="flex min-w-0 items-center gap-2 font-semibold">
-              <span className="min-w-0 truncate" title={group === "status" ? undefined : g.label}>
-                {group === "status" ? t(`tasks.status.${g.key}`) : g.label}
+              <span className="min-w-0 truncate" title={group === "assignee" ? g.label : undefined}>
+                {group === "status"
+                  ? t(`tasks.status.${g.key}`)
+                  : group === "mine"
+                    ? t(g.label)
+                    : g.label}
               </span>
               <span className="shrink-0 text-sm font-normal text-muted-foreground">
                 ({g.tasks.length})
               </span>
+              {group === "status" && g.key === "done" && (
+                <span className="ml-auto">
+                  <ArchiveDoneButton tasks={g.tasks} testId="tasks-list-archive-done" />
+                </span>
+              )}
             </h2>
           )}
-          <ul className="min-w-0 divide-y rounded-2xl border bg-card">
+          <ul className="min-w-0 divide-y overflow-hidden rounded-2xl border bg-card">
             {g.tasks.map((task) => {
               const names = assigneeNames(task, t("common.formerMember"));
               return (
-                <li key={task.id} className="min-w-0">
+                <li
+                  key={task.id}
+                  className={cn(
+                    "flex min-w-0 flex-col sm:flex-row sm:items-center",
+                    task.mine && "border-l-4 border-l-primary",
+                  )}
+                >
                   <button
                     type="button"
                     data-testid="tasks-list-row"
                     data-task-id={task.id}
                     data-status={task.status}
                     data-overdue={isOverdue(task, today)}
+                    data-mine={task.mine}
+                    data-archived={!!task.archived_at}
                     onClick={() => onOpen(task.id)}
-                    className="grid min-h-11 w-full min-w-0 grid-cols-1 gap-2 px-4 py-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[minmax(0,1fr)_auto_auto_minmax(0,10rem)] md:items-center md:gap-4"
+                    className="grid min-h-11 w-full min-w-0 flex-1 grid-cols-1 gap-2 px-4 py-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[minmax(0,1fr)_auto_auto_minmax(0,10rem)] md:items-center md:gap-4"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium" title={task.title}>
@@ -249,6 +380,7 @@ export function ListView({ tasks, today, onOpen, group }: ViewProps & { group: T
                       )}
                     </span>
                     <span className="flex flex-wrap items-center gap-2">
+                      {markMine && task.mine && <MineBadge testId="tasks-list-row-mine" />}
                       <TaskStatusBadge status={task.status} />
                       <TaskPriorityBadge priority={task.priority} />
                     </span>
@@ -268,6 +400,11 @@ export function ListView({ tasks, today, onOpen, group }: ViewProps & { group: T
                       {names || t("tasks.unassigned")}
                     </span>
                   </button>
+                  {task.archived_at && task.can_set_status && (
+                    <div className="shrink-0 px-4 pb-3 sm:py-2">
+                      <UnarchiveButton task={task} />
+                    </div>
+                  )}
                 </li>
               );
             })}

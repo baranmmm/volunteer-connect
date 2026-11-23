@@ -1,15 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CalendarDays, Columns3, List, Plus } from "lucide-react";
+import { Archive, CalendarDays, Columns3, List, Plus } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "@/lib/auth";
 import {
   DEFAULT_FILTERS,
   TASK_PRIORITIES,
   TASK_STATUSES,
+  defaultMineFilter,
   filterTasks,
   londonDay,
   readTaskView,
@@ -27,7 +28,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { TaskPanel } from "@/components/tasks/TaskPanel";
-import { CalendarView, KanbanView, ListView } from "@/components/tasks/TaskViews";
+import {
+  ArchiveDoneButton,
+  CalendarView,
+  KanbanView,
+  ListView,
+} from "@/components/tasks/TaskViews";
 import { selectClass } from "@/components/tasks/task-display";
 
 const tasksSearch = z.object({ task: z.string().uuid().optional().catch(undefined) });
@@ -63,16 +69,30 @@ function TasksPage() {
     setViewState(v);
     saveTaskView(uid, v);
   };
-  const [filters, setFilters] = useState<TaskFilters>(DEFAULT_FILTERS);
+  const [rawFilters, setFilters] = useState<TaskFilters>(DEFAULT_FILTERS);
+  // "My tasks" starts on for anyone with tasks assigned; decided once, when the list first loads (null until then).
+  const [mineChoice, setMineChoice] = useState<boolean | null>(null);
   const [sort, setSort] = useState<TaskSort>("due");
   const [group, setGroup] = useState<TaskGroup>("none");
   const [creating, setCreating] = useState(false);
   const today = londonDay();
   const all = useMemo(() => tasks.data ?? [], [tasks.data]);
+  useEffect(() => {
+    if (mineChoice === null && tasks.data) setMineChoice(defaultMineFilter(tasks.data));
+  }, [mineChoice, tasks.data]);
+  const filters = useMemo(
+    (): TaskFilters => ({
+      ...rawFilters,
+      mine: mineChoice ?? (tasks.data ? defaultMineFilter(tasks.data) : false),
+    }),
+    [rawFilters, mineChoice, tasks.data],
+  );
 
   const shown = useMemo(() => {
     const active: TaskFilters =
-      view === "list" ? filters : { ...DEFAULT_FILTERS, mine: filters.mine };
+      view === "list"
+        ? filters
+        : { ...DEFAULT_FILTERS, mine: filters.mine, archived: !!filters.archived };
     return sortTasks(filterTasks(all, active, today), view === "list" ? sort : "due");
   }, [all, filters, view, sort, today]);
 
@@ -91,8 +111,10 @@ function TasksPage() {
 
   const open = (id: string) => void navigate({ to: "/tasks", search: { task: id } });
   const close = () => void navigate({ to: "/tasks", search: {} });
-  const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) =>
-    setFilters((f) => ({ ...f, [key]: value }));
+  const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
+    if (key === "mine") setMineChoice(value as boolean);
+    else setFilters((f) => ({ ...f, [key]: value }));
+  };
 
   const filterSelect = (
     key: "status" | "priority" | "assignee" | "branch" | "due",
@@ -150,15 +172,27 @@ function TasksPage() {
             );
           })}
         </div>
-        <Button
-          data-testid="tasks-filter-mine"
-          variant={filters.mine ? "default" : "outline"}
-          aria-pressed={filters.mine}
-          className="h-11 rounded-full"
-          onClick={() => set("mine", !filters.mine)}
-        >
-          {t("dashboard.tasksTitle")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            data-testid="tasks-filter-mine"
+            variant={filters.mine ? "default" : "outline"}
+            aria-pressed={filters.mine}
+            className="h-11 rounded-full"
+            onClick={() => set("mine", !filters.mine)}
+          >
+            {t("dashboard.tasksTitle")}
+          </Button>
+          <Button
+            data-testid="tasks-filter-archived"
+            variant={filters.archived ? "default" : "outline"}
+            aria-pressed={!!filters.archived}
+            className="h-11 rounded-full"
+            onClick={() => set("archived", !filters.archived)}
+          >
+            <Archive />
+            {t("tasks.archive.filter")}
+          </Button>
+        </div>
       </div>
       {view === "list" && (
         <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -211,13 +245,18 @@ function TasksPage() {
               value={group}
               onChange={(e) => setGroup(e.target.value as TaskGroup)}
             >
-              {(["none", "status", "assignee"] as const).map((g) => (
+              {(["none", "status", "assignee", "mine"] as const).map((g) => (
                 <option key={g} value={g}>
                   {t(`tasks.filters.groupBy.${g}`)}
                 </option>
               ))}
             </select>
           </div>
+          {!filters.archived && group !== "status" && (
+            <div className="flex min-w-0 items-end">
+              <ArchiveDoneButton tasks={shown} testId="tasks-archive-done" />
+            </div>
+          )}
         </div>
       )}
       {tasks.isLoading ? (
@@ -230,13 +269,40 @@ function TasksPage() {
           </Button>
         </div>
       ) : shown.length === 0 && view !== "calendar" ? (
-        <p data-testid="tasks-empty" className="border-y py-12 text-center text-muted-foreground">
-          {all.length === 0 ? t("tasks.empty") : t("tasks.emptyFiltered")}
-        </p>
+        <div
+          data-testid="tasks-empty"
+          className="space-y-3 border-y py-12 text-center text-muted-foreground"
+        >
+          <p>
+            {all.length === 0
+              ? t("tasks.empty")
+              : filters.archived
+                ? t("tasks.archive.empty")
+                : filters.mine
+                  ? t("tasks.emptyMine")
+                  : t("tasks.emptyFiltered")}
+          </p>
+          {all.length > 0 && filters.mine && (
+            <Button
+              variant="outline"
+              className="h-11"
+              data-testid="tasks-empty-show-all"
+              onClick={() => set("mine", false)}
+            >
+              {t("tasks.showAll")}
+            </Button>
+          )}
+        </div>
       ) : view === "kanban" ? (
-        <KanbanView tasks={shown} today={today} onOpen={open} />
+        <KanbanView tasks={shown} today={today} onOpen={open} markMine={!filters.mine} />
       ) : view === "list" ? (
-        <ListView tasks={shown} today={today} onOpen={open} group={group} />
+        <ListView
+          tasks={shown}
+          today={today}
+          onOpen={open}
+          group={group}
+          markMine={!filters.mine}
+        />
       ) : (
         <CalendarView tasks={shown} today={today} onOpen={open} />
       )}

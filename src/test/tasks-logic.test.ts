@@ -2,8 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_FILTERS,
   DEFAULT_REMINDERS,
+  archivableDoneIds,
+  defaultMineFilter,
   filterTasks,
   groupTasks,
+  insertMention,
+  mineFirst,
+  typedMentionTrigger,
+  visibleEventTasks,
   isDueSoon,
   isOverdue,
   readTaskView,
@@ -39,6 +45,8 @@ function task(n: number, over: Partial<Task> = {}): Task {
     meeting_id: null,
     decision_id: null,
     created_at: "2026-11-01T10:00:00Z",
+    archived_at: null,
+    note_count: 0,
     assignees: [],
     mine: false,
     can_edit: false,
@@ -93,6 +101,71 @@ describe("filterTasks", () => {
     expect(
       ids(filterTasks(tasks, { ...DEFAULT_FILTERS, mine: true, assignee: ann.id }, TODAY)),
     ).toEqual([1]);
+  });
+});
+
+describe("archived tasks", () => {
+  const withArchived = [...tasks, task(6, { status: "done", archived_at: "2026-11-22T10:00:00Z" })];
+  it("hides archived tasks by default and shows only them with the Archived filter", () => {
+    expect(ids(filterTasks(withArchived, DEFAULT_FILTERS, TODAY))).not.toContain(6);
+    expect(ids(filterTasks(withArchived, { ...DEFAULT_FILTERS, archived: true }, TODAY))).toEqual([
+      6,
+    ]);
+  });
+  it("archives only shown done tasks that are not archived and that the caller may change", () => {
+    const list = [
+      task(7, { status: "done", can_set_status: true }),
+      task(8, { status: "done", can_set_status: false }),
+      task(9, { status: "todo", can_set_status: true }),
+      task(10, { status: "done", can_set_status: true, archived_at: "2026-11-22T10:00:00Z" }),
+    ];
+    expect(archivableDoneIds(list).map((x) => Number(x.slice(-3)))).toEqual([7]);
+  });
+  it("shows an event's archived tasks only when nothing else is linked", () => {
+    const a = { id: "a", archived_at: null };
+    const b = { id: "b", archived_at: "2026-11-22T10:00:00Z" };
+    expect(visibleEventTasks([a, b])).toEqual([a]);
+    expect(visibleEventTasks([b])).toEqual([b]);
+    expect(visibleEventTasks([])).toEqual([]);
+  });
+});
+
+describe("my tasks", () => {
+  it("starts on 'My tasks' only for someone with a (not archived) task assigned", () => {
+    expect(defaultMineFilter(tasks)).toBe(true);
+    expect(defaultMineFilter(tasks.map((x) => ({ ...x, mine: false })))).toBe(false);
+    expect(defaultMineFilter([task(1, { mine: true, archived_at: "2026-11-22T10:00:00Z" })])).toBe(
+      false,
+    );
+  });
+  it("puts my tasks first and keeps the order inside each part", () => {
+    expect(ids(mineFirst(tasks))).toEqual([1, 4, 2, 3, 5]);
+  });
+  it("groups by mine first, then the others", () => {
+    const groups = groupTasks(tasks, "mine", "Unassigned");
+    expect(groups.map((g) => g.key)).toEqual(["mine", "others"]);
+    expect(ids(groups[0]!.tasks)).toEqual([1, 4]);
+    expect(groupTasks([tasks[1]!], "mine", "Unassigned").map((g) => g.key)).toEqual(["others"]);
+  });
+});
+
+describe("note mentions", () => {
+  it("detects a typed @ just before the caret", () => {
+    expect(typedMentionTrigger("Hi ", "Hi @", 4)).toBe(true);
+    expect(typedMentionTrigger("Hi", "Hi!", 3)).toBe(false);
+    expect(typedMentionTrigger("", "@@", 2)).toBe(false);
+    expect(typedMentionTrigger("ab", "a@b", 2)).toBe(true);
+  });
+  it("replaces the @ that opened the picker", () => {
+    expect(insertMention("Hi @", 4, "Ann Lee")).toEqual({ body: "Hi @Ann Lee ", caret: 12 });
+    expect(insertMention("@ there", 1, "Bob")).toEqual({ body: "@Bob  there", caret: 5 });
+  });
+  it("adds the mention at the caret with a space before it when needed", () => {
+    expect(insertMention("Please check", 12, "Ann")).toEqual({
+      body: "Please check @Ann ",
+      caret: 18,
+    });
+    expect(insertMention("", 0, "Ann")).toEqual({ body: "@Ann ", caret: 5 });
   });
 });
 

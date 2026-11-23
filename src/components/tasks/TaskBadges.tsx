@@ -1,13 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/lib/tasks";
-
-const STATUS_STYLE: Record<TaskStatus, string> = {
-  todo: "border-border bg-muted text-foreground",
-  in_progress: "border-primary/30 bg-primary/10 text-primary",
-  blocked: "border-destructive/30 bg-destructive/10 text-destructive",
-  done: "border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400",
-};
+import { TASK_STATUS_BADGE as STATUS_STYLE } from "./task-status-colors";
 
 const PRIORITY_STYLE: Record<TaskPriority, string> = {
   low: "border-border text-muted-foreground",

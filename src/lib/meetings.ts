@@ -28,6 +28,11 @@ export const meeting = z.object({
   invitee_count: z.number(),
   invited: z.boolean(),
   can_edit: z.boolean(),
+  /** The meeting's calendar entry (an event with category "meeting"): /events/<event_id>. */
+  event_id: z.string().uuid(),
+  series_id: z.string().uuid().nullable(),
+  series_position: z.number().nullable(),
+  series_count: z.number().nullable(),
 });
 export type Meeting = z.infer<typeof meeting>;
 
@@ -42,6 +47,10 @@ export const agendaItem = z.object({
   position: z.number(),
   title: z.string(),
   notes: z.string().nullable(),
+  /** Resolved items do not show under "From last meeting" in the next occurrence. */
+  resolved: z.boolean(),
+  /** Copied from the series agenda template. */
+  standing: z.boolean(),
   decisions: z.array(meetingDecision),
 });
 export const meetingFile = z.object({
@@ -51,11 +60,49 @@ export const meetingFile = z.object({
   original_name: z.string(),
   created_at: z.string(),
 });
+export const MEETING_REPEAT_FREQS = ["weekly", "monthly"] as const;
+export type MeetingRepeatFreq = (typeof MEETING_REPEAT_FREQS)[number];
+export const MAX_MEETING_OCCURRENCES = 52;
+export const meetingSeries = z.object({
+  id: z.string().uuid(),
+  freq: z.enum(MEETING_REPEAT_FREQS),
+  interval: z.number(),
+  count: z.number(),
+  agenda_template: z.array(z.string()),
+  previous_id: z.string().uuid().nullable(),
+  next_id: z.string().uuid().nullable(),
+});
+export const seriesTask = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  status: z.enum(["todo", "in_progress", "blocked", "done"]),
+  due_date: z.string().nullable(),
+  assignees: z.array(z.string().nullable()),
+});
+/** "From last meeting": the previous occurrence's unresolved agenda items and its open tasks (live). */
+export const fromLastMeeting = z.object({
+  meeting_id: z.string().uuid(),
+  title: z.string(),
+  starts_at: z.string(),
+  items: z.array(
+    z.object({ id: z.string().uuid(), title: z.string(), notes: z.string().nullable() }),
+  ),
+  tasks: z.array(seriesTask),
+});
 export const meetingDetail = meeting.extend({
   invitees: z.array(person),
   agenda: z.array(agendaItem),
   files: z.array(meetingFile.extend({ url: z.string().nullable().optional() })),
+  series: meetingSeries.nullable(),
+  from_last: fromLastMeeting.nullable(),
 });
+/** get_meeting_series_tasks: every task created from the series' decisions, with its occurrence. */
+export const meetingSeriesTask = seriesTask.extend({
+  meeting_id: z.string().uuid(),
+  meeting_starts_at: z.string(),
+});
+export type MeetingSeriesTask = z.infer<typeof meetingSeriesTask>;
+export type FromLastMeeting = z.infer<typeof fromLastMeeting>;
 export type MeetingDetail = z.infer<typeof meetingDetail>;
 export type AgendaItem = z.infer<typeof agendaItem>;
 export type MeetingFile = z.infer<typeof meetingFile> & { url?: string | null | undefined };
@@ -74,6 +121,21 @@ export const meetingInput = z.object({
   invitee_ids: z.array(z.string().uuid()).max(100).optional(),
 });
 export type MeetingInput = z.infer<typeof meetingInput>;
+/** Create only: agenda titles of the form, and the repeat settings of a recurring meeting. */
+export const meetingRecurrence = z.object({
+  freq: z.enum(MEETING_REPEAT_FREQS),
+  interval: z.number().int().min(1).max(4),
+  count: z.number().int().min(2).max(MAX_MEETING_OCCURRENCES),
+});
+export type MeetingRecurrence = z.infer<typeof meetingRecurrence>;
+export const meetingCreateInput = meetingInput.extend({
+  agenda: z.array(z.string().trim().min(1).max(200)).max(30).optional(),
+  recurrence: meetingRecurrence.nullable().optional(),
+});
+export type MeetingCreateInput = z.infer<typeof meetingCreateInput>;
+/** Edit scopes of a recurring meeting, as for recurring events. */
+export const MEETING_SERIES_MODES = ["this", "following", "all"] as const;
+export type MeetingSeriesMode = (typeof MEETING_SERIES_MODES)[number];
 
 export type MeetingFormErrors = Partial<
   Record<"title" | "start" | "end" | "location" | "online_url", string>

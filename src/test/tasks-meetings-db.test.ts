@@ -213,7 +213,7 @@ describe("task permissions", () => {
       );
     }));
 
-  it("a volunteer creates only self-tasks in their branch", () =>
+  it("a volunteer creates tasks in their branch for themselves (by default) or other volunteers there, never upward", () =>
     tx(async () => {
       await as(ids.vol1);
       const task = await createTask({
@@ -227,14 +227,26 @@ describe("task permissions", () => {
         [task],
       );
       expect(t.self_task).toBe(true);
-      expect(t.assignees.map((a) => a.id)).toEqual([ids.vol1]);
+      expect(t.assignees.map((a) => a.id)).toEqual([ids.vol1b]);
       expect(t.can_edit).toBe(true);
+      await fails(
+        "SELECT public.create_task($1::jsonb)",
+        [
+          JSON.stringify({
+            scope: "branch",
+            branch_id: ids.b1,
+            title: "Up",
+            assignee_ids: [ids.bm1],
+          }),
+        ],
+        "This person cannot be assigned",
+      );
       await fails(
         "SELECT public.create_task($1::jsonb)",
         [JSON.stringify({ scope: "branch", branch_id: ids.b2, title: "X" })],
         "Not allowed",
       );
-      expect(await notices(ids.vol1b)).toEqual([]);
+      expect((await notices(ids.vol1b)).map((n) => n.kind)).toEqual(["task_assigned"]);
     }));
 
   it("visibility: branch members see branch tasks; region tasks the RD, region BMs and assignees; national NCs and assignees", () =>
@@ -398,6 +410,8 @@ describe("task reminders", () => {
       branch_id: ids.b1,
       title: "Remind",
       assignee_ids: [ids.vol1, ids.vol1b],
+      // Reminders are off by default (v2): these tests turn on "3 days before".
+      reminders: { before_days: [3], repeat_kind: "none" },
       ...p,
     });
   };

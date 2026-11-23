@@ -85,8 +85,32 @@ export async function deleteWork(ids: { tasks?: string[]; meetings?: string[]; r
   }
   if (ids.meetings?.length) {
     await removeMeetingFiles(ids.meetings);
+    // Each meeting has a calendar entry (an event with category "meeting"): the meeting first, then its event.
+    const linked = await db.from("meetings").select("event_id").in("id", ids.meetings);
+    if (linked.error) throw new Error(`find meeting events: ${linked.error.message}`);
+    const inSeries = await db.from("meetings").select("series_id").in("id", ids.meetings).not("series_id", "is", null);
+    if (inSeries.error) throw new Error(`find meeting series: ${inSeries.error.message}`);
+    const series = inSeries.data.map((m) => m.series_id as string);
     const r = await db.from("meetings").delete().in("id", ids.meetings);
     if (r.error) throw new Error(`delete meetings: ${r.error.message}`);
+    const events = linked.data.map((m) => m.event_id as string).filter(Boolean);
+    if (events.length) {
+      const e = await db.from("events").delete().in("id", events).eq("category", "meeting");
+      if (e.error) throw new Error(`delete meeting events: ${e.error.message}`);
+    }
+    await deleteEmptyMeetingSeries(series);
+  }
+}
+
+/** Series rows of recurring meetings once none of their occurrences is left. */
+async function deleteEmptyMeetingSeries(seriesIds: string[]) {
+  const db = adminClient();
+  for (const id of new Set(seriesIds)) {
+    const left = await db.from("meetings").select("id", { count: "exact", head: true }).eq("series_id", id);
+    if (left.error) throw new Error(`find series meetings: ${left.error.message}`);
+    if (left.count) continue;
+    const r = await db.from("meeting_series").delete().eq("id", id);
+    if (r.error) throw new Error(`delete meeting series: ${r.error.message}`);
   }
 }
 
@@ -144,4 +168,26 @@ export async function deleteLeftoverWork(staleBefore: number, runId?: string): P
   const meetings = await pick("meetings", "title", MEETING_TITLE_PREFIX);
   await deleteWork({ tasks, meetings });
   return n + tasks.length + meetings.length;
+}
+
+/** A recurring meeting (create_meeting with recurrence and agenda titles); returns the first occurrence's id. */
+export async function createMeetingSeriesAs(
+  who: Who,
+  spec: MeetingSpec & { recurrence: { freq: "weekly" | "monthly"; interval: number; count: number }; agenda?: string[] },
+): Promise<string> {
+  return createMeetingAs(who, spec as MeetingSpec);
+}
+/** The occurrences of a recurring meeting (service role), in order: id, position, start, calendar entry, status. */
+export async function meetingOccurrences(firstId: string) {
+  const db = adminClient();
+  const first = await db.from("meetings").select("series_id").eq("id", firstId).single();
+  if (first.error) throw new Error(`find series: ${first.error.message}`);
+  const rows = await db
+    .from("meetings")
+    .select("id, series_position, starts_at, event_id, status, title")
+    .eq("series_id", first.data.series_id as string)
+    .is("deleted_at", null)
+    .order("starts_at");
+  if (rows.error) throw new Error(`list occurrences: ${rows.error.message}`);
+  return rows.data as { id: string; series_position: number; starts_at: string; event_id: string; status: string; title: string }[];
 }

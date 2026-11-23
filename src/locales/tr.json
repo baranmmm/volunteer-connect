@@ -351,7 +351,22 @@
     "workDecisionText": "Kararı yazın.",
     "workFileType": "Bu dosya türüne izin verilmiyor.",
     "workTooManyFiles": "Bir toplantıya en fazla 20 dosya eklenebilir.",
-    "workMeetingFiles": "Toplantı dosyaları kaldırılamadı. Yeniden deneyin."
+    "workMeetingFiles": "Toplantı dosyaları kaldırılamadı. Yeniden deneyin.",
+    "meetingRepeatInvalid": "Toplantının ne sıklıkla tekrarlanacağını seçin (1–4 haftada veya ayda bir, 2–52 kez).",
+    "meetingRepeatTooLong": "Tekrarlanan bir toplantı en fazla 12 ay sürebilir.",
+    "meetingAgendaInvalid": "Gündem maddelerinin en fazla 200 karakterlik bir başlığı olmalı (en fazla 30 madde).",
+    "meetingNotRecurring": "Bu toplantı tekrarlanmıyor.",
+    "meetingDeleteThroughMeeting": "Bu takvim kaydı bir toplantı: toplantı sayfasından silin.",
+    "meetingCategoryFixed": "Bir toplantı başka bir etkinlik türüne dönüştürülemez.",
+    "meetingFilesOnMeeting": "Toplantı dosyalarını toplantı sayfasından ekleyin.",
+    "meetingRepeatFromMeetingForm": "Tekrarlanan bir toplantıyı toplantı formundan oluşturun.",
+    "taskArchiveNotDone": "Yalnızca tamamlanmış görevler arşivlenebilir.",
+    "taskNoteRequired": "Önce bir not yazın.",
+    "taskNoteTooMany": "Bu görevde çok fazla not var.",
+    "taskNoteTooManyMentions": "Bir notta en fazla 20 kişiden bahsedebilirsiniz.",
+    "taskNoteMentionHidden": "Bahsettiğiniz kişilerden biri bu görevi göremiyor.",
+    "taskTooMany": "Aynı anda çok fazla görev seçildi.",
+    "taskChooseAssignee": "En az bir kişi seçin."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -456,7 +471,8 @@
       "interfaith": "Dinler arası",
       "community": "Toplum",
       "education": "Eğitim",
-      "other": "Diğer"
+      "other": "Diğer",
+      "meeting": "Toplantı"
     },
     "pastPublishError": "Yayınlanan bir etkinlik geçmişte bitemez.",
     "onlineUrlError": "Geçerli bir https:// toplantı bağlantısı girin.",
@@ -558,7 +574,34 @@
       "members": "Yalnızca üyeler",
       "public": "Herkese açık (takipçiler ve web sitesi)"
     },
-    "audienceHint": "Herkese açık etkinlikler takipçilere ve giriş yapmadan web sitesinde gösterilir. Çevrim içi bağlantılar yalnızca giriş yapanlara görünür."
+    "audienceHint": "Herkese açık etkinlikler takipçilere ve giriş yapmadan web sitesinde gösterilir. Çevrim içi bağlantılar yalnızca giriş yapanlara görünür.",
+    "openMeeting": "Toplantıyı aç",
+    "meetingEntryHint": "Bu, takvimdeki bir toplantıdır. Gündem, kararlar ve dosyalar toplantı sayfasındadır.",
+    "sections": {
+      "description": "Açıklama",
+      "registration": "Kayıt ve kontenjan",
+      "audience": "Görünürlük",
+      "files": "Dosyalar",
+      "repeat": "Tekrar"
+    },
+    "meetingForm": {
+      "hint": "Toplantıyı yalnızca davet ettiğiniz kişiler ile şubesinin veya bölgesinin yöneticileri görür. Gündemi ve dosyaları toplantı sayfasında ekleyin.",
+      "invitees": "Kişileri davet et",
+      "noPeople": "Burada davet edilebilecek kimse yok.",
+      "submit": "Toplantı oluştur",
+      "noScope": "Burada toplantı oluşturamazsınız."
+    },
+    "meetingRepeat": {
+      "freq": {
+        "none": "Tekrarlanmaz",
+        "weekly": "Haftalık",
+        "monthly": "Aylık"
+      },
+      "every": "Her",
+      "count": "Toplantı sayısı",
+      "countHint": "12 ay içinde 2 ile 52 arasında toplantı.",
+      "countError": "2 ile 52 arasında bir sayı girin."
+    }
   },
   "recycleBin": {
     "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",
@@ -1028,7 +1071,10 @@
     },
     "people": {
       "search": "Kişi ara",
-      "none": "Burada seçilebilecek kimse yok."
+      "none": "Burada seçilebilecek kimse yok.",
+      "remove": "{{name}} kişisini çıkar",
+      "add": "Kişi ekle…",
+      "noMatch": "Bu aramaya uyan kimse yok."
     }
   },
   "meetings": {
@@ -1107,7 +1153,20 @@
       "createSubmit": "Toplantı oluştur",
       "approveSubmit": "Onayla ve oluştur",
       "created": "Toplantı oluşturuldu.",
-      "updated": "Toplantı güncellendi."
+      "updated": "Toplantı güncellendi.",
+      "moreOptions": "Diğer seçenekler",
+      "agenda": "Gündem",
+      "agendaPlaceholder": "Gündem maddesi ekleyin",
+      "agendaAdd": "Ekle",
+      "agendaRemove": "{{title}} maddesini kaldır",
+      "filesPick": "Dosya seç",
+      "filesHint": "Toplantı oluşturulduktan sonra yüklenir (tekrarlayan toplantıda ilk toplantıya). PDF, Word, PowerPoint, Excel veya görsel; her biri en fazla 25 MB.",
+      "filesFailed": "Toplantı oluşturuldu, ancak bazı dosyalar yüklenemedi:",
+      "continue": "Devam et",
+      "updatedMany_one": "{{count}} toplantı güncellendi.",
+      "updatedMany_other": "{{count}} toplantı güncellendi.",
+      "createdSeries_one": "{{count}} toplantı oluşturuldu.",
+      "createdSeries_other": "{{count}} toplantı oluşturuldu."
     },
     "errors": {
       "title": "Bir başlık girin.",
@@ -1134,7 +1193,11 @@
       "updated": "Gündem maddesi güncellendi.",
       "deleted": "Gündem maddesi silindi.",
       "deleteTitle": "Bu gündem maddesi silinsin mi?",
-      "deleteText": "\"{{title}}\" ve kararları silinecek. Bu kararlardan oluşturulan görevler korunur."
+      "deleteText": "\"{{title}}\" ve kararları silinecek. Bu kararlardan oluşturulan görevler korunur.",
+      "standing": "Sabit",
+      "resolved": "Çözüldü",
+      "markedResolved": "Gündem maddesi çözüldü olarak işaretlendi.",
+      "markedOpen": "Gündem maddesi açık olarak işaretlendi."
     },
     "decisions": {
       "title": "Kararlar",
@@ -1171,6 +1234,76 @@
       "title": "Yaklaşan toplantılar",
       "viewAll": "Tüm toplantılar",
       "empty": "Yaklaşan toplantı yok."
+    },
+    "openCalendar": "Takvimde aç",
+    "deletedMany_one": "{{count}} toplantı silindi.",
+    "deletedMany_other": "{{count}} toplantı silindi.",
+    "cancelledMany_one": "{{count}} toplantı iptal edildi.",
+    "cancelledMany_other": "{{count}} toplantı iptal edildi.",
+    "repeat": {
+      "label": "Tekrar",
+      "none": "Tekrarlanmaz",
+      "weekly": "Haftalık",
+      "monthly": "Aylık",
+      "every": "Sıklık",
+      "weeklyEvery_one": "Her hafta",
+      "weeklyEvery_other": "{{count}} haftada bir",
+      "monthlyEvery_one": "Her ay",
+      "monthlyEvery_other": "{{count}} ayda bir",
+      "count": "Toplantı sayısı",
+      "hint": "Tüm toplantılar şimdi oluşturulur ve her birinin kendi takvim kaydı olur. Davetliler ve gündem maddeleri her birine kopyalanır; davetlilere bir kez bildirim gider.",
+      "errors": {
+        "interval": "1 ile 4 hafta ya da ay arasında bir sıklık seçin.",
+        "count": "2 ile 52 arasında bir toplantı sayısı girin.",
+        "tooLong": "Tekrarlayan bir toplantı en fazla 12 ay sürebilir."
+      }
+    },
+    "scope": {
+      "editTitle": "Tekrarlayan toplantıyı düzenle",
+      "editText": "Hangi toplantılar değişsin?",
+      "editConfirm": "Kaydet",
+      "cancelTitle": "Tekrarlayan toplantıyı iptal et",
+      "cancelText": "Hangi toplantılar iptal edilsin? Davetliler toplantıların iptal edildiğini görecek.",
+      "cancelConfirm": "Toplantıları iptal et",
+      "deleteTitle": "Tekrarlayan toplantıyı sil",
+      "deleteText": "Hangi toplantılar silinsin? Gündem, kararlar ve dosyalarıyla birlikte Geri Dönüşüm Kutusu'na taşınırlar.",
+      "deleteConfirm": "Sil",
+      "this": "Bu toplantı",
+      "following": "Bu ve sonraki toplantılar",
+      "all": "Serideki tüm toplantılar"
+    },
+    "fromLast": {
+      "title": "Önceki toplantıdan",
+      "open": "Önceki toplantı: {{when}}",
+      "empty": "Önceki toplantıdan açık kalan bir şey yok.",
+      "items": "Çözülmemiş gündem maddeleri",
+      "tasks": "Açık görevler"
+    },
+    "series": {
+      "title": "Tekrarlayan toplantı",
+      "recurring": "Tekrarlayan toplantı",
+      "position": "{{total}} toplantıdan {{n}}.",
+      "navigation": "Bu serideki toplantılar",
+      "previous": "Önceki toplantı",
+      "next": "Sonraki toplantı",
+      "every": {
+        "weekly_one": "Her hafta",
+        "weekly_other": "{{count}} haftada bir",
+        "monthly_one": "Her ay",
+        "monthly_other": "{{count}} ayda bir"
+      },
+      "tasks": "Seri görevleri",
+      "filter": "Göster",
+      "filters": {
+        "open": "Açık görevler",
+        "all": "Tüm görevler"
+      },
+      "tasksEmpty": "Burada görev yok.",
+      "agenda": "Sabit gündem maddeleri",
+      "agendaHint": "Her satıra bir madde yazın. Yeni maddeler serinin yaklaşan toplantılarına eklenir.",
+      "agendaTooMany": "En fazla 30 sabit madde olabilir.",
+      "agendaSave": "Sabit maddeleri kaydet",
+      "agendaSaved": "Sabit gündem maddeleri kaydedildi."
     }
   },
   "workRequests": {
@@ -1259,7 +1392,9 @@
       "meeting_request_received": "{{actor}} sizden toplantı istedi: “{{title}}”",
       "meeting_request_approved": "{{actor}}, “{{title}}” toplantı talebinizi onayladı",
       "meeting_request_declined": "{{actor}}, “{{title}}” toplantı talebinizi reddetti. Gerekçe: {{reason}}",
-      "other": "“{{title}}” hakkında güncelleme"
+      "other": "“{{title}}” hakkında güncelleme",
+      "task_note_mention": "{{actor}}, “{{title}}” görevindeki bir notta sizden bahsetti",
+      "task_note_added": "{{actor}}, “{{title}}” görevine bir not ekledi"
     },
     "taskStatus": {
       "todo": "Yapılacak",
@@ -1327,8 +1462,11 @@
       "groupBy": {
         "none": "Gruplama yok",
         "status": "Durum",
-        "assignee": "Atanan kişi"
-      }
+        "assignee": "Atanan kişi",
+        "mine": "Önce benimkiler"
+      },
+      "groupMine": "Size atananlar",
+      "groupOthers": "Diğer görevler"
     },
     "calendar": {
       "previous": "Önceki ay",
@@ -1374,7 +1512,11 @@
       "repeatEvery": "Kaç günde bir",
       "repeatStart": "Başlangıç tarihi",
       "overdue": "Gecikince hatırlatmaya devam et",
-      "overdueEvery": "Kaç günde bir"
+      "overdueEvery": "Kaç günde bir",
+      "moreOptions": "Diğer seçenekler",
+      "fromEvent": "Bu görev “{{title}}” etkinliğine bağlı.",
+      "remindMe": "Bana hatırlat",
+      "remindersNeedDue": "Hatırlatmaları açmak için bir bitiş tarihi seçin."
     },
     "errors": {
       "beforeDays": "Hatırlatma günleri 1 ile 365 arasında tam sayı olmalı (en fazla 6 tane).",
@@ -1419,7 +1561,53 @@
       "empty": "Açık göreviniz yok."
     },
     "eventLinked": {
-      "title": "Bağlı görevler"
+      "title": "Bağlı görevler",
+      "add": "Görev ekle",
+      "empty": "Bu etkinliğe henüz bağlı görev yok."
+    },
+    "mine": "Size atandı",
+    "emptyMine": "Burada size atanmış görev yok.",
+    "showAll": "Tüm görevleri göster",
+    "archive": {
+      "archive": "Arşivle",
+      "unarchive": "Arşivden çıkar",
+      "unarchiveTitle": "“{{title}}” görevini arşivden çıkar",
+      "archived": "Görev arşivlendi.",
+      "unarchived": "Görev panoya geri taşındı.",
+      "archivedMany_one": "{{count}} görev arşivlendi.",
+      "archivedMany_other": "{{count}} görev arşivlendi.",
+      "archiveAllDone_one": "Tamamlananı arşivle ({{count}})",
+      "archiveAllDone_other": "Tamamlananların hepsini arşivle ({{count}})",
+      "badge": "Arşivlendi",
+      "hint": "Bu tamamlanmış görevi arşivleyerek panodan, listeden ve takvimden gizleyebilirsiniz. Görev silinmez.",
+      "archivedHint": "Bu görev arşivlendi. Panoda, listede ve takvimde gösterilmiyor.",
+      "filter": "Arşiv",
+      "empty": "Arşivlenmiş görev yok."
+    },
+    "notes": {
+      "title": "Notlar",
+      "loadError": "Notlar yüklenemedi.",
+      "empty": "Henüz not yok.",
+      "newLabel": "Not ekle",
+      "placeholder": "Bir not yazın… Birini anmak için @ yazın.",
+      "mention": "Bahset",
+      "mentionNone": "Bu görevi başka kimse göremiyor.",
+      "mentionsLabel": "Bahsedilen kişiler",
+      "removeMention": "{{name}} adlı kişiden bahsetmeyi kaldır",
+      "mentioned": "Bahsedilenler: {{names}}",
+      "edited": "(düzenlendi)",
+      "add": "Notu ekle",
+      "added": "Not eklendi.",
+      "saved": "Not güncellendi.",
+      "edit": "Notu düzenle",
+      "delete": "Notu sil",
+      "deleteTitle": "Bu not silinsin mi?",
+      "deleteText": "Not herkes için kaldırılır. Bu işlem geri alınamaz.",
+      "deleted": "Not silindi.",
+      "required": "Önce bir not yazın.",
+      "tooLong": "Bir not en fazla 4000 karakter olabilir.",
+      "count_one": "{{count}} not",
+      "count_other": "{{count}} not"
     }
   }
 }

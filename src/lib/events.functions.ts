@@ -95,9 +95,21 @@ export const listEvents = createServerFn({ method: "POST" })
       for (const r of result.data) mine.set(r.event_id, r.status);
       if (result.data.length < 1000) break;
     }
+    // Meetings' calendar entries: the meeting each links to (RLS: only meetings the viewer can see).
+    const meetingOf = new Map<string, string>();
+    const meetingEvents = events.filter((e) => e.category === "meeting").map((e) => e.id);
+    for (let i = 0; i < meetingEvents.length; i += 200) {
+      const result = await context.supabase
+        .from("meetings")
+        .select("id, event_id")
+        .in("event_id", meetingEvents.slice(i, i + 200));
+      if (result.error) throw result.error;
+      for (const m of result.data) meetingOf.set(m.event_id, m.id);
+    }
     return (await withMedia(context.supabase, events)).map((e) => ({
       ...e,
       my_registration: (mine.get(e.id) ?? null) as RegistrationStatus | null,
+      meeting_id: meetingOf.get(e.id) ?? null,
     }));
   });
 export const getEvent = createServerFn({ method: "POST" })
@@ -139,8 +151,20 @@ export const getEvent = createServerFn({ method: "POST" })
       const opened = await context.supabase.rpc("open_series", { _series: result.data.series_id });
       if (!opened.error) series = seriesInfo.parse(opened.data);
     }
+    // A meeting's calendar entry links to its meeting ("Open meeting").
+    let meetingId: string | null = null;
+    if (result.data.category === "meeting") {
+      const m = await context.supabase
+        .from("meetings")
+        .select("id")
+        .eq("event_id", data.id)
+        .maybeSingle();
+      if (m.error) throw m.error;
+      meetingId = m.data?.id ?? null;
+    }
     return {
       event: (await withMedia(context.supabase, [result.data]))[0] ?? null,
+      meetingId,
       canManage: deletion.canManage,
       deletion,
       branchName: branch.data?.name ?? null,

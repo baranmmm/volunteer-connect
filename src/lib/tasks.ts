@@ -41,6 +41,9 @@ export const task = z.object({
   meeting_id: z.string().uuid().nullable(),
   decision_id: z.string().uuid().nullable(),
   created_at: z.string(),
+  /** Done tasks can be archived: hidden from Kanban, list and calendar unless the "Archived" filter is on. */
+  archived_at: z.string().nullable(),
+  note_count: z.number(),
   assignees: z.array(person),
   mine: z.boolean(),
   can_edit: z.boolean(),
@@ -56,13 +59,20 @@ export const reminderSettings = z.object({
   overdue_every_days: z.number().int().min(1).max(90).nullable(),
 });
 export type ReminderSettings = z.infer<typeof reminderSettings>;
-export const DEFAULT_REMINDERS: ReminderSettings = {
-  before_days: [3],
+/** Reminders are off for every new task (nothing is sent) until the user turns them on. */
+export const NO_REMINDERS: ReminderSettings = {
+  before_days: [],
   repeat_kind: "none",
   repeat_every_days: null,
   repeat_start: null,
   overdue_every_days: null,
 };
+/** What "Turn reminders on" starts from in the form. */
+export const DEFAULT_REMINDERS: ReminderSettings = { ...NO_REMINDERS, before_days: [3] };
+/** True when a reminder setting would send anything. */
+export function remindersOn(r: ReminderSettings) {
+  return r.before_days.length > 0 || r.repeat_kind !== "none" || r.overdue_every_days !== null;
+}
 
 export const taskDetail = task.extend({
   reminders: reminderSettings,
@@ -94,7 +104,23 @@ export const linkedTask = z.object({
   title: z.string(),
   status: z.enum(TASK_STATUSES),
   due_date: isoDate.nullable().optional(),
+  archived_at: z.string().nullable().optional(),
 });
+
+/** A note on a task (author, time, mentions). Only the author may edit or delete it ("mine"). */
+export const taskNote = z.object({
+  id: z.string().uuid(),
+  body: z.string(),
+  author_id: z.string().uuid().nullable(),
+  author_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  edited: z.boolean(),
+  mine: z.boolean(),
+  mentions: z.array(z.object({ id: z.string().uuid(), full_name: z.string().nullable() })),
+});
+export type TaskNote = z.infer<typeof taskNote>;
+export const TASK_NOTE_MAX = 4000;
 
 /** Input of create_task / update_task (validated again in the database). */
 export const taskInput = z.object({
@@ -141,6 +167,8 @@ export type TaskFilters = {
   assignee: string | "all";
   branch: string | "all";
   due: "all" | "overdue" | "week" | "none";
+  /** true: only archived tasks; false or missing: archived tasks are hidden. */
+  archived?: boolean;
 };
 export const DEFAULT_FILTERS: TaskFilters = {
   mine: false,
@@ -154,6 +182,7 @@ export const DEFAULT_FILTERS: TaskFilters = {
 export function filterTasks(tasks: Task[], f: TaskFilters, today: string) {
   return tasks.filter(
     (t) =>
+      (f.archived ? !!t.archived_at : !t.archived_at) &&
       (!f.mine || t.mine) &&
       (f.status === "all" || t.status === f.status) &&
       (f.priority === "all" || t.priority === f.priority) &&
@@ -187,10 +216,18 @@ export function sortTasks(tasks: Task[], sort: TaskSort) {
   });
 }
 
-export type TaskGroup = "none" | "status" | "assignee";
-/** Groups in a stable order; a task with several assignees appears under each of them. */
+export type TaskGroup = "none" | "status" | "assignee" | "mine";
+/**
+ * Groups in a stable order; a task with several assignees appears under each of them. "mine" puts the tasks assigned
+ * to the caller first ("mine", then "others"; labels are i18n keys for the view).
+ */
 export function groupTasks(tasks: Task[], group: TaskGroup, unassigned: string) {
   if (group === "none") return [{ key: "all", label: "", tasks }];
+  if (group === "mine")
+    return [
+      { key: "mine", label: "tasks.filters.groupMine", tasks: tasks.filter((t) => t.mine) },
+      { key: "others", label: "tasks.filters.groupOthers", tasks: tasks.filter((t) => !t.mine) },
+    ].filter((g) => g.tasks.length > 0);
   if (group === "status")
     return TASK_STATUSES.map((s) => ({
       key: s,
@@ -209,6 +246,54 @@ export function groupTasks(tasks: Task[], group: TaskGroup, unassigned: string) 
   return [...groups.values()].sort((a, b) =>
     a.key === "none" ? 1 : b.key === "none" ? -1 : a.label.localeCompare(b.label),
   );
+}
+
+/** The same tasks with the caller's own first (stable: the order inside each part is kept). */
+export function mineFirst<T extends { mine: boolean }>(tasks: T[]) {
+  return [...tasks.filter((t) => t.mine), ...tasks.filter((t) => !t.mine)];
+}
+
+/** Ids for "Archive all done": shown done tasks that are not archived and whose status the caller may change. */
+export function archivableDoneIds(tasks: Task[]) {
+  return tasks
+    .filter((t) => t.status === "done" && !t.archived_at && t.can_set_status)
+    .map((t) => t.id);
+}
+
+/** The event page's linked tasks: archived ones are hidden unless there is nothing else to show. */
+export function visibleEventTasks<T extends { archived_at?: string | null | undefined }>(
+  tasks: T[],
+) {
+  const active = tasks.filter((t) => !t.archived_at);
+  return active.length ? active : tasks;
+}
+
+/**
+ * Whether "My tasks" starts on: when the caller has at least one (not archived) task assigned. Someone with none
+ * (e.g. a manager who only hands out tasks) starts with every task they can see.
+ */
+export function defaultMineFilter(tasks: Task[]) {
+  return tasks.some((t) => t.mine && !t.archived_at);
+}
+
+/** True when the edit added exactly one "@" just before the caret (typing "@" opens the mention picker). */
+export function typedMentionTrigger(prev: string, next: string, caret: number) {
+  return next.length === prev.length + 1 && caret > 0 && next[caret - 1] === "@";
+}
+
+/**
+ * Inserts "@Name " for a chosen person. When the text right before the caret is the "@" that opened the picker it is
+ * replaced; otherwise the mention is added at the caret (with a space before it when needed). Returns the new text
+ * and caret position.
+ */
+export function insertMention(body: string, caret: number, name: string) {
+  const at = Math.max(0, Math.min(caret, body.length));
+  const trigger = at > 0 && body[at - 1] === "@";
+  const start = trigger ? at - 1 : at;
+  const before = body.slice(0, start);
+  const gap = before && !/\s$/.test(before) ? " " : "";
+  const insert = `${gap}@${name} `;
+  return { body: before + insert + body.slice(at), caret: start + insert.length };
 }
 
 export type ReminderErrors = Partial<
