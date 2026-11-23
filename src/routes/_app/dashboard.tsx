@@ -70,7 +70,7 @@ function Dashboard() {
         <h1 data-testid="dashboard-welcome" className="mt-1 text-3xl font-bold sm:text-4xl">
           {first ? t("dashboard.hello", { name: first }) : t("dashboard.helloNoName")}
         </h1>
-        <p className="mt-3 opacity-90">
+        <p className="mt-3 opacity-90 [overflow-wrap:anywhere]">
           <span data-testid="dashboard-user-role">{t(`common.roles.${primaryRole(roles)}`)}</span>
           {profile?.branches && (
             <>

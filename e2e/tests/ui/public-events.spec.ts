@@ -1,5 +1,6 @@
 // Public events without signing in (/events, /events/:id) and the event audience in the form.
-import { test, expect } from "../../fixtures/roles";
+import { test, expect, runId } from "../../fixtures/roles";
+import { createTempBranch, deleteTempBranch } from "../../api/eventRequests";
 import { AuthPage } from "../../pages/AuthPage";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { userPassword } from "../../setup/env";
@@ -10,6 +11,8 @@ const londonDay = (days: number) => new Intl.DateTimeFormat("en-CA", { timeZone:
 
 test.describe("Public events (signed out)", () => {
   test("the list shows public events only; branch filter in the URL; detail without the online link; Register leads to sign-in and back", { tag: "@smoke" }, async ({ browser, freshUser, freshEvent, seed }) => {
+    // A long flow (list, filter, subscribe, detail, sign-in and back): 45 s was too short on phones under CI load.
+    test.setTimeout(120_000);
     const manager = await freshUser({ role: "branch_manager" });
     const online = await freshEvent(manager, { label: "public online", status: "published", startInMinutes: 4 * 24 * 60, audience: "public", onlineUrl: "https://meet.example.org/e2e-public-room" });
     const members = await freshEvent(manager, { label: "public members", status: "published", startInMinutes: 4 * 24 * 60 });
@@ -43,6 +46,24 @@ test.describe("Public events (signed out)", () => {
     await context.close();
   });
 
+  test("a very long branch name does not make the page scroll sideways (phones: taps would miss)", async ({ browser, seed }) => {
+    // The QA database is shared with parallel shards, so the branch lives only for this check and is deleted at once.
+    const id = await createTempBranch(seed.regionId, runId, "Averyverylongbranchnamewithoutanyspacesthatmustnotwidenthepublicevents page");
+    try {
+      const context = await browser.newContext(); // no session
+      const page = await context.newPage();
+      await page.goto("/events");
+      const option = page.locator(`[data-testid="public-events-branch-option"][data-branch-id="${id}"]`);
+      await expect(option).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+      await expect(option).toHaveAttribute("title", /^E2E Temp Branch .*Averyverylong/);
+      const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(sideways, "no sideways scrolling").toBeLessThanOrEqual(0);
+      await context.close();
+    } finally {
+      await deleteTempBranch(id, seed.branches.Medway);
+    }
+  });
+
   test("a members-only event is not shown publicly by id", async ({ browser, freshUser, freshEvent }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const members = await freshEvent(manager, { label: "hidden", status: "published", startInMinutes: 4 * 24 * 60 });
@@ -71,7 +92,9 @@ test.describe("Event audience", () => {
     await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/);
     const id = new URL(page.url()).pathname.split("/").pop()!;
     try {
-      await expect(page.getByTestId("event-public-badge")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+      // The detail header (the calendar list behind the closing form can briefly show the event's card too).
+      await expect(page.getByTestId("event-detail-title")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+      await expect(page.getByTestId("event-public-badge").first()).toBeVisible();
       const context = await browser.newContext();
       const anon = await context.newPage();
       await anon.goto(`/events/${id}`);

@@ -116,7 +116,7 @@ export function ManagerEventRequests({ group = "review" }: { group?: "review" | 
                     </span>
                   </div>
                   <RequestWhen request={r} />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
                     {r.scope === "region" ? r.region_name : r.branch_name} ·{" "}
                     {t("requests.requestedBy", {
                       name: r.requester_name ?? t("common.formerMember"),
@@ -244,7 +244,7 @@ function RequestReview({ id, onClose }: { id: string; onClose: () => void }) {
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">{t("events.scope")}</dt>
-              <dd>
+              <dd className="[overflow-wrap:anywhere]">
                 {r.scope === "region"
                   ? `${t("events.region")}: ${r.region_name ?? ""}`
                   : `${t("events.branch")}: ${r.branch_name ?? ""}`}

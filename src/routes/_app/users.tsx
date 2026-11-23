@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
+import { BranchName } from "@/components/app/BranchName";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
@@ -106,7 +107,7 @@ function UsersPage() {
           <h2 id="users-counts-h" className="font-semibold">
             {t("users.volunteerCounts")}
           </h2>
-          <ul className="grid gap-1 text-sm sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-1 text-sm [overflow-wrap:anywhere] sm:grid-cols-2">
             {(tree.data ?? []).flatMap((r) =>
               r.branches.map((b) => (
                 <li
@@ -230,8 +231,15 @@ function UsersPage() {
                   >
                     {m.email}
                   </p>
-                  <p data-testid="users-row-branch" className="text-sm text-muted-foreground">
-                    {m.branches?.name ?? t("common.noBranch")}
+                  <p
+                    data-testid="users-row-branch"
+                    className="min-w-0 text-sm text-muted-foreground"
+                  >
+                    {m.branches?.name ? (
+                      <BranchName name={m.branches.name} />
+                    ) : (
+                      t("common.noBranch")
+                    )}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

@@ -1,0 +1,31 @@
+name: Cancel superseded E2E
+
+# A new push to a PR makes its earlier E2E (QA) runs pointless: they test older code. This workflow runs at once (it
+# never touches QA and is outside the qa-db queue) and cancels the PR's earlier E2E runs, running or pending, so the
+# new run starts without waiting. E2E (QA) itself keeps its workflow-level qa-db group (cancel-in-progress: false), so
+# runs of different PRs and the nightly run still never overlap on QA. Cancelled runs still tear down their users
+# (those steps run with if: always()).
+on:
+  pull_request:
+    types: [synchronize, reopened]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cancel earlier E2E (QA) runs of this PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.head_ref }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          ids=$(gh run list -R "$REPO" --workflow e2e.yml --branch "$BRANCH" --event pull_request --limit 30 \
+            --json databaseId,headSha,status -q '.[] | select(.status != "completed" and .headSha != env.SHA) | .databaseId')
+          if [ -z "$ids" ]; then echo "No earlier E2E run to cancel."; exit 0; fi
+          for id in $ids; do echo "Cancelling E2E run $id (older commit)"; gh run cancel -R "$REPO" "$id" || true; done

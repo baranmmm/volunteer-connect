@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { BranchName } from "@/components/app/BranchName";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
@@ -115,7 +116,7 @@ function PublicEventsPage() {
               data-testid="public-events-region-filter"
               value={search.region ?? ""}
               onChange={(e) => setSearch({ region: e.target.value || undefined })}
-              className="h-11 rounded-xl border border-input bg-background px-3 text-sm"
+              className="h-11 max-w-full rounded-xl border border-input bg-background px-3 text-sm"
             >
               <option value="">{t("publicEvents.allRegions")}</option>
               {(structure.data?.regions ?? []).map((r) => (
@@ -125,7 +126,7 @@ function PublicEventsPage() {
               ))}
             </select>
           </div>
-          <fieldset data-testid="public-events-branch-filter">
+          <fieldset data-testid="public-events-branch-filter" className="min-w-0">
             <legend className="mb-2 text-sm font-medium">{t("publicEvents.branches")}</legend>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -150,9 +151,12 @@ function PublicEventsPage() {
                     aria-pressed={on}
                     data-testid="public-events-branch-option"
                     data-slug={slug}
+                    data-branch-id={b.id}
+                    title={b.name}
+                    className="max-w-full"
                     onClick={() => toggleBranch(slug)}
                   >
-                    {b.name}
+                    <span className="min-w-0 truncate">{b.name}</span>
                   </Button>
                 );
               })}
@@ -215,7 +219,7 @@ function PublicList({ events }: { events: PublicEvent[] }) {
       </p>
     );
   return (
-    <ul data-testid="public-events-list" className="grid gap-3 sm:grid-cols-2">
+    <ul data-testid="public-events-list" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {events.map((e) => (
         <li
           key={e.id}
@@ -235,7 +239,7 @@ function PublicList({ events }: { events: PublicEvent[] }) {
             <h2 className="text-lg font-semibold">{e.title}</h2>
             <p className="text-sm">{eventWhen(e, dateLocale())?.text}</p>
             <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              {publicWhere(e) && <span>{publicWhere(e)}</span>}
+              {publicWhere(e) && <BranchName name={publicWhere(e)} />}
               {e.location && (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="size-3.5" aria-hidden />

@@ -73,7 +73,7 @@ function deviceOptions(testInfo: TestInfo) {
 }
 
 let freshCounter = 0;
-const runId = (process.env["E2E_RUN_ID"] || process.env["GITHUB_RUN_ID"] || Date.now().toString(36)).toLowerCase();
+export const runId = (process.env["E2E_RUN_ID"] || process.env["GITHUB_RUN_ID"] || Date.now().toString(36)).toLowerCase();
 
 export const test = base.extend<Fixtures & { prodHits: string[] }>({
   prodHits: async ({}, use) => {
@@ -129,7 +129,7 @@ export const test = base.extend<Fixtures & { prodHits: string[] }>({
       created.push(id);
       return id;
     });
-    for (const id of created) await deleteTempBranch(id, seed.branches.Medway).catch(() => undefined);
+    for (const id of created) await deleteTempBranch(id, seed.branches.Medway).catch((e) => console.warn(`[freshBranch] ${(e as Error).message}`));
   },
 
   pageAs: async ({ browser, seed, prodHits }, use, testInfo) => {

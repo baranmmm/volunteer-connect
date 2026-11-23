@@ -3,13 +3,14 @@
 // in tests/ui/auth.spec.ts). The app keeps its Supabase session in localStorage, so injecting it is enough.
 import { test as setup } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { signIn, signInAal2, storageStateFor } from "../api/SupabaseClient";
 import { NC_ROLE, STORAGE_ROLES, readSeedState } from "../data/users";
-import { AUTH_DIR, baseUrl, ncTotpSecret, storageFile } from "./env";
+import { baseUrl, ncTotpSecret, storageFile } from "./env";
 
 setup("create a storageState per role", async () => {
   const state = readSeedState();
-  mkdirSync(AUTH_DIR, { recursive: true });
+  mkdirSync(path.dirname(storageFile("x")), { recursive: true });
   const origin = new URL(baseUrl()).origin;
   for (const role of STORAGE_ROLES) {
     const session = await signIn(state.users[role].email);

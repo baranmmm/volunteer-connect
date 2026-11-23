@@ -205,7 +205,7 @@ export function MyVolunteerApplications() {
           >
             <div className="flex flex-wrap items-center gap-2">
               <HandHeart className="size-5 text-primary" aria-hidden />
-              <span className="font-semibold">
+              <span className="min-w-0 font-semibold [overflow-wrap:anywhere]">
                 {t("applications.toBranch", { branch: a.branch })}
               </span>
               <ApplicationStatusBadge status={a.status} />
@@ -309,7 +309,7 @@ function ReviewRow({ application: a }: { application: ReviewApplication }) {
         </span>
         <ApplicationStatusBadge status={a.status} />
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
         {[a.applicant_email, a.branch, formatDate(a.created_at)].filter(Boolean).join(" · ")}
       </p>
       <dl className="grid gap-2 text-sm">

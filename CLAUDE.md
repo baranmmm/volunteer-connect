@@ -43,6 +43,8 @@ Local tests run on the local Supabase stack (Docker, `cd e2e && npm run local:up
   (`e2e/scripts/select-specs.mjs`; a changed migration runs every spec of its area, test-infrastructure changes run
   everything). The `full-ci` label runs the full suite. Push to main runs `@smoke` only. The full suite runs nightly
   at 02:00 UTC on main, after migrating QA.
+- A new push to a PR cancels that PR's earlier E2E runs (`cancel-superseded.yml`); other runs keep waiting in the
+  workflow-level `qa-db` queue and are never cancelled while running.
 - Applying migrations to remote QA by hand (`npm run qa:migrate`, `npm run qa:dryrun`) only while CI is idle:
   check that `gh run list` shows no run in progress, and set `E2E_RUN_ID` for local runs and teardown.
 

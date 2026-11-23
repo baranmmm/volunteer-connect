@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { BranchName } from "@/components/app/BranchName";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -387,7 +388,7 @@ function MemberEventDetail() {
             <span className="break-words">{event.location}</span>
           </a>
         )}
-        <dl className="grid gap-4 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">{t("events.scope")}</dt>
             <dd>{t(`events.${event.scope}`)}</dd>
@@ -395,7 +396,9 @@ function MemberEventDetail() {
           {query.data.branchName && (
             <div>
               <dt className="text-muted-foreground">{t("events.branch")}</dt>
-              <dd>{query.data.branchName}</dd>
+              <dd>
+                <BranchName name={query.data.branchName} />
+              </dd>
             </div>
           )}
           <div>
