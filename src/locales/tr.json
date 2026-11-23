@@ -602,6 +602,7 @@
   },
   "requests": {
     "title": "Etkinlik talepleri",
+    "toReview": "İncelenecek",
     "myTitle": "Taleplerim",
     "open": "Etkinlik talep et",
     "openHint": "Şubeniz için bir etkinlik önerin. Yayınlanmadan önce bir yönetici inceler.",

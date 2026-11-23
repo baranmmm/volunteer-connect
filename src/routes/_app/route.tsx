@@ -98,7 +98,7 @@ function AppLayout() {
               className="flex min-h-11 items-center gap-3 rounded-xl border-l-2 border-transparent px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent data-[status=active]:border-l-sidebar-primary data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-foreground"
             >
               <Icon className="h-5 w-5" aria-hidden /> {t(labelKey)}
-              {badge === "requests" && <NavCount count={pending} />}
+              {badge === "requests" && isManager && <NavCount count={pending} />}
             </Link>
           ))}
         </nav>
@@ -138,7 +138,7 @@ function AppLayout() {
             {more.map(({ to, testId, labelKey, icon: Icon, badge }) => (
               <Link key={to} to={to} data-testid={testId} onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted data-[status=active]:bg-secondary data-[status=active]:text-primary">
                 <Icon className="h-5 w-5" aria-hidden /> {t(labelKey)}
-                {badge === "requests" && <NavCount count={pending} />}
+                {badge === "requests" && isManager && <NavCount count={pending} />}
               </Link>
             ))}
             <button data-testid="mobile-nav-sign-out" onClick={signOut} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted">

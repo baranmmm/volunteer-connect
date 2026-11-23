@@ -5,12 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Ban, CircleCheck, MapPin, Pencil, Search, Trash2, Users, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import {
-  DECLINE_REASON_MIN,
-  MANAGER_TABS,
-  type EventRequest,
-  type ManagerTab,
-} from "@/lib/event-requests";
+import { DECLINE_REASON_MIN, type EventRequest, type ManagerTab } from "@/lib/event-requests";
 import {
   approveEventRequest,
   eventRequestDuplicates,
@@ -32,11 +27,6 @@ import { RequestWhen } from "./MyEventRequests";
 import { RequestAttachments, RequestTypeBadge } from "./RequestParts";
 import { EventRequestForm } from "./EventRequestForm";
 
-const TAB_ID: Record<ManagerTab, string> = {
-  submitted: "pending",
-  under_review: "review",
-  decided: "decided",
-};
 const REFRESH = [
   "managed-event-requests",
   "pending-event-requests",
@@ -46,23 +36,25 @@ const REFRESH = [
 ];
 
 /** Reviewers (branch managers for their branch, regional directors for their region) work through requests here. */
-export function ManagerEventRequests() {
+export function ManagerEventRequests({ group = "review" }: { group?: "review" | "decided" }) {
   const { t } = useTranslation();
   const { session, profile } = useAuth();
   const list = useServerFn(managedEventRequests);
-  const [tab, setTab] = useState<ManagerTab>("submitted"),
-    [pages, setPages] = useState(1),
+  const tabs: ManagerTab[] = group === "decided" ? ["decided"] : ["submitted", "under_review"];
+  const [pages, setPages] = useState(1),
     [open, setOpen] = useState<string | null>(null);
   const query = useQuery({
-    queryKey: ["managed-event-requests", session?.user.id, tab, pages],
+    queryKey: ["managed-event-requests", session?.user.id, group, pages],
     queryFn: async () => {
       const rows: EventRequest[] = [];
       let total = 0;
-      for (let page = 0; page < pages; page++) {
-        const result = await list({ data: { tab, offset: page * 50 } });
-        rows.push(...result.rows);
-        total = result.total;
-        if (result.rows.length < 50) break;
+      for (const tab of tabs) {
+        for (let page = 0; page < pages; page++) {
+          const result = await list({ data: { tab, offset: page * 50 } });
+          rows.push(...result.rows);
+          if (page === 0) total += result.total;
+          if (result.rows.length < 50) break;
+        }
       }
       return { rows, total };
     },
@@ -73,33 +65,9 @@ export function ManagerEventRequests() {
   return (
     <section
       data-testid="manager-requests-page"
-      aria-labelledby="manager-requests-title"
+      aria-label={t(group === "review" ? "requests.toReview" : "requests.tabs.decided")}
       className="space-y-4"
     >
-      <h2 id="manager-requests-title" className="text-xl font-semibold">
-        {t("requests.title")}
-      </h2>
-      <div
-        role="tablist"
-        aria-label={t("requests.title")}
-        className="flex flex-wrap gap-2 border-b pb-3"
-      >
-        {MANAGER_TABS.map((value) => (
-          <Button
-            key={value}
-            role="tab"
-            aria-selected={tab === value}
-            data-testid={`manager-requests-tab-${TAB_ID[value]}`}
-            variant={tab === value ? "default" : "outline"}
-            onClick={() => {
-              setTab(value);
-              setPages(1);
-            }}
-          >
-            {t(`requests.tabs.${value}`)}
-          </Button>
-        ))}
-      </div>
       {query.isLoading ? (
         <p className="text-muted-foreground">{t("common.loading")}</p>
       ) : query.isError ? (
@@ -110,7 +78,7 @@ export function ManagerEventRequests() {
           </Button>
         </div>
       ) : (
-        <div role="tabpanel" aria-label={t(`requests.tabs.${tab}`)}>
+        <div>
           <ul data-testid="manager-requests-list" className="space-y-3">
             {rows.length === 0 && (
               <li className="border-y py-10 text-center text-muted-foreground">

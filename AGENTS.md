@@ -54,3 +54,4 @@ use the editor.
 - Event drafts support unset dates with explicit unscheduled display; publishing validation lives in shared form rules, server input validation, and the database trigger so title-only drafts never need fabricated dates.
 - All-day events store London calendar dates (`all_day`, `start_date`, `end_date`) and never timestamps; shared helpers (`eventStart`/`eventEnd`/`eventWhen`) read either shape so DST and device time zones cannot shift a day. Publish rules live in the form rules, server validation and the `validate_event` trigger.
 - Event documents (.docx/.pptx) are kind `document`; file types must stay consistent across `add_event_media`, the bucket MIME list and the upload policy extension list.
+- Requests share `/requests` with an optional validated `tab` search parameter; compose the existing personal and manager lists without changing server calls or permissions, and redirect the legacy personal URL to this page.

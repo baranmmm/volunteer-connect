@@ -46,7 +46,11 @@ export function PendingRequestsCard() {
               : t("requests.pendingNone")}
           </p>
           <Button asChild variant="outline" className="mt-4">
-            <Link to="/requests" data-testid="dashboard-pending-requests-link">
+            <Link
+              to="/requests"
+              search={{ tab: "review" }}
+              data-testid="dashboard-pending-requests-link"
+            >
               {t("requests.review")}
             </Link>
           </Button>
@@ -101,7 +105,8 @@ export function RequestNotices() {
               </p>
             )}
             <Link
-              to="/my-requests"
+              to="/requests"
+              search={{ tab: "mine" }}
               className="mt-1 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               {t("requests.viewRequests")}

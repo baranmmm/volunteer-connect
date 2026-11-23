@@ -602,6 +602,7 @@
   },
   "requests": {
     "title": "Event requests",
+    "toReview": "To review",
     "myTitle": "My requests",
     "open": "Request an event",
     "openHint": "Suggest an event for your branch. A manager reviews it before anything is published.",

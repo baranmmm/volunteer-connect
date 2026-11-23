@@ -14,13 +14,15 @@ export class RequestsPage {
   readonly myEdit = (id: string) => this.page.getByTestId(`my-request-edit-${id}`);
   readonly myWithdraw = (id: string) => this.page.getByTestId(`my-request-withdraw-${id}`);
   readonly myDelete = (id: string) => this.page.getByTestId(`my-request-delete-${id}`);
-  readonly myDeclineReason = (id: string) => this.page.getByTestId(`my-request-decline-reason-${id}`);
+  readonly myDeclineReason = (id: string) =>
+    this.page.getByTestId(`my-request-decline-reason-${id}`);
   readonly myConfirm = () => this.page.getByTestId("my-request-confirm");
   /** Rows of my list in order; data-request-id carries each id. */
   readonly myRows = () => this.myList().locator("[data-request-id]");
   // Reviewers
   readonly managerPage = () => this.page.getByTestId("manager-requests-page");
-  readonly tab = (tab: ManagerTab) => this.page.getByTestId(`manager-requests-tab-${tab}`);
+  readonly tab = (tab: ManagerTab) =>
+    this.page.getByTestId(tab === "decided" ? "requests-tab-decided" : "requests-tab-review");
   readonly managerRow = (id: string) => this.page.getByTestId(`manager-request-row-${id}`);
   readonly detail = () => this.page.getByTestId("manager-request-detail");
   readonly detailStatus = () => this.detail().getByTestId("manager-request-status");
@@ -38,16 +40,18 @@ export class RequestsPage {
 
   /** Reviewers' page (/requests). */
   async goto() {
-    await this.page.goto("/requests");
+    await this.page.goto("/requests?tab=review");
     await expect(this.managerPage()).toBeVisible();
   }
-  /** Every member's own requests (/my-requests). */
+  /** Requesters' own list in the shared Requests workspace. */
   readonly myPage = () => this.page.getByTestId("my-requests-page");
   readonly newRequest = () => this.page.getByTestId("my-requests-new");
-  readonly kindCard = (kind: "event" | "task" | "meeting") => this.page.getByTestId(`request-type-card-${kind}`);
-  readonly filter = (filter: "all" | "open" | "decided") => this.page.getByTestId(`my-requests-filter-${filter}`);
+  readonly kindCard = (kind: "event" | "task" | "meeting") =>
+    this.page.getByTestId(`request-type-card-${kind}`);
+  readonly filter = (filter: "all" | "open" | "decided") =>
+    this.page.getByTestId(`my-requests-filter-${filter}`);
   async gotoMine() {
-    await this.page.goto("/my-requests");
+    await this.page.goto("/requests?tab=mine");
     await expect(this.myList()).toBeVisible();
   }
   /** "New request" → the Event card → the event request form (type choice next). */

@@ -1,3 +1,8 @@
+# Unified Requests page
+- [x] Merge request navigation and pages, preserve existing actions and calls, and redirect the old URL.
+- [x] Verify role-specific tabs, links, and mobile/sidebar layout: 22 focused tests passed; EN/TR fixtures checked at 390px, 1382px and 1280px, with Sign out visible.
+- [ ] Signed-in Requests verification and QA browser suite: external unmanaged Supabase has no available authenticated session; real preview redirects to sign-in.
+
 # Erasure-request confirmation
 - [x] Keep ordinary admin user deletion on simple confirmation; require the exact full name only when processing a self-requested erasure.
 - [x] Add focused UI regression tests and verify the preview build; 171 tests passed and the preview build is clean.
