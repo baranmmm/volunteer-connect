@@ -13,6 +13,8 @@ export type RoleKey =
   | "managerBrighton"
   | "volunteerBrighton"
   | "pendingBrighton"
+  | "followerMedway"
+  | "nationalCoordinator"
   | "disposable";
 
 type SeedUser = { localPart: string; fullName: string; branch: BranchName | null; role: AppRole; status: ProfileStatus };
@@ -26,11 +28,17 @@ export const SEED_USERS: Record<RoleKey, SeedUser> = {
   managerBrighton: { localPart: "manager.brighton", fullName: "E2E Manager Brighton", branch: "Brighton", role: "branch_manager", status: "active" },
   volunteerBrighton: { localPart: "volunteer.brighton", fullName: "E2E Volunteer Brighton", branch: "Brighton", role: "volunteer", status: "active" },
   pendingBrighton: { localPart: "pending.brighton", fullName: "E2E Pending Brighton", branch: "Brighton", role: "volunteer", status: "pending" },
+  // Signed up as a follower of Medway (no branch of their own, no member role).
+  followerMedway: { localPart: "follower.medway", fullName: "E2E Follower Medway", branch: null, role: "follower", status: "active" },
+  // Seeded with SQL rights like the first production NC (docs/nc-setup.md); needs MFA (TOTP, see npm run qa:nc-mfa).
+  nationalCoordinator: { localPart: "nc", fullName: "E2E National Coordinator", branch: null, role: "national_coordinator", status: "active" },
   disposable: { localPart: "disposable", fullName: "E2E Disposable User", branch: "Medway", role: "volunteer", status: "active" },
 };
 
 /** Roles that get a storageState file in auth.setup.ts. */
-export const STORAGE_ROLES: RoleKey[] = ["director", "managerMedway", "volunteerMedway", "pendingMedway", "managerBrighton", "volunteerBrighton", "pendingBrighton"];
+export const STORAGE_ROLES: RoleKey[] = ["director", "managerMedway", "volunteerMedway", "pendingMedway", "managerBrighton", "volunteerBrighton", "pendingBrighton", "followerMedway"];
+/** The NC's storageState is an aal2 session (password + TOTP), written by auth.setup.ts when the secret is available. */
+export const NC_ROLE: RoleKey = "nationalCoordinator";
 
 export const seedEmail = (key: RoleKey) => `${SEED_USERS[key].localPart}@${emailDomain()}`;
 export const FRESH_PREFIX = "fresh-";

@@ -8,6 +8,7 @@
     "qa:seed": "tsx setup/seed.ts",
     "qa:teardown": "tsx setup/teardown.ts",
     "qa:dryrun": "tsx setup/dryrun.ts",
+    "qa:nc-mfa": "tsx setup/nc-mfa.ts",
     "qa:first-run": "npm run qa:migrate && npm run qa:seed && npm test",
     "test": "playwright test",
     "test:ui": "playwright test --project=desktop-chromium --project=mobile-pixel7",

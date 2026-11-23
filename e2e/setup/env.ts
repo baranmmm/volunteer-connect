@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,6 +8,14 @@ export const REPO_ROOT = path.resolve(E2E_DIR, "..");
 // The local stack keeps its own seed state and sessions (e2e/.auth/local), so it never overwrites QA's.
 export const AUTH_DIR = process.env["E2E_TARGET"] === "local" ? path.join(E2E_DIR, ".auth", "local") : path.join(E2E_DIR, ".auth");
 export const SEED_STATE_FILE = path.join(AUTH_DIR, "users.json");
+/** Local stack only: the seeded NC's TOTP secret (throwaway). QA uses E2E_NC_TOTP_SECRET from e2e/.env.qa / CI. */
+export const NC_TOTP_FILE = path.join(AUTH_DIR, "nc-totp.json");
+export function ncTotpSecret(): string | null {
+  if (process.env["E2E_TARGET"] === "local") {
+    try { return (JSON.parse(readFileSync(NC_TOTP_FILE, "utf8")) as { secret?: string }).secret ?? null; } catch { return null; }
+  }
+  return process.env["E2E_NC_TOTP_SECRET"]?.trim() || null;
+}
 /** storageState file written by setup/auth.setup.ts for a seeded role. */
 export const storageFile = (role: string) => path.join(AUTH_DIR, `${role}.json`);
 
