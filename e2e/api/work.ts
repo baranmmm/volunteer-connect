@@ -100,12 +100,13 @@ export async function deleteWorkOfUsers(userIds: string[]): Promise<number> {
   let n = 0;
   for (let i = 0; i < userIds.length; i += 100) {
     const batch = userIds.slice(i, i + 100);
+    // One request per table (requester or target), so every freshUser cleanup stays cheap on the shared QA project.
+    const people = `(${batch.join(",")})`;
     for (const table of ["task_requests", "meeting_requests"] as const) {
-      const a = await db.from(table).delete().in("requester_id", batch).select("id");
-      const b = await db.from(table).delete().in("target_id", batch).select("id");
-      if (a.error || b.error) throw new Error(`delete ${table}: ${(a.error ?? b.error)!.message}`);
-      n += (a.data?.length ?? 0) + (b.data?.length ?? 0);
-      await deleteWork({ requests: [...(a.data ?? []), ...(b.data ?? [])].map((r) => r.id as string) });
+      const r = await db.from(table).delete().or(`requester_id.in.${people},target_id.in.${people}`).select("id");
+      if (r.error) throw new Error(`delete ${table}: ${r.error.message}`);
+      n += r.data.length;
+      await deleteWork({ requests: r.data.map((row) => row.id as string) });
     }
     const tasks = await db.from("tasks").select("id").in("created_by", batch);
     const meetings = await db.from("meetings").select("id").in("created_by", batch);

@@ -1,7 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Inbox } from "lucide-react";
 import { pageHead } from "@/components/app/head";
@@ -11,8 +9,7 @@ import { EventDialog } from "@/components/events/EventDialog";
 import { EventRequestForm } from "@/components/requests/EventRequestForm";
 import { useAuth } from "@/lib/auth";
 import { isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
-import { markNotificationsRead } from "@/lib/notifications.functions";
-import { useRequestTargets, useWorkRequestCount } from "@/lib/use-work-notices";
+import { useMarkNoticesRead, useRequestTargets, useWorkRequestCount } from "@/lib/use-work-notices";
 import { MeetingRequestForm, TaskRequestForm } from "@/components/requests/WorkRequestForms";
 import { MyWorkRequests, ReviewWorkRequests } from "@/components/requests/WorkRequestLists";
 import {
@@ -31,6 +28,12 @@ import {
   type RequestListFilter,
 } from "@/components/requests/request-kinds";
 import { useCanRequestEvents, usePendingRequestCount } from "@/lib/use-event-requests";
+
+// The Requests badge counts these notices; opening the page marks them read.
+const REQUEST_NOTICES: { entityType: "task_request" | "meeting_request" }[] = [
+  { entityType: "task_request" },
+  { entityType: "meeting_request" },
+];
 
 export const Route = createFileRoute("/_app/requests")({
   ssr: false,
@@ -61,19 +64,7 @@ function RequestsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const view = resolveRequestView(requested, reviewer, nc, reviewTotal);
   // Opening Requests marks the task and meeting request notices read (the menu badge).
-  const qc = useQueryClient();
-  const markRead = useServerFn(markNotificationsRead);
-  const uid = session?.user.id;
-  useEffect(() => {
-    if (!uid || follower) return;
-    void Promise.all(
-      (["task_request", "meeting_request"] as const).map((entityType) =>
-        markRead({ data: { entityType } }),
-      ),
-    )
-      .then(() => qc.invalidateQueries({ queryKey: ["notification-counts"] }))
-      .catch(() => undefined);
-  }, [uid, follower, markRead, qc]);
+  useMarkNoticesRead(REQUEST_NOTICES, "requests", !follower);
   const selectView = (tab: string) => {
     if (tab === "review" || tab === "mine" || tab === "decided")
       void navigate({ to: "/requests", search: { tab }, replace: true, resetScroll: false });

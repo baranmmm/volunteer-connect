@@ -1,41 +1,31 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Bell, CheckCheck } from "lucide-react";
-import { useAuth } from "@/lib/auth";
 import { formatDate, translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import type { Notification } from "@/lib/notifications";
 import { notificationText } from "@/lib/notification-text";
-import { listMyNotifications, markNotificationsRead } from "@/lib/notifications.functions";
+import { markNotificationsRead } from "@/lib/notifications.functions";
+import { DASHBOARD_WORK_KEY, useDashboardWork } from "@/lib/use-dashboard-work";
 import { useWorkMember } from "@/lib/use-work-notices";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const LIMIT = 10;
-
 /** Dashboard: the latest in-app notices; opening one goes to its item and marks it read. */
 export function NotificationsCard() {
   const { t } = useTranslation();
-  const { session } = useAuth();
   const member = useWorkMember();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const fetch = useServerFn(listMyNotifications),
-    markRead = useServerFn(markNotificationsRead);
-  const query = useQuery({
-    queryKey: ["notifications", session?.user.id],
-    queryFn: () => fetch({ data: { limit: LIMIT } }),
-    enabled: member,
-    staleTime: 30000,
-    refetchInterval: 120000,
-  });
+  const markRead = useServerFn(markNotificationsRead);
+  const query = useDashboardWork();
   const [busy, setBusy] = useState(false);
   const refresh = () =>
     Promise.all(
-      ["notifications", "notification-counts"].map((key) =>
+      [DASHBOARD_WORK_KEY, "notification-counts"].map((key) =>
         qc.invalidateQueries({ queryKey: [key] }),
       ),
     );
@@ -56,7 +46,8 @@ export function NotificationsCard() {
     }
   }
   if (!member) return null;
-  const items = (query.data ?? []).slice(0, LIMIT);
+  const items = query.data?.notifications ?? [];
+  const failed = query.isError || query.data?.notifications === null;
   const unread = items.some((n) => !n.read_at);
   return (
     <section
@@ -88,7 +79,7 @@ export function NotificationsCard() {
       </div>
       {query.isLoading ? (
         <p className="mt-5 text-muted-foreground">{t("common.loading")}</p>
-      ) : query.isError ? (
+      ) : failed ? (
         <div role="alert" className="mt-5 space-y-2">
           <p className="text-destructive">{t("notifications.loadError")}</p>
           <Button variant="outline" onClick={() => void query.refetch()}>

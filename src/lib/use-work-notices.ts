@@ -1,8 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/lib/auth";
 import { isFollowerRoles } from "@/lib/roles";
-import { getNotificationCounts } from "@/lib/notifications.functions";
+import type { NotificationCounts } from "@/lib/notifications";
+import { getNotificationCounts, markNotificationsRead } from "@/lib/notifications.functions";
 import { listRequestTargets, workRequestCount } from "@/lib/work-requests.functions";
 
 /** Active members and National Coordinators (followers have no tasks, meetings or their requests). */
@@ -52,11 +54,44 @@ export function useRequestTargets(enabled = true) {
   });
 }
 
+type NoticeTarget = {
+  entityType: "task" | "meeting" | "task_request" | "meeting_request";
+  entityId?: string;
+};
+
+/**
+ * "Opening an item marks its notices read": marks the notices about `targets` read, but only while the menu counts
+ * show unread notices in `area`, and refreshes the counts only when something was marked. Nothing is sent when there
+ * is nothing to mark (most page visits).
+ */
+export function useMarkNoticesRead(
+  targets: NoticeTarget[],
+  area: keyof NotificationCounts,
+  enabled = true,
+) {
+  const counts = useNotificationCounts();
+  const qc = useQueryClient();
+  const markRead = useServerFn(markNotificationsRead);
+  const pending = enabled && (counts.data?.[area] ?? 0) > 0;
+  const key = JSON.stringify(targets);
+  useEffect(() => {
+    if (!pending) return;
+    const list = JSON.parse(key) as NoticeTarget[];
+    void Promise.all(list.map((target) => markRead({ data: target })))
+      .then((results) =>
+        results.some((r) => r.marked > 0)
+          ? qc.invalidateQueries({ queryKey: ["notification-counts"] })
+          : undefined,
+      )
+      .catch(() => undefined);
+  }, [pending, key, markRead, qc]);
+}
+
 /** Query keys refreshed after any task or meeting request change. */
 export const WORK_REQUEST_KEYS = [
   "my-work-requests",
   "work-requests-review",
   "work-request-count",
   "notification-counts",
-  "notifications",
+  "dashboard-work",
 ] as const;

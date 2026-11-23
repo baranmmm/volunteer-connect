@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
@@ -29,7 +29,7 @@ import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import type { MeetingStatus } from "@/lib/meetings";
 import { deleteMeeting, getMeeting, setMeetingStatus } from "@/lib/meetings.functions";
-import { markNotificationsRead } from "@/lib/notifications.functions";
+import { useMarkNoticesRead } from "@/lib/use-work-notices";
 
 export const Route = createFileRoute("/_app/meetings_/$id")({
   ssr: false,
@@ -50,8 +50,7 @@ function MeetingDetailPage() {
   const navigate = useNavigate();
   const fetch = useServerFn(getMeeting),
     setStatus = useServerFn(setMeetingStatus),
-    remove = useServerFn(deleteMeeting),
-    markRead = useServerFn(markNotificationsRead);
+    remove = useServerFn(deleteMeeting);
   const query = useQuery({
     queryKey: ["meeting", id, uid],
     queryFn: () => fetch({ data: { id } }),
@@ -61,12 +60,7 @@ function MeetingDetailPage() {
     refetchInterval: 240000,
   });
   // Opening the meeting marks its notices as read.
-  useEffect(() => {
-    if (!uid) return;
-    markRead({ data: { entityType: "meeting", entityId: id } })
-      .then(() => qc.invalidateQueries({ queryKey: ["notification-counts"] }))
-      .catch(() => undefined);
-  }, [id, uid, markRead, qc]);
+  useMarkNoticesRead([{ entityType: "meeting", entityId: id }], "meetings", !!uid);
 
   const [editing, setEditing] = useState(false),
     [rescheduling, setRescheduling] = useState(false),

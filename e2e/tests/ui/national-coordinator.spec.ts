@@ -1,6 +1,7 @@
 // National Coordinator in the UI: MFA at sign-in (aal1 sees only the MFA screen), the national dashboard, regions and
 // branches, and the Users page (RD/BM only, volunteers as numbers).
-import { test, expect } from "../../fixtures/roles";
+import { test, expect, runId } from "../../fixtures/roles";
+import { deleteTestRegion, TEMP_REGION_PREFIX } from "../../api/eventRequests";
 import { adminClient, storageStateFor, signIn } from "../../api/SupabaseClient";
 import { totp } from "../../api/totp";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
@@ -30,7 +31,8 @@ test.describe("National Coordinators", () => {
   test("regions and branches: create a region and a branch, delete them (Recycle Bin), the tree updates", async ({ freshUser, pageAs }) => {
     const nc = await freshUser({ role: "national_coordinator" });
     const page = await pageAs(nc);
-    const name = `E2E Region ${Date.now()}`;
+    // Run id and time in the name: teardown removes it if this test is cut off before its own cleanup.
+    const name = `${TEMP_REGION_PREFIX}${runId}-${Date.now()}`;
     let regionId: string | undefined;
     try {
       await page.goto("/regions");
@@ -50,10 +52,9 @@ test.describe("National Coordinators", () => {
       const { data } = await adminClient().from("branches").select("deleted_at, deleted_with_region").eq("region_id", regionId!);
       expect(data).toEqual([expect.objectContaining({ deleted_with_region: true })]);
     } finally {
-      if (regionId) {
-        await adminClient().from("branches").delete().eq("region_id", regionId);
-        await adminClient().from("regions").delete().eq("id", regionId);
-      }
+      // The region may exist even when the test failed before reading its id.
+      regionId ??= (await adminClient().from("regions").select("id").eq("name", name).maybeSingle()).data?.id;
+      if (regionId) await deleteTestRegion(regionId);
     }
   });
 

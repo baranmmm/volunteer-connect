@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -7,7 +7,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { TASK_STATUSES, isOverdue, londonDay, type TaskDetail, type TaskStatus } from "@/lib/tasks";
 import { deleteTask, getTask, setTaskReminderMute } from "@/lib/tasks.functions";
-import { markNotificationsRead } from "@/lib/notifications.functions";
+import { useMarkNoticesRead } from "@/lib/use-work-notices";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -44,19 +44,13 @@ export function TaskPanel({ taskId, onClose }: { taskId: string | null; onClose:
 
 function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void }) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const fetchTask = useServerFn(getTask);
-  const markRead = useServerFn(markNotificationsRead);
   const query = useQuery({
     queryKey: ["tasks", "detail", taskId],
     queryFn: () => fetchTask({ data: { id: taskId } }),
   });
-  // Opening the item marks its notices as read.
-  useEffect(() => {
-    markRead({ data: { entityType: "task", entityId: taskId } })
-      .then(() => queryClient.invalidateQueries({ queryKey: ["notification-counts"] }))
-      .catch(() => undefined);
-  }, [taskId, markRead, queryClient]);
+  // Opening the item marks its notices as read (assignments, status changes and reminders are all "task" notices).
+  useMarkNoticesRead([{ entityType: "task", entityId: taskId }], "total");
 
   if (query.isLoading)
     return (

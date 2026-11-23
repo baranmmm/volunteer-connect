@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   myWork: vi.fn(),
   decline: vi.fn(),
   markRead: vi.fn(),
+  counts: vi.fn(),
   workCount: 0,
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -66,7 +67,7 @@ vi.mock("@/lib/work-requests.functions", () => ({
 }));
 vi.mock("@/lib/notifications.functions", () => ({
   markNotificationsRead: mocks.markRead,
-  getNotificationCounts: vi.fn(),
+  getNotificationCounts: mocks.counts,
 }));
 vi.mock("@/components/meetings/MeetingFormDialog", () => ({
   MeetingFormDialog: () => <div data-testid="test-meeting-form" />,
@@ -193,6 +194,8 @@ beforeEach(() => {
   mocks.decline.mockResolvedValue({ ok: true });
   mocks.markRead.mockReset();
   mocks.markRead.mockResolvedValue({ marked: 0 });
+  mocks.counts.mockReset();
+  mocks.counts.mockResolvedValue({ tasks: 0, requests: 1, meetings: 0, total: 1 });
 });
 afterEach(cleanup);
 describe("Requests workspace", () => {
@@ -228,6 +231,15 @@ describe("Requests workspace", () => {
     expect(await screen.findByTestId("task-request-form")).toBeInTheDocument();
     expect(mocks.markRead).toHaveBeenCalledWith({ data: { entityType: "task_request" } });
     expect(mocks.markRead).toHaveBeenCalledWith({ data: { entityType: "meeting_request" } });
+  });
+  it("opening Requests sends no mark-read call when no request notice is unread", async () => {
+    mocks.role = "volunteer";
+    mocks.counts.mockResolvedValue({ tasks: 2, requests: 0, meetings: 1, total: 3 });
+    mount();
+    await waitFor(() => expect(mocks.counts).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId("my-requests-new"));
+    expect(await screen.findByTestId("request-type-card-task")).toBeInTheDocument();
+    expect(mocks.markRead).not.toHaveBeenCalled();
   });
   it("task and meeting cards stay unavailable when nobody can receive the request", async () => {
     mocks.role = "volunteer";

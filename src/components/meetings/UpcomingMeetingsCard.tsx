@@ -1,25 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth";
-import { listMeetings } from "@/lib/meetings.functions";
+import { useDashboardWork } from "@/lib/use-dashboard-work";
 import { MeetingCard } from "./MeetingCard";
 
 /** Dashboard card: the next three meetings the user can see (the database decides which). */
 export function UpcomingMeetingsCard() {
   const { t } = useTranslation();
-  const { session } = useAuth();
-  const uid = session?.user.id;
-  const fetch = useServerFn(listMeetings);
-  const query = useQuery({
-    queryKey: ["meetings", uid, "upcoming", 3],
-    queryFn: () => fetch({ data: { when: "upcoming", limit: 3 } }),
-    enabled: !!uid,
-  });
-  const meetings = query.data ?? [];
+  const query = useDashboardWork();
+  const meetings = query.data?.meetings ?? [];
+  const failed = query.isError || query.data?.meetings === null;
   return (
     <section
       data-testid="dashboard-upcoming-meetings"
@@ -45,7 +36,7 @@ export function UpcomingMeetingsCard() {
       </div>
       {query.isLoading ? (
         <p className="mt-6 text-muted-foreground">{t("common.loading")}</p>
-      ) : query.isError ? (
+      ) : failed ? (
         <div role="alert" className="mt-6 space-y-3">
           <p className="text-destructive">{t("meetings.loadError")}</p>
           <Button

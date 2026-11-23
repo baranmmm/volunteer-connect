@@ -1,11 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { ListChecks } from "lucide-react";
-import { useAuth } from "@/lib/auth";
 import { isDueSoon, isOverdue } from "@/lib/tasks";
-import { getMyTaskSummary } from "@/lib/tasks.functions";
+import { useDashboardWork } from "@/lib/use-dashboard-work";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TaskPriorityBadge, TaskStatusBadge } from "./TaskBadges";
@@ -14,15 +11,8 @@ import { formatDay } from "./task-display";
 /** Dashboard card: open and overdue counts of the caller's tasks and the next five by due date. */
 export function MyTasksCard() {
   const { t } = useTranslation();
-  const { session } = useAuth();
-  const uid = session?.user.id;
-  const fetchSummary = useServerFn(getMyTaskSummary);
-  const summary = useQuery({
-    queryKey: ["tasks", "summary", uid],
-    queryFn: () => fetchSummary(),
-    enabled: !!uid,
-  });
-  const data = summary.data;
+  const summary = useDashboardWork();
+  const data = summary.data?.tasks;
   return (
     <section
       data-testid="dashboard-my-tasks"

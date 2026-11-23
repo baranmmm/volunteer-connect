@@ -6,6 +6,8 @@ import { deleteWork } from "./work";
 
 export const REQUEST_TITLE_PREFIX = "E2E Request ";
 export const TEMP_BRANCH_PREFIX = "E2E Temp Branch ";
+/** Regions created through the UI by a test: "<prefix><runId>-<created ms>". */
+export const TEMP_REGION_PREFIX = "E2E Region ";
 export type RequestStatus = "submitted" | "under_review" | "approved" | "declined" | "withdrawn";
 export type RequestRow = {
   id: string; requester_id: string | null; reviewer_id: string | null; scope: "branch" | "region"; branch_id: string | null; region_id: string;
@@ -106,7 +108,23 @@ export async function deleteLeftoverTestRequests(staleBefore: number, runId?: st
     const created = Number(/-(\d{13})-/.exec(b.name)?.[1] ?? 0);
     if ((runId && b.name.startsWith(`${TEMP_BRANCH_PREFIX}${runId}-`)) || created < staleBefore) await deleteTempBranch(b.id);
   }
+  const regions = await db.from("regions").select("id, name").like("name", `${TEMP_REGION_PREFIX}%`);
+  if (regions.error) throw new Error(`find test regions: ${regions.error.message}`);
+  for (const r of regions.data as { id: string; name: string }[]) {
+    // Regions have no created_at column either; older names without a timestamp count as stale.
+    const created = Number(/(\d{13})$/.exec(r.name)?.[1] ?? 0);
+    if ((runId && r.name.startsWith(`${TEMP_REGION_PREFIX}${runId}-`)) || created < staleBefore) await deleteTestRegion(r.id);
+  }
   return orphans.data.length + (drafts.data?.length ?? 0);
+}
+
+/** Removes a test region with its branches (and everything in them, see deleteTempBranch). */
+export async function deleteTestRegion(id: string): Promise<void> {
+  const db = adminClient();
+  const branches = await db.from("branches").select("id").eq("region_id", id);
+  for (const b of (branches.data ?? []) as { id: string }[]) await deleteTempBranch(b.id);
+  const { error } = await db.from("regions").delete().eq("id", id);
+  if (error) throw new Error(`delete test region: ${error.message}`);
 }
 
 /** A branch in the seed region just for one test, so counts (badge, dashboard) are not shared with others. */
