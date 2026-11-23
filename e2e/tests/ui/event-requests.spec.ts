@@ -27,7 +27,7 @@ const listedId = async (page: RequestsPage, name: string) => {
 };
 
 test.describe("Event requests", () => {
-  test("a volunteer requests an event from the calendar, sees it in My requests and withdraws it", async ({
+  test("a volunteer requests an event from the calendar, sees it in My requests and withdraws it", { tag: "@smoke" }, async ({
     freshUser,
     pageAs,
   }) => {

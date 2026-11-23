@@ -1,16 +1,36 @@
 name: E2E (QA)
 
+# Which tests run:
+#   pull_request            @smoke + the specs related to the changed files (e2e/scripts/select-specs.mjs); changes
+#                           to test infrastructure or build files, or a migration with no known area, run everything.
+#   pull_request + full-ci  the full suite (add the "full-ci" label; it stays full while the label is on).
+#   push to main            @smoke only.
+#   schedule 02:00 UTC      the full suite on main, after migrating QA.
+#   workflow_dispatch       the suite you choose.
+# tsc, ESLint and Vitest run in "Checks" (checks.yml), without QA and in parallel.
 on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Tests to run"
+        type: choice
+        options: [full, smoke, selected]
+        default: full
 
 # The QA database is shared: never run two e2e/migrate runs at the same time, never cancel a running one.
 # A newer queued run may cancel an older *pending* one (GitHub keeps one pending run per group). That is fine:
 # every run migrates QA before its tests, so the run that does go ahead also applies the cancelled run's migrations.
-# The group is at workflow level, so the jobs of ONE run (migrate, three shards, report) share it.
+# The group is at workflow level, so the jobs of ONE run (plan, migrate, three shards, report) share it.
+# Adding any label other than full-ci starts a run that does nothing: it gets its own group, so it can never
+# take the place of a real pending run.
 concurrency:
-  group: qa-db
+  group: ${{ (github.event.action == 'labeled' && github.event.label.name != 'full-ci') && format('noop-{0}', github.run_id) || 'qa-db' }}
   cancel-in-progress: false
 
 permissions:
@@ -23,8 +43,52 @@ env:
   BASE_URL: http://localhost:3100
 
 jobs:
+  # Decides the suite: full, smoke, or @smoke + the specs related to this PR's changes.
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.plan.outputs.run }}
+      mode: ${{ steps.plan.outputs.mode }}
+      grep: ${{ steps.plan.outputs.grep }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Choose the tests
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          FULL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'full-ci') }}
+          SUITE: ${{ inputs.suite }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          run=true; mode=""
+          if [ "$EVENT" = "pull_request" ] && [ "$ACTION" = "labeled" ] && [ "$LABEL" != "full-ci" ]; then
+            run=false; mode=none
+          elif [ "$EVENT" = "schedule" ] || [ "$FULL_LABEL" = "true" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE" = "full" ]; }; then
+            mode=full
+          elif [ "$EVENT" = "push" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE" = "smoke" ]; }; then
+            mode=smoke
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          if [ -n "$mode" ]; then
+            echo "mode=$mode" >> "$GITHUB_OUTPUT"; echo "grep=@smoke" >> "$GITHUB_OUTPUT"
+            printf '### E2E selection\n\nMode: %s (%s)\n' "$mode" "$EVENT" >> "$GITHUB_STEP_SUMMARY"
+            echo "Mode: $mode"
+          else
+            node e2e/scripts/select-specs.mjs "origin/${BASE_REF:-main}"
+          fi
+
   # Once per run, before any shard: guard, migrate (this commit's pending migrations, feature branches included), seed.
   migrate:
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
     environment: qa
     timeout-minutes: 15
@@ -76,7 +140,7 @@ jobs:
           retention-days: 1
 
   e2e:
-    needs: migrate
+    needs: [plan, migrate]
     runs-on: ubuntu-latest
     environment: qa
     timeout-minutes: 30
@@ -117,13 +181,26 @@ jobs:
         with:
           name: seed-state
           path: e2e/.auth
-      - name: Run Playwright tests (shard ${{ matrix.shard }}/3)
+      - name: Run Playwright tests (${{ needs.plan.outputs.mode }}, shard ${{ matrix.shard }}/3)
         working-directory: e2e
-        run: npx playwright test --shard=${{ matrix.shard }}/3
+        env:
+          MODE: ${{ needs.plan.outputs.mode }}
+          GREP: ${{ needs.plan.outputs.grep }}
+        run: |
+          if [ "$MODE" = "full" ]; then
+            npx playwright test --shard=${{ matrix.shard }}/3
+          else
+            npx playwright test --shard=${{ matrix.shard }}/3 --grep "$GREP" --pass-with-no-tests
+          fi
       - name: Teardown this shard's users
         if: always()
         working-directory: e2e
         run: npm run qa:teardown
+      # The redaction reporter masks passwords already; this re-checks every file before it leaves the runner.
+      - name: Mask secrets in test artifacts
+        if: always()
+        working-directory: e2e
+        run: npx tsx setup/redact.ts blob-report test-results
       - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@v4
@@ -133,8 +210,8 @@ jobs:
           retention-days: 1
 
   report:
-    needs: e2e
-    if: always()
+    needs: [plan, e2e]
+    if: always() && needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -156,6 +233,9 @@ jobs:
       - name: Merge into one HTML report
         working-directory: e2e
         run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - name: Mask secrets in the merged report
+        working-directory: e2e
+        run: npx tsx setup/redact.ts playwright-report
       - name: Upload HTML report
         uses: actions/upload-artifact@v4
         with:

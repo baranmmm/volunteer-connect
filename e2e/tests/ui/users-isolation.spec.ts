@@ -53,7 +53,7 @@ test.describe("Users page — regional director", () => {
 test.describe("Users page — volunteer", () => {
   test.use({ storageState: storageFor("volunteerMedway") });
 
-  test("has no Users entry and is redirected away from /users", async ({ page, sidebar }) => {
+  test("has no Users entry and is redirected away from /users", { tag: "@smoke" }, async ({ page, sidebar }) => {
     const dashboard = new DashboardPage(page);
     await dashboard.goto();
     expect(await sidebar.hasItem("users")).toBe(false);

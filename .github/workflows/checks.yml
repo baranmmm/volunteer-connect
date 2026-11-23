@@ -1,0 +1,52 @@
+name: Checks
+
+# Type check, lint (changed files only: the rest of src/ has known formatting issues) and Vitest.
+# No QA access and no secrets, so it runs in parallel with E2E (QA) and outside its qa-db queue.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - uses: oven-sh/setup-bun@v2
+      - name: Install app dependencies (root)
+        run: bun install --frozen-lockfile
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Type check (app)
+        run: npx tsc --noEmit
+      - name: Type check (e2e)
+        working-directory: e2e
+        run: npx tsc --noEmit
+      - name: ESLint (changed files)
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: |
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then echo "No base commit to compare with; skipping."; exit 0; fi
+          files=$(git diff --name-only --diff-filter=ACMR "$(git merge-base "$BASE" HEAD)" HEAD -- 'src/*.ts' 'src/*.tsx' \
+            | grep -v -e '^src/routeTree.gen.ts$' -e '^src/integrations/supabase/types.ts$' || true)
+          if [ -z "$files" ]; then echo "No changed app files to lint."; exit 0; fi
+          echo "$files"
+          echo "$files" | xargs npx eslint
+      - name: Vitest
+        run: npx vitest run

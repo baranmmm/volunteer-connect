@@ -16,7 +16,7 @@ async function updateEventAs(email: string, eventId: string, patch: Record<strin
 const errorOf = async (p: PromiseLike<{ error: { message: string } | null }>) => (await p).error?.message ?? null;
 
 test.describe("Event registrations API", () => {
-  test("register is idempotent; cancel and register again reuse the same row", async ({ freshUser, freshEvent }) => {
+  test("register is idempotent; cancel and register again reuse the same row", { tag: "@smoke" }, async ({ freshUser, freshEvent }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const volunteer = await freshUser();
     const event = await freshEvent(manager, { label: "reg basic", status: "published", startInMinutes: 3 * 24 * 60 });
@@ -29,7 +29,7 @@ test.describe("Event registrations API", () => {
     expect(await registrationsOf(event.id)).toHaveLength(1);
   });
 
-  test("full event: waitlist, then FIFO promotion with a 'promoted' notice when a seat frees up", async ({ freshUser, freshEvent }) => {
+  test("full event: waitlist, then FIFO promotion with a 'promoted' notice when a seat frees up", { tag: "@smoke" }, async ({ freshUser, freshEvent }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const [a, b, c] = [await freshUser(), await freshUser(), await freshUser()];
     const event = await freshEvent(manager, { label: "reg waitlist", status: "published", startInMinutes: 3 * 24 * 60, capacity: 1 });

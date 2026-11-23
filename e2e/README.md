@@ -1,7 +1,8 @@
 # E2E tests (Playwright + TypeScript)
 
-Page Object Model tests for the Dialogue Society Volunteer Hub. They run **only** against the QA
-Supabase project `impdbvwsaancutwlrmac` (ds-volunteer-qa). Every entry point (Playwright config, app
+Page Object Model tests for the Dialogue Society Volunteer Hub. They run against the **local Supabase stack**
+(Docker; everyday work, see _Local stack_) or the QA Supabase project `impdbvwsaancutwlrmac` (ds-volunteer-qa;
+CI). Every entry point (Playwright config, app
 server, migrate, seed, teardown, API client) calls `setup/guard.ts`, which aborts if the production ref
 `kcxmjscxooqqhsgrhknb` appears anywhere in the environment. Requests to production are also blocked
 inside the browser.
@@ -19,6 +20,24 @@ cp .env.qa.example .env.qa  # then fill in the QA values (git-ignored)
 ```
 
 `npm run qa:migrate` also needs the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started).
+
+## Local stack (Docker) — everyday work
+
+Needs Docker (Docker Desktop or colima) and the Supabase CLI. Nothing is read from `.env.qa`: test users get a
+fixed test password (`LOCAL_TEST_PASSWORD` in `setup/env.ts`), and the keys are the local stack's defaults, written
+to the git-ignored `e2e/.env.local`.
+
+```sh
+npm run local:up        # supabase start (project dir e2e/local), bootstrap + all migrations, seed users
+npm run local:test -- tests/ui/registrations.spec.ts          # related specs only
+npm run local:test -- --grep "$(npm run -s related -- --grep-only)"   # @smoke + specs related to your changes
+npm run local:dryrun -- ../supabase/migrations/<new>.sql      # rolled-back dry run: pg_proc/policy diff, definer checks
+npm run local:migrate   # then apply the new migration locally and run its specs
+npm run local:reset     # fresh database (all migrations again) + seed
+npm run local:down
+```
+
+Never run the full suite locally; CI runs it nightly and when a PR has the `full-ci` label.
 
 ## First QA setup — order matters
 
@@ -39,6 +58,10 @@ npm test             # starts the app on BASE_URL against QA, then runs all proj
 | `npm test` | All projects: `desktop-chromium`, `mobile-pixel7`, `api` |
 | `npm run test:ui` / `npm run test:api` | UI projects only / API permission tests only |
 | `npm run qa:teardown` | Deletes this run's `fresh-*@dsvolunteer.test` users (`E2E_RUN_ID`) and any older than 2 hours, plus their test events: events those users created, and `E2E Event …` events whose creator no longer exists. Recent users of other runs (e.g. CI running at the same time on the shared QA database) are never touched. QA only (guarded). |
+| `npm run smoke` | `@smoke` tests only (critical flows) |
+| `npm run related [-- <base>]` | Which specs the current changes need (`scripts/select-specs.mjs`), and why |
+| `npm run qa:dryrun -- <file>` | Rolled-back migration dry run on remote QA (only while CI is idle) |
+| `npm run redact -- <dirs>` | Masks passwords in existing artifacts (CI does this before every upload) |
 | `npm run report` | Opens the newest HTML report (`npm run report -- <run-id>` for a given run). Locally every run writes to its own `test-results/<run-id>/` and `playwright-report/<run-id>/` (`E2E_RUN_ID`, or a timestamp), so traces of earlier runs are kept; folders older than 7 days are removed when a run starts. CI keeps the flat `test-results/` and `playwright-report/`. |
 
 **Local runs share the QA database with CI.** Give each local run an id so its teardown can clean up after it
@@ -95,13 +118,23 @@ against production by hand.
 
 ## CI
 
-- `.github/workflows/e2e.yml`: every push and pull request, on every branch.
-  Guard → **QA migrate** → seed → tests → teardown, HTML report artifact.
+- `.github/workflows/checks.yml`: every PR and push to main — tsc (app, e2e), ESLint on changed files, Vitest.
+- `.github/workflows/e2e.yml`: guard → **QA migrate** → seed → tests in 3 shards (own `E2E_RUN_ID` and teardown
+  each) → merged HTML report artifact. Which tests:
+  - **pull request**: `@smoke` + the specs related to the changed files (`scripts/select-specs.mjs`, shown in the
+    run's summary). A changed migration runs every spec of each area it touches; changes to `e2e/setup`,
+    `e2e/fixtures`, the Playwright config, package files or the Supabase client run the full suite.
+  - **`full-ci` label** on the PR: the full suite (adding another label starts a run that does nothing).
+  - **push to main**: `@smoke`. **Nightly 02:00 UTC** on main: the full suite (including `qa:migrate`).
   - The migrate step runs `npm run qa:migrate` (Supabase CLI 3.2.0). It applies the commit's pending migrations
     before the tests run against them. When nothing is pending it logs
     `No pending migrations: QA is up to date, nothing applied.` and does not run `db push`.
-- `.github/workflows/qa-db-migrate.yml`: nightly (02:00 UTC) and manual only, with a seed + API smoke run.
-  It has no push trigger, because E2E (QA) already migrates on every push.
+- `.github/workflows/qa-db-migrate.yml`: manual only, with a seed + API smoke run (the nightly migrate is part of
+  the nightly full suite).
+- **Secret masking**: `setup/redact-reporter.ts` is the first reporter; it masks the test password and any value
+  typed into a `password` field in step titles, errors, traces and error-context before other reporters copy them.
+  Every job also runs `setup/redact.ts` over its artifacts before uploading. Screenshots and videos show password
+  fields as dots.
 - `.github/workflows/prod-db-migrate.yml`: production, manual only; see _Production migrations_ above.
 - The two QA workflows share the `qa-db` concurrency group, so they never overlap on the shared QA database.
   GitHub keeps one _pending_ run per group, so a newer push can cancel an older queued E2E run. Nothing is lost:

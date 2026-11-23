@@ -11,7 +11,7 @@ import { EventFormDialog } from "../../pages/components/EventFormDialog";
 const IN_3_DAYS = 3 * 24 * 60;
 
 test.describe("Event registrations", () => {
-  test("a volunteer registers (count and calendar badge update), is listed by name until they hide it, then cancels", async ({ freshUser, freshEvent, pageAs }) => {
+  test("a volunteer registers (count and calendar badge update), is listed by name until they hide it, then cancels", { tag: "@smoke" }, async ({ freshUser, freshEvent, pageAs }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const volunteer = await freshUser();
     const event = await freshEvent(manager, { label: "ui register", status: "published", startInMinutes: IN_3_DAYS, capacity: 30 });

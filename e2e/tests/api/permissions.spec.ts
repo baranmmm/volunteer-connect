@@ -31,7 +31,7 @@ test.describe("Anonymous access", () => {
     }
   });
 
-  test("cannot call any management RPC", async () => {
+  test("cannot call any management RPC", { tag: "@smoke" }, async () => {
     const anon = anonClient();
     const before = await snapshot(u.volunteerMedway.id);
     expectRejected(await anon.rpc("set_user_status", { _target: u.volunteerMedway.id, _status: "inactive" }), "anon set_user_status");
@@ -56,7 +56,7 @@ test.describe("Volunteer cannot change their own status, branch or role", () => 
     client = await as("volunteerMedway");
   });
 
-  test("via RPCs", async () => {
+  test("via RPCs", { tag: "@smoke" }, async () => {
     const me = u.volunteerMedway.id;
     const before = await snapshot(me);
     expectRejected(await client.rpc("set_user_status", { _target: me, _status: "inactive" }), "self set_user_status");
@@ -96,7 +96,7 @@ test.describe("Branch managers are limited to their own branch", () => {
     medway = await as("managerMedway");
   });
 
-  test("cannot manage a Brighton volunteer", async () => {
+  test("cannot manage a Brighton volunteer", { tag: "@smoke" }, async () => {
     const target = u.volunteerBrighton.id;
     const before = await snapshot(target);
     expectRejected(await medway.rpc("set_user_status", { _target: target, _status: "inactive" }), "cross-branch set_user_status");

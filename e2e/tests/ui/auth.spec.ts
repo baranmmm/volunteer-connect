@@ -6,7 +6,7 @@ import { QA_HOST } from "../../setup/guard";
 import { userPassword } from "../../setup/env";
 
 test.describe("Sign in and sign out", () => {
-  test("a volunteer signs in through the UI against the QA project and signs out", async ({ page, seed, sidebar }) => {
+  test("a volunteer signs in through the UI against the QA project and signs out", { tag: "@smoke" }, async ({ page, seed, sidebar }) => {
     const auth = new AuthPage(page);
     await auth.goto();
 
@@ -32,7 +32,7 @@ test.describe("Sign in and sign out", () => {
     await expect(page).toHaveURL(/\/auth$/);
   });
 
-  test("signed-out visitors are redirected from protected pages to sign in", async ({ page }) => {
+  test("signed-out visitors are redirected from protected pages to sign in", { tag: "@smoke" }, async ({ page }) => {
     for (const path of ["/dashboard", "/users", "/approvals", "/profile"]) {
       await page.goto(path);
       await expect(page).toHaveURL(/\/auth$/);
