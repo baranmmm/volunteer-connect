@@ -443,9 +443,10 @@ export function ReviewWorkRequests({
     return <LoadError testId="work-review-load-error" onRetry={() => void query.refetch()} />;
   const rows = query.data ?? [];
   const first = approving?.proposed_times[0];
+  const titled = rows.length > 0 || showEmpty;
   return (
-    <section aria-labelledby={`work-review-${filter}-h`} className="space-y-3">
-      {(rows.length > 0 || showEmpty) && (
+    <section aria-labelledby={titled ? `work-review-${filter}-h` : undefined} className="space-y-3">
+      {titled && (
         <h2 id={`work-review-${filter}-h`} className="text-lg font-semibold">
           {t(filter === "open" ? "workRequests.reviewTitle" : "workRequests.decidedTitle")}
         </h2>

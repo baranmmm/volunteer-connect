@@ -121,6 +121,8 @@ export function MeetingFiles({ meeting }: { meeting: MeetingDetail }) {
               type="file"
               multiple
               accept={MEETING_FILE_ACCEPT}
+              aria-label={t("meetings.files.upload")}
+              tabIndex={-1}
               className="sr-only"
               disabled={busy}
               onChange={(e) => void upload(e.target.files)}

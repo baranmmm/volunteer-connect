@@ -3,7 +3,8 @@
 // critical violations.
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { test, expect } from "../../fixtures/roles";
+import { test, expect, runId } from "../../fixtures/roles";
+import { MEETING_TITLE_PREFIX, TASK_TITLE_PREFIX, createMeetingAs, createTaskAs, inDays } from "../../api/work";
 import { RequestsPage } from "../../pages/RequestsPage";
 import { EventRequestFormDialog } from "../../pages/components/EventRequestFormDialog";
 
@@ -75,5 +76,30 @@ test.describe("Accessibility (axe)", () => {
     await nc.goto("/regions");
     await expect(nc.getByTestId("regions-tree")).toBeVisible({ timeout: 30_000 });
     await expectNoSeriousViolations(nc, "regions and branches");
+  });
+
+  test("tasks (Kanban, list, calendar, panel) and meetings (list, detail)", async ({ freshUser, freshBranch, pageAs }) => {
+    const branch = await freshBranch("axe-work");
+    const manager = await freshUser({ role: "branch_manager", branch });
+    const volunteer = await freshUser({ role: "volunteer", branch });
+    const task = await createTaskAs(manager, { scope: "branch", branch_id: branch, title: `${TASK_TITLE_PREFIX}${runId} axe`, assignee_ids: [volunteer.id] });
+    const meeting = await createMeetingAs(manager, { scope: "branch", branch_id: branch, title: `${MEETING_TITLE_PREFIX}${runId} axe`, starts_at: inDays(4), ends_at: inDays(4, 1), invitee_ids: [volunteer.id] });
+    const page = await pageAs(manager);
+    await page.goto("/tasks");
+    await expect(page.locator(`[data-testid="task-card"][data-task-id="${task}"]`)).toBeVisible({ timeout: 30_000 });
+    await expectNoSeriousViolations(page, "tasks kanban");
+    for (const view of ["list", "calendar"] as const) {
+      await page.getByTestId(`tasks-view-${view}`).click();
+      await expectNoSeriousViolations(page, `tasks ${view}`);
+    }
+    await page.goto(`/tasks?task=${task}`);
+    await expect(page.getByTestId("task-panel-detail")).toBeVisible({ timeout: 30_000 });
+    await expectNoSeriousViolations(page, "task panel", '[role="dialog"]');
+    await page.goto("/meetings");
+    await expect(page.locator(`[data-testid="meeting-card"][data-meeting-id="${meeting}"]`)).toBeVisible({ timeout: 30_000 });
+    await expectNoSeriousViolations(page, "meetings list");
+    await page.goto(`/meetings/${meeting}`);
+    await expect(page.getByTestId("meeting-detail")).toBeVisible({ timeout: 30_000 });
+    await expectNoSeriousViolations(page, "meeting detail");
   });
 });

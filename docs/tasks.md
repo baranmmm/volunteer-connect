@@ -111,4 +111,38 @@ A deleted task goes to the Recycle Bin for 30 days, the same pattern as events.
 
 ## Test ids
 
-See the list at the end of this file (kept in sync with the UI).
+All kebab-case, never derived from text. Lists expose `data-task-id` / `data-request-id` / `data-user-id`.
+
+- **Page**:
+  - Header and views: `tasks-new`, `tasks-view-kanban|list|calendar` (aria-pressed), `tasks-filter-mine` (aria-pressed), `tasks-empty`
+  - List filters: `tasks-filter-status|priority|assignee|branch|due`, `tasks-sort`, `tasks-group`
+- **Kanban**:
+  - Board: `tasks-kanban`, `tasks-kanban-column` (data-status), `tasks-kanban-count`
+  - Cards: `task-card` (data-task-id, data-status, data-overdue), `task-card-open`, `task-card-assignees`, `task-card-status` (the keyboard alternative to dragging), `task-due` (data-overdue)
+- **List**: `tasks-list`, `tasks-list-group` (data-group), `tasks-list-row` (data-task-id, data-status, data-overdue)
+- **Calendar**:
+  - `tasks-calendar` (data-month), `tasks-calendar-previous|next`, `tasks-calendar-title`
+  - `tasks-calendar-day` (data-day), `tasks-calendar-item` (data-task-id, data-overdue)
+  - On phones: `tasks-calendar-agenda`, `tasks-calendar-empty`, plus `tasks-calendar-undated`
+- **Side panel**:
+  - `task-panel` (data-task-id), `task-panel-detail` (data-status), `task-panel-not-found`
+  - Fields: `task-panel-title`, `task-panel-description`, `task-panel-status`, `task-panel-due`, `task-panel-scope`, `task-panel-creator`, `task-panel-assignees`
+  - Links: `task-panel-event-link`, `task-panel-meeting-link`, `task-panel-decision`
+  - Reminders and actions: `task-panel-reminders`, `task-panel-mute-reminders`, `task-panel-edit`, `task-panel-delete`
+  - Delete confirm: `task-delete-dialog`, `task-delete-confirm`, `task-delete-cancel`, `task-delete-error`
+- **Form** (`task-form`):
+  - Scope: `task-form-scope` (or `-scope-fixed`), `task-form-no-scopes`, `task-form-from-decision`
+  - Fields: `task-form-title`, `task-form-description`, `task-form-status`, `task-form-priority`, `task-form-due-date`, `task-form-assignees` (PersonPicker: `-option` with data-user-id, `-checkbox`, `-search`, `-empty`), `task-form-event`
+  - Reminders: `task-form-reminders`, `task-form-remind-before-1|2|3|7`, `task-form-remind-custom`, `task-form-repeat-kind`, `task-form-repeat-every`, `task-form-repeat-start`, `task-form-overdue-toggle`, `task-form-overdue-every`
+  - Errors and buttons: `task-form-<field>-error`, `task-form-error`, `task-form-submit`, `task-form-cancel`
+- **Badges**: `task-status-badge` (data-status), `task-priority-badge` (data-priority)
+- **Dashboard**: `dashboard-my-tasks` (data-open, data-overdue), `dashboard-my-tasks-open`, `dashboard-my-tasks-overdue`, `dashboard-my-tasks-empty`, `dashboard-my-task-item` (data-task-id, data-due-soon, data-overdue), `dashboard-my-tasks-link`
+- **Event page** (managers): `event-linked-tasks`, `event-linked-task` (data-task-id, data-status)
+- **Task request form**: `request-type-card-task` (plus `-hint`), `task-request-form`, `-target` (with `-target-option`), `-title`, `-description`, `-priority`, `-due-date`, `-error`, `-submit`, `-cancel`
+- **Requests lists**:
+  - My requests: `work-requests-list`, `work-request-row` (data-request-id, data-kind, data-status), with `work-request-status`, `-decline-note`, `-withdraw`, `-withdraw-confirm`, `-open-task`, `-open-meeting`
+  - To review: `work-review-list-open|decided`, `work-review-row` (data-request-id, data-kind, data-status), with `work-review-requester`, `-accept`, `-approve`, `-decline`, `-decline-note`, `-decline-confirm`, `-decline-cancel`, `-error`, `work-review-open-task`
+- **Notifications and badges**:
+  - Dashboard card: `dashboard-notifications`, `dashboard-notification` (data-notification-id, data-kind, data-unread), `dashboard-notifications-mark-all`, `dashboard-notifications-empty`
+  - Nav badges (data-count): `nav-tasks-badge`, `nav-requests-badge`, `mobile-nav-tasks-badge`, `mobile-nav-requests-badge`
+  - Profile: `profile-task-reminder-emails`

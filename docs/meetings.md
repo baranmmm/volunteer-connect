@@ -101,4 +101,38 @@ A deleted meeting goes to the Recycle Bin for 30 days.
 
 ## Test ids
 
-See the list at the end of this file (kept in sync with the UI).
+All kebab-case, never derived from text. Lists expose `data-meeting-id`, `data-item-id`, `data-decision-id`,
+`data-file-id` and `data-user-id`.
+
+- **List** (`/meetings`):
+  - Header and tabs: `meetings-new`, `meetings-tab-upcoming|past`
+  - Lists: `meetings-list` and `meetings-empty` (data-when), `meetings-retry`
+  - Cards: `meeting-card` (data-meeting-id, data-status), with `meeting-card-title`, `meeting-card-status`, `meeting-card-invited`, `meeting-card-scope`
+- **Detail**:
+  - Page: `meeting-detail` (data-meeting-id, data-status), `meeting-not-found`, `meeting-back`
+  - Facts: `meeting-title`, `meeting-status`, `meeting-invited`, `meeting-when`, `meeting-online-link`, `meeting-location`, `meeting-scope`, `meeting-creator`, `meeting-description`
+  - Invitees: `meeting-invitees`, `meeting-invitee` (data-user-id), `meeting-invitees-empty`
+  - Editors: `meeting-edit`, `meeting-complete`, `meeting-cancel`, `meeting-reschedule`, `meeting-reopen`, `meeting-delete`
+  - Confirm dialog: `meeting-confirm-dialog`, `meeting-cancel-confirm`, `meeting-delete-confirm`, `meeting-confirm-dismiss`, `meeting-confirm-error`
+- **Agenda**:
+  - `meeting-agenda`, `meeting-agenda-empty`, `meeting-agenda-item` (data-item-id), `meeting-agenda-item-title`, `meeting-agenda-item-notes`
+  - Editing: `meeting-agenda-add`, `meeting-agenda-form`, `meeting-agenda-title`, `meeting-agenda-notes`, `meeting-agenda-save`, `meeting-agenda-cancel`, `meeting-agenda-edit`, `meeting-agenda-up`, `meeting-agenda-down`
+  - Delete: `meeting-agenda-delete`, then `meeting-agenda-delete-dialog`, `-confirm`, `-cancel`
+- **Decisions**:
+  - `meeting-decision` (data-decision-id), `meeting-decision-text-value`, `meeting-decisions-empty`
+  - Editing: `meeting-decision-add`, `meeting-decision-form`, `meeting-decision-text`, `meeting-decision-save`, `meeting-decision-cancel`, `meeting-decision-edit`, `meeting-decision-delete`
+  - Tasks: `meeting-decision-task` (data-task-id, data-status), `meeting-decision-create-task`
+- **Files**: `meeting-files`, `meeting-files-empty`, `meeting-file-upload`, `meeting-file-input`, `meeting-file` (data-file-id), `meeting-file-name`, `meeting-file-download`, `meeting-file-delete`, `meeting-file-errors`
+- **Form** (prefix `meeting-form`, or `work-review-meeting` when approving a request, or `meeting-reschedule-form`):
+  - Shell and scope: `-dialog`, `-scope` (or `-scope-fixed`)
+  - Fields: `-title`, `-description`, `-start-date`, `-start-time`, `-end-date`, `-end-time`
+  - Place: `-place-in-person`, `-place-online`, `-location`, `-online-url`
+  - Invitees: `-invitees` (PersonPicker)
+  - Errors and buttons: `-<field>-error`, `-submit`, `-cancel`, `-error`
+- **Dashboard**: `dashboard-upcoming-meetings`, `dashboard-upcoming-meeting-item` (data-meeting-id, data-status), `dashboard-upcoming-meetings-empty`, `dashboard-upcoming-meetings-link`
+- **Meeting request form**:
+  - `request-type-card-meeting` (plus `-hint`), `meeting-request-form`, `-target` (with `-target-option`), `-topic`, `-note`
+  - Proposed times: `meeting-request-time-<n>` with `-start-date|start-time|end-date|end-time`, `meeting-request-add-time`, `-remove-time`
+  - Buttons: `-error`, `-submit`, `-cancel`
+- **Requests lists** (shared with tasks): `work-request-row`, `work-request-open-meeting`, `work-review-row`, `work-review-approve`, `work-review-decline`, `work-review-open-meeting`
+- **Badges**: `nav-meetings-badge`, `mobile-nav-meetings-badge` (data-count)
