@@ -220,6 +220,8 @@ function MemberEventDetail() {
   }
   return (
     <article
+      data-testid="event-detail"
+      data-event-id={event.id}
       data-status={event.status}
       className={`space-y-6 ${event.status === "published" ? "border-l-4 border-l-status-published pl-4" : event.status === "cancelled" ? "border-l-4 border-l-status-cancelled pl-4" : "rounded-lg border border-dashed border-status-draft-border bg-status-draft-bg p-4"}`}
     >
