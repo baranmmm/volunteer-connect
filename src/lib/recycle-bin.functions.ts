@@ -21,6 +21,8 @@ export const listRecycleBin = createServerFn({ method: "POST" })
         "volunteer_application",
         "branch",
         "region",
+        "task",
+        "meeting",
       ]),
       search: z.string().max(200),
       offset: z.number().int().min(0).max(1000000),
@@ -42,9 +44,11 @@ export const restoreRecycleItem = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const prepared = await context.supabase.rpc("restore_item", { _type: data.type, _id: data.id });
     if (prepared.error) throw new Error(prepared.error.message);
-    // Event requests have no files or Auth account: restore_item already finished the restore.
+    // Event requests and meetings (their files stay in place while deleted) have no Auth account: restore_item
+    // already finished the restore.
     if (
       data.type === "event_request" ||
+      data.type === "meeting" ||
       (DATABASE_ONLY_TYPES as readonly string[]).includes(data.type)
     )
       return { ok: true };
@@ -90,6 +94,15 @@ export const permanentlyDeleteRecycleItem = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { purgeEventRequest } = await import("./recycle-bin.server");
       await purgeEventRequest(supabaseAdmin, data.id);
+      return { ok: true };
+    }
+    // Meetings with stored files: purge_work_item returned their paths (bucket meeting-files) and marked the purge;
+    // purgeMeeting removes the files from Storage, then the row.
+    if (data.type === "meeting") {
+      if (eventDeletionResult.parse(prepared.data).deleted) return { ok: true };
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { purgeMeeting } = await import("./recycle-bin.server");
+      await purgeMeeting(supabaseAdmin, data.id);
       return { ok: true };
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

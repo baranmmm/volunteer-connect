@@ -35,12 +35,17 @@ export const AREAS = {
   dashboard: ["ui/dashboard-layout", "ui/event-status-dashboard"],
   i18n: ["ui/language", "ui/accessibility"],
   roles: ["api/roles", "ui/public-events", "ui/followers", "ui/national-coordinator", "api/permissions", "ui/users-isolation", "ui/accessibility"],
+  tasks: ["api/tasks", "ui/tasks", "ui/followers"],
+  meetings: ["api/meetings", "ui/meetings", "ui/followers"],
 };
 
 /** src/ path patterns → areas. Checked in order; the first match wins. */
 const SRC_RULES = [
   [/^src\/test\/|^src\/integrations\/supabase\/types\.ts$|^src\/routeTree\.gen\.ts$/, []],
   [/^src\/integrations\/supabase\/client|^src\/lib\/supabase/, "full"],
+  [/components\/tasks\/|routes\/_app\/tasks|lib\/tasks|task-reminders|EventLinkedTasks/i, ["tasks"]],
+  [/components\/meetings\/|routes\/_app\/meetings|lib\/meetings/i, ["meetings"]],
+  [/work-requests|WorkRequest|work-scopes|components\/work\/|notifications|Notifications|TaskReminderPreferences/i, ["tasks", "meetings"]],
   [/public-events|routes\/events\.|routes\/api\/ics|followed-branches|FollowedBranches|volunteer-applications|VolunteerApplications|national|regions|MfaGate|RoleDashboards|\/roles\.ts|components\/app\/nav|components\/public\//i, ["roles"]],
   [/requests?[-./]|\/requests\/|my-requests/i, ["requests"]],
   [/registration/i, ["registrations"]],
@@ -58,6 +63,7 @@ const SRC_RULES = [
 
 /** Migration objects (names of the functions, tables, policies' tables and buckets it creates or changes) → areas. */
 const SQL_RULES = [
+  [/^(tasks?_\w*|\w*_tasks?(_\w+)?|meetings?_\w*|\w*_meetings?(_\w+)?|meeting-files|agenda\w*|\w*_agenda_\w*|notifications?\w*|\w*_notifications?\w*|notify|email_outbox|work_\w*|\w*_work_\w*|request_(target|scope)\w*|in_work_scope|scope_people|is_active_person|is_branch_member|json_uuid_array)$/i, ["tasks", "meetings"]],
   [/event_request/i, ["requests"]],
   [/registration|waitlist|attendance/i, ["registrations"]],
   [/series/i, ["recurring"]],

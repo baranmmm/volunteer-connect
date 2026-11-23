@@ -81,7 +81,7 @@ beforeAll(async () => {
   await initializeRecycleDatabase(db);
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.branch}','Branch','${ids.region}'),('${ids.branch2}','Branch 2','${ids.region}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name', 'User ' || left(x::text, 1), 'privacy_notice_version', '1.1') FROM unnest(ARRAY['${ids.rd}','${ids.bm}','${ids.bm2}','${ids.vol}','${ids.vol2}']::uuid[]) x;
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name', 'User ' || left(x::text, 1), 'privacy_notice_version', '1.2') FROM unnest(ARRAY['${ids.rd}','${ids.bm}','${ids.bm2}','${ids.vol}','${ids.vol2}']::uuid[]) x;
     UPDATE profiles SET status='active', branch_id='${ids.branch}';
     UPDATE profiles SET branch_id='${ids.branch2}' WHERE id IN ('${ids.bm2}','${ids.vol2}');
     UPDATE user_roles SET role='branch_manager' WHERE user_id IN ('${ids.bm}','${ids.bm2}');

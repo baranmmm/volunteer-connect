@@ -82,19 +82,18 @@ test.describe("Event status and dashboard cards", () => {
     await expect(managerPage.getByTestId("event-form")).toBeVisible();
   });
 
-  test("a cancelled event within 7 days shows on the dashboard as Cancelled; a later one does not", async ({ freshUser, freshEvent, pageAs }) => {
+  test("cancelled events are not listed under Upcoming on the dashboard (the calendar still shows them)", async ({ freshUser, freshEvent, pageAs }) => {
     const manager = await freshUser({ role: "branch_manager", branch: "Brighton" });
     const volunteer = await freshUser({ branch: "Brighton" });
     const soon = await freshEvent(manager, { label: "cancelled soon", status: "published", startInMinutes: HOUR, cancelled: true });
     const later = await freshEvent(manager, { label: "cancelled later", status: "published", startInMinutes: 10 * DAY, cancelled: true });
+    const open = await freshEvent(manager, { label: "still on", status: "published", startInMinutes: 2 * HOUR });
 
     const page = await pageAs(volunteer);
     const dashboard = new DashboardPage(page);
     await dashboard.goto();
-    await expect(dashboard.upcomingItem(soon.id)).toBeVisible();
-    await expect(dashboard.upcomingItem(soon.id)).toHaveAttribute("data-status", "cancelled");
-    await expect(dashboard.upcomingStatusBadge(soon.id)).toHaveAttribute("data-status", "cancelled");
-    await expect(dashboard.upcomingStatusBadge(soon.id)).not.toHaveText("");
+    await expect(dashboard.upcomingItem(open.id)).toBeVisible();
+    await expect(dashboard.upcomingItem(soon.id)).toHaveCount(0);
     await expect(dashboard.upcomingItem(later.id)).toHaveCount(0);
 
     await dashboard.viewAllEvents().click();

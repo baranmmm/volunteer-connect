@@ -2,16 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  CalendarDays,
-  ListChecks,
-  MapPin,
-  Pencil,
-  PencilLine,
-  Plus,
-  Repeat,
-  Video,
-} from "lucide-react";
+import { CalendarDays, MapPin, Pencil, PencilLine, Plus, Repeat, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
 import { FollowerCards, NcDashboard } from "@/components/app/RoleDashboards";
@@ -23,6 +14,9 @@ import type { HubEvent } from "@/lib/event-rules";
 import { formatDate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { pageHead } from "@/components/app/head";
+import { MyTasksCard } from "@/components/tasks/MyTasksCard";
+import { NotificationsCard } from "@/components/app/NotificationsCard";
+import { UpcomingMeetingsCard } from "@/components/meetings/UpcomingMeetingsCard";
 import { Button } from "@/components/ui/button";
 import { EventForm } from "@/components/events/EventForm";
 import { eventDateText } from "@/components/events/event-display";
@@ -92,6 +86,7 @@ function Dashboard() {
           </div>
         )}
         {!follower && !nc && <RequestNotices />}
+        {!follower && <NotificationsCard />}
         <UpcomingEventsCard
           events={upcoming}
           loading={events.isLoading}
@@ -103,13 +98,8 @@ function Dashboard() {
         {isManager && <PendingRequestsCard />}
         {drafts.length > 0 && <DraftsCard drafts={drafts} />}
         <MyRegistrationsCard />
-        {!follower && (
-          <EmptyCard
-            icon={ListChecks}
-            title={t("dashboard.tasksTitle")}
-            text={t("dashboard.tasksEmpty")}
-          />
-        )}
+        {!follower && <MyTasksCard />}
+        {!follower && <UpcomingMeetingsCard />}
       </div>
     </div>
   );
@@ -324,22 +314,5 @@ function DraftsCard({ drafts }: { drafts: HubEvent[] }) {
         ))}
       </ul>
     </section>
-  );
-}
-
-function EmptyCard({
-  icon,
-  title,
-  text,
-}: {
-  icon: typeof CalendarDays;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="rounded-2xl border bg-card p-6 shadow-soft">
-      <CardHeader icon={icon} title={title} />
-      <p className="mt-6 text-muted-foreground">{text}</p>
-    </div>
   );
 }

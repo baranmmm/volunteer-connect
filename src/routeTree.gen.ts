@@ -31,8 +31,10 @@ import { Route as AppUsersRouteImport } from './routes/_app/users'
 import { Route as ApiIcsRouteImport } from './routes/api/ics'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as AppEventsIdRouteImport } from './routes/_app/events_.$id'
+import { Route as AppMeetingsIdRouteImport } from './routes/_app/meetings_.$id'
 import { Route as AppUsersIdRouteImport } from './routes/_app/users_.$id'
 import { Route as ApiPublicCleanupDeletedEventsRouteImport } from './routes/api/public/cleanup-deleted-events'
+import { Route as ApiPublicTaskRemindersRouteImport } from './routes/api/public/task-reminders'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -143,6 +145,11 @@ const AppEventsIdRoute = AppEventsIdRouteImport.update({
   path: '/events/$id',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppMeetingsIdRoute = AppMeetingsIdRouteImport.update({
+  id: '/meetings_/$id',
+  path: '/meetings/$id',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppUsersIdRoute = AppUsersIdRouteImport.update({
   id: '/users_/$id',
   path: '/users/$id',
@@ -154,6 +161,11 @@ const ApiPublicCleanupDeletedEventsRoute =
     path: '/api/public/cleanup-deleted-events',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTaskRemindersRoute = ApiPublicTaskRemindersRouteImport.update({
+  id: '/api/public/task-reminders',
+  path: '/api/public/task-reminders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -177,8 +189,10 @@ export interface FileRoutesByFullPath {
   '/api/ics': typeof ApiIcsRoute
   '/events/': typeof EventsIndexRoute
   '/events/$id': typeof AppEventsIdRoute
+  '/meetings/$id': typeof AppMeetingsIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
+  '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -202,8 +216,10 @@ export interface FileRoutesByTo {
   '/api/ics': typeof ApiIcsRoute
   '/events': typeof EventsIndexRoute
   '/events/$id': typeof AppEventsIdRoute
+  '/meetings/$id': typeof AppMeetingsIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
+  '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -229,8 +245,10 @@ export interface FileRoutesById {
   '/api/ics': typeof ApiIcsRoute
   '/events/': typeof EventsIndexRoute
   '/_app/events_/$id': typeof AppEventsIdRoute
+  '/_app/meetings_/$id': typeof AppMeetingsIdRoute
   '/_app/users_/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
+  '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -256,8 +274,10 @@ export interface FileRouteTypes {
     | '/api/ics'
     | '/events/'
     | '/events/$id'
+    | '/meetings/$id'
     | '/users/$id'
     | '/api/public/cleanup-deleted-events'
+    | '/api/public/task-reminders'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -281,8 +301,10 @@ export interface FileRouteTypes {
     | '/api/ics'
     | '/events'
     | '/events/$id'
+    | '/meetings/$id'
     | '/users/$id'
     | '/api/public/cleanup-deleted-events'
+    | '/api/public/task-reminders'
   id:
     | '__root__'
     | '/'
@@ -307,8 +329,10 @@ export interface FileRouteTypes {
     | '/api/ics'
     | '/events/'
     | '/_app/events_/$id'
+    | '/_app/meetings_/$id'
     | '/_app/users_/$id'
     | '/api/public/cleanup-deleted-events'
+    | '/api/public/task-reminders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -320,6 +344,7 @@ export interface RootRouteChildren {
   ApiIcsRoute: typeof ApiIcsRoute
   EventsIndexRoute: typeof EventsIndexRoute
   ApiPublicCleanupDeletedEventsRoute: typeof ApiPublicCleanupDeletedEventsRoute
+  ApiPublicTaskRemindersRoute: typeof ApiPublicTaskRemindersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -478,6 +503,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEventsIdRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/meetings_/$id': {
+      id: '/_app/meetings_/$id'
+      path: '/meetings/$id'
+      fullPath: '/meetings/$id'
+      preLoaderRoute: typeof AppMeetingsIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/users_/$id': {
       id: '/_app/users_/$id'
       path: '/users/$id'
@@ -490,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/cleanup-deleted-events'
       fullPath: '/api/public/cleanup-deleted-events'
       preLoaderRoute: typeof ApiPublicCleanupDeletedEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/task-reminders': {
+      id: '/api/public/task-reminders'
+      path: '/api/public/task-reminders'
+      fullPath: '/api/public/task-reminders'
+      preLoaderRoute: typeof ApiPublicTaskRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -511,6 +550,7 @@ interface AppRouteRouteChildren {
   AppTrainingRoute: typeof AppTrainingRoute
   AppUsersRoute: typeof AppUsersRoute
   AppEventsIdRoute: typeof AppEventsIdRoute
+  AppMeetingsIdRoute: typeof AppMeetingsIdRoute
   AppUsersIdRoute: typeof AppUsersIdRoute
 }
 
@@ -530,6 +570,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTrainingRoute: AppTrainingRoute,
   AppUsersRoute: AppUsersRoute,
   AppEventsIdRoute: AppEventsIdRoute,
+  AppMeetingsIdRoute: AppMeetingsIdRoute,
   AppUsersIdRoute: AppUsersIdRoute,
 }
 
@@ -546,6 +587,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIcsRoute: ApiIcsRoute,
   EventsIndexRoute: EventsIndexRoute,
   ApiPublicCleanupDeletedEventsRoute: ApiPublicCleanupDeletedEventsRoute,
+  ApiPublicTaskRemindersRoute: ApiPublicTaskRemindersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

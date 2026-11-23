@@ -69,8 +69,11 @@ function RegionsPage() {
     try {
       await fn();
       toast.success(t(message));
-      await qc.invalidateQueries({ queryKey: ["regions-tree"] });
-      await qc.invalidateQueries({ queryKey: ["nc-dashboard"] });
+      // A first load still in flight was started before this change: invalidating alone would wait for it
+      // (no data yet, so TanStack Query does not refetch) and show the old tree. Cancel it, then refetch.
+      await qc.cancelQueries({ queryKey: ["regions-tree"] });
+      void qc.invalidateQueries({ queryKey: ["regions-tree"] });
+      void qc.invalidateQueries({ queryKey: ["nc-dashboard"] });
       return true;
     } catch (e) {
       toast.error(translateError(e));

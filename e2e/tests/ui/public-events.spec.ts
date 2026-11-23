@@ -32,6 +32,9 @@ test.describe("Public events (signed out)", () => {
     // Subscribe: webcal link with the same filter.
     await page.getByTestId("public-events-subscribe").click();
     await expect(page.getByTestId("public-events-subscribe-webcal")).toHaveAttribute("href", /^webcal:\/\/.+\/api\/ics/);
+    // The subscribe popover covers the list on phones: close it before opening an event.
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("public-events-subscribe-webcal")).toBeHidden();
     // Detail: only public fields; the online link never appears.
     await card.getByRole("link").click();
     const detail = page.getByTestId("public-event-detail");

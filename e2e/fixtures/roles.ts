@@ -13,6 +13,7 @@ import {
 } from "../api/SupabaseClient";
 import { cancelEventAs, createEventAs, createSeriesAs, deleteEvents, deleteSeriesData, EVENT_TITLE_PREFIX, type EventSpec, type SeriesSpec } from "../api/events";
 import { createTempBranch, deleteRequestsOfUsers, deleteTempBranch } from "../api/eventRequests";
+import { deleteWorkOfUsers } from "../api/work";
 import { FRESH_PREFIX, readSeedState, type BranchName, type RoleKey, type SeedState } from "../data/users";
 import { baseUrl, emailDomain, ncTotpSecret, storageFile } from "../setup/env";
 import { PROD_REF } from "../setup/guard";
@@ -119,6 +120,8 @@ export const test = base.extend<Fixtures & { prodHits: string[] }>({
     });
     // Event requests (and drafts created by approving them) first: deleting a user only nulls its references.
     await deleteRequestsOfUsers(created).catch(() => undefined);
+    // Tasks, meetings (with their files) and task/meeting requests of these users, for the same reason.
+    await deleteWorkOfUsers(created).catch((e) => console.warn(`[freshUser] ${(e as Error).message}`));
     for (const id of created) await deleteAuthUser(id).catch(() => undefined);
   },
 

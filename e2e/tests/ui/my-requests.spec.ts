@@ -20,25 +20,27 @@ test.describe("My Requests", () => {
       expect(await sidebar.hasItem("requests")).toBe(true);
       await sidebar.go("requests");
       await expect(page.getByTestId("my-requests-page")).toBeVisible();
-      await expect(page.getByTestId("requests-tab-mine")).toHaveCount(
-        role === "branch_manager" ? 1 : 0,
-      );
+      // Branch Managers and Regional Directors review and also send requests (an RD asks an NC); volunteers only send.
+      await expect(page.getByTestId("requests-tab-mine")).toHaveCount(role === "volunteer" ? 0 : 1);
     });
   }
 
-  test("Task and Meeting are not available yet; Event opens the event request form", async ({
+  test("Task and Meeting open their request forms (a person above exists); Event opens the event request form", async ({
     freshUser,
     pageAs,
   }) => {
     const page = await pageAs(await freshUser());
     const mine = new RequestsPage(page);
     await mine.gotoMine();
-    await mine.newRequest().click();
     for (const kind of ["task", "meeting"] as const) {
-      await expect(mine.kindCard(kind)).toHaveAttribute("aria-disabled", "true");
-      await mine.kindCard(kind).click({ force: true });
-      await expect(mine.kindCard(kind)).toBeVisible(); // nothing opened
+      await mine.newRequest().click();
+      await expect(mine.kindCard(kind)).toHaveAttribute("aria-disabled", "false");
+      await mine.kindCard(kind).click();
+      await expect(page.getByTestId(`${kind}-request-form`)).toBeVisible();
+      await page.getByTestId(`${kind}-request-cancel`).click();
+      await expect(page.getByTestId(`${kind}-request-form`)).toHaveCount(0);
     }
+    await mine.newRequest().click();
     await expect(page.getByTestId("event-request-type-choice")).toHaveCount(0);
     await expect(mine.kindCard("event")).toHaveAttribute("aria-disabled", "false");
     await mine.kindCard("event").click();

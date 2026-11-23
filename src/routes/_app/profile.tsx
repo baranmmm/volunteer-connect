@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { PrivacyPreferences } from "@/components/app/PrivacyPreferences";
+import { TaskReminderPreferences } from "@/components/app/TaskReminderPreferences";
 import {
   AccountDeletionDialog,
   FollowerDeleteDialog,
@@ -191,6 +192,7 @@ function ProfilePage() {
         </section>
       )}
       <PrivacyPreferences />
+      {!follower && <TaskReminderPreferences />}
       <section
         aria-labelledby="delete-h"
         className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft"

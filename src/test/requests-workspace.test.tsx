@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import type { EventRequest } from "@/lib/event-requests";
+import type { TaskRequest } from "@/lib/work-requests";
 
 const mocks = vi.hoisted(() => ({
   role: "branch_manager",
@@ -11,6 +12,13 @@ const mocks = vi.hoisted(() => ({
   managed: vi.fn(),
   mine: vi.fn(),
   navigate: vi.fn(),
+  targets: [] as { id: string; full_name: string; role: string }[],
+  review: vi.fn(),
+  myWork: vi.fn(),
+  decline: vi.fn(),
+  markRead: vi.fn(),
+  counts: vi.fn(),
+  workCount: 0,
 }));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => ({
@@ -25,7 +33,7 @@ vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
     roles: [mocks.role],
-    isManager: mocks.role !== "volunteer",
+    isManager: mocks.role === "branch_manager" || mocks.role === "regional_director",
     profile: { status: "active" },
     session: { user: { id: "member" } },
   }),
@@ -44,6 +52,25 @@ vi.mock("@/lib/event-requests.functions", () => ({
   getEventRequest: vi.fn(),
   startReviewEventRequest: vi.fn(),
   withdrawEventRequest: vi.fn(),
+}));
+vi.mock("@/lib/work-requests.functions", () => ({
+  listRequestTargets: async () => mocks.targets,
+  listMyWorkRequests: mocks.myWork,
+  listWorkRequestsToReview: mocks.review,
+  workRequestCount: async () => mocks.workCount,
+  submitTaskRequest: vi.fn(),
+  submitMeetingRequest: vi.fn(),
+  withdrawWorkRequest: vi.fn(),
+  declineWorkRequest: mocks.decline,
+  acceptTaskRequest: vi.fn(),
+  approveMeetingRequest: vi.fn(),
+}));
+vi.mock("@/lib/notifications.functions", () => ({
+  markNotificationsRead: mocks.markRead,
+  getNotificationCounts: mocks.counts,
+}));
+vi.mock("@/components/meetings/MeetingFormDialog", () => ({
+  MeetingFormDialog: () => <div data-testid="test-meeting-form" />,
 }));
 vi.mock("@/components/requests/EventRequestForm", () => ({
   EventRequestForm: () => <div data-testid="test-request-form" />,
@@ -104,6 +131,25 @@ const row = (id: string, status: EventRequest["status"]): EventRequest => ({
   can_review: false,
   can_delete: false,
 });
+const taskRequest = (id: string): TaskRequest => ({
+  id,
+  kind: "task",
+  title: `Task ${id}`,
+  description: null,
+  priority: "high",
+  due_date: "2026-12-01",
+  status: "submitted",
+  task_id: null,
+  decline_reason: null,
+  scope: "branch",
+  branch: "Branch",
+  requester_id: "00000000-0000-4000-8000-000000000001",
+  requester_name: "Volunteer",
+  target_id: "00000000-0000-4000-8000-000000000002",
+  target_name: "Coordinator",
+  created_at: "2026-11-23T09:54:00Z",
+  reviewed_at: null,
+});
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -134,6 +180,22 @@ beforeEach(() => {
     total: 1,
   }));
   mocks.mine.mockResolvedValue([row("own", "submitted")]);
+  mocks.workCount = 0;
+  mocks.targets = [
+    { id: "00000000-0000-4000-8000-000000000002", full_name: "Manager", role: "branch_manager" },
+  ];
+  mocks.review.mockReset();
+  mocks.review.mockImplementation(async ({ data }: { data: { filter: string } }) =>
+    data.filter === "open" ? [taskRequest("work-open")] : [],
+  );
+  mocks.myWork.mockReset();
+  mocks.myWork.mockResolvedValue([]);
+  mocks.decline.mockReset();
+  mocks.decline.mockResolvedValue({ ok: true });
+  mocks.markRead.mockReset();
+  mocks.markRead.mockResolvedValue({ marked: 0 });
+  mocks.counts.mockReset();
+  mocks.counts.mockResolvedValue({ tasks: 0, requests: 1, meetings: 0, total: 1 });
 });
 afterEach(cleanup);
 describe("Requests workspace", () => {
@@ -150,11 +212,73 @@ describe("Requests workspace", () => {
     mount();
     await screen.findByTestId("my-request-row-own");
     expect(mocks.managed).not.toHaveBeenCalled();
+    expect(mocks.review).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("my-requests-new"));
-    fireEvent.click(screen.getByTestId("request-type-card-task"));
-    expect(screen.queryByTestId("test-request-form")).toBeNull();
     fireEvent.click(screen.getByTestId("request-type-card-event"));
     expect(screen.getByTestId("test-request-form")).toBeInTheDocument();
+  });
+  it("volunteers can request a task when someone above them can receive it", async () => {
+    mocks.role = "volunteer";
+    mount();
+    fireEvent.click(screen.getByTestId("my-requests-new"));
+    await waitFor(() =>
+      expect(screen.getByTestId("request-type-card-task")).toHaveAttribute(
+        "aria-disabled",
+        "false",
+      ),
+    );
+    fireEvent.click(screen.getByTestId("request-type-card-task"));
+    expect(await screen.findByTestId("task-request-form")).toBeInTheDocument();
+    expect(mocks.markRead).toHaveBeenCalledWith({ data: { entityType: "task_request" } });
+    expect(mocks.markRead).toHaveBeenCalledWith({ data: { entityType: "meeting_request" } });
+  });
+  it("opening Requests sends no mark-read call when no request notice is unread", async () => {
+    mocks.role = "volunteer";
+    mocks.counts.mockResolvedValue({ tasks: 2, requests: 0, meetings: 1, total: 3 });
+    mount();
+    await waitFor(() => expect(mocks.counts).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId("my-requests-new"));
+    expect(await screen.findByTestId("request-type-card-task")).toBeInTheDocument();
+    expect(mocks.markRead).not.toHaveBeenCalled();
+  });
+  it("task and meeting cards stay unavailable when nobody can receive the request", async () => {
+    mocks.role = "volunteer";
+    mocks.targets = [];
+    mount();
+    fireEvent.click(screen.getByTestId("my-requests-new"));
+    await screen.findByTestId("request-type-card-meeting-hint");
+    expect(screen.getByTestId("request-type-card-meeting")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    fireEvent.click(screen.getByTestId("request-type-card-meeting"));
+    expect(screen.queryByTestId("meeting-request-form")).toBeNull();
+  });
+  it("National Coordinators only review task and meeting requests sent to them", async () => {
+    mocks.role = "national_coordinator";
+    mocks.workCount = 1;
+    mount();
+    const rowEl = await screen.findByTestId("work-review-row");
+    expect(rowEl).toHaveAttribute("data-request-id", "work-open");
+    expect(screen.queryByTestId("my-requests-new")).toBeNull();
+    expect(screen.queryByTestId("requests-tab-mine")).toBeNull();
+    expect(mocks.managed).not.toHaveBeenCalled();
+    expect(mocks.mine).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("work-review-decline"));
+    const confirm = screen.getByTestId("work-review-decline-confirm");
+    fireEvent.change(screen.getByTestId("work-review-decline-note"), {
+      target: { value: "too short" },
+    });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(screen.getByTestId("work-review-decline-note"), {
+      target: { value: "Not this month, sorry" },
+    });
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(mocks.decline).toHaveBeenCalledWith({
+        data: { id: "work-open", kind: "task", reason: "Not this month, sorry" },
+      }),
+    );
   });
   it("a Branch Manager's mine deep link loads only the personal list", async () => {
     mocks.tab = "mine";
@@ -162,11 +286,12 @@ describe("Requests workspace", () => {
     await screen.findByTestId("my-request-row-own");
     expect(mocks.managed).not.toHaveBeenCalled();
   });
-  it("Regional Directors cannot submit even through the type chooser", async () => {
+  it("Regional Directors cannot submit events even through the type chooser", async () => {
     mocks.role = "regional_director";
     mount();
     await screen.findByTestId("manager-request-row-submitted");
-    expect(screen.queryByTestId("requests-tab-mine")).toBeNull();
+    // Their "mine" tab holds only task and meeting requests to a National Coordinator.
+    expect(screen.getByTestId("requests-tab-mine")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("my-requests-new"));
     fireEvent.click(screen.getByTestId("request-type-card-event"));
     expect(screen.queryByTestId("test-request-form")).toBeNull();

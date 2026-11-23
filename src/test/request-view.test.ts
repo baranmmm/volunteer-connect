@@ -14,9 +14,13 @@ describe("unified Requests views", () => {
   it("Branch Managers can open their own requests even with pending reviews", () => {
     expect(resolveRequestView("mine", true, false, 3)).toBe("mine");
   });
-  it("Regional Directors cannot open the submission list", () => {
+  it("review-only reviewers (National Coordinators) cannot open the submission list", () => {
     expect(resolveRequestView("mine", true, true, 3)).toBe("review");
     expect(resolveRequestView("mine", true, true, 0)).toBe("decided");
+  });
+  it("Regional Directors can open their own (task and meeting) requests", () => {
+    expect(resolveRequestView("mine", true, false, 3)).toBe("mine");
+    expect(resolveRequestView(undefined, true, false, 0)).toBe("mine");
   });
   it("explicit review and decided links win over the default", () => {
     expect(resolveRequestView("decided", true, false, 5)).toBe("decided");
@@ -26,7 +30,7 @@ describe("unified Requests views", () => {
     expect(requestViewSearch({ tab: "mine" })).toEqual({ tab: "mine" });
     expect(requestViewSearch({ tab: "invalid" })).toEqual({});
   });
-  it("offers exactly one Requests destination to followers and members", () => {
+  it("offers exactly one Requests destination to followers, members and National Coordinators", () => {
     const items = NAV_ITEMS.filter((item) => item.to.includes("requests"));
     expect(items).toHaveLength(1);
     expect(items[0]?.to).toBe("/requests");
@@ -35,7 +39,8 @@ describe("unified Requests views", () => {
       "volunteer",
       "branch_manager",
       "regional_director",
-    ]); // NCs see request numbers on their dashboard
+      "national_coordinator",
+    ]); // NCs review the task and meeting requests sent to them
     expect(items[0]?.badge).toBe("requests");
   });
 });
