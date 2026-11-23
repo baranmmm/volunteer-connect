@@ -251,9 +251,9 @@ export function MyWorkRequests({
     setError("");
     try {
       await withdraw({ data: { id: confirm.id, kind: confirm.kind } });
-      await Promise.all(WORK_REQUEST_KEYS.map((key) => qc.invalidateQueries({ queryKey: [key] })));
       toast.success(t("requests.withdrawnToast"));
       setConfirm(null);
+      void Promise.all(WORK_REQUEST_KEYS.map((key) => qc.invalidateQueries({ queryKey: [key] })));
     } catch (e) {
       setError(translateError(e));
     } finally {
@@ -397,16 +397,15 @@ export function ReviewWorkRequests({
     [approving, setApproving] = useState<MeetingRequest | null>(null);
   const refresh = () =>
     Promise.all(
-      [...WORK_REQUEST_KEYS, "tasks", "task-summary"].map((key) =>
-        qc.invalidateQueries({ queryKey: [key] }),
-      ),
+      [...WORK_REQUEST_KEYS, "tasks"].map((key) => qc.invalidateQueries({ queryKey: [key] })),
     );
   async function run(id: string, action: () => Promise<unknown>) {
     setBusy(id);
     setError(null);
     try {
       await action();
-      await refresh();
+      // Done: the lists refresh in the background, so a slow reload never looks like a failed action.
+      void refresh();
       return true;
     } catch (e) {
       setError({ id, message: translateError(e) });

@@ -157,9 +157,10 @@ export function TaskRequestForm({ onClose, onSaved }: FormProps) {
           due_date: due || null,
         },
       });
-      await Promise.all(WORK_REQUEST_KEYS.map((key) => qc.invalidateQueries({ queryKey: [key] })));
       toast.success(t("workRequests.submittedToast"));
       onSaved(id);
+      // The request is saved: close at once and refresh the lists in the background.
+      void Promise.all(WORK_REQUEST_KEYS.map((key) => qc.invalidateQueries({ queryKey: [key] })));
     } catch (err) {
       setError(translateError(err));
     } finally {
@@ -334,9 +335,10 @@ export function MeetingRequestForm({ onClose, onSaved }: FormProps) {
           proposed_times: proposedTimes,
         },
       });
-      await Promise.all(WORK_REQUEST_KEYS.map((key) => qc.invalidateQueries({ queryKey: [key] })));
       toast.success(t("workRequests.submittedToast"));
       onSaved(id);
+      // The request is saved: close at once and refresh the lists in the background.
+      void Promise.all(WORK_REQUEST_KEYS.map((key) => qc.invalidateQueries({ queryKey: [key] })));
     } catch (err) {
       setError(translateError(err));
     } finally {
