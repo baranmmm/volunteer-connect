@@ -1,9 +1,7 @@
 name: E2E (QA)
 
-# Which tests run:
-#   pull_request            @smoke + the specs related to the changed files (e2e/scripts/select-specs.mjs); changes
-#                           to test infrastructure or build files, or a migration with no known area, run everything.
-#   pull_request + full-ci  the full suite (add the "full-ci" label; it stays full while the label is on).
+# The shared hosted QA project. Pull requests do not use it: they run against their own local stack (e2e-pr.yml).
+# Which tests run here:
 #   push to main            @smoke only.
 #   schedule 02:00 UTC      the full suite on main, after migrating QA.
 #   workflow_dispatch       the suite you choose.
@@ -11,8 +9,6 @@ name: E2E (QA)
 on:
   push:
     branches: [main]
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
@@ -27,11 +23,8 @@ on:
 # A newer queued run may cancel an older *pending* one (GitHub keeps one pending run per group). That is fine:
 # every run migrates QA before its tests, so the run that does go ahead also applies the cancelled run's migrations.
 # The group is at workflow level, so the jobs of ONE run (plan, migrate, three shards, report) share it.
-# A new push to a PR cancels that PR's earlier runs (cancel-superseded.yml), so they never hold the queue.
-# Adding any label other than full-ci starts a run that does nothing: it gets its own group, so it can never
-# take the place of a real pending run.
 concurrency:
-  group: ${{ (github.event.action == 'labeled' && github.event.label.name != 'full-ci') && format('noop-{0}', github.run_id) || 'qa-db' }}
+  group: qa-db
   cancel-in-progress: false
 
 permissions:
@@ -44,7 +37,7 @@ env:
   BASE_URL: http://localhost:3100
 
 jobs:
-  # Decides the suite: full, smoke, or @smoke + the specs related to this PR's changes.
+  # Decides the suite: full, smoke, or (workflow_dispatch "selected") @smoke + the specs related to the changes.
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -63,16 +56,11 @@ jobs:
         id: plan
         env:
           EVENT: ${{ github.event_name }}
-          ACTION: ${{ github.event.action }}
-          LABEL: ${{ github.event.label.name }}
-          FULL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'full-ci') }}
           SUITE: ${{ inputs.suite }}
           BASE_REF: ${{ github.base_ref }}
         run: |
           run=true; mode=""
-          if [ "$EVENT" = "pull_request" ] && [ "$ACTION" = "labeled" ] && [ "$LABEL" != "full-ci" ]; then
-            run=false; mode=none
-          elif [ "$EVENT" = "schedule" ] || [ "$FULL_LABEL" = "true" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE" = "full" ]; }; then
+          if [ "$EVENT" = "schedule" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE" = "full" ]; }; then
             mode=full
           elif [ "$EVENT" = "push" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE" = "smoke" ]; }; then
             mode=smoke
@@ -86,7 +74,7 @@ jobs:
             node e2e/scripts/select-specs.mjs "origin/${BASE_REF:-main}"
           fi
 
-  # Once per run, before any shard: guard, migrate (this commit's pending migrations, feature branches included), seed.
+  # Once per run, before any shard: guard, migrate (this commit's pending migrations), seed.
   migrate:
     needs: plan
     if: needs.plan.outputs.run == 'true'

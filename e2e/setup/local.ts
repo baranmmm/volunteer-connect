@@ -74,7 +74,9 @@ if (!isLocalTarget()) {
 try {
   if (command === "up") {
     checkDocker();
-    run("supabase", ["start", "--workdir", WORKDIR]);
+    // E2E_LOCAL_EXCLUDE (comma-separated, e.g. in CI): containers the tests never use, so they are not pulled or started.
+    const exclude = process.env["E2E_LOCAL_EXCLUDE"]?.trim();
+    run("supabase", ["start", "--workdir", WORKDIR, ...(exclude ? ["--exclude", exclude] : [])]);
     writeLocalEnv();
     migrateAndSeed();
     console.log("[local] Ready. Tests: npm run local:test -- <specs>");

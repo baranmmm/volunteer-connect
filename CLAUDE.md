@@ -39,12 +39,14 @@ Local tests run on the local Supabase stack (Docker, `cd e2e && npm run local:up
 
 ### CI (`.github/workflows/`)
 - `checks.yml` on every PR and push to main: tsc (app and e2e), ESLint on changed files, Vitest.
-- `e2e.yml` on the shared QA project, in three shards: PRs run `@smoke` plus the specs related to the changed files
-  (`e2e/scripts/select-specs.mjs`; a changed migration runs every spec of its area, test-infrastructure changes run
-  everything). The `full-ci` label runs the full suite. Push to main runs `@smoke` only. The full suite runs nightly
-  at 02:00 UTC on main, after migrating QA.
-- A new push to a PR cancels that PR's earlier E2E runs (`cancel-superseded.yml`); other runs keep waiting in the
-  workflow-level `qa-db` queue and are never cancelled while running.
+- `e2e-pr.yml` (E2E (local)) on every PR, in three shards: each shard starts its own local Supabase stack
+  (`npm run local:up`: every migration, seed, local TOTP for the NC) and never touches QA. PRs run `@smoke` plus the
+  specs related to the changed files (`e2e/scripts/select-specs.mjs`; a changed migration runs every spec of its
+  area, test-infrastructure changes run everything). The `full-ci` label runs the full suite.
+- `e2e.yml` (E2E (QA)) on the shared QA project: push to main runs `@smoke`, the full suite runs nightly at 02:00 UTC
+  on main after migrating QA, and `workflow_dispatch` runs a chosen suite. Its runs wait in the workflow-level
+  `qa-db` queue and are never cancelled while running.
+- A new push to a PR cancels that PR's earlier E2E (local) runs (`cancel-superseded.yml`).
 - Applying migrations to remote QA by hand (`npm run qa:migrate`, `npm run qa:dryrun`) only while CI is idle:
   check that `gh run list` shows no run in progress, and set `E2E_RUN_ID` for local runs and teardown.
 
@@ -90,9 +92,9 @@ Ranking: follower < volunteer < branch_manager < regional_director < national_co
 - Never grant `INSERT`, `UPDATE`, `DELETE` or `TRUNCATE` to `anon`.
 - `SECURITY DEFINER` functions pin the search path (`SET search_path = ''` or `public`, with schema-qualified
   names), `REVOKE EXECUTE ... FROM PUBLIC, anon`, and `GRANT EXECUTE ... TO authenticated` only.
-- QA gets migrations from `E2E (QA)`, which migrates before every test run on every branch (feature-branch
-  migrations included) and nightly, from `QA DB migrate` (manual), or from `npm run qa:migrate` in `e2e/` (applies
-  without a prompt; only while CI is idle). Production only through `PROD DB migrate`, dry-run first (see `e2e/README.md`).
+- QA gets migrations from `E2E (QA)`, which migrates before every run on main (push and nightly), from
+  `QA DB migrate` (manual), or from `npm run qa:migrate` in `e2e/` (applies without a prompt; only while CI is idle).
+  PR runs apply every migration to their own local stack only. Production only through `PROD DB migrate`, dry-run first (see `e2e/README.md`).
 
 ## i18n
 No hardcoded user-facing strings. Every string is a key in both `src/locales/en.json` and `src/locales/tr.json`.
