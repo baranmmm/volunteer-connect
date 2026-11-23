@@ -125,7 +125,7 @@ function PublicEventsPage() {
               ))}
             </select>
           </div>
-          <fieldset data-testid="public-events-branch-filter">
+          <fieldset data-testid="public-events-branch-filter" className="min-w-0">
             <legend className="mb-2 text-sm font-medium">{t("publicEvents.branches")}</legend>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -150,9 +150,12 @@ function PublicEventsPage() {
                     aria-pressed={on}
                     data-testid="public-events-branch-option"
                     data-slug={slug}
+                    data-branch-id={b.id}
+                    title={b.name}
+                    className="max-w-full"
                     onClick={() => toggleBranch(slug)}
                   >
-                    {b.name}
+                    <span className="min-w-0 truncate">{b.name}</span>
                   </Button>
                 );
               })}

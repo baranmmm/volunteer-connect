@@ -9,9 +9,12 @@ import { EVENT_TITLE_PREFIX, deleteEvents } from "../../api/events";
 const londonDay = (days: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date(Date.now() + days * 86400000));
 
 test.describe("Public events (signed out)", () => {
-  test("the list shows public events only; branch filter in the URL; detail without the online link; Register leads to sign-in and back", { tag: "@smoke" }, async ({ browser, freshUser, freshEvent, seed }) => {
+  test("the list shows public events only; branch filter in the URL; detail without the online link; Register leads to sign-in and back", { tag: "@smoke" }, async ({ browser, freshUser, freshEvent, freshBranch, seed }) => {
     // A long flow (list, filter, subscribe, detail, sign-in and back): 45 s was too short on phones under CI load.
     test.setTimeout(120_000);
+    // A very long branch name (like the temporary branches parallel tests create on QA) must not widen the page:
+    // on phones the page then scrolls sideways and taps land on the wrong branch button.
+    const longBranch = await freshBranch("a-very-long-branch-name-that-must-not-widen-the-public-events-page-on-phones");
     const manager = await freshUser({ role: "branch_manager" });
     const online = await freshEvent(manager, { label: "public online", status: "published", startInMinutes: 4 * 24 * 60, audience: "public", onlineUrl: "https://meet.example.org/e2e-public-room" });
     const members = await freshEvent(manager, { label: "public members", status: "published", startInMinutes: 4 * 24 * 60 });
@@ -22,6 +25,8 @@ test.describe("Public events (signed out)", () => {
     const card = page.locator(`[data-testid="public-event-card"][data-event-id="${online.id}"]`);
     await expect(card).toBeVisible();
     await expect(page.locator(`[data-testid="public-event-card"][data-event-id="${members.id}"]`)).toHaveCount(0);
+    await expect(page.locator(`[data-testid="public-events-branch-option"][data-branch-id="${longBranch}"]`)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), "no sideways scrolling").toBeLessThanOrEqual(0);
     // Branch filter: Brighton only hides the Medway event; the choice is in the URL.
     await page.locator('[data-testid="public-events-branch-option"][data-slug="brighton"]').click();
     await expect(page).toHaveURL(/[?&]branch=brighton/);
