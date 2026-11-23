@@ -1,6 +1,6 @@
 # Privacy Notice: Dialogue Society Volunteer Hub
 
-Version 1.0 · Effective from the date it is published in the Hub
+Version 1.1 · Effective from the date it is published in the Hub
 
 This notice explains what personal information the Dialogue Society Volunteer Hub collects, why we use it, who can see it and what rights you have. You need to read it before creating an account.
 
@@ -19,13 +19,15 @@ The Volunteer Hub is run by the Dialogue Society, a registered charity in Englan
 | Event requests, including any leaflet or invitation you upload | When you ask us to add or organise an event |
 | Files you upload to events | When you add images or documents to an event |
 | Your privacy notice confirmation and optional preferences | When you sign up or change them in your profile |
+| Branches you follow | When you sign up or change them in your profile |
+| Volunteer application (motivation, availability, skills, phone if given) | When you apply to become a volunteer |
 | A record of important changes (for example role changes and deletions) | When those changes happen, for security and accountability |
 
 We do not collect special category data (such as health, religion or ethnicity) in the Hub. Please do not include it in free text fields.
 
 ## Why we use it
 
-We use your information to run our volunteering activities: organising events, managing registrations and waiting lists, coordinating branches and regions, and keeping the Hub secure. Our lawful basis is our legitimate interests in running our charity's volunteer programme. You can object at any time (see Your rights).
+We use your information to run our volunteering activities: organising events, managing registrations and waiting lists, coordinating branches and regions, and keeping the Hub secure. Our lawful basis is our legitimate interests in running our charity's volunteer programme. You can object at any time (see Your rights). If you follow a branch, we use this to show you its events.
 
 Two things are optional and are only used with your consent, which you can withdraw at any time in your profile:
 
@@ -37,10 +39,12 @@ Two things are optional and are only used with your consent, which you can withd
 | Who | What they can see |
 | --- | --- |
 | Other members who can see an event you registered for | Your name in the attendee list. You can hide it for each event by ticking "Don't show my name to other volunteers". |
-| Branch Managers of your branch | Your profile details, registrations and requests for their branch |
+| Branch Managers of your branch | Your profile details, registrations and requests for their branch, and your volunteer application |
 | Regional Directors of your region | The same, for all branches in their region |
 | National Coordinators | Numbers only for volunteers; details of branch and regional managers |
 | Nobody else in the Hub | Your email address and phone number |
+
+Public events are also shown on our website without signing in. No information about members, attendees or event contacts is shown there, and online meeting links are only visible to signed-in members.
 
 We do not sell your information or share it for marketing. We use these service providers to run the Hub, under contracts that protect your data: Supabase (database, login and file storage, hosted in the EU), Lovable (hosting of the web app), GitHub (source code; it holds no member data) and our email service provider for account emails.
 
