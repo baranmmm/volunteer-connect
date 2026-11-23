@@ -14,6 +14,9 @@ test.describe("Privacy notice", () => {
     await expect(page.getByTestId("privacy-page")).toBeVisible();
     await expect(page.getByTestId("privacy-notice").locator("table")).toHaveCount(2);
     await expect(page.getByTestId("privacy-notice").locator('th[scope="col"]').first()).toBeVisible();
+    // The page shows the version the database requires (privacy_notice_version(), now 1.3).
+    const { data: version } = await adminClient().rpc("privacy_notice_version");
+    await expect(page.getByTestId("privacy-notice").locator("p").first()).toContainText(`${version} ·`);
     await context.close();
   });
 

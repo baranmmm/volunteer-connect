@@ -1,6 +1,6 @@
 # Privacy Notice: Dialogue Society Volunteer Hub
 
-Version 1.2 · 23 November 2026
+Version 1.3 · 24 November 2026
 
 This notice explains what personal information the Dialogue Society Volunteer Hub collects, why we use it, who can see it and what rights you have. You need to read it before creating an account.
 
@@ -21,10 +21,10 @@ The Volunteer Hub is run by the Dialogue Society, a registered charity in Englan
 | Your privacy notice confirmation and optional preferences | When you sign up or change them in your profile |
 | Branches you follow | When you sign up or change them in your profile |
 | Volunteer application (motivation, availability, skills, phone if given) | When you apply to become a volunteer |
-| Tasks you create or are assigned to, their status and due dates, and your reminder settings | When you or a manager create or update a task |
+| Tasks you create or are assigned to, their status and due dates, notes you write on them and the people you mention, and your reminder settings | When you or a manager create or update a task, or when you add a note |
 | Meetings you create or are invited to, agendas, decisions and files added to them | When you or a manager organise a meeting |
 | Requests you send for a task or a meeting, and the reply | When you send or answer such a request |
-| Notices about these (for example "X assigned you a task") | When they happen |
+| Notices about these (for example "X assigned you a task" or "X mentioned you in a note") | When they happen |
 | A record of important changes (for example role changes and deletions) | When those changes happen, for security and accountability |
 
 We do not collect special category data (such as health, religion or ethnicity) in the Hub. Please do not include it in free text fields.
@@ -33,7 +33,7 @@ We do not collect special category data (such as health, religion or ethnicity) 
 
 We use your information to run our volunteering activities: organising events, managing registrations and waiting lists, coordinating branches and regions, and keeping the Hub secure. Our lawful basis is our legitimate interests in running our charity's volunteer programme. You can object at any time (see Your rights). If you follow a branch, we use this to show you its events.
 
-We use tasks, meetings and notices to coordinate volunteering in your branch and region. If a task assigned to you has a due date, we remind you in the Hub and, unless you turn it off in your profile, by email.
+We use tasks, meetings and notices to coordinate volunteering in your branch and region. If reminders are turned on for a task assigned to you, we remind you in the Hub and, unless you turn it off in your profile, by email.
 
 Two things are optional and are only used with your consent, which you can withdraw at any time in your profile:
 
@@ -48,8 +48,8 @@ Two things are optional and are only used with your consent, which you can withd
 | Branch Managers of your branch | Your profile details, registrations and requests for their branch, and your volunteer application |
 | Regional Directors of your region | The same, for all branches in their region |
 | National Coordinators | Numbers only for volunteers; details of branch and regional managers |
-| Members of your branch | Branch tasks, including who they are assigned to |
-| The people invited to a meeting, its organiser and the managers of its branch or region | That meeting, its invitees, agenda, decisions and files. Nobody else sees it. |
+| Members of your branch | Branch tasks, including who they are assigned to and the notes on them |
+| The people invited to a meeting, its organiser and the managers of its branch or region | That meeting (also in the calendar), its invitees, agenda, decisions and files. Nobody else sees it. |
 | National Coordinators | National tasks and meetings only; they never see volunteers' names |
 | Nobody else in the Hub | Your email address and phone number |
 
@@ -61,7 +61,7 @@ We do not sell your information or share it for marketing. We use these service 
 
 - Your account stays active while you volunteer with us. If you stop volunteering, you can delete your account in your Profile, or ask us to.
 - Anything deleted in the Hub (events, requests, accounts) stays in the Recycle Bin for 30 days so it can be restored by mistake, then is permanently removed.
-- Deleted tasks and meetings stay in the Recycle Bin for 30 days, then are removed with their files.
+- Deleted tasks and meetings stay in the Recycle Bin for 30 days, then are removed with their notes and files.
 - If you ask us to erase your account, it is scheduled for erasure and cannot be restored. Your name and contact details are removed; event numbers stay as anonymous counts.
 - Past event records are kept only as long as needed for reporting, then anonymised.
 
