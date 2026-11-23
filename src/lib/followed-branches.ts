@@ -3,7 +3,16 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { HubEvent } from "@/lib/event-rules";
 
-export const followedBranch = z.object({ branch_id: z.string().uuid(), name: z.string(), region_id: z.string().uuid(), own: z.boolean() });
+// own is NULL for people without a branch (followers): not their own branch.
+export const followedBranch = z.object({
+  branch_id: z.string().uuid(),
+  name: z.string(),
+  region_id: z.string().uuid(),
+  own: z
+    .boolean()
+    .nullable()
+    .transform((v) => v === true),
+});
 export type FollowedBranch = z.infer<typeof followedBranch>;
 
 export async function fetchFollowedBranches(): Promise<FollowedBranch[]> {
@@ -21,7 +30,12 @@ export async function unfollowBranch(branchId: string) {
 }
 
 export function useFollowedBranches(userId: string | undefined) {
-  return useQuery({ queryKey: ["followed-branches", userId], queryFn: fetchFollowedBranches, enabled: !!userId, staleTime: 300_000 });
+  return useQuery({
+    queryKey: ["followed-branches", userId],
+    queryFn: fetchFollowedBranches,
+    enabled: !!userId,
+    staleTime: 300_000,
+  });
 }
 
 /**
@@ -29,7 +43,10 @@ export function useFollowedBranches(userId: string | undefined) {
  * public events of followed branches (own branch included), region-wide public events of their regions and
  * national events. "All branches" shows every event the user can see.
  */
-export function inFollowedBranches(event: Pick<HubEvent, "audience" | "scope" | "branch_id" | "region_id">, followed: FollowedBranch[]) {
+export function inFollowedBranches(
+  event: Pick<HubEvent, "audience" | "scope" | "branch_id" | "region_id">,
+  followed: FollowedBranch[],
+) {
   if (event.audience !== "public" || event.scope === "national") return true;
   if (event.scope === "branch") return followed.some((b) => b.branch_id === event.branch_id);
   return followed.some((b) => b.region_id === event.region_id);

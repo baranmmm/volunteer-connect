@@ -213,6 +213,11 @@ export function signInAal2(email: string, secret: string): Promise<Session> {
   return session;
 }
 
+/** A client acting as a National Coordinator with an aal2 (MFA) session. */
+export async function clientAsAal2(email: string, secret: string): Promise<SupabaseClient> {
+  return userClient((await signInAal2(email, secret)).access_token);
+}
+
 export async function deleteAuthUser(id: string): Promise<void> {
   // A soft-deleted (Recycle Bin) test user has a user_deletion_state row with no foreign key to the user; the
   // app's purge removes it, so do the same here instead of leaving an orphan behind.

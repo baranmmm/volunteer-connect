@@ -18,6 +18,10 @@ export type EventSpec = {
   /** NULL / omitted = unlimited. */
   capacity?: number | null;
   registrationEnabled?: boolean;
+  /** members (default) or public: followers and the signed-out website. */
+  audience?: "public" | "members";
+  /** An online event with this https link (the link must never reach anonymous visitors). */
+  onlineUrl?: string;
 };
 
 function payload(spec: EventSpec) {
@@ -27,8 +31,8 @@ function payload(spec: EventSpec) {
     title: spec.title,
     description: "",
     location: "E2E Community Hall",
-    location_type: "in_person",
-    online_url: null,
+    location_type: spec.onlineUrl ? "online" : "in_person",
+    online_url: spec.onlineUrl ?? null,
     organizer: "E2E",
     category: "dialogue",
     all_day: false,
@@ -38,6 +42,7 @@ function payload(spec: EventSpec) {
     end_at: end?.toISOString() ?? null,
     capacity: spec.capacity ?? null,
     registration_enabled: spec.registrationEnabled ?? true,
+    audience: spec.audience ?? "members",
     scope: "branch",
     branch_id: spec.branchId,
     status: spec.status,
@@ -54,6 +59,14 @@ export async function createEventAs(email: string, spec: EventSpec): Promise<str
   const { data, error } = await (await clientAs(email)).rpc("create_event", { _data: payload(spec) });
   if (error || !data) throw new Error(`create_event "${spec.title}": ${error?.message ?? "no id"}`);
   return String(data);
+}
+
+/** A national event, created directly with the service role (owner: a National Coordinator). Remove with deleteEvents. */
+export async function createNationalEventAdmin(ownerId: string, spec: Omit<EventSpec, "branchId">): Promise<string> {
+  const data = { ...payload({ ...spec, branchId: "" }), scope: "national", branch_id: null, region_id: null, created_by: ownerId };
+  const { data: row, error } = await adminClient().from("events").insert(data).select("id").single();
+  if (error || !row) throw new Error(`national event "${spec.title}": ${error?.message}`);
+  return (row as { id: string }).id;
 }
 
 export async function cancelEventAs(email: string, id: string): Promise<void> {
