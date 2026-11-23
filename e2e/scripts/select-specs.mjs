@@ -3,15 +3,19 @@
 //
 //   node scripts/select-specs.mjs [<base ref>]        (default origin/main; run inside e2e/ or the repo root)
 //
-// Prints a summary and, in GitHub Actions, writes `mode` (full | selected) and `grep` to $GITHUB_OUTPUT.
+// Prints a summary and, in GitHub Actions, writes `mode` (always "selected"), `grep`, `specs`, `tests` and `minutes`
+// (estimated Actions minutes) to $GITHUB_OUTPUT.
 // Locally: npx playwright test --grep "$(node scripts/select-specs.mjs --grep-only)"
 //
-// Rules (first match wins per file; one "full" file makes the whole run full):
+// A pull request never gets the full suite from this script: only the "full-ci" label runs everything.
+// Rules (first match wins per file):
 // - e2e/tests/**.spec.ts                → that spec.
-// - other e2e/**.ts (pages, api, data)  → the specs that import it, directly or through other e2e modules.
-// - e2e/setup, e2e/fixtures, playwright.config, package files, vite/tsconfig, the app's Supabase client → full.
-// - supabase/migrations/*.sql           → every spec of each area the SQL mentions; no known area → full.
+// - any other e2e/**.ts (pages, api, data, fixtures, setup, teardown, helpers) → the specs that import it, directly or
+//   through other e2e modules (not through fixtures/setup, which every spec imports). A file no spec imports (playwright.config, teardown, migrate…) → nothing beyond @smoke.
+// - supabase/migrations/*.sql           → every spec of each area the SQL mentions; no known area → @smoke only.
 // - src/**                              → the area of the path (AREAS below); src/test and generated types → none.
+// - package files, vite/tsconfig, the app's Supabase client, migrations with no known area → @smoke only, with a
+//   note suggesting the full-ci label.
 // - anything else (docs, workflows…)    → nothing beyond @smoke.
 import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -86,7 +90,15 @@ function migrationObjects(sql) {
   return [...names];
 }
 
-const FULL_PATHS = /^(e2e\/setup\/|e2e\/fixtures\/|e2e\/playwright\.config\.ts$|e2e\/package(-lock)?\.json$|e2e\/tsconfig\.json$|package\.json$|bun\.lockb?$|vite\.config|tsconfig)/;
+/** Build-wide files: nothing imports them in e2e, so they select only @smoke; the summary suggests full-ci. */
+const BUILD_PATHS = /^(e2e\/package(-lock)?\.json$|e2e\/tsconfig\.json$|package\.json$|bun\.lockb?$|vite\.config|tsconfig)/;
+
+/**
+ * Actions minutes, measured on the local stack (3 shards): about 2.5 minutes of setup per shard (dependencies, stack,
+ * browsers), about 24 minutes of tests for the full suite, and about 1 minute each for plan and report (GitHub bills
+ * every job at least one minute).
+ */
+const MINUTES = { setupPerShard: 2.5, shards: 3, fullTests: 24, planAndReport: 2 };
 
 const sh = (cmd, args) => execFileSync(cmd, args, { cwd: ROOT, encoding: "utf8" }).trim();
 
@@ -119,45 +131,81 @@ function importers() {
   return reverse;
 }
 
+/** Modules every spec imports (fixtures, setup): a change to one of them selects its importers, but a helper's change
+ * is not followed through them, or every helper would select every spec. */
+const HUBS = [join(E2E, "fixtures") + "/", join(E2E, "setup") + "/"];
+
 function specsImporting(changed, reverse) {
-  const seen = new Set(), specs = new Set(), queue = [resolve(ROOT, changed)];
+  const start = resolve(ROOT, changed);
+  const seen = new Set(), specs = new Set(), queue = [start];
   while (queue.length) {
     const file = queue.pop();
     if (seen.has(file)) continue;
     seen.add(file);
+    if (file !== start && HUBS.some((hub) => file.startsWith(hub))) continue;
     if (file.endsWith(".spec.ts")) specs.add(relative(join(E2E, "tests"), file).replace(/\.spec\.ts$/, ""));
     for (const next of reverse.get(file) ?? []) queue.push(next);
   }
   return [...specs];
 }
 
+/** Test titles per spec (paths relative to e2e/tests, without .spec.ts), with how many carry @smoke. */
+function testCounts() {
+  const counts = new Map();
+  for (const file of walk(join(E2E, "tests"))) {
+    if (!file.endsWith(".spec.ts")) continue;
+    const text = readFileSync(file, "utf8");
+    const tests = (text.match(/^\s*test(?:\.(?:skip|fixme|fail|only))?\(\s*[`"']/gm) ?? []).length;
+    const smoke = (text.match(/tag:\s*["']@smoke["']/g) ?? []).length;
+    // UI specs run in two projects (desktop, mobile); API specs in one.
+    const weight = file.includes("/ui/") ? 2 : 1;
+    counts.set(relative(join(E2E, "tests"), file).replace(/\.spec\.ts$/, ""), { tests, smoke, weight });
+  }
+  return counts;
+}
+
+/** Selected test runs (tests × projects) and estimated Actions minutes for these specs plus every @smoke test. */
+export function estimate(specs, full = false) {
+  const counts = testCounts();
+  let all = 0, selected = 0;
+  for (const [spec, { tests, smoke, weight }] of counts) {
+    all += tests * weight;
+    selected += (full || specs.includes(spec) ? tests : smoke) * weight;
+  }
+  const minutes = Math.ceil(
+    MINUTES.shards * MINUTES.setupPerShard + MINUTES.planAndReport + (all ? (MINUTES.fullTests * selected) / all : 0),
+  );
+  return { tests: selected, minutes };
+}
+
 export function select(files) {
   const specs = new Set(), reasons = [];
-  let full = false, reverse;
+  let suggestFull = false, reverse;
   const add = (file, list, why) => { list.forEach((s) => specs.add(s)); reasons.push(`${file} → ${why}`); };
   const areas = (file, names) => add(file, names.flatMap((a) => AREAS[a]), `area ${names.join(", ")}`);
   for (const file of files) {
-    if (FULL_PATHS.test(file)) { full = true; reasons.push(`${file} → full (test infrastructure / build)`); continue; }
+    if (BUILD_PATHS.test(file)) { suggestFull = true; reasons.push(`${file} → @smoke only (build file; add full-ci for everything)`); continue; }
     if (/^e2e\/tests\/.+\.spec\.ts$/.test(file)) {
       if (existsSync(join(ROOT, file))) add(file, [file.replace(/^e2e\/tests\//, "").replace(/\.spec\.ts$/, "")], "itself");
       continue;
     }
     if (/^e2e\/.+\.ts$/.test(file)) {
       reverse ??= importers();
-      add(file, specsImporting(file, reverse), "specs importing it");
+      const importing = specsImporting(file, reverse);
+      add(file, importing, importing.length ? `specs importing it (${importing.length})` : "no spec imports it: @smoke only");
       continue;
     }
     if (/^supabase\/migrations\/.+\.sql$/.test(file)) {
       const sql = existsSync(join(ROOT, file)) ? readFileSync(join(ROOT, file), "utf8") : "";
       const objects = migrationObjects(sql);
       const hit = [...new Set(SQL_RULES.filter(([re]) => objects.some((o) => re.test(o))).flatMap(([, a]) => a))];
-      if (hit.length) areas(file, hit); else { full = true; reasons.push(`${file} → full (migration with no known area)`); }
+      if (hit.length) areas(file, hit); else { suggestFull = true; reasons.push(`${file} → @smoke only (migration with no known area; add full-ci for everything)`); }
       continue;
     }
     if (/^src\//.test(file)) {
       const rule = SRC_RULES.find(([re]) => re.test(file));
       if (!rule) { reasons.push(`${file} → @smoke only (no area)`); continue; }
-      if (rule[1] === "full") { full = true; reasons.push(`${file} → full`); continue; }
+      if (rule[1] === "full") { suggestFull = true; reasons.push(`${file} → @smoke only (Supabase client; add full-ci for everything)`); continue; }
       if (rule[1].length) areas(file, rule[1]); else reasons.push(`${file} → none (unit tests / generated)`);
       continue;
     }
@@ -165,23 +213,32 @@ export function select(files) {
   const escaped = [...specs].sort().map((s) => `${s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}\\.spec\\.ts`);
   // Playwright matches --grep against "<project> <file> <describe…> <title> <tags>", so a file path selects its tests.
   const grep = ["@smoke", ...escaped].join("|");
-  return { mode: full ? "full" : "selected", grep, specs: [...specs].sort(), reasons };
+  const list = [...specs].sort();
+  return { mode: "selected", grep, specs: list, reasons, suggestFull, ...estimate(list) };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const grepOnly = args.includes("--grep-only");
+  if (args.includes("--estimate-full")) {
+    const full = estimate([], true);
+    console.log(`Estimate: ${full.tests} test runs, about ${full.minutes} Actions minutes`);
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `tests=${full.tests}\nminutes=${full.minutes}\n`);
+    process.exit(0);
+  }
   const base = args.find((a) => !a.startsWith("--")) ?? "origin/main";
   const result = select(changedFiles(base));
   if (grepOnly) { console.log(result.grep); process.exit(0); }
   const lines = [
-    `Mode: ${result.mode === "full" ? "full suite" : "@smoke + related specs"}`,
-    ...(result.mode === "selected" ? [`Specs (${result.specs.length}): ${result.specs.join(", ") || "none"}`] : []),
+    "Mode: @smoke + related specs",
+    `Specs (${result.specs.length}): ${result.specs.join(", ") || "none"}`,
+    `Estimate: ${result.tests} test runs (tests × projects), about ${result.minutes} Actions minutes`,
+    ...(result.suggestFull ? ["Note: some changes affect everything; add the full-ci label for the full suite."] : []),
     "Why:", ...result.reasons.map((r) => `  ${r}`),
   ];
   console.log(lines.join("\n"));
   if (process.env.GITHUB_OUTPUT) {
-    appendFileSync(process.env.GITHUB_OUTPUT, `mode=${result.mode}\ngrep=${result.grep}\n`);
+    appendFileSync(process.env.GITHUB_OUTPUT, `mode=${result.mode}\ngrep=${result.grep}\nspecs=${result.specs.length}\ntests=${result.tests}\nminutes=${result.minutes}\n`);
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### E2E selection\n\n\`\`\`\n${lines.join("\n")}\n\`\`\`\n`);
   }
 }
