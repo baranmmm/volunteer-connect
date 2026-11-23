@@ -7,9 +7,8 @@ on:
         description: "Run seed + API smoke tests after migrating"
         type: boolean
         default: true
-  schedule:
-    - cron: "0 2 * * *"
-  # No push trigger: E2E (QA) migrates QA before every test run, on every branch.
+  # No schedule: the nightly full suite in E2E (QA) migrates QA at 02:00 (two runs queued in the qa-db group at
+  # once could cancel each other's pending run). No push trigger: E2E (QA) migrates QA before every test run.
 
 concurrency:
   group: qa-db
@@ -90,6 +89,12 @@ jobs:
         if: always()
         working-directory: e2e
         run: npm run qa:teardown || true
+
+      # The redaction reporter masks passwords already; this re-checks every file before it leaves the runner.
+      - name: Mask secrets in test artifacts
+        if: always()
+        working-directory: e2e
+        run: npx tsx setup/redact.ts playwright-report test-results
 
       - name: Upload HTML report
         if: always()

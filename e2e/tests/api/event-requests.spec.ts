@@ -60,7 +60,7 @@ test.describe("Event requests API", () => {
     expect(await requestRow(region)).toMatchObject({ status: "under_review", notice: "under_review", reviewer_id: director.id });
   });
 
-  test("approval creates one draft owned by the approver; a second or concurrent approval fails", async ({ freshUser }) => {
+  test("approval creates one draft owned by the approver; a second or concurrent approval fails", { tag: "@smoke" }, async ({ freshUser }) => {
     const volunteer = await freshUser();
     const manager = await freshUser({ role: "branch_manager" });
     const director = await freshUser({ role: "regional_director" });
@@ -152,7 +152,7 @@ test.describe("Event requests API", () => {
     expect(((await anon.from("event_requests").select("id")).data ?? [])).toEqual([]);
   });
 
-  test("Recycle Bin: requester deletes an open request, a manager restores and permanently deletes it", async ({ freshUser }) => {
+  test("Recycle Bin: requester deletes an open request, a manager restores and permanently deletes it", { tag: "@smoke" }, async ({ freshUser }) => {
     const volunteer = await freshUser();
     const manager = await freshUser({ role: "branch_manager" });
     const id = await submitRequestAs(volunteer.email, title("recycle"));

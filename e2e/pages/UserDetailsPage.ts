@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 import { ConfirmDialog, DeleteUserDialog } from "./components/ConfirmDialog";
 import { pickOption } from "./components/select";
 
@@ -34,7 +35,7 @@ export class UserDetailsPage {
 
   async goto(userId: string) {
     await this.page.goto(`/users/${userId}`);
-    await expect(this.name().or(this.notAllowed())).toBeVisible();
+    await expect(this.name().or(this.notAllowed())).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   roleDialog() {

@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 
 /** /recycle-bin: deleted events and users within the manager's branch or region. */
 export class RecycleBinPage {
@@ -23,7 +24,7 @@ export class RecycleBinPage {
 
   async goto() {
     await this.page.goto("/recycle-bin");
-    await expect(this.table()).toBeVisible();
+    await expect(this.table()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   /** Narrows the list to one item by searching its (unique) title. */

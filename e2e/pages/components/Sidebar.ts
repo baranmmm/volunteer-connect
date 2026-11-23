@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "../app";
 
 export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "my-requests" | "requests" | "users" | "profile";
 const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
@@ -57,7 +58,7 @@ export class Sidebar {
   /** Whether a manager-only item is offered to this user (checks the right nav for the device). */
   async hasItem(key: NavKey): Promise<boolean> {
     if (this.inMore(key)) await this.openMore();
-    else await expect(this.container(key)).toBeVisible();
+    else await expect(this.container(key)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     const present = (await this.link(key).count()) > 0;
     if (this.inMore(key)) await this.closeMore();
     return present;

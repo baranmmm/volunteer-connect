@@ -16,7 +16,7 @@ async function deletedVolunteer(freshUser: (o?: object) => Promise<TestUser>, ma
 const rowsOf = (res: { data: unknown }) => (Array.isArray(res.data) ? (res.data as RecycleRow[]) : []);
 
 test.describe("Recycle Bin API permissions", () => {
-  test("a volunteer cannot call list_recycle_bin or restore_item", async ({ freshUser }) => {
+  test("a volunteer cannot call list_recycle_bin or restore_item", { tag: "@smoke" }, async ({ freshUser }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const volunteer = await freshUser();
     const target = await deletedVolunteer(freshUser, manager);

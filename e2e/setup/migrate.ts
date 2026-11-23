@@ -1,11 +1,17 @@
-// Applies supabase/migrations to the QA project through the Session pooler (IPv4).
-// Run manually (`npm run qa:migrate`) or from the "QA DB migrate" workflow. Never part of the per-push run.
+// Applies supabase/migrations to the QA project through the Session pooler (IPv4), or with E2E_TARGET=local to the
+// local Docker stack (`npm run local:migrate`, also run by `npm run local:up`).
+// QA: run manually (`npm run qa:migrate`, only while CI is idle) or from the E2E (QA) / QA DB migrate workflows.
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import pg from "pg";
-import { E2E_DIR, REPO_ROOT, requireEnv } from "./env";
+import { E2E_DIR, REPO_ROOT, isLocalTarget, requireEnv } from "./env";
 import { assertQaEnvironment } from "./guard";
+
+function databaseUrl(): string {
+  // Local stack: the URL from `supabase status` (local default credentials, never a real secret).
+  return isLocalTarget() ? requireEnv("SUPABASE_DB_URL") : poolerUrlWithPassword();
+}
 
 function poolerUrlWithPassword(): string {
   const url = new URL(requireEnv("SUPABASE_DB_POOLER_URL"));
@@ -50,11 +56,11 @@ function pendingMigrations(dbUrl: string): string[] | null {
 
 async function main() {
   assertQaEnvironment(process.env, { requireDb: true });
-  const dbUrl = poolerUrlWithPassword();
+  const dbUrl = databaseUrl();
   const host = new URL(dbUrl).hostname;
-  console.log(`[migrate] Connecting through the Session pooler: ${host}`);
+  console.log(isLocalTarget() ? `[migrate] Local stack: ${host}` : `[migrate] Connecting through the Session pooler: ${host}`);
 
-  const client = new pg.Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+  const client = new pg.Client({ connectionString: dbUrl, ...(isLocalTarget() ? {} : { ssl: { rejectUnauthorized: false } }) });
   await client.connect();
   try {
     const info = await client.query<{ db: string; addr: string | null }>("select current_database() as db, inet_server_addr()::text as addr");
@@ -64,7 +70,7 @@ async function main() {
     if (check.rows[0]?.fn) {
       console.log("[migrate] public.rls_auto_enable() exists — no bootstrap needed.");
     } else {
-      console.log("[migrate] public.rls_auto_enable() is missing — applying QA bootstrap (setup/qa-bootstrap.sql).");
+      console.log("[migrate] public.rls_auto_enable() is missing — applying the bootstrap (setup/qa-bootstrap.sql).");
       await client.query(readFileSync(path.join(E2E_DIR, "setup", "qa-bootstrap.sql"), "utf8"));
       console.log("[migrate] Bootstrap applied.");
     }

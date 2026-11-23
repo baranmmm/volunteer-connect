@@ -15,18 +15,36 @@ screens and design, and still syncs two-way on `main`.
 - Never rewrite pushed history (Lovable mirrors it), and keep `main` buildable.
 
 ### Risk levels
+Every module is one PR. Never run the full Playwright suite locally: CI runs it (nightly, and with the `full-ci` label).
+Local tests run on the local Supabase stack (Docker, `cd e2e && npm run local:up`), not on the remote QA project.
+
 **Low risk**: UI and test work that does not touch migrations, RLS, grants, auth or the deletion/GDPR flow.
 1. Run `npx tsc --noEmit` at the repo root, and inside `e2e/` when it changed.
 2. Run ESLint on the changed files only: `npx eslint <changed files>`. The rest of `src/` has known formatting issues.
-3. Run only the Playwright specs related to the change, against QA (`cd e2e && npx playwright test <specs>`).
-   Do not run the full suite locally; CI runs it.
-4. Push and open the PR without asking. The description has a short summary and the test results.
-5. Report back only the PR link.
+3. Run Vitest (`npx vitest run`).
+4. Run only the Playwright specs related to the change on the local stack
+   (`cd e2e && npm run local:test -- --grep "$(npm run -s related -- --grep-only)"`, or name the specs).
+5. Push and open the PR without asking or waiting for approval. The description has a short summary and the test
+   results.
+6. Report back only the PR link.
 
 **High risk**: migrations, RLS, grants, SECURITY DEFINER functions, auth, and deletion/GDPR.
-1. Do a rolled-back dry run on QA and write a migration summary.
-2. Run the checks from the low-risk steps 1-3.
-3. Show the summary and wait for approval before pushing.
+1. Do a rolled-back dry run on the local stack (`npm run local:dryrun -- ../supabase/migrations/<file>.sql`), then
+   apply it locally (`npm run local:migrate`) and run the related specs there.
+2. Run the checks from the low-risk steps 1-4.
+3. If the dry run is clean and nothing deviates from the spec, push and open the PR without waiting for approval.
+   Put the migration summary in the PR description, with the line "Merge sonrası prod migration gerekli: <file>".
+   Stop and ask only for a deviation from the spec, a security or authorization decision the spec does not cover,
+   a need to touch an existing migration, or a test that is still red after two attempts.
+
+### CI (`.github/workflows/`)
+- `checks.yml` on every PR and push to main: tsc (app and e2e), ESLint on changed files, Vitest.
+- `e2e.yml` on the shared QA project, in three shards: PRs run `@smoke` plus the specs related to the changed files
+  (`e2e/scripts/select-specs.mjs`; a changed migration runs every spec of its area, test-infrastructure changes run
+  everything). The `full-ci` label runs the full suite. Push to main runs `@smoke` only. The full suite runs nightly
+  at 02:00 UTC on main, after migrating QA.
+- Applying migrations to remote QA by hand (`npm run qa:migrate`, `npm run qa:dryrun`) only while CI is idle:
+  check that `gh run list` shows no run in progress, and set `E2E_RUN_ID` for local runs and teardown.
 
 ### Always ask first
 - Pushing to `main`, force pushing, `git reset --hard`, rebase.
@@ -58,8 +76,8 @@ screens and design, and still syncs two-way on `main`.
 - `SECURITY DEFINER` functions pin the search path (`SET search_path = ''` or `public`, with schema-qualified
   names), `REVOKE EXECUTE ... FROM PUBLIC, anon`, and `GRANT EXECUTE ... TO authenticated` only.
 - QA gets migrations from `E2E (QA)`, which migrates before every test run on every branch (feature-branch
-  migrations included), from the nightly `QA DB migrate`, or from `npm run qa:migrate` in `e2e/` (applies without a
-  prompt). Production only through `PROD DB migrate`, dry-run first (see `e2e/README.md`).
+  migrations included) and nightly, from `QA DB migrate` (manual), or from `npm run qa:migrate` in `e2e/` (applies
+  without a prompt; only while CI is idle). Production only through `PROD DB migrate`, dry-run first (see `e2e/README.md`).
 
 ## i18n
 No hardcoded user-facing strings. Every string is a key in both `src/locales/en.json` and `src/locales/tr.json`.
@@ -73,7 +91,11 @@ The same rules apply to UI built by Claude Code and by Lovable.
 
 ## E2E tests (`e2e/`)
 Separate npm package with Playwright + TypeScript page objects; see `e2e/README.md`.
-- Runs only against the QA Supabase project `impdbvwsaancutwlrmac`; a guard aborts if the production ref
-  `kcxmjscxooqqhsgrhknb` appears anywhere in the environment.
+- Runs against the local stack (`E2E_TARGET=local`, localhost only) or the QA Supabase project
+  `impdbvwsaancutwlrmac` (CI); a guard aborts if the production ref `kcxmjscxooqqhsgrhknb` appears anywhere in the
+  environment.
+- `@smoke` (about 15 tests) covers the critical flows; tag a test with `{ tag: "@smoke" }` only when it guards one.
+- Passwords are masked in traces, error-context, reports and CI artifacts (`e2e/setup/redact-reporter.ts`,
+  `e2e/setup/redact.ts`). Type passwords only into fields whose test id contains `password`.
 - Locators: `getByTestId` first, then `getByRole`. Never text locators (the UI is bilingual).
 - First QA setup order: `npm run qa:migrate` → `npm run qa:seed` → `npm test` (run inside `e2e/`).

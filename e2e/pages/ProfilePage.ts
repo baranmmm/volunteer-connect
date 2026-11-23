@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 
@@ -20,7 +21,7 @@ export class ProfilePage {
 
   async goto() {
     await this.page.goto("/profile");
-    await expect(this.fullName()).toBeVisible();
+    await expect(this.fullName()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   async requestAccountDeletion() {

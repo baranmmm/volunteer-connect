@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "../../fixtures/roles";
 import { adminClient, anonClient, clientAs } from "../../api/SupabaseClient";
 import { softDeleteUser } from "../../api/recycleBin";
-import { rpcAs } from "../../api/eventRequests";
+import { REQUEST_TITLE_PREFIX, requestInput, requestRow, rpcAs, submitRequestAs } from "../../api/eventRequests";
 import { FRESH_PREFIX } from "../../data/users";
 import { emailDomain, userPassword } from "../../setup/env";
 
@@ -60,6 +60,46 @@ test.describe("Privacy notice API", () => {
     expect((await asVolunteer.from("privacy_notice_acceptances").select("user_id").eq("user_id", other.id)).data).toEqual([]);
     expect((await rpcAs(volunteer.email, "record_privacy_choices", { _user: other.id, _photo: true, _updates: true })).error).toMatch(/permission denied|Could not find the function/);
     expect((await anonClient().rpc("get_privacy_status")).error?.message).toMatch(/permission denied/);
+  });
+
+  test("write RPCs refuse a member who has not confirmed the notice (PostgREST); account deletion stays open", { tag: "@smoke" }, async ({ freshUser, freshEvent }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const volunteer = await freshUser();
+    const event = await freshEvent(manager, { label: "privacy-rpc", status: "published", startInMinutes: 3 * 24 * 60 });
+    const requestId = await submitRequestAs(volunteer.email, `${REQUEST_TITLE_PREFIX}privacy-rpc ${randomUUID().slice(0, 8)}`);
+    expect((await rpcAs(volunteer.email, "register_for_event", { p_event_id: event.id })).error).toBeNull();
+    // Neither has confirmed the current notice any more (as if it had just changed).
+    await adminClient().from("privacy_notice_acceptances").delete().in("user_id", [manager.id, volunteer.id]);
+    const refused = "Privacy notice not accepted";
+    const volunteerCalls: [string, Record<string, unknown>][] = [
+      ["register_for_event", { p_event_id: event.id }],
+      ["set_registration_show_name", { p_event_id: event.id, p_show_name: false }],
+      ["cancel_registration", { p_event_id: event.id }],
+      ["submit_event_request", { p: requestInput(`${REQUEST_TITLE_PREFIX}privacy-rpc-2`) }],
+      ["update_event_request", { p_id: requestId, p: requestInput(`${REQUEST_TITLE_PREFIX}privacy-rpc-3`) }],
+      ["withdraw_event_request", { p_id: requestId }],
+      ["delete_event_request", { p_id: requestId }],
+      ["set_consent_preferences", { p_photo_consent: true, p_updates_email_consent: true }],
+    ];
+    for (const [fn, args] of volunteerCalls) expect((await rpcAs(volunteer.email, fn, args)).error, fn).toBe(refused);
+    const managerCalls: [string, Record<string, unknown>][] = [
+      ["set_user_status", { _target: volunteer.id, _status: "inactive" }],
+      ["start_review_event_request", { p_id: requestId }],
+      ["decline_event_request", { p_id: requestId, p_reason: "No" }],
+      ["cancel_event", { _event: event.id }],
+    ];
+    for (const [fn, args] of managerCalls) expect((await rpcAs(manager.email, fn, args)).error, fn).toBe(refused);
+    // Nothing changed.
+    expect((await requestRow(requestId))?.status).toBe("submitted");
+    const { data: reg } = await adminClient().from("event_registrations").select("status, show_name").eq("event_id", event.id).eq("user_id", volunteer.id).single();
+    expect(reg).toMatchObject({ status: "registered", show_name: true });
+    // Erasure does not depend on the notice.
+    expect((await rpcAs(volunteer.email, "request_account_deletion")).error).toBeNull();
+    expect((await rpcAs(volunteer.email, "cancel_account_deletion")).error).toBeNull();
+    // Confirming opens the RPCs again.
+    const current = (await status(volunteer.email))["current_version"] as string;
+    expect((await rpcAs(volunteer.email, "accept_privacy_notice", { p_version: current })).error).toBeNull();
+    expect((await rpcAs(volunteer.email, "set_registration_show_name", { p_event_id: event.id, p_show_name: false })).error).toBeNull();
   });
 
   test("erasure (real purge chain): the confirmation stays anonymous, the consents are removed", async ({ freshUser }) => {

@@ -2,6 +2,7 @@ import { test, expect, toastSuccess } from "../../fixtures/roles";
 import { Sidebar } from "../../pages/components/Sidebar";
 import { LanguageSwitcher } from "../../pages/components/LanguageSwitcher";
 import { ProfilePage } from "../../pages/ProfilePage";
+import { DashboardPage } from "../../pages/DashboardPage";
 import { AuthPage } from "../../pages/AuthPage";
 import { getProfile } from "../../api/SupabaseClient";
 
@@ -40,7 +41,7 @@ test.describe("Language", () => {
     // New device with no saved local choice: the profile language wins after sign-in.
     const otherDevice = await pageAs(user, { language: null });
     await otherDevice.goto("/dashboard");
-    await expect(otherDevice.getByTestId("dashboard-welcome")).toBeVisible();
+    await new DashboardPage(otherDevice).expectLoaded();
     await new LanguageSwitcher(otherDevice).expectLanguage("tr");
   });
 });

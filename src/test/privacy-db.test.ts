@@ -153,6 +153,59 @@ describe("privacy notice (database)", () => {
       expect((await db.query("SELECT id FROM public.events")).rows).toHaveLength(1);
     }));
 
+  it("every client write RPC checks the confirmation first (only the confirmation and erasure are exempt)", async () => {
+    // Client-callable SECURITY DEFINER functions that are not plain reads. A new write RPC must start with
+    // PERFORM public.require_privacy_accepted(); or be added to EXEMPT with a reason.
+    const EXEMPT = ["accept_privacy_notice", "request_account_deletion", "cancel_account_deletion"];
+    const rows = (
+      await db.query<{ name: string; checked: boolean }>(`SELECT p.proname name,
+          p.prosrc ~ 'PERFORM public\\.require_privacy_accepted\\(\\);' checked
+        FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef
+          AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
+          AND p.proname !~ '^(get_|list_|can_|has_)' AND p.proname <> 'open_series'`)
+    ).rows;
+    expect(rows.length).toBeGreaterThanOrEqual(38);
+    expect(rows.filter((r) => !r.checked && !EXEMPT.includes(r.name)).map((r) => r.name)).toEqual(
+      [],
+    );
+    expect(rows.filter((r) => r.checked && EXEMPT.includes(r.name)).map((r) => r.name)).toEqual([]);
+  });
+
+  it("without the current confirmation, write RPCs are refused; account deletion still works", () =>
+    tx(async () => {
+      await as(null);
+      await db.query("DELETE FROM public.privacy_notice_acceptances WHERE user_id = ANY($1)", [
+        [ids.vol, ids.bm],
+      ]);
+      await as(ids.vol);
+      await fails(
+        "SELECT public.set_consent_preferences(true, true)",
+        [],
+        "Privacy notice not accepted",
+      );
+      await fails(
+        "SELECT public.register_for_event($1)",
+        [ids.region],
+        "Privacy notice not accepted",
+      );
+      await fails(
+        "SELECT public.submit_event_request('{}'::jsonb)",
+        [],
+        "Privacy notice not accepted",
+      );
+      await db.query("SELECT public.request_account_deletion()");
+      await db.query("SELECT public.cancel_account_deletion()");
+      await fails("SELECT public.require_privacy_accepted()", [], "permission denied");
+      await as(ids.bm);
+      await fails(
+        "SELECT public.set_user_status($1, 'inactive')",
+        [ids.vol],
+        "Privacy notice not accepted",
+      );
+      await db.query("SELECT public.accept_privacy_notice('1.0')");
+      await db.query("SELECT public.set_user_status($1, 'active')", [ids.vol]);
+    }));
+
   it("erasure: the confirmation stays as an anonymous record, the preferences go", () =>
     tx(async () => {
       await as(null);

@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 import { DeleteUserDialog } from "./components/ConfirmDialog";
 
 export class ApprovalsPage {
@@ -24,7 +25,7 @@ export class ApprovalsPage {
 
   async goto() {
     await this.page.goto("/approvals");
-    await expect(this.newTab()).toBeVisible();
+    await expect(this.newTab()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   async approve(userId: string) {

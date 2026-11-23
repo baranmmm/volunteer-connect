@@ -15,7 +15,7 @@ import { EventRequestFormDialog } from "../../pages/components/EventRequestFormD
 const londonDay = (days: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date(Date.now() + days * 86400000));
 
 test.describe("Calendar smoke", () => {
-  test("create → publish → register → waitlist → promote → time change notice → cancel → Recycle Bin → restore", async ({ freshUser, pageAs }) => {
+  test("create → publish → register → waitlist → promote → time change notice → cancel → Recycle Bin → restore", { tag: "@smoke" }, async ({ freshUser, pageAs }) => {
     test.setTimeout(120_000);
     const manager = await freshUser({ role: "branch_manager" });
     const [first, second] = [await freshUser(), await freshUser()];
@@ -69,7 +69,7 @@ test.describe("Calendar smoke", () => {
     expect(data).toEqual({ deleted_at: null, status: "cancelled" });
   });
 
-  test("external request → manager edits → approve and publish", async ({ freshUser, pageAs }) => {
+  test("external request → manager edits → approve and publish", { tag: "@smoke" }, async ({ freshUser, pageAs }) => {
     const volunteer = await freshUser();
     const manager = await freshUser({ role: "branch_manager" });
     const title = `${REQUEST_TITLE_PREFIX}smoke-${Date.now()}`;

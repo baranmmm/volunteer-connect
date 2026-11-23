@@ -42,3 +42,7 @@ e2e/test-results/
 e2e/node_modules/
 # Local screenshots (UI review, page.screenshot in ad-hoc scripts) are never committed
 e2e/screenshots/
+
+# Local Supabase stack for e2e (Docker)
+e2e/local/supabase/.temp/
+e2e/local/supabase/.branches/

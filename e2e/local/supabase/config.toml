@@ -1,0 +1,32 @@
+# Local Supabase stack for e2e tests and migration dry runs (Docker). Its own project directory, so the repo's
+# supabase/config.toml (the production project) is never used for local work, and no migration runs on start:
+# `npm run local:up` (in e2e/) applies supabase/migrations through the same bootstrap + db push path as QA.
+project_id = "dsvh-e2e-local"
+
+[api]
+port = 54321
+
+[db]
+port = 54322
+shadow_port = 54320
+
+[db.seed]
+enabled = false
+
+[auth]
+site_url = "http://localhost:3100"
+additional_redirect_urls = ["http://localhost:3100"]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[studio]
+enabled = false
+
+[analytics]
+enabled = false
+
+[edge_runtime]
+enabled = false

@@ -21,7 +21,11 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 10_000 },
   // CI runs in shards: each writes a blob report and the workflow merges them into one HTML report.
-  reporter: CI ? [["list"], ["blob"]] : [["list"], ["html", { open: "never", outputFolder: reportDir }]],
+  // setup/redact-reporter.ts comes first: it masks passwords in step titles, errors and attachment files (traces,
+  // error-context) before the other reporters copy them.
+  reporter: CI
+    ? [["./setup/redact-reporter.ts"], ["list"], ["blob"]]
+    : [["./setup/redact-reporter.ts"], ["list"], ["html", { open: "never", outputFolder: reportDir }]],
   use: {
     baseURL: BASE_URL,
     locale: "en-GB",
