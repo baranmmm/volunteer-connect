@@ -109,7 +109,7 @@ describe("upcomingDashboardEvents", () => {
     ];
     expect(ids(upcomingDashboardEvents(events, NOW))).toEqual(["p1", "p2", "p3", "p4", "p5"]);
   });
-  it("shows cancelled events only within the next 7 days", () => {
+  it("never shows cancelled events, even within the next 7 days", () => {
     const events = [
       ev({
         id: "cancelled-soon",
@@ -142,10 +142,7 @@ describe("upcomingDashboardEvents", () => {
         end_date: "2026-11-29",
       }),
     ];
-    expect(ids(upcomingDashboardEvents(events, NOW))).toEqual([
-      "cancelled-soon",
-      "cancelled-allday-day7",
-    ]);
+    expect(ids(upcomingDashboardEvents(events, NOW))).toEqual([]);
   });
 });
 
