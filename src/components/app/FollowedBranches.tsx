@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BranchName } from "@/components/app/BranchName";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { X, Plus } from "lucide-react";
@@ -50,9 +51,14 @@ export function FollowedBranches() {
       <p className="text-sm text-muted-foreground">{t("profile.followedIntro")}</p>
       <ul className="flex flex-wrap gap-2">
         {(followed.data ?? []).map((b) => (
-          <li key={b.branch_id} data-testid="profile-followed-branch" data-branch-id={b.branch_id}>
-            <Badge variant="secondary" className="gap-1 py-1 pl-3 text-sm">
-              {b.name}
+          <li
+            key={b.branch_id}
+            data-testid="profile-followed-branch"
+            data-branch-id={b.branch_id}
+            className="min-w-0 max-w-full"
+          >
+            <Badge variant="secondary" className="max-w-full gap-1 py-1 pl-3 text-sm">
+              <BranchName name={b.name} />
               {b.own ? (
                 <span className="text-xs text-muted-foreground">({t("profile.ownBranch")})</span>
               ) : (
@@ -80,7 +86,7 @@ export function FollowedBranches() {
           data-testid="profile-follow-branch-select"
           value={adding}
           onChange={(e) => setAdding(e.target.value)}
-          className="h-11 min-w-48 rounded-xl border border-input bg-background px-3 text-sm"
+          className="h-11 min-w-48 max-w-full rounded-xl border border-input bg-background px-3 text-sm"
         >
           <option value="">{t("profile.chooseBranchToFollow")}</option>
           {(groups.data ?? []).map((g) => (

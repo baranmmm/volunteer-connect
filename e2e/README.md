@@ -39,6 +39,14 @@ npm run local:down
 
 Never run the full suite locally; CI runs it nightly and when a PR has the `full-ci` label.
 
+To reproduce CI's parallel shards locally (only when asked), give each shard its own app port with `E2E_LOCAL_PORT`.
+Seed state stays shared; sessions go to `e2e/.auth/local/port-<port>/`.
+
+```sh
+for n in 1 2 3; do E2E_LOCAL_PORT=310$n E2E_RUN_ID=local-s$n E2E_TARGET=local npx playwright test --shard=$n/3 \
+  --project=mobile-pixel7 --project=desktop-chromium --output=test-results/shard$n & done; wait
+```
+
 ## First QA setup — order matters
 
 ```sh

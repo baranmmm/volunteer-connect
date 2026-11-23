@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { BranchName } from "@/components/app/BranchName";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
@@ -115,7 +116,7 @@ function PublicEventsPage() {
               data-testid="public-events-region-filter"
               value={search.region ?? ""}
               onChange={(e) => setSearch({ region: e.target.value || undefined })}
-              className="h-11 rounded-xl border border-input bg-background px-3 text-sm"
+              className="h-11 max-w-full rounded-xl border border-input bg-background px-3 text-sm"
             >
               <option value="">{t("publicEvents.allRegions")}</option>
               {(structure.data?.regions ?? []).map((r) => (
@@ -218,7 +219,7 @@ function PublicList({ events }: { events: PublicEvent[] }) {
       </p>
     );
   return (
-    <ul data-testid="public-events-list" className="grid gap-3 sm:grid-cols-2">
+    <ul data-testid="public-events-list" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {events.map((e) => (
         <li
           key={e.id}
@@ -238,7 +239,7 @@ function PublicList({ events }: { events: PublicEvent[] }) {
             <h2 className="text-lg font-semibold">{e.title}</h2>
             <p className="text-sm">{eventWhen(e, dateLocale())?.text}</p>
             <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              {publicWhere(e) && <span>{publicWhere(e)}</span>}
+              {publicWhere(e) && <BranchName name={publicWhere(e)} />}
               {e.location && (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="size-3.5" aria-hidden />

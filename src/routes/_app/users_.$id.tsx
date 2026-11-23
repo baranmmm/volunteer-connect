@@ -213,11 +213,11 @@ function UserDetails() {
         <h2 id="profile-h" className="text-xl font-semibold">
           {t("userDetails.profile")}
         </h2>
-        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           {rows.map(([k, v, testId]) => (
             <div key={k}>
               <dt className="text-muted-foreground">{k}</dt>
-              <dd data-testid={testId} className="font-medium break-words">
+              <dd data-testid={testId} className="font-medium [overflow-wrap:anywhere]">
                 {v}
               </dd>
             </div>

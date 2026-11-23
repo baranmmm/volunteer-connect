@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { BranchName } from "@/components/app/BranchName";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, CalendarDays, MapPin, Video, Building2 } from "lucide-react";
 import { eventWhen } from "@/lib/event-rules";
@@ -92,7 +93,7 @@ export function PublicEventDetail({
           className="max-h-96 w-full rounded-2xl object-cover"
         />
       )}
-      <dl className="grid gap-3 rounded-2xl border bg-card p-5 text-sm sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-5 text-sm sm:grid-cols-2">
         <div className="flex gap-2">
           <dt>
             <CalendarDays className="size-4 shrink-0" aria-hidden />
@@ -106,7 +107,9 @@ export function PublicEventDetail({
               <Building2 className="size-4 shrink-0" aria-hidden />
               <span className="sr-only">{t("publicEvents.branch")}</span>
             </dt>
-            <dd data-testid="public-event-branch">{publicWhere(event)}</dd>
+            <dd data-testid="public-event-branch" className="min-w-0">
+              <BranchName name={publicWhere(event)} />
+            </dd>
           </div>
         )}
         {event.location && (

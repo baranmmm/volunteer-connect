@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { BranchName } from "@/components/app/BranchName";
 import { useState, type FormEvent } from "react";
 import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,7 +133,7 @@ function ProfilePage() {
             className="h-12 rounded-xl"
           />
         </div>
-        <dl className="grid gap-4 border-t pt-5 text-sm sm:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-4 border-t pt-5 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-muted-foreground">{t("profile.email")}</dt>
             <dd data-testid="profile-email" className="font-medium break-all">
@@ -148,7 +149,7 @@ function ProfilePage() {
           <div>
             <dt className="text-muted-foreground">{t("profile.branch")}</dt>
             <dd data-testid="profile-branch" className="font-medium">
-              {profile.branches?.name ?? "—"}
+              {profile.branches?.name ? <BranchName name={profile.branches.name} /> : "—"}
             </dd>
           </div>
         </dl>

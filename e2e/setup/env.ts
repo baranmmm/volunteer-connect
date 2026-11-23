@@ -16,8 +16,14 @@ export function ncTotpSecret(): string | null {
   }
   return process.env["E2E_NC_TOTP_SECRET"]?.trim() || null;
 }
+/** E2E_LOCAL_PORT (local target only): this run's app port, for parallel local shards that each start a dev server. */
+function isLocalPort(): boolean {
+  return process.env["E2E_TARGET"] === "local" && /^\d{4,5}$/.test(process.env["E2E_LOCAL_PORT"]?.trim() ?? "");
+}
+// Sessions are tied to the app's origin: parallel local shards keep their own, next to the shared seed state.
+const SESSION_DIR = isLocalPort() ? path.join(AUTH_DIR, `port-${process.env["E2E_LOCAL_PORT"]!.trim()}`) : AUTH_DIR;
 /** storageState file written by setup/auth.setup.ts for a seeded role. */
-export const storageFile = (role: string) => path.join(AUTH_DIR, `${role}.json`);
+export const storageFile = (role: string) => path.join(SESSION_DIR, `${role}.json`);
 
 /** E2E_TARGET=local: the local Docker stack (`npm run local:up`) instead of the remote QA project. */
 export const isLocalTarget = () => process.env["E2E_TARGET"] === "local";
@@ -32,6 +38,9 @@ export const LOCAL_ENV_FILE = path.join(E2E_DIR, ".env.local");
 // .env, which points at production. Values already present in the environment (e.g. GitHub Actions secrets) win.
 // Locally the generated file wins over the shell, so a QA value exported in the terminal can never mix in.
 config(isLocalTarget() ? { path: LOCAL_ENV_FILE, override: true } : { path: path.join(E2E_DIR, ".env.qa") });
+// Parallel local shards (`--shard=n/3` at the same time) each need their own dev server: E2E_LOCAL_PORT moves the
+// local app to another localhost port. Local target only; QA and CI keep BASE_URL.
+if (isLocalPort()) process.env["BASE_URL"] = `http://localhost:${process.env["E2E_LOCAL_PORT"]!.trim()}`;
 
 export function requireEnv(name: string): string {
   const value = process.env[name]?.trim();

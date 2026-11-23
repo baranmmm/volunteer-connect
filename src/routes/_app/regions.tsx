@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { BranchName } from "@/components/app/BranchName";
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -166,7 +167,7 @@ function RegionsPage() {
                   {t("regions.regionEvents", { count: r.upcoming_events })}
                 </p>
               </div>
-              <ul className="grid gap-3 md:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {r.branches.map((b) => (
                   <li
                     key={b.id}
@@ -175,9 +176,9 @@ function RegionsPage() {
                     className="space-y-2 rounded-xl border p-4"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="flex items-center gap-2 font-semibold">
-                        <Building2 className="size-4 text-primary" aria-hidden />
-                        {b.name}
+                      <h3 className="flex min-w-0 items-center gap-2 font-semibold">
+                        <Building2 className="size-4 shrink-0 text-primary" aria-hidden />
+                        <BranchName name={b.name} />
                       </h3>
                       <div className="flex gap-1">
                         <Button

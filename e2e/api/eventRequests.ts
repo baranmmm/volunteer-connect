@@ -115,12 +115,17 @@ export async function createTempBranch(regionId: string, runId: string, label: s
   if (error) throw new Error(`create branch: ${error.message}`);
   return (data as { id: string }).id;
 }
-/** Removes a temporary branch: its requests and events go, remaining profiles move to `fallbackBranch` first. */
+/** Removes a temporary branch: its requests, events, series and volunteer applications go, remaining profiles move to `fallbackBranch` first. */
 export async function deleteTempBranch(id: string, fallbackBranch?: string): Promise<void> {
   const db = adminClient();
   const requests = await db.from("event_requests").select("id").eq("branch_id", id);
   await deleteRequests((requests.data ?? []).map((r: { id: string }) => r.id));
   await db.from("events").delete().eq("branch_id", id);
+  await db.from("event_series").delete().eq("branch_id", id);
+  // Volunteer applications reference the branch without ON DELETE (they would block the delete and leave the
+  // temporary branch, with its long name, on the shared QA database).
+  const apps = await db.from("volunteer_applications").delete().eq("branch_id", id);
+  if (apps.error) throw new Error(`delete volunteer applications: ${apps.error.message}`);
   const fallback = fallbackBranch ?? (await db.from("branches").select("id").not("name", "like", `${TEMP_BRANCH_PREFIX}%`).limit(1).single()).data?.id;
   if (fallback) await db.from("profiles").update({ branch_id: fallback }).eq("branch_id", id);
   const { error } = await db.from("branches").delete().eq("id", id);

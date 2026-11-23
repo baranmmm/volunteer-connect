@@ -95,7 +95,9 @@ export function FollowerCards() {
         </div>
         {open ? (
           <div className="space-y-2">
-            <p className="text-sm">{t("applications.openFor", { branch: open.branch })}</p>
+            <p className="text-sm [overflow-wrap:anywhere]">
+              {t("applications.openFor", { branch: open.branch })}
+            </p>
             <ApplicationStatusBadge status={open.status} />
           </div>
         ) : (
