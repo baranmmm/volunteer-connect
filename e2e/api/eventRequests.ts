@@ -2,6 +2,7 @@
 // role. Requests of fresh users are removed by the freshUser fixture and by teardown; titles start with
 // REQUEST_TITLE_PREFIX so leftovers of interrupted runs (and drafts created by approving them) can be found.
 import { adminClient, clientAs } from "./SupabaseClient";
+import { deleteWork } from "./work";
 
 export const REQUEST_TITLE_PREFIX = "E2E Request ";
 export const TEMP_BRANCH_PREFIX = "E2E Temp Branch ";
@@ -115,13 +116,18 @@ export async function createTempBranch(regionId: string, runId: string, label: s
   if (error) throw new Error(`create branch: ${error.message}`);
   return (data as { id: string }).id;
 }
-/** Removes a temporary branch: its requests, events, series and volunteer applications go, remaining profiles move to `fallbackBranch` first. */
+/** Removes a temporary branch: its requests, events, series, tasks, meetings and volunteer applications go, remaining profiles move to `fallbackBranch` first. */
 export async function deleteTempBranch(id: string, fallbackBranch?: string): Promise<void> {
   const db = adminClient();
   const requests = await db.from("event_requests").select("id").eq("branch_id", id);
   await deleteRequests((requests.data ?? []).map((r: { id: string }) => r.id));
   await db.from("events").delete().eq("branch_id", id);
   await db.from("event_series").delete().eq("branch_id", id);
+  // Tasks, meetings (files first) and task/meeting requests in the branch.
+  for (const table of ["task_requests", "meeting_requests"] as const) await db.from(table).delete().eq("branch_id", id);
+  const tasks = await db.from("tasks").select("id").eq("branch_id", id);
+  const meetings = await db.from("meetings").select("id").eq("branch_id", id);
+  await deleteWork({ tasks: (tasks.data ?? []).map((t) => t.id), meetings: (meetings.data ?? []).map((m) => m.id) });
   // Volunteer applications reference the branch without ON DELETE (they would block the delete and leave the
   // temporary branch, with its long name, on the shared QA database).
   const apps = await db.from("volunteer_applications").delete().eq("branch_id", id);

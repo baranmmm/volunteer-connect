@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { purgeEventRequest, purgeRecycleItem } from "./recycle-bin.server";
+import { purgeEventRequest, purgeMeeting, purgeRecycleItem } from "./recycle-bin.server";
 
 export const CLEANUP_EVENT_BATCH = 25;
 export const CLEANUP_FILE_BATCH = 100;
@@ -73,6 +73,24 @@ export async function cleanupDeletedEvents(client: SupabaseClient<Database>, now
         failed = true;
       }
     }
+    // Meetings past their 30 days that still have files (Storage first), then expired tasks and file-less meetings.
+    const expiredMeetings = await client
+      .from("meetings")
+      .select("id")
+      .lt("deleted_at", cutoff)
+      .order("deleted_at")
+      .order("id")
+      .limit(CLEANUP_EVENT_BATCH);
+    if (expiredMeetings.error) failed = true;
+    for (const meeting of expiredMeetings.data ?? []) {
+      try {
+        counts.files += (await purgeMeeting(client, meeting.id)).files;
+      } catch {
+        failed = true;
+      }
+    }
+    const work = await client.rpc("purge_expired_work_items");
+    if (work.error) failed = true;
     // Volunteer applications, and branches/regions nothing refers to any more (no files involved).
     const applications = await client.rpc("purge_expired_volunteer_applications");
     if (applications.error) throw new Error("Cleanup unavailable");

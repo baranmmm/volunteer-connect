@@ -2,8 +2,8 @@ import { CalendarDays, HandHeart, ListChecks, Users2, type LucideIcon } from "lu
 import { isOpenRequest, type RequestStatus } from "@/lib/event-requests";
 
 /**
- * What a member can request from /my-requests. Only events exist today; tasks and meetings are listed as
- * "Coming soon" and will plug in here with their own form and list.
+ * What a member can request from /requests: events, and tasks or meetings from someone higher in their chain
+ * (the database decides who; the cards are offered only when listRequestTargets returns someone).
  */
 /** volunteer: a follower's application to become a volunteer (the only kind available to followers). */
 export type RequestKind = {
@@ -13,8 +13,8 @@ export type RequestKind = {
 };
 export const REQUEST_KINDS: RequestKind[] = [
   { id: "event", icon: CalendarDays, enabled: true },
-  { id: "task", icon: ListChecks, enabled: false },
-  { id: "meeting", icon: Users2, enabled: false },
+  { id: "task", icon: ListChecks, enabled: true },
+  { id: "meeting", icon: Users2, enabled: true },
   { id: "volunteer", icon: HandHeart, enabled: true },
 ];
 

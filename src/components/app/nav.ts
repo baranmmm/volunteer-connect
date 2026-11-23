@@ -18,6 +18,7 @@ import {
 import type { AppRole } from "@/lib/auth";
 import { DONATE_URL } from "@/lib/config";
 
+export type NavBadge = "requests" | "tasks" | "meetings";
 export type NavItem = {
   to: string;
   testId: string;
@@ -25,7 +26,8 @@ export type NavItem = {
   icon: LucideIcon;
   /** Roles that see the item (and may open the page); every role when absent. */
   roles?: AppRole[];
-  badge?: "requests";
+  /** A count next to the item (unread notices; pending event requests for managers). */
+  badge?: NavBadge;
   /** An external link (opens in a new tab). */
   href?: string;
 };
@@ -51,6 +53,7 @@ export const NAV_ITEMS: NavItem[] = [
     testId: "nav-tasks",
     labelKey: "navigation.tasks",
     icon: ListChecks,
+    badge: "tasks",
     roles: MEMBERS,
   },
   {
@@ -58,6 +61,7 @@ export const NAV_ITEMS: NavItem[] = [
     testId: "nav-meetings",
     labelKey: "navigation.meetings",
     icon: Users2,
+    badge: "meetings",
     roles: MEMBERS,
   },
   { to: "/media", testId: "nav-media", labelKey: "navigation.media", icon: Image, roles: MEMBERS },
@@ -88,7 +92,8 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: "navigation.requests",
     icon: Inbox,
     badge: "requests",
-    roles: ["follower", "volunteer", "branch_manager", "regional_director"],
+    // Followers: their volunteer application. National Coordinators: task and meeting requests sent to them.
+    roles: ["follower", ...MEMBERS],
   },
   {
     to: "/users",

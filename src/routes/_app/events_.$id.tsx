@@ -36,6 +36,7 @@ import { CategoryIcon } from "@/components/events/EventCard";
 import { HappeningNowBadge } from "@/components/events/HappeningNowBadge";
 import { ExternalBadge } from "@/components/events/ExternalBadge";
 import { PublicBadge } from "@/components/events/PublicBadge";
+import { EventLinkedTasks } from "@/components/tasks/EventLinkedTasks";
 import { PublicEventDetail } from "@/components/public/PublicEventDetail";
 import { getPublicEvent } from "@/lib/public-events.functions";
 import { RecurringScopeDialog, type SeriesMode } from "@/components/events/RecurringScopeDialog";
@@ -435,6 +436,7 @@ function MemberEventDetail() {
       )}
       <RegistrationPanel event={event} now={now} />
       {canManage && <ManagerRegistrations event={event} now={now} />}
+      {canManage && <EventLinkedTasks eventId={event.id} />}
       {canManage && (
         <section className="space-y-3 border-t pt-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">

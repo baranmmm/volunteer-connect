@@ -38,6 +38,7 @@ vi.mock("@/lib/delete-event.functions", () => ({
 }));
 vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn() } }));
 vi.mock("@/components/events/EventForm", () => ({ EventForm: () => null }));
+vi.mock("@/components/tasks/EventLinkedTasks", () => ({ EventLinkedTasks: () => null }));
 vi.mock("@/components/events/EventRegistration", () => ({
   RegistrationPanel: () => null,
   ManagerRegistrations: () => null,

@@ -2080,6 +2080,7 @@ export type Database = {
       }
       list_my_notifications: { Args: { p_limit?: number }; Returns: Json }
       list_my_task_requests: { Args: Record<PropertyKey, never>; Returns: Json }
+      list_my_work_scopes: { Args: Record<PropertyKey, never>; Returns: Json }
       list_request_targets: { Args: Record<PropertyKey, never>; Returns: Json }
       list_task_people: {
         Args: { p_branch?: string; p_region?: string; p_scope: string }

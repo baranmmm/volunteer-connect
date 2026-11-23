@@ -116,7 +116,11 @@ describe("roles and menus", () => {
     }
     expect(forbiddenItem("follower", "/requests")).toBeFalsy();
     expect(navItemsFor("national_coordinator").map((i) => i.testId)).toContain("nav-regions");
-    expect(forbiddenItem("national_coordinator", "/requests")).toBeTruthy();
+    // National Coordinators open Requests to decide task and meeting requests sent to them.
+    expect(forbiddenItem("national_coordinator", "/requests")).toBeFalsy();
+    expect(
+      navItemsFor("follower").find((i) => i.badge === "tasks" || i.badge === "meetings"),
+    ).toBeUndefined();
     expect(forbiddenItem("regional_director", "/regions")).toBeTruthy();
     expect(navItemsFor("volunteer").find((i) => i.testId === "nav-donate")?.href).toBe(
       "https://www.dialoguesociety.org/donation/",
