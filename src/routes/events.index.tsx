@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BranchName } from "@/components/app/BranchName";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   addMonths,
@@ -331,12 +331,33 @@ function PublicMonth({ events }: { events: PublicEvent[] }) {
 function Subscribe({ branch }: { branch?: string | undefined }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  // A floating panel: Escape or a click outside closes it (Escape returns focus to the button).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      toggle.current?.focus();
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
   const path = `/api/ics${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`;
   const https = `${window.location.origin}${path}`;
   const webcal = https.replace(/^https?:/, "webcal:");
   return (
-    <div className="relative">
+    <div className="relative" ref={box}>
       <Button
+        ref={toggle}
         type="button"
         variant="outline"
         size="sm"
