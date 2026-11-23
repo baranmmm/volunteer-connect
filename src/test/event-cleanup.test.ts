@@ -6,7 +6,7 @@ import { cleanupAuthorized, cleanupDeletedEvents } from '@/lib/event-cleanup.ser
 function client(events: { id: string }[] = [{ id: 'expired-event' }], users: { id: string }[] = [], requests = 0) {
   const rpc = vi.fn().mockResolvedValueOnce({ data: { paths: ['deleted/expired-event/image.png'], deleted: false }, error: null }).mockResolvedValueOnce({ data: { paths: [], deleted: true }, error: null });
   // purge_expired_series and purge_expired_event_requests answer separately so the event/user call sequence stays as asserted.
-  const clientRpc = vi.fn((name: string, args?: unknown) => name === 'purge_expired_series' ? Promise.resolve({ data: 0, error: null }) : name === 'purge_expired_event_requests' ? Promise.resolve({ data: requests, error: null }) : rpc(name, args));
+  const clientRpc = vi.fn((name: string, args?: unknown) => ['purge_expired_series', 'purge_expired_volunteer_applications', 'purge_expired_structure'].includes(name) ? Promise.resolve({ data: 0, error: null }) : name === 'purge_expired_event_requests' ? Promise.resolve({ data: requests, error: null }) : rpc(name, args));
   const remove = vi.fn().mockResolvedValue({ error: null });
   const query = { lt: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: events, error: null }) };
   const eq = vi.fn().mockResolvedValue({ error: null });

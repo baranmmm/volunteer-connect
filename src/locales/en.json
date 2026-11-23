@@ -26,14 +26,17 @@
     "roles": {
       "regional_director": "Regional Director",
       "branch_manager": "Branch Manager",
-      "volunteer": "Volunteer"
+      "volunteer": "Volunteer",
+      "follower": "Follower",
+      "national_coordinator": "National Coordinator"
     },
     "status": {
       "pending": "Pending",
       "active": "Active",
       "inactive": "Inactive"
     },
-    "hubName": "Volunteer Hub"
+    "hubName": "Volunteer Hub",
+    "opensInNewTab": "(opens in a new tab)"
   },
   "navigation": {
     "main": "Main",
@@ -55,7 +58,9 @@
     "inactiveText": "Please contact your Branch Manager if you think this is a mistake.",
     "recycleBin": "Recycle Bin",
     "requests": "Requests",
-    "myRequests": "My Requests"
+    "myRequests": "My Requests",
+    "regions": "Regions & branches",
+    "donate": "Donate"
   },
   "auth": {
     "heroTitle": "Bringing communities together, one conversation at a time.",
@@ -91,7 +96,9 @@
     "sendReset": "Send reset link",
     "setNewTitle": "Set a new password",
     "updatePassword": "Update password",
-    "passwordUpdated": "Password updated"
+    "passwordUpdated": "Password updated",
+    "followBranch": "Branch to follow",
+    "followBranchHelp": "You will see this branch's public events. You can follow more branches in your profile."
   },
   "dashboard": {
     "welcomeBack": "Welcome back",
@@ -121,7 +128,9 @@
     "noMatch": "No users match these filters.",
     "empty": "No users yet.",
     "viewDetails": "View details",
-    "viewDetailsFor": "View details for {{name}}"
+    "viewDetailsFor": "View details for {{name}}",
+    "volunteerCounts": "Volunteers by branch",
+    "branchCount": "{{branch}} ({{region}}): {{volunteers}} volunteers, {{followers}} followers"
   },
   "userDetails": {
     "confirmEventTitle": "Type the event title to confirm: {{title}}",
@@ -186,7 +195,9 @@
     "noNameText": "This user has no name on file, so they cannot be deleted from here.",
     "deleting": "Deleting…",
     "deletePermanently": "Delete permanently",
-    "userDeleted": "User deleted"
+    "userDeleted": "User deleted",
+    "newRegion": "Region",
+    "chooseRegion": "Choose a region"
   },
   "approvals": {
     "title": "Approvals",
@@ -229,7 +240,22 @@
     "requestDeletion": "Request deletion",
     "sending": "Sending…",
     "requestSent": "Deletion request sent",
-    "requestCancelled": "Deletion request cancelled"
+    "requestCancelled": "Deletion request cancelled",
+    "followedTitle": "Branches you follow",
+    "followedIntro": "You see the public events of the branches you follow. Keep at least one.",
+    "ownBranch": "your branch",
+    "unfollow": "Stop following {{branch}}",
+    "unfollowed": "Branch removed.",
+    "followBranch": "Follow branch",
+    "followed": "Branch added.",
+    "chooseBranchToFollow": "Choose a branch",
+    "coordinatorNote": "National Coordinators cannot delete their account in the app. Please contact the Dialogue Society office.",
+    "followerDeleteIntro": "Delete your account and personal information. This cannot be undone.",
+    "followerDeleteTitle": "Delete your account?",
+    "followerDeleteText": "Your account is deleted straight away and cannot be restored.",
+    "typeYourName": "Type your full name to confirm: {{name}}",
+    "deleteNow": "Delete my account",
+    "followerDeleted": "Your account has been deleted."
   },
   "history": {
     "title": "History",
@@ -278,7 +304,36 @@
     "deleteNotLogged": "Deletion could not be logged. The account has not been deleted.",
     "deleteFailedRecorded": "The account could not be deleted. The failed attempt was recorded; any related deletion request remains pending. Please try again.",
     "deleteFailedUnrecorded": "The account could not be deleted, and the failed attempt could not be recorded. Please try again.",
-    "deleteRequestNotCompleted": "The account was deleted and its history was saved, but the deletion request could not be marked completed."
+    "deleteRequestNotCompleted": "The account was deleted and its history was saved, but the deletion request could not be marked completed.",
+    "chooseFollowBranch": "Choose a branch to follow.",
+    "notFollower": "Only followers can apply to volunteer.",
+    "openApplication": "You already have an open application.",
+    "applicationClosed": "This application is no longer open.",
+    "applicantChanged": "The applicant is no longer a follower.",
+    "declineShort": "The reason must be at least 10 characters.",
+    "followOne": "Follow at least one branch.",
+    "branchNotFound": "Branch not found.",
+    "regionNotFound": "Region not found.",
+    "membersOnlyRequests": "Only members can request events.",
+    "noRegistrantDetails": "Registrant details are not available.",
+    "roleNotAssignable": "This role cannot be assigned in the app.",
+    "chooseRegion": "Choose a region.",
+    "assignBranchFirst": "Assign a branch first.",
+    "lastNc": "The last active National Coordinator cannot be removed.",
+    "ncCannotBeDeleted": "National Coordinators cannot be deleted in the app.",
+    "followersDeleteDirectly": "Followers delete their account in their profile.",
+    "mfaRequired": "Two-factor authentication is required.",
+    "nameMismatch": "The name does not match.",
+    "branchInUse": "This branch still has active users.",
+    "branchHasEvents": "This branch still has upcoming events.",
+    "regionInUse": "This region still has active users.",
+    "regionHasEvents": "This region still has upcoming events.",
+    "restoreRegionFirst": "Restore the region first.",
+    "structureHistory": "This item has history, so it stays archived.",
+    "regionExists": "A region with this name already exists.",
+    "branchExists": "A branch with this name already exists.",
+    "nameLength": "The name must be 2 to 80 characters.",
+    "dateRange": "Choose at most 12 months."
   },
   "events": {
     "title": "Calendar & Events",
@@ -474,7 +529,18 @@
       "all": "All events"
     },
     "external": "External",
-    "organisedBy": "Organised by {{organizer}}"
+    "organisedBy": "Organised by {{organizer}}",
+    "allBranches": "All branches",
+    "followedBranches": "Followed branches",
+    "branchScope": "Branches",
+    "national": "National (all regions)",
+    "public": "Public",
+    "visibleTo": "Visible to",
+    "audience": {
+      "members": "Members only",
+      "public": "Public (followers and website)"
+    },
+    "audienceHint": "Public events are shown to followers and on the website without signing in. Online links stay visible only to signed-in people."
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
@@ -484,13 +550,19 @@
       "all": "All",
       "event": "Events",
       "user": "Users",
-      "event_request": "Event requests"
+      "event_request": "Event requests",
+      "volunteer_application": "Volunteer applications",
+      "branch": "Branches",
+      "region": "Regions"
     },
     "types": {
       "event": "Event",
       "user": "User",
       "series": "Series",
-      "event_request": "Event request"
+      "event_request": "Event request",
+      "volunteer_application": "Volunteer application",
+      "branch": "Branch",
+      "region": "Region"
     },
     "item": "Item",
     "branchRegion": "Branch / Region",
@@ -748,7 +820,8 @@
     "kinds": {
       "event": "Event",
       "task": "Task",
-      "meeting": "Meeting"
+      "meeting": "Meeting",
+      "volunteer": "Volunteer application"
     },
     "newRequest": "New request",
     "comingSoon": "Coming soon",
@@ -787,5 +860,141 @@
       "invalidConsent": "Check your privacy preferences and try again."
     },
     "gateDeleteAccount": "Delete my account"
+  },
+  "mfa": {
+    "title": "Two-factor authentication",
+    "required": "National Coordinators must confirm their sign-in with an authenticator app.",
+    "setupIntro": "Scan the QR code with an authenticator app (for example Google Authenticator or Microsoft Authenticator), then enter the 6-digit code it shows.",
+    "setupStart": "Set up authenticator",
+    "qrAlt": "QR code for your authenticator app",
+    "manualKey": "Or enter this key manually:",
+    "code": "6-digit code",
+    "verify": "Verify",
+    "verifyIntro": "Enter the 6-digit code from your authenticator app.",
+    "wrongCode": "That code did not work. Check the time on your phone and try again.",
+    "on": "Two-factor authentication is on."
+  },
+  "publicEvents": {
+    "title": "Events",
+    "intro": "Upcoming public events of the Dialogue Society. Choose branches or a region, or subscribe to the calendar.",
+    "navLabel": "Public pages",
+    "signIn": "Sign in",
+    "privacyLink": "Privacy notice",
+    "filters": "Filters",
+    "region": "Region",
+    "allRegions": "All regions",
+    "branches": "Branches",
+    "allBranches": "All branches",
+    "view": "View",
+    "list": "List",
+    "month": "Month",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "empty": "No public events for this selection yet.",
+    "loadError": "Events could not be loaded. Please try again.",
+    "online": "Online event",
+    "when": "When",
+    "branch": "Branch",
+    "location": "Location",
+    "back": "All events",
+    "notFound": "This event is not available.",
+    "registerIntro": "Sign in or create an account to register for this event.",
+    "register": "Register",
+    "createAccount": "Create account",
+    "registration": {
+      "open": "Places available",
+      "full": "Full",
+      "closed": "Registration closed"
+    },
+    "subscribe": "Subscribe to calendar",
+    "subscribeApp": "Open in my calendar app",
+    "subscribeLink": "Calendar link:",
+    "subscribeGoogle": "Google Calendar: Other calendars → + → From URL, then paste the link.",
+    "subscribeOutlook": "Outlook: Add calendar → Subscribe from web, then paste the link."
+  },
+  "applications": {
+    "title": "Become a volunteer",
+    "intro": "Tell the branch why you would like to volunteer. Its Branch Manager will reply here.",
+    "branchHint": "You can apply to a branch you follow.",
+    "submit": "Send application",
+    "submitted": "Application sent.",
+    "fields": {
+      "branch": "Branch",
+      "motivation": "Why would you like to volunteer?",
+      "availability": "When are you available?",
+      "skills": "Skills and experience",
+      "phone": "Phone (optional)"
+    },
+    "errors": {
+      "branch": "Choose a branch.",
+      "motivation": "Please tell us why you would like to volunteer.",
+      "tooLong": "This is too long."
+    },
+    "status": {
+      "submitted": "Open",
+      "approved": "Approved",
+      "declined": "Declined",
+      "withdrawn": "Withdrawn"
+    },
+    "mine": "My volunteer applications",
+    "toBranch": "Volunteer application to {{branch}}",
+    "sentOn": "Sent on {{date}}",
+    "declineReason": "Reason: {{reason}}",
+    "withdraw": "Withdraw",
+    "withdrawn": "Application withdrawn.",
+    "delete": "Remove",
+    "deleted": "Application removed.",
+    "toReview": "Volunteer applications",
+    "decided": "Decided volunteer applications",
+    "approve": "Approve",
+    "approved": "Application approved: the applicant is now a volunteer.",
+    "decline": "Decline",
+    "declined": "Application declined.",
+    "declineReasonLabel": "Reason (at least 10 characters, the applicant will see it)",
+    "alreadyOpen": "You already have an open application.",
+    "onlyFollowers": "For followers who want to become volunteers.",
+    "followersApply": "Followers can apply to become a volunteer first.",
+    "becomeVolunteer": "Become a volunteer",
+    "becomeVolunteerText": "Volunteer with a branch you follow: help organise events and join members-only activities.",
+    "apply": "Apply",
+    "openFor": "Your application to {{branch}} is being reviewed."
+  },
+  "donate": {
+    "title": "Support our work",
+    "text": "Your donation helps the Dialogue Society bring communities together.",
+    "button": "Donate"
+  },
+  "nc": {
+    "overview": "National overview",
+    "stats": {
+      "regions": "Regions",
+      "branches": "Branches",
+      "volunteers": "Volunteers",
+      "followers": "Followers",
+      "upcoming_events": "Upcoming events",
+      "registrations_30d": "Registrations (last 30 days)",
+      "attended_30d": "Attended (last 30 days)",
+      "pending_requests": "Pending requests",
+      "open_applications": "Open volunteer applications"
+    }
+  },
+  "regions": {
+    "title": "Regions & branches",
+    "newRegion": "New region",
+    "newBranch": "New branch",
+    "renameTitle": "Rename",
+    "name": "Name",
+    "rename": "Rename {{name}}",
+    "delete": "Delete {{name}}",
+    "created": "Created.",
+    "saved": "Saved.",
+    "deleted": "Moved to the Recycle Bin.",
+    "directors": "Regional Directors",
+    "managers": "Branch Managers",
+    "nobody": "None yet",
+    "regionEvents": "{{count}} upcoming region-wide events",
+    "branchCounts": "{{volunteers}} volunteers · {{followers}} followers · {{events}} upcoming events",
+    "confirmDeleteRegion": "Delete {{name}} and its branches? It can be restored from the Recycle Bin for 30 days.",
+    "confirmDeleteBranch": "Delete {{name}}? It can be restored from the Recycle Bin for 30 days."
   }
 }

@@ -2,7 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, primaryRole } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
+import { FollowedBranches } from "@/components/app/FollowedBranches";
+import { MfaSetup, useMfaStatus } from "@/components/app/MfaGate";
 import { useTranslation } from "react-i18next";
 import { formatDate, isLang, setLanguage, translateError, type Lang } from "@/lib/i18n";
 import {
@@ -18,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { PrivacyPreferences } from "@/components/app/PrivacyPreferences";
-import { AccountDeletionDialog, useAccountDeletion } from "@/components/app/AccountDeletion";
+import { AccountDeletionDialog, FollowerDeleteDialog, useAccountDeletion } from "@/components/app/AccountDeletion";
 
 export const Route = createFileRoute("/_app/profile")({
   head: () => pageHead("Profile", "Manage your volunteer profile."),
@@ -26,11 +29,15 @@ export const Route = createFileRoute("/_app/profile")({
 });
 
 function ProfilePage() {
-  const { profile, roles, refresh } = useAuth();
+  const { profile, roles, refresh, session } = useAuth();
   const [busy, setBusy] = useState(false);
   const { t, i18n } = useTranslation();
-  const isDirector = roles.includes("regional_director");
-  const deletion = useAccountDeletion(profile?.id, !isDirector);
+  // Regional Directors and National Coordinators cannot be deleted in the app; followers delete their account directly.
+  const isDirector = roles.includes("regional_director") || isNationalCoordinator(roles);
+  const follower = isFollowerRoles(roles), nc = isNationalCoordinator(roles);
+  const [followerDeleting, setFollowerDeleting] = useState(false);
+  const mfa = useMfaStatus(nc, session?.user.id);
+  const deletion = useAccountDeletion(profile?.id, !isDirector && !follower);
   const { myRequest, setConfirmOpen, busy: deleteBusy, run: runDeletion } = deletion;
   if (!profile) return null;
 
@@ -158,6 +165,13 @@ function ProfilePage() {
           {busy ? t("common.saving") : t("common.save")}
         </Button>
       </form>
+      <FollowedBranches />
+      {nc && (
+        <section data-testid="profile-mfa" aria-labelledby="mfa-h" className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft">
+          <h2 id="mfa-h" className="text-xl font-semibold">{t("mfa.title")}</h2>
+          {mfa.data?.factorId ? <p data-testid="profile-mfa-on" className="text-sm">{t("mfa.on")}</p> : <MfaSetup onDone={() => void mfa.refetch()} />}
+        </section>
+      )}
       <PrivacyPreferences />
       <section
         aria-labelledby="delete-h"
@@ -168,8 +182,15 @@ function ProfilePage() {
         </h2>
         {isDirector ? (
           <p data-testid="profile-director-delete-note" className="text-sm text-muted-foreground">
-            {t("profile.directorNote")}
+            {t(nc ? "profile.coordinatorNote" : "profile.directorNote")}
           </p>
+        ) : follower ? (
+          <>
+            <p className="text-sm text-muted-foreground">{t("profile.followerDeleteIntro")}</p>
+            <Button variant="destructive" className="h-11 rounded-xl" data-testid="profile-delete-account-button" onClick={() => setFollowerDeleting(true)}>
+              {t("profile.deleteTitle")}
+            </Button>
+          </>
         ) : myRequest.isLoading ? (
           <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : myRequest.data ? (
@@ -202,6 +223,7 @@ function ProfilePage() {
         )}
       </section>
       <AccountDeletionDialog deletion={deletion} />
+      <FollowerDeleteDialog open={followerDeleting} onClose={() => setFollowerDeleting(false)} />
     </div>
   );
 }

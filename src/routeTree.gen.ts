@@ -23,10 +23,13 @@ import { Route as AppMeetingsRouteImport } from './routes/_app/meetings'
 import { Route as AppMyRequestsRouteImport } from './routes/_app/my-requests'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppRecycleBinRouteImport } from './routes/_app/recycle-bin'
+import { Route as AppRegionsRouteImport } from './routes/_app/regions'
 import { Route as AppRequestsRouteImport } from './routes/_app/requests'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTrainingRouteImport } from './routes/_app/training'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
+import { Route as ApiIcsRouteImport } from './routes/api/ics'
+import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as AppEventsIdRouteImport } from './routes/_app/events_.$id'
 import { Route as AppUsersIdRouteImport } from './routes/_app/users_.$id'
 import { Route as ApiPublicCleanupDeletedEventsRouteImport } from './routes/api/public/cleanup-deleted-events'
@@ -100,6 +103,11 @@ const AppRecycleBinRoute = AppRecycleBinRouteImport.update({
   path: '/recycle-bin',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppRegionsRoute = AppRegionsRouteImport.update({
+  id: '/regions',
+  path: '/regions',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppRequestsRoute = AppRequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -119,6 +127,16 @@ const AppUsersRoute = AppUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const ApiIcsRoute = ApiIcsRouteImport.update({
+  id: '/api/ics',
+  path: '/api/ics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsIndexRoute = EventsIndexRouteImport.update({
+  id: '/events/',
+  path: '/events/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppEventsIdRoute = AppEventsIdRouteImport.update({
   id: '/events_/$id',
@@ -151,10 +169,13 @@ export interface FileRoutesByFullPath {
   '/my-requests': typeof AppMyRequestsRoute
   '/profile': typeof AppProfileRoute
   '/recycle-bin': typeof AppRecycleBinRoute
+  '/regions': typeof AppRegionsRoute
   '/requests': typeof AppRequestsRoute
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
   '/users': typeof AppUsersRoute
+  '/api/ics': typeof ApiIcsRoute
+  '/events/': typeof EventsIndexRoute
   '/events/$id': typeof AppEventsIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
@@ -173,10 +194,13 @@ export interface FileRoutesByTo {
   '/my-requests': typeof AppMyRequestsRoute
   '/profile': typeof AppProfileRoute
   '/recycle-bin': typeof AppRecycleBinRoute
+  '/regions': typeof AppRegionsRoute
   '/requests': typeof AppRequestsRoute
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
   '/users': typeof AppUsersRoute
+  '/api/ics': typeof ApiIcsRoute
+  '/events': typeof EventsIndexRoute
   '/events/$id': typeof AppEventsIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
@@ -197,10 +221,13 @@ export interface FileRoutesById {
   '/_app/my-requests': typeof AppMyRequestsRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/recycle-bin': typeof AppRecycleBinRoute
+  '/_app/regions': typeof AppRegionsRoute
   '/_app/requests': typeof AppRequestsRoute
   '/_app/tasks': typeof AppTasksRoute
   '/_app/training': typeof AppTrainingRoute
   '/_app/users': typeof AppUsersRoute
+  '/api/ics': typeof ApiIcsRoute
+  '/events/': typeof EventsIndexRoute
   '/_app/events_/$id': typeof AppEventsIdRoute
   '/_app/users_/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
@@ -221,10 +248,13 @@ export interface FileRouteTypes {
     | '/my-requests'
     | '/profile'
     | '/recycle-bin'
+    | '/regions'
     | '/requests'
     | '/tasks'
     | '/training'
     | '/users'
+    | '/api/ics'
+    | '/events/'
     | '/events/$id'
     | '/users/$id'
     | '/api/public/cleanup-deleted-events'
@@ -243,10 +273,13 @@ export interface FileRouteTypes {
     | '/my-requests'
     | '/profile'
     | '/recycle-bin'
+    | '/regions'
     | '/requests'
     | '/tasks'
     | '/training'
     | '/users'
+    | '/api/ics'
+    | '/events'
     | '/events/$id'
     | '/users/$id'
     | '/api/public/cleanup-deleted-events'
@@ -266,10 +299,13 @@ export interface FileRouteTypes {
     | '/_app/my-requests'
     | '/_app/profile'
     | '/_app/recycle-bin'
+    | '/_app/regions'
     | '/_app/requests'
     | '/_app/tasks'
     | '/_app/training'
     | '/_app/users'
+    | '/api/ics'
+    | '/events/'
     | '/_app/events_/$id'
     | '/_app/users_/$id'
     | '/api/public/cleanup-deleted-events'
@@ -281,6 +317,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiIcsRoute: typeof ApiIcsRoute
+  EventsIndexRoute: typeof EventsIndexRoute
   ApiPublicCleanupDeletedEventsRoute: typeof ApiPublicCleanupDeletedEventsRoute
 }
 
@@ -384,6 +422,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRecycleBinRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/regions': {
+      id: '/_app/regions'
+      path: '/regions'
+      fullPath: '/regions'
+      preLoaderRoute: typeof AppRegionsRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/requests': {
       id: '/_app/requests'
       path: '/requests'
@@ -411,6 +456,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/users'
       preLoaderRoute: typeof AppUsersRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/api/ics': {
+      id: '/api/ics'
+      path: '/api/ics'
+      fullPath: '/api/ics'
+      preLoaderRoute: typeof ApiIcsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/': {
+      id: '/events/'
+      path: '/events'
+      fullPath: '/events/'
+      preLoaderRoute: typeof EventsIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/events_/$id': {
       id: '/_app/events_/$id'
@@ -446,6 +505,7 @@ interface AppRouteRouteChildren {
   AppMyRequestsRoute: typeof AppMyRequestsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppRecycleBinRoute: typeof AppRecycleBinRoute
+  AppRegionsRoute: typeof AppRegionsRoute
   AppRequestsRoute: typeof AppRequestsRoute
   AppTasksRoute: typeof AppTasksRoute
   AppTrainingRoute: typeof AppTrainingRoute
@@ -464,6 +524,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppMyRequestsRoute: AppMyRequestsRoute,
   AppProfileRoute: AppProfileRoute,
   AppRecycleBinRoute: AppRecycleBinRoute,
+  AppRegionsRoute: AppRegionsRoute,
   AppRequestsRoute: AppRequestsRoute,
   AppTasksRoute: AppTasksRoute,
   AppTrainingRoute: AppTrainingRoute,
@@ -482,6 +543,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiIcsRoute: ApiIcsRoute,
+  EventsIndexRoute: EventsIndexRoute,
   ApiPublicCleanupDeletedEventsRoute: ApiPublicCleanupDeletedEventsRoute,
 }
 export const routeTree = rootRouteImport

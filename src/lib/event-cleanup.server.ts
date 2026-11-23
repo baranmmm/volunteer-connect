@@ -43,6 +43,11 @@ export async function cleanupDeletedEvents(client: SupabaseClient<Database>, now
         counts.requests += purged.requests; counts.files += purged.files;
       } catch { failed = true; }
     }
+    // Volunteer applications, and branches/regions nothing refers to any more (no files involved).
+    const applications = await client.rpc('purge_expired_volunteer_applications');
+    if (applications.error) throw new Error('Cleanup unavailable');
+    const structure = await client.rpc('purge_expired_structure');
+    if (structure.error) throw new Error('Cleanup unavailable');
     const requests = await client.rpc('purge_expired_event_requests');
     if (requests.error) failed = true; else counts.requests += requests.data ?? 0;
   } catch { failed = true; }

@@ -20,7 +20,7 @@ export function validateEventForm(fields: EventFormFields, status: string, optio
     if (online) { if (!onlineUrl) errors['online-url'] = 'events.fieldRequired'; }
     else if (!fields.location.trim()) errors['location'] = 'events.fieldRequired';
     if (!EVENT_CATEGORIES.some(c => c === fields.category)) errors['category'] = 'events.fieldRequired';
-    if (!['branch', 'region'].includes(fields.scope)) errors['scope'] = 'events.fieldRequired';
+    if (!['branch', 'region', 'national'].includes(fields.scope)) errors['scope'] = 'events.fieldRequired';
     if (fields.scope === 'branch' && !fields.branch) errors['branch'] = 'events.fieldRequired';
   }
   if (allDay) {

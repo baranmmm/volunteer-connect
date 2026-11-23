@@ -27,8 +27,8 @@ export async function setStatus(userId: string, status: "active" | "inactive") {
   if (error) throw error;
 }
 
-export async function setRole(userId: string, role: "volunteer" | "branch_manager") {
-  const { error } = await supabase.rpc("set_user_role", { _target: userId, _role: role });
+export async function setRole(userId: string, role: "volunteer" | "branch_manager" | "regional_director", regionId?: string) {
+  const { error } = await supabase.rpc("set_user_role", { _target: userId, _role: role, ...(regionId ? { _region: regionId } : {}) });
   if (error) throw error;
 }
 
@@ -44,6 +44,17 @@ export async function fetchDirectorBranches(userId: string) {
   const result = await supabase.from("branches").select("id, name").eq("region_id", role.region_id).order("name");
   if (result.error) throw result.error;
   return result.data ?? [];
+}
+
+/** National Coordinators: every branch and region (to move Branch Managers and assign Regional Directors). */
+export async function fetchAllBranchesAndRegions() {
+  const [branches, regions] = await Promise.all([
+    supabase.from("branches").select("id, name, region_id").order("name"),
+    supabase.from("regions").select("id, name").order("name"),
+  ]);
+  if (branches.error) throw branches.error;
+  if (regions.error) throw regions.error;
+  return { branches: branches.data ?? [], regions: regions.data ?? [] };
 }
 
 export async function fetchHistory(userId: string, offset = 0) {

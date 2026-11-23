@@ -121,8 +121,4 @@ export function useAuth() {
   return ctx;
 }
 
-export function primaryRole(roles: AppRole[]): AppRole {
-  if (roles.includes("regional_director")) return "regional_director";
-  if (roles.includes("branch_manager")) return "branch_manager";
-  return "volunteer";
-}
+export { ROLE_RANK, primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";

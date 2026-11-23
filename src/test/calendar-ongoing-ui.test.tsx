@@ -21,7 +21,7 @@ import { setLanguage } from '@/lib/i18n';
 import { Route } from '@/routes/_app/calendar';
 
 const Component = (Route as unknown as { options: { component: () => ReactNode } }).options.component;
-const ongoing: HubEvent = { id: 'ongoing', title: 'Ongoing gathering', description: '', location: 'London', organizer: 'Dialogue Society', category: 'dialogue', start_at: '2026-11-21T12:00:00Z', end_at: '2026-11-21T14:00:00Z', capacity: null, registration_enabled: true, is_external: false, scope: 'branch', branch_id: null, region_id: 'region', status: 'published', created_at: '', updated_at: '', created_by: null, deleted_at: null, deleted_by: null, all_day: false, start_date: null, end_date: null, location_type: 'in_person', online_url: null, series_id: null, recurrence_key: null, series_exception: false, series_template: false, deleted_with_series: false, media: [] };
+const ongoing: HubEvent = { id: 'ongoing', title: 'Ongoing gathering', description: '', location: 'London', organizer: 'Dialogue Society', category: 'dialogue', start_at: '2026-11-21T12:00:00Z', end_at: '2026-11-21T14:00:00Z', capacity: null, registration_enabled: true, is_external: false, audience: 'members', scope: 'branch', branch_id: null, region_id: 'region', status: 'published', created_at: '', updated_at: '', created_by: null, deleted_at: null, deleted_by: null, all_day: false, start_date: null, end_date: null, location_type: 'in_person', online_url: null, series_id: null, recurrence_key: null, series_exception: false, series_template: false, deleted_with_series: false, media: [] };
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-11-21T12:00:00Z'));

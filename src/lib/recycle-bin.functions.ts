@@ -1,12 +1,12 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireMember } from '@/lib/require-member';
-import { recycleItemInput, permanentDeleteInput, recycleRow } from './recycle-bin';
+import { recycleItemInput, permanentDeleteInput, recycleRow, DATABASE_ONLY_TYPES } from './recycle-bin';
 import { eventDeletionResult } from './event-deletion';
 
 export const listRecycleBin = createServerFn({ method: 'POST' })
   .middleware([requireMember])
-  .inputValidator(z.object({ type: z.enum(['all', 'event', 'user', 'event_request']), search: z.string().max(200), offset: z.number().int().min(0).max(1000000) }))
+  .inputValidator(z.object({ type: z.enum(['all', 'event', 'user', 'event_request', 'volunteer_application', 'branch', 'region']), search: z.string().max(200), offset: z.number().int().min(0).max(1000000) }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc('list_recycle_bin', { _type: data.type, _search: data.search, _offset: data.offset });
     if (result.error) throw new Error(result.error.message);
@@ -20,7 +20,7 @@ export const restoreRecycleItem = createServerFn({ method: 'POST' })
     const prepared = await context.supabase.rpc('restore_item', { _type: data.type, _id: data.id });
     if (prepared.error) throw new Error(prepared.error.message);
     // Event requests have no files or Auth account: restore_item already finished the restore.
-    if (data.type === 'event_request') return { ok: true };
+    if (data.type === 'event_request' || (DATABASE_ONLY_TYPES as readonly string[]).includes(data.type)) return { ok: true };
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     if (data.type === 'event' || data.type === 'series') {
       const { relocateEventFiles } = await import('./event-storage.server');
@@ -45,6 +45,8 @@ export const permanentlyDeleteRecycleItem = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const prepared = await context.supabase.rpc('permanent_delete_item', { _type: data.type, _id: data.id, _confirmation: data.confirmation });
     if (prepared.error) throw new Error(prepared.error.message);
+    // Applications, branches and regions have no files: the RPC deleted them (or refused).
+    if ((DATABASE_ONLY_TYPES as readonly string[]).includes(data.type)) return { ok: true };
     // Event requests without stored attachments are deleted by the RPC; otherwise remove the files, then the row.
     if (data.type === 'event_request') {
       if (eventDeletionResult.parse(prepared.data).deleted) return { ok: true };
@@ -61,6 +63,6 @@ export const permanentlyDeleteRecycleItem = createServerFn({ method: 'POST' })
       for (const id of events) await purgeRecycleItem(supabaseAdmin, 'event', id);
       const finished = await supabaseAdmin.rpc('finish_series_purge', { _series: data.id });
       if (finished.error) throw new Error(finished.error.message);
-    } else await purgeRecycleItem(supabaseAdmin, data.type, data.id);
+    } else if (data.type === 'event' || data.type === 'user') await purgeRecycleItem(supabaseAdmin, data.type, data.id);
     return { ok: true };
   });

@@ -2,7 +2,9 @@ import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-ro
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
-import { useAuth, primaryRole } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { primaryRole, isNationalCoordinator } from "@/lib/roles";
+import { useRegionsTree } from "@/lib/national";
 import { useTranslation } from "react-i18next";
 import { fetchMembers, fetchDirectorBranches } from "@/lib/members";
 import { filterMembers, canEditRoleOrBranch } from "@/lib/member-rules";
@@ -28,22 +30,29 @@ function UsersPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const uid = session?.user.id ?? "";
+  // National Coordinators list Regional Directors and Branch Managers; volunteers are numbers per branch.
+  const nc = isNationalCoordinator(roles);
   const director = canEditRoleOrBranch(profile?.status, roles);
-  const members = useQuery({ queryKey: ["members", uid], queryFn: () => fetchMembers(uid), enabled: !!uid && isManager });
+  const members = useQuery({ queryKey: ["members", uid], queryFn: () => fetchMembers(uid), enabled: !!uid && (isManager || nc) });
+  const tree = useRegionsTree(uid, nc);
   const branches = useQuery({ queryKey: ["director-branches", uid, director, profile?.branch_id], queryFn: () => fetchDirectorBranches(uid), enabled: !!uid && director });
   const [search, setSearch] = useState("");
   const [status, setStatusFilter] = useState("all");
   const [role, setRoleFilter] = useState("all");
   const [branch, setBranchFilter] = useState("all");
-  if (!isManager) return <Navigate to="/dashboard" replace />;
+  if (!isManager && !nc) return <Navigate to="/dashboard" replace />;
 
   const all = members.data ?? [];
   const filtered = filterMembers(all, { search, status, role, branch: director ? branch : "all" });
   const branchOptions = (branches.data ?? []).map((b) => ({ value: b.id, label: b.name }));
-  const roleOptions = [{ value: "volunteer", label: t("common.roles.volunteer") }, { value: "branch_manager", label: t("common.roles.branch_manager") }];
+  const roleOptions = nc ? [{ value: "branch_manager", label: t("common.roles.branch_manager") }, { value: "regional_director", label: t("common.roles.regional_director") }] : [{ value: "volunteer", label: t("common.roles.volunteer") }, { value: "branch_manager", label: t("common.roles.branch_manager") }];
 
   return <div className="space-y-6">
     <h1 className="text-3xl font-bold">{t("users.title")}</h1>
+    {nc && <section data-testid="users-branch-counts" aria-labelledby="users-counts-h" className="space-y-2 rounded-2xl border bg-card p-4">
+      <h2 id="users-counts-h" className="font-semibold">{t("users.volunteerCounts")}</h2>
+      <ul className="grid gap-1 text-sm sm:grid-cols-2">{(tree.data ?? []).flatMap((r) => r.branches.map((b) => <li key={b.id} data-testid="users-branch-count" data-branch-id={b.id} data-volunteers={b.volunteers}>{t("users.branchCount", { branch: b.name, region: r.name, volunteers: b.volunteers, followers: b.followers })}</li>))}</ul>
+    </section>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" aria-hidden /><Input data-testid="users-search-input" aria-label={t("users.search")} placeholder={t("users.search")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 pl-9" /></div>
       <Choice testId="users-filter-status" label={t("users.filterStatus")} value={status} onChange={setStatusFilter} options={[{ value: "all", label: t("users.allStatuses") }, ...STATUSES.map((value) => ({ value, label: t(`common.status.${value}`) }))]} />

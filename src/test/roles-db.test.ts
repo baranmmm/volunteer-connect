@@ -42,8 +42,9 @@ const one = async <T = Record<string, unknown>>(sql: string, params: unknown[] =
 const val = async <T = unknown>(sql: string, params: unknown[] = []) => Object.values((await one<Record<string, T>>(sql, params)))[0] as T;
 const sees = async (event: string) => val<boolean>("SELECT public.can_view_event($1)", [event]);
 
-let ev: Record<string, string> = {};
-async function event(key: string, fields: { scope: string; branch?: string | null; region?: string | null; status?: string; audience?: string; online?: boolean }) {
+type EventKey = "membersB1" | "publicB1" | "publicB3" | "draftPublicB1" | "nationalMembers" | "nationalPublic" | "upcomingB2";
+let ev = {} as Record<EventKey, string>;
+async function event(key: EventKey, fields: { scope: string; branch?: string | null; region?: string | null; status?: string; audience?: string; online?: boolean }) {
   const start = new Date(Date.now() + 7 * 86400000).toISOString();
   const end = new Date(Date.now() + 7 * 86400000 + 7200000).toISOString();
   const row = await one<{ id: string }>(
@@ -75,7 +76,7 @@ beforeAll(async () => {
     await db.query("INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ($1, $2, jsonb_build_object('full_name', $3::text, 'privacy_notice_version', $4::text, 'branch_id', $5::text, 'follower', true))",
       [ids[key], `${key}@example.test`, `Follower ${key}`, PRIVACY_VERSION, branch]);
   }
-  ev = {};
+  ev = {} as Record<EventKey, string>;
   await event("membersB1", { scope: "branch", branch: ids.b1, region: ids.r1 });
   await event("publicB1", { scope: "branch", branch: ids.b1, region: ids.r1, audience: "public", online: true });
   await event("publicB3", { scope: "branch", branch: ids.b3, region: ids.r2, audience: "public" });
@@ -202,7 +203,7 @@ describe("National Coordinators", () => {
     expect(await val("SELECT public.is_nc()")).toBe(false);
     await fails("SELECT public.get_nc_dashboard()", [], "Not allowed");
     await as("nc", "aal2");
-    for (const key of ["membersB1", "publicB3", "nationalMembers"]) expect(await sees(ev[key]!)).toBe(true);
+    for (const key of ["membersB1", "publicB3", "nationalMembers"] as const) expect(await sees(ev[key])).toBe(true);
     expect(await sees(ev.draftPublicB1!)).toBe(false);
     expect(await one("SELECT public.get_nc_dashboard() d")).toMatchObject({ d: { regions: expect.any(Number), followers: 2, open_applications: 0 } });
   }));

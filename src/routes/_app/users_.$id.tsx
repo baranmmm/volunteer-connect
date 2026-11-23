@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, ArrowRightLeft, Check, History, Sparkles, Trash2, UserCog, X } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { useAuth, primaryRole } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
+import { primaryRole, isNationalCoordinator } from "@/lib/roles";
 import { useTranslation } from "react-i18next";
 import { formatDate, translateError } from "@/lib/i18n";
-import { fetchMember, fetchMembers, fetchDirectorBranches, setStatus, setRole, setBranch } from "@/lib/members";
+import { fetchMember, fetchMembers, fetchDirectorBranches, fetchAllBranchesAndRegions, setStatus, setRole, setBranch } from "@/lib/members";
 import { canEditRoleOrBranch, deleteBlockReason, isLastBranchManager } from "@/lib/member-rules";
 import { MemberHistory } from "@/components/app/MemberHistory";
 import { DeleteUserDialog } from "@/components/app/DeleteUserDialog";
@@ -29,11 +30,16 @@ function UserDetails() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const director = canEditRoleOrBranch(profile?.status, roles);
+  // National Coordinators manage Regional Directors and Branch Managers anywhere (the database allows nothing else).
+  const nc = isNationalCoordinator(roles);
+  const director = canEditRoleOrBranch(profile?.status, roles) || nc;
+  const manager = isManager || nc;
   const members = useQuery({ queryKey: ["members", uid], queryFn: () => fetchMembers(uid), enabled: !!uid && director });
   // RLS only returns this profile when can_manage_user(auth.uid(), id) is true.
-  const member = useQuery({ queryKey: ["member", id], queryFn: () => fetchMember(id), enabled: isManager && id !== uid });
-  const branches = useQuery({ queryKey: ["director-branches", uid, director, profile?.branch_id], queryFn: () => fetchDirectorBranches(uid), enabled: !!uid && director });
+  const member = useQuery({ queryKey: ["member", id], queryFn: () => fetchMember(id), enabled: manager && id !== uid });
+  const branches = useQuery({ queryKey: ["director-branches", uid, director, profile?.branch_id], queryFn: async () => nc ? (await fetchAllBranchesAndRegions()).branches : fetchDirectorBranches(uid), enabled: !!uid && director });
+  const regions = useQuery({ queryKey: ["all-regions", uid], queryFn: async () => (await fetchAllBranchesAndRegions()).regions, enabled: !!uid && nc });
+  const [regionValue, setRegionValue] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [edit, setEdit] = useState<"role" | "branch" | null>(null);
   const [value, setValue] = useState("");
@@ -41,14 +47,14 @@ function UserDetails() {
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  if (!isManager) return <Navigate to="/dashboard" replace />;
+  if (!manager) return <Navigate to="/dashboard" replace />;
   if (id === uid || (member.isSuccess && !member.data)) return <div data-testid="user-details-not-allowed" className="space-y-4"><h1 className="text-3xl font-bold">{t("userDetails.notAllowedTitle")}</h1><p className="text-muted-foreground">{t("userDetails.notAllowedText")}</p><Button asChild variant="outline"><Link data-testid="user-details-back-link" to="/users"><ArrowLeft className="mr-2 h-4 w-4" />{t("userDetails.back")}</Link></Button></div>;
   if (member.isLoading) return <p data-testid="user-details-loading" className="text-muted-foreground">{t("common.loading")}</p>;
   if (member.isError || !member.data) return <div data-testid="user-details-load-error" role="alert"><p className="text-destructive">{t("userDetails.loadError")}</p><Button variant="outline" onClick={() => member.refetch()}>{t("common.retry")}</Button></div>;
   const m = member.data;
   const block = deleteBlockReason(m.status);
   const branchOptions = (branches.data ?? []).map((b) => ({ value: b.id, label: b.name }));
-  const roleOptions = [{ value: "volunteer", label: t("common.roles.volunteer") }, { value: "branch_manager", label: t("common.roles.branch_manager") }];
+  const roleOptions = [{ value: "volunteer", label: t("common.roles.volunteer") }, { value: "branch_manager", label: t("common.roles.branch_manager") }, ...(nc ? [{ value: "regional_director", label: t("common.roles.regional_director") }] : [])];
 
   async function refresh() {
     await Promise.all([qc.invalidateQueries({ queryKey: ["member", id] }), qc.invalidateQueries({ queryKey: ["members"] }), qc.invalidateQueries({ queryKey: ["member-history"] })]);
@@ -63,7 +69,7 @@ function UserDetails() {
     if (!edit || !value) return;
     setBusy(true); setError("");
     try {
-      if (edit === "role") { if (value !== "volunteer" && value !== "branch_manager") return; await setRole(m.id, value); }
+      if (edit === "role") { if (value !== "volunteer" && value !== "branch_manager" && value !== "regional_director") return; await setRole(m.id, value, value === "regional_director" ? regionValue || undefined : undefined); }
       else await setBranch(m.id, value);
       toast.success(edit === "role" ? t("userDetails.roleChanged") : t("userDetails.branchChanged")); setEdit(null); await refresh();
     } catch (e) { setError(translateError(e)); }
@@ -117,8 +123,9 @@ function UserDetails() {
         <Label>{edit === "role" ? t("userDetails.newRole") : t("userDetails.newBranch")}</Label>
         <Select value={value} onValueChange={setValue}><SelectTrigger data-testid={edit === "role" ? "change-role-select" : "move-branch-select"} aria-label={edit === "role" ? t("userDetails.newRole") : t("userDetails.newBranch")} className="h-11"><SelectValue /></SelectTrigger><SelectContent>{(edit === "role" ? roleOptions : branchOptions).map((o) => <SelectItem key={o.value} value={o.value} data-testid={edit === "role" ? `change-role-option-${o.value}` : `move-branch-option-${o.value}`}>{o.label}</SelectItem>)}</SelectContent></Select>
         {edit === "role" && value === "volunteer" && isLastBranchManager(m, members.data ?? []) && <p data-testid="last-manager-warning" role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">{t("userDetails.lastManager", { branch: m.branches?.name ?? t("userDetails.thisBranch") })}</p>}
+        {edit === "role" && value === "regional_director" && <><Label>{t("userDetails.newRegion")}</Label><Select value={regionValue} onValueChange={setRegionValue}><SelectTrigger data-testid="change-role-region-select" aria-label={t("userDetails.newRegion")} className="h-11"><SelectValue placeholder={t("userDetails.chooseRegion")} /></SelectTrigger><SelectContent>{(regions.data ?? []).map((r) => <SelectItem key={r.id} value={r.id} data-testid={`change-role-region-option-${r.id}`}>{r.name}</SelectItem>)}</SelectContent></Select></>}
         {error && <p data-testid="edit-dialog-error" role="alert" className="text-sm text-destructive">{error}</p>}
-        <DialogFooter className="gap-2"><Button data-testid="confirm-dialog-cancel-button" variant="outline" disabled={busy} onClick={() => setEdit(null)}>{t("common.cancel")}</Button><Button data-testid="confirm-dialog-confirm-button" disabled={busy || !value || (edit === "role" ? value === primaryRole(m.roles) : value === m.branch_id)} onClick={confirmEdit}>{busy ? t("common.saving") : t("userDetails.confirmChange")}</Button></DialogFooter>
+        <DialogFooter className="gap-2"><Button data-testid="confirm-dialog-cancel-button" variant="outline" disabled={busy} onClick={() => setEdit(null)}>{t("common.cancel")}</Button><Button data-testid="confirm-dialog-confirm-button" disabled={busy || !value || (edit === "role" ? (value === primaryRole(m.roles) && value !== "regional_director") || (value === "regional_director" && !regionValue) : value === m.branch_id)} onClick={confirmEdit}>{busy ? t("common.saving") : t("userDetails.confirmChange")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
     <MemberHistory member={historyOpen ? m : null} onClose={() => setHistoryOpen(false)} />

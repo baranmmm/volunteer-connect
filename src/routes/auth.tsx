@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRedirect } from "@/lib/use-redirect";
 import { useEffect, useState, type FormEvent } from "react";
@@ -27,16 +27,31 @@ export const Route = createFileRoute("/auth")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // ?redirect=/events/<id> returns there after signing in; ?mode=signup opens the sign-up form.
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; mode?: "signup" } => ({
+    ...(typeof search["redirect"] === "string" && safeRedirect(search["redirect"]) ? { redirect: search["redirect"] } : {}),
+    ...(search["mode"] === "signup" ? { mode: "signup" as const } : {}),
+  }),
   component: AuthPage,
 });
+
+/** Only in-app paths of public events (never another origin). */
+function safeRedirect(path: string) {
+  return /^\/events\/[0-9a-f-]{36}$/i.test(path);
+}
 
 type Mode = "signin" | "signup" | "forgot";
 
 function AuthPage() {
   const { session, loading } = useAuth();
-  const [mode, setMode] = useState<Mode>("signin");
+  const search = Route.useSearch();
+  const [mode, setMode] = useState<Mode>(search.mode === "signup" ? "signup" : "signin");
   const { t } = useTranslation();
-  useRedirect(!loading && !!session, "/dashboard");
+  const navigate = useNavigate();
+  useRedirect(!loading && !!session && !search.redirect, "/dashboard");
+  useEffect(() => {
+    if (!loading && session && search.redirect) void navigate({ to: search.redirect, replace: true });
+  }, [loading, session, search.redirect, navigate]);
   if (!loading && session) return null;
 
   return (
@@ -179,8 +194,8 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
         {mismatch && <p data-testid="auth-error-message" id="confirm-error" role="alert" className="text-sm font-medium text-destructive">{t("auth.passwordsDontMatch")}</p>}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="branch">{t("auth.branch")}</Label>
-        <select data-testid="auth-branch-select" id="branch" name="branch" required defaultValue="" className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+        <Label htmlFor="branch">{t("auth.followBranch")}</Label>
+        <select data-testid="signup-branch-select" aria-describedby="branch-help" id="branch" name="branch" required defaultValue="" className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
           <option value="" disabled>{t("auth.chooseBranch")}</option>
           {groups.map((g) => (
             <optgroup key={g.id} label={g.name}>
@@ -188,6 +203,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
             </optgroup>
           ))}
         </select>
+        <p id="branch-help" className="text-sm text-muted-foreground">{t("auth.followBranchHelp")}</p>
       </div>
       <fieldset className="space-y-3 rounded-xl border p-4">
         <legend className="px-1 text-sm font-medium">{t("privacy.signupLegend")}</legend>

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 const mocks = vi.hoisted(() => ({ data: {} as Record<string, unknown>, remove: vi.fn(), navigate: vi.fn(), invalidate: vi.fn(), removeQueries: vi.fn() }));
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: unknown) => ({ options, useParams: () => ({ id: 'event-id' }), useSearch: () => ({}) }),
+  createFileRoute: () => (options: unknown) => ({ options, useParams: () => ({ id: 'event-id' }), useSearch: () => ({}), useLoaderData: () => null }),
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
   useNavigate: () => mocks.navigate,
 }));
@@ -12,6 +12,7 @@ vi.mock('@tanstack/react-start', () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: mocks.data }), useQueryClient: () => ({ invalidateQueries: mocks.invalidate, removeQueries: mocks.removeQueries }) }));
 vi.mock('@/lib/auth', () => ({ useAuth: () => ({ session: { user: { id: 'user-id' } }, profile: { status: 'active' } }) }));
 vi.mock('@/lib/events.functions', () => ({ getEvent: vi.fn(), cancelEvent: vi.fn() }));
+vi.mock('@/lib/public-events.functions', () => ({ getPublicEvent: vi.fn() }));
 vi.mock('@/lib/delete-event.functions', () => ({ deleteEvent: mocks.remove, deleteSeries: vi.fn() }));
 vi.mock('@/lib/toast', () => ({ toast: { success: vi.fn() } }));
 vi.mock('@/components/events/EventForm', () => ({ EventForm: () => null }));

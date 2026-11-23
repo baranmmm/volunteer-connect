@@ -26,11 +26,11 @@ describe("unified Requests views", () => {
     expect(requestViewSearch({ tab: "mine" })).toEqual({ tab: "mine" });
     expect(requestViewSearch({ tab: "invalid" })).toEqual({});
   });
-  it("offers exactly one Requests destination to every role", () => {
+  it("offers exactly one Requests destination to followers and members", () => {
     const items = NAV_ITEMS.filter((item) => item.to.includes("requests"));
     expect(items).toHaveLength(1);
     expect(items[0]?.to).toBe("/requests");
-    expect(items[0]?.managerOnly).toBeUndefined();
+    expect(items[0]?.roles).toEqual(["follower", "volunteer", "branch_manager", "regional_director"]); // NCs see request numbers on their dashboard
     expect(items[0]?.badge).toBe("requests");
   });
 });
