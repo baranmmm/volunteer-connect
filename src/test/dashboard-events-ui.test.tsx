@@ -113,7 +113,7 @@ describe("dashboard event cards", () => {
     ).not.toBeNull();
     expect(screen.queryAllByTestId("dashboard-upcoming-event-item")).toHaveLength(0);
   });
-  it("labels every upcoming row with its status, including cancelled within 7 days", () => {
+  it("never lists cancelled events, even within 7 days", () => {
     mocks.rows = [
       { ...base, id: "pub" },
       {
@@ -126,11 +126,6 @@ describe("dashboard event cards", () => {
     ];
     render(<Component />);
     const rows = screen.getAllByTestId("dashboard-upcoming-event-item");
-    expect(rows.map((r) => r.getAttribute("data-event-id"))).toEqual(["pub", "cxl"]);
-    expect(
-      rows.map((r) =>
-        r.querySelector('[data-testid="event-status-badge"]')?.getAttribute("data-status"),
-      ),
-    ).toEqual(["published", "cancelled"]);
+    expect(rows.map((r) => r.getAttribute("data-event-id"))).toEqual(["pub"]);
   });
 });

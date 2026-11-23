@@ -1,4 +1,4 @@
-import { eventStart, eventTimeState, isScheduled, londonDate } from "@/lib/event-rules";
+import { eventStart, eventTimeState, isScheduled } from "@/lib/event-rules";
 import type { HubEvent } from "@/lib/event-rules";
 
 /** What the UI shows. `live` is a published event that is happening now. */
@@ -15,8 +15,6 @@ export function eventDisplayStatus(event: StatusEvent, now = new Date()): EventD
 }
 
 export const DASHBOARD_LIMIT = 5;
-export const CANCELLED_WINDOW_DAYS = 7;
-const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Start as a sortable instant; all-day dates sort at the start of their day, as in the calendar list. */
@@ -26,18 +24,9 @@ function startMs(event: StatusEvent) {
   return DATE_ONLY.test(start) ? Date.parse(`${start}T00:00:00Z`) : Date.parse(start);
 }
 
-/** Cancelled events stay on the dashboard only when they start within the next 7 days (or are still running). */
-function cancelledInWindow(event: StatusEvent, now: Date) {
-  const start = eventStart(event);
-  if (!start) return false;
-  const limit = new Date(now.getTime() + CANCELLED_WINDOW_DAYS * DAY_MS);
-  if (DATE_ONLY.test(start)) return londonDate(start) <= londonDate(limit);
-  return Date.parse(start) <= limit.getTime();
-}
-
 /**
  * Dashboard "Upcoming events": the nearest published events the user can see (RLS already filters what is
- * returned), plus cancelled ones within the next 7 days. Events happening now come first, then by start.
+ * returned). Events happening now come first, then by start.
  */
 export function upcomingDashboardEvents<T extends StatusEvent & { id: string }>(
   events: T[],
@@ -45,12 +34,7 @@ export function upcomingDashboardEvents<T extends StatusEvent & { id: string }>(
   limit = DASHBOARD_LIMIT,
 ): T[] {
   return events
-    .filter(
-      (e) =>
-        isScheduled(e) &&
-        !eventTimeState(e, now).past &&
-        (e.status === "published" || (e.status === "cancelled" && cancelledInWindow(e, now))),
-    )
+    .filter((e) => isScheduled(e) && !eventTimeState(e, now).past && e.status === "published")
     .map((e) => ({ e, live: eventTimeState(e, now).happeningNow, start: startMs(e) }))
     .sort(
       (a, b) =>

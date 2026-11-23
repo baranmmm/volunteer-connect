@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { BranchName } from "@/components/app/BranchName";
 import { useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { listEvents } from "@/lib/events.functions";
+import { eventTimeState, isScheduled } from "@/lib/event-rules";
 import { useTranslation } from "react-i18next";
 import { Building2, Network, Pencil, Plus, Trash2 } from "lucide-react";
 import { pageHead } from "@/components/app/head";
@@ -38,6 +41,26 @@ function RegionsPage() {
   const { session, roles } = useAuth();
   const nc = isNationalCoordinator(roles);
   const tree = useRegionsTree(session?.user.id, nc);
+  // Region-wide events only (scope = region), not the sum of branch events; same cache as the calendar.
+  const { profile } = useAuth();
+  const fetchEvents = useServerFn(listEvents);
+  const events = useQuery({
+    queryKey: ["events", session?.user.id, profile?.status],
+    queryFn: () => fetchEvents(),
+    enabled: nc && profile?.status === "active",
+    staleTime: 240000,
+  });
+  const regionWide = (regionId: string) => {
+    const now = new Date();
+    return (events.data ?? []).filter(
+      (e) =>
+        e.scope === "region" &&
+        e.region_id === regionId &&
+        e.status === "published" &&
+        isScheduled(e) &&
+        !eventTimeState(e, now).past,
+    ).length;
+  };
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Editing>(null);
   const [busy, setBusy] = useState(false);
@@ -164,7 +187,7 @@ function RegionsPage() {
                   {people(r.directors, "regions-tree-director")}
                 </div>
                 <p className="text-muted-foreground">
-                  {t("regions.regionEvents", { count: r.upcoming_events })}
+                  {t("regions.regionEvents", { count: regionWide(r.id) })}
                 </p>
               </div>
               <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">

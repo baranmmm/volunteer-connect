@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { HandHeart, HeartHandshake, Network } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { useNcDashboard } from "@/lib/national";
+import { useNcDashboard, useRegionsTree } from "@/lib/national";
 import { useMyApplications } from "@/lib/volunteer-applications";
 import { DONATE_URL } from "@/lib/config";
 import { translateError } from "@/lib/i18n";
@@ -17,7 +17,17 @@ import {
 export function NcDashboard() {
   const { t } = useTranslation();
   const { session } = useAuth();
-  const stats = useNcDashboard(session?.user.id, true);
+  const raw = useNcDashboard(session?.user.id, true);
+  // Volunteers = users with the volunteer role only, the same totals as "Volunteers by branch".
+  const tree = useRegionsTree(session?.user.id, true);
+  const volunteers = tree.data?.reduce(
+    (sum, r) => sum + r.branches.reduce((s, b) => s + b.volunteers, 0),
+    0,
+  );
+  const stats = {
+    ...raw,
+    data: raw.data && { ...raw.data, volunteers: volunteers ?? raw.data.volunteers },
+  };
   const keys = [
     "regions",
     "branches",

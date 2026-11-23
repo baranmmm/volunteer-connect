@@ -335,7 +335,7 @@ function Subscribe({ branch }: { branch?: string | undefined }) {
   const https = `${window.location.origin}${path}`;
   const webcal = https.replace(/^https?:/, "webcal:");
   return (
-    <div className="space-y-2">
+    <div className="relative">
       <Button
         type="button"
         variant="outline"
@@ -350,7 +350,7 @@ function Subscribe({ branch }: { branch?: string | undefined }) {
       {open && (
         <div
           data-testid="public-events-subscribe-panel"
-          className="max-w-xl space-y-2 rounded-xl border bg-background p-3 text-sm"
+          className="absolute left-0 top-full sm:left-auto sm:right-0 z-50 mt-2 w-[min(28rem,calc(100vw-4.5rem))] space-y-2 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg"
         >
           <Button asChild size="sm">
             <a data-testid="public-events-subscribe-webcal" href={webcal}>
