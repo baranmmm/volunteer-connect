@@ -118,4 +118,15 @@ test.describe("Privacy notice", () => {
     await page.getByTestId("privacy-gate-signout").click();
     await expect(page).toHaveURL(/\/auth$/);
   });
+
+  test("the notice is shown in Turkish (same version) when the app is in Turkish", async ({ freshUser, pageAs }) => {
+    const page = await pageAs(await freshUser({ language: "tr" }), { language: "tr" });
+    await page.goto("/privacy");
+    const notice = page.getByTestId("privacy-notice");
+    await expect(notice).toHaveAttribute("data-lang", "tr", { timeout: 30_000 });
+    await expect(notice).toHaveAttribute("lang", "tr");
+    await expect(notice.locator("table")).toHaveCount(2);
+    const { data: version } = await adminClient().rpc("privacy_notice_version");
+    await expect(notice.locator("p").first()).toContainText(`${version} ·`);
+  });
 });

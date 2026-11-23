@@ -39,7 +39,7 @@ beforeAll(async () => {
   await initializeRecycleDatabase(db);
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.branch}','Branch','${ids.region}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','User','privacy_notice_version','1.1','photo_consent',true)
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','User','privacy_notice_version','1.2','photo_consent',true)
       FROM unnest(ARRAY['${ids.bm}','${ids.vol}','${ids.other}']::uuid[]) x;
     UPDATE profiles SET status='active', branch_id='${ids.branch}';
     UPDATE user_roles SET role='branch_manager' WHERE user_id='${ids.bm}';`);
@@ -47,11 +47,15 @@ beforeAll(async () => {
 afterAll(async () => db.close());
 
 describe("privacy notice (database)", () => {
-  it("the version in src/content/privacy-notice.md is the one the database requires", async () => {
+  it("the version in src/content/privacy-notice.md (and its Turkish translation) is the one the database requires", async () => {
     const md = readFileSync("src/content/privacy-notice.md", "utf8");
     const version = (await db.query<{ v: string }>("SELECT public.privacy_notice_version() v"))
       .rows[0]!.v;
     expect(md).toContain(`Version ${version} ·`);
+    // The Turkish translation carries the same version.
+    expect(readFileSync("src/content/privacy-notice.tr.md", "utf8")).toContain(
+      `Sürüm ${version} ·`,
+    );
   });
 
   it("sign-up is refused without the current version; choices are recorded with it", () =>
@@ -67,12 +71,12 @@ describe("privacy notice (database)", () => {
         "Privacy notice must be accepted",
       );
       await db.query(
-        'INSERT INTO auth.users(id, raw_user_meta_data) VALUES ($1, \'{"privacy_notice_version":"1.1","updates_email_consent":true}\'::jsonb)',
+        'INSERT INTO auth.users(id, raw_user_meta_data) VALUES ($1, \'{"privacy_notice_version":"1.2","updates_email_consent":true}\'::jsonb)',
         [ids.fresh],
       );
       expect(await status(ids.fresh)).toMatchObject({
-        current_version: "1.1",
-        accepted_version: "1.1",
+        current_version: "1.2",
+        accepted_version: "1.2",
         current_accepted: true,
         photo_consent: false,
         updates_email_consent: true,
@@ -91,7 +95,7 @@ describe("privacy notice (database)", () => {
         [],
         "Privacy notice version is out of date",
       );
-      await db.query("SELECT public.accept_privacy_notice('1.1')"); // idempotent
+      await db.query("SELECT public.accept_privacy_notice('1.2')"); // idempotent
       const before = await status(ids.vol);
       await as(ids.vol);
       await db.query("SELECT public.set_consent_preferences(true, true)");
@@ -117,7 +121,7 @@ describe("privacy notice (database)", () => {
         { user_id: ids.vol },
       ]);
       await fails(
-        "INSERT INTO public.privacy_notice_acceptances(user_id, notice_version) VALUES ($1,'1.1')",
+        "INSERT INTO public.privacy_notice_acceptances(user_id, notice_version) VALUES ($1,'1.2')",
         [ids.other],
         "permission denied",
       );
@@ -149,7 +153,7 @@ describe("privacy notice (database)", () => {
       expect((await db.query("SELECT id FROM public.events")).rows).toHaveLength(0);
       expect((await status(ids.bm))["current_accepted"]).toBe(false);
       await as(ids.bm);
-      await db.query("SELECT public.accept_privacy_notice('1.1')");
+      await db.query("SELECT public.accept_privacy_notice('1.2')");
       expect((await db.query("SELECT id FROM public.events")).rows).toHaveLength(1);
     }));
 
@@ -202,7 +206,7 @@ describe("privacy notice (database)", () => {
         [ids.vol],
         "Privacy notice not accepted",
       );
-      await db.query("SELECT public.accept_privacy_notice('1.1')");
+      await db.query("SELECT public.accept_privacy_notice('1.2')");
       await db.query("SELECT public.set_user_status($1, 'active')", [ids.vol]);
     }));
 

@@ -75,9 +75,9 @@ beforeAll(async () => {
   const members = [ids.rd, ids.bm1, ids.vol1, ids.vol1b, ids.vol2, ids.bm2, ids.nc, ids.vol3];
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region'),('${ids.region2}','Region two');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}'),('${ids.b3}','Three','${ids.region2}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.1')
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.2')
       FROM unnest(ARRAY['${members.join("','")}']::uuid[]) x;
-    INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${ids.follower}', jsonb_build_object('full_name','Follower','privacy_notice_version','1.1','follower',true,'branch_id','${ids.b1}'));
+    INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${ids.follower}', jsonb_build_object('full_name','Follower','privacy_notice_version','1.2','follower',true,'branch_id','${ids.b1}'));
     UPDATE profiles SET status='active';
     UPDATE profiles SET branch_id='${ids.b1}' WHERE id IN ('${ids.bm1}','${ids.vol1}','${ids.vol1b}');
     UPDATE profiles SET branch_id='${ids.b2}' WHERE id IN ('${ids.vol2}','${ids.bm2}');
