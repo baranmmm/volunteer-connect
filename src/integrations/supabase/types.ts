@@ -136,6 +136,60 @@ export type Database = {
           },
         ]
       }
+      email_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          notification_id: string | null
+          payload: NonNullable<Json>
+          sent_at: string | null
+          status: string
+          template: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          notification_id?: string | null
+          payload?: NonNullable<Json>
+          sent_at?: string | null
+          status?: string
+          template: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          notification_id?: string | null
+          payload?: NonNullable<Json>
+          sent_at?: string | null
+          status?: string
+          template?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_outbox_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_audit_log: {
         Row: {
           action: string
@@ -854,6 +908,446 @@ export type Database = {
           },
         ]
       }
+      meeting_agenda_items: {
+        Row: {
+          created_at: string
+          id: string
+          meeting_id: string
+          notes: string | null
+          position: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meeting_id: string
+          notes?: string | null
+          position: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          notes?: string | null
+          position?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_agenda_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_decisions: {
+        Row: {
+          agenda_item_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          meeting_id: string
+          text: string
+        }
+        Insert: {
+          agenda_item_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meeting_id: string
+          text: string
+        }
+        Update: {
+          agenda_item_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          meeting_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_decisions_agenda_item_id_fkey"
+            columns: ["agenda_item_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_agenda_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_decisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_decisions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_files: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          meeting_id: string
+          original_name: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          meeting_id: string
+          original_name: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          meeting_id?: string
+          original_name?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_files_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_files_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_invitees: {
+        Row: {
+          created_at: string
+          invited_by: string | null
+          meeting_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          invited_by?: string | null
+          meeting_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          invited_by?: string | null
+          meeting_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_invitees_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_invitees_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_invitees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_requests: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          decline_reason: string | null
+          id: string
+          meeting_id: string | null
+          note: string | null
+          proposed_times: NonNullable<Json>
+          region_id: string | null
+          requester_id: string | null
+          reviewed_at: string | null
+          scope: string
+          status: string
+          target_id: string | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          meeting_id?: string | null
+          note?: string | null
+          proposed_times?: NonNullable<Json>
+          region_id?: string | null
+          requester_id?: string | null
+          reviewed_at?: string | null
+          scope: string
+          status?: string
+          target_id?: string | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          meeting_id?: string | null
+          note?: string | null
+          proposed_times?: NonNullable<Json>
+          region_id?: string | null
+          requester_id?: string | null
+          reviewed_at?: string | null
+          scope?: string
+          status?: string
+          target_id?: string | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_requests_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_requests_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_requests_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          ends_at: string
+          id: string
+          location: string | null
+          location_type: string
+          online_url: string | null
+          purge_requested_at: string | null
+          region_id: string | null
+          scope: string
+          source_request_id: string | null
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          ends_at: string
+          id?: string
+          location?: string | null
+          location_type?: string
+          online_url?: string | null
+          purge_requested_at?: string | null
+          region_id?: string | null
+          scope: string
+          source_request_id?: string | null
+          starts_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          ends_at?: string
+          id?: string
+          location?: string | null
+          location_type?: string
+          online_url?: string | null
+          purge_requested_at?: string | null
+          region_id?: string | null
+          scope?: string
+          source_request_id?: string | null
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          task_reminder_emails: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          task_reminder_emails?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          task_reminder_emails?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          kind: string
+          link: string
+          payload: NonNullable<Json>
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          kind: string
+          link: string
+          payload?: NonNullable<Json>
+          read_at?: string | null
+          title?: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          kind?: string
+          link?: string
+          payload?: NonNullable<Json>
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       privacy_notice_acceptances: {
         Row: {
           accepted_at: string
@@ -998,6 +1492,318 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      task_assignees: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          reminders_muted: boolean
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          reminders_muted?: boolean
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          reminders_muted?: boolean
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_reminder_log: {
+        Row: {
+          created_at: string
+          day: string
+          kind: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          kind: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          kind?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_reminder_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_reminder_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_requests: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          decline_reason: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          region_id: string | null
+          requester_id: string | null
+          reviewed_at: string | null
+          scope: string
+          status: string
+          target_id: string | null
+          task_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          region_id?: string | null
+          requester_id?: string | null
+          reviewed_at?: string | null
+          scope: string
+          status?: string
+          target_id?: string | null
+          task_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          region_id?: string | null
+          requester_id?: string | null
+          reviewed_at?: string | null
+          scope?: string
+          status?: string
+          target_id?: string | null
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_requests_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          branch_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          decision_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          due_date: string | null
+          event_id: string | null
+          id: string
+          meeting_id: string | null
+          overdue_every_days: number | null
+          priority: string
+          region_id: string | null
+          remind_before_days: number[]
+          repeat_every_days: number | null
+          repeat_kind: string
+          repeat_start: string | null
+          scope: string
+          self_task: boolean
+          source_request_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          overdue_every_days?: number | null
+          priority?: string
+          region_id?: string | null
+          remind_before_days?: number[]
+          repeat_every_days?: number | null
+          repeat_kind?: string
+          repeat_start?: string | null
+          scope: string
+          self_task?: boolean
+          source_request_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          decision_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          overdue_every_days?: number | null
+          priority?: string
+          region_id?: string | null
+          remind_before_days?: number[]
+          repeat_every_days?: number | null
+          repeat_kind?: string
+          repeat_start?: string | null
+          scope?: string
+          self_task?: boolean
+          source_request_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_audit_log: {
         Row: {
@@ -1221,6 +2027,11 @@ export type Database = {
     }
     Functions: {
       accept_privacy_notice: { Args: { p_version: string }; Returns: Json }
+      accept_task_request: { Args: { p_id: string }; Returns: string }
+      add_agenda_item: {
+        Args: { p_meeting: string; p_notes?: string; p_title: string }
+        Returns: string
+      }
       add_event_media: {
         Args: {
           _event: string
@@ -1239,9 +2050,25 @@ export type Database = {
         }
         Returns: Json
       }
+      add_meeting_decision: {
+        Args: { p_item: string; p_text: string }
+        Returns: string
+      }
+      add_meeting_file: {
+        Args: {
+          p_extension: string
+          p_meeting: string
+          p_original_name: string
+        }
+        Returns: Json
+      }
       approve_event_request: {
         Args: { p_audience?: string; p_id: string }
         Returns: Json
+      }
+      approve_meeting_request: {
+        Args: { p_id: string; p_meeting: Json }
+        Returns: string
       }
       approve_volunteer_application: {
         Args: { p_id: string }
@@ -1256,6 +2083,16 @@ export type Database = {
         Returns: string
       }
       branch_delete_check: { Args: { _branch: string }; Returns: undefined }
+      can_create_meeting: {
+        Args: { _branch: string; _region: string; _scope: string }
+        Returns: boolean
+      }
+      can_create_task: {
+        Args: { _branch: string; _region: string; _scope: string }
+        Returns: boolean
+      }
+      can_edit_meeting: { Args: { _meeting: string }; Returns: boolean }
+      can_edit_task: { Args: { _task: string }; Returns: boolean }
       can_manage_deleted_user: {
         Args: { _actor: string; _target: string }
         Returns: boolean
@@ -1275,6 +2112,7 @@ export type Database = {
       }
       can_read_event_file: { Args: { _path: string }; Returns: boolean }
       can_read_event_request_file: { Args: { _path: string }; Returns: boolean }
+      can_read_meeting_file: { Args: { _path: string }; Returns: boolean }
       can_restore_event: { Args: { _event: string }; Returns: boolean }
       can_review_event_request: {
         Args: { _r: Database["public"]["Tables"]["event_requests"]["Row"] }
@@ -1284,14 +2122,18 @@ export type Database = {
         Args: { _branch: string }
         Returns: boolean
       }
+      can_set_task_status: { Args: { _task: string }; Returns: boolean }
       can_view_event: { Args: { _event: string }; Returns: boolean }
       can_view_event_media: { Args: { _event: string }; Returns: boolean }
+      can_view_meeting: { Args: { _meeting: string }; Returns: boolean }
       can_view_series: { Args: { _series: string }; Returns: boolean }
+      can_view_task: { Args: { _task: string }; Returns: boolean }
       can_write_event_file: { Args: { _path: string }; Returns: boolean }
       can_write_event_request_file: {
         Args: { _path: string }
         Returns: boolean
       }
+      can_write_meeting_file: { Args: { _path: string }; Returns: boolean }
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       cancel_registration: { Args: { p_event_id: string }; Returns: Json }
@@ -1301,9 +2143,19 @@ export type Database = {
         Returns: string
       }
       create_event: { Args: { _data: Json }; Returns: string }
+      create_meeting: { Args: { p: Json }; Returns: string }
       create_region: { Args: { p_name: string }; Returns: string }
       create_series: { Args: { _data: Json; _rule: string }; Returns: Json }
+      create_task: { Args: { p: Json }; Returns: string }
       decline_event_request: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      decline_meeting_request: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      decline_task_request: {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
@@ -1311,6 +2163,7 @@ export type Database = {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      delete_agenda_item: { Args: { p_id: string }; Returns: undefined }
       delete_branch: { Args: { p_id: string }; Returns: undefined }
       delete_event: {
         Args: { _complete?: boolean; _event: string; _title?: string }
@@ -1322,8 +2175,12 @@ export type Database = {
         Args: { p_media_id: string }
         Returns: undefined
       }
+      delete_meeting: { Args: { p_id: string }; Returns: undefined }
+      delete_meeting_decision: { Args: { p_id: string }; Returns: undefined }
+      delete_meeting_file: { Args: { p_id: string }; Returns: undefined }
       delete_region: { Args: { p_id: string }; Returns: undefined }
       delete_series: { Args: { _event: string; _mode: string }; Returns: Json }
+      delete_task: { Args: { p_id: string }; Returns: undefined }
       delete_volunteer_application: {
         Args: { p_id: string }
         Returns: undefined
@@ -1504,7 +2361,9 @@ export type Database = {
       }
       get_event_request: { Args: { p_id: string }; Returns: Json }
       get_event_request_duplicates: { Args: { p_id: string }; Returns: Json }
+      get_event_tasks: { Args: { p_event: string }; Returns: Json }
       get_followed_branches: { Args: never; Returns: Json }
+      get_meeting: { Args: { p_id: string }; Returns: Json }
       get_my_registrations: {
         Args: never
         Returns: {
@@ -1523,7 +2382,12 @@ export type Database = {
           waitlist_position: number
         }[]
       }
+      get_my_task_summary: { Args: never; Returns: Json }
       get_nc_dashboard: { Args: never; Returns: Json }
+      get_notification_preferences: {
+        Args: never
+        Returns: Json
+      }
       get_pending_event_request_count: { Args: never; Returns: Json }
       get_privacy_status: { Args: never; Returns: Json }
       get_public_event: { Args: { p_id: string }; Returns: Json }
@@ -1539,6 +2403,11 @@ export type Database = {
         Returns: Json
       }
       get_regions_tree: { Args: never; Returns: Json }
+      get_task: { Args: { p_id: string }; Returns: Json }
+      get_unread_notification_counts: {
+        Args: never
+        Returns: Json
+      }
       get_user_audit_history: {
         Args: { _offset?: number; _target: string }
         Returns: {
@@ -1553,6 +2422,10 @@ export type Database = {
       get_user_branch: { Args: { _user_id: string }; Returns: string }
       get_user_region: { Args: { _user_id: string }; Returns: string }
       get_volunteer_application_count: { Args: never; Returns: number }
+      get_work_request_count: {
+        Args: never
+        Returns: number
+      }
       has_accepted_privacy_notice: { Args: never; Returns: boolean }
       has_any_role: {
         Args: {
@@ -1568,7 +2441,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      in_work_scope: {
+        Args: {
+          _branch: string
+          _region: string
+          _scope: string
+          _user: string
+        }
+        Returns: boolean
+      }
       is_active_nc: { Args: { _uid: string }; Returns: boolean }
+      is_active_person: { Args: { _uid: string }; Returns: boolean }
+      is_branch_member: {
+        Args: { _branch: string; _uid: string }
+        Returns: boolean
+      }
       is_follower: { Args: { _uid: string }; Returns: boolean }
       is_member: { Args: { _uid: string }; Returns: boolean }
       is_nc: { Args: never; Returns: boolean }
@@ -1576,6 +2463,7 @@ export type Database = {
         Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
         Returns: boolean
       }
+      json_uuid_array: { Args: { p: Json }; Returns: string[] }
       list_deleted_events: {
         Args: { _offset?: number }
         Returns: {
@@ -1596,8 +2484,27 @@ export type Database = {
         Args: { p_offset?: number; p_status?: string }
         Returns: Json
       }
+      list_meeting_people: {
+        Args: { p_branch?: string; p_region?: string; p_scope: string }
+        Returns: Json
+      }
+      list_meeting_requests_to_review: {
+        Args: { p_filter?: string }
+        Returns: Json
+      }
+      list_meetings: {
+        Args: { p_limit?: number; p_when?: string }
+        Returns: Json
+      }
       list_my_event_requests: { Args: never; Returns: Json }
+      list_my_meeting_requests: {
+        Args: never
+        Returns: Json
+      }
+      list_my_notifications: { Args: { p_limit?: number }; Returns: Json }
+      list_my_task_requests: { Args: never; Returns: Json }
       list_my_volunteer_applications: { Args: never; Returns: Json }
+      list_my_work_scopes: { Args: never; Returns: Json }
       list_recycle_bin: {
         Args: { _offset?: number; _search?: string; _type?: string }
         Returns: {
@@ -1616,6 +2523,16 @@ export type Database = {
           type: string
         }[]
       }
+      list_request_targets: { Args: never; Returns: Json }
+      list_task_people: {
+        Args: { p_branch?: string; p_region?: string; p_scope: string }
+        Returns: Json
+      }
+      list_task_requests_to_review: {
+        Args: { p_filter?: string }
+        Returns: Json
+      }
+      list_tasks: { Args: never; Returns: Json }
       list_volunteer_applications: {
         Args: { p_filter?: string }
         Returns: Json
@@ -1627,6 +2544,146 @@ export type Database = {
       mark_attendance: {
         Args: { p_registration_id: string; p_status: string }
         Returns: undefined
+      }
+      mark_notifications_read: {
+        Args: { p_entity_id?: string; p_entity_type?: string; p_id?: string }
+        Returns: number
+      }
+      meeting_editable: { Args: { _meeting: string }; Returns: undefined }
+      meeting_fields: {
+        Args: {
+          _m: Database["public"]["Tables"]["meetings"]["Row"]
+          p: Json
+        }
+        Returns: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          ends_at: string
+          id: string
+          location: string | null
+          location_type: string
+          online_url: string | null
+          purge_requested_at: string | null
+          region_id: string | null
+          scope: string
+          source_request_id: string | null
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meetings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      meeting_insert: {
+        Args: {
+          _branch: string
+          _invitees: string[]
+          _region: string
+          _scope: string
+          _source: string
+          p: Json
+        }
+        Returns: string
+      }
+      meeting_json: {
+        Args: {
+          _m: Database["public"]["Tables"]["meetings"]["Row"]
+        }
+        Returns: Json
+      }
+      meeting_locked: {
+        Args: { _id: string }
+        Returns: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          ends_at: string
+          id: string
+          location: string | null
+          location_type: string
+          online_url: string | null
+          purge_requested_at: string | null
+          region_id: string | null
+          scope: string
+          source_request_id: string | null
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meetings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      meeting_request_json: {
+        Args: {
+          _r: Database["public"]["Tables"]["meeting_requests"]["Row"]
+        }
+        Returns: Json
+      }
+      meeting_request_locked: {
+        Args: { _id: string }
+        Returns: {
+          branch_id: string | null
+          created_at: string
+          decline_reason: string | null
+          id: string
+          meeting_id: string | null
+          note: string | null
+          proposed_times: NonNullable<Json>
+          region_id: string | null
+          requester_id: string | null
+          reviewed_at: string | null
+          scope: string
+          status: string
+          target_id: string | null
+          topic: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meeting_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      meeting_set_invitees: {
+        Args: {
+          _ids: string[]
+          _m: Database["public"]["Tables"]["meetings"]["Row"]
+        }
+        Returns: string[]
+      }
+      move_agenda_item: {
+        Args: { p_direction: number; p_id: string }
+        Returns: undefined
+      }
+      notify: {
+        Args: {
+          _entity_id: string
+          _entity_type: string
+          _kind: string
+          _link: string
+          _payload?: Json
+          _title: string
+          _user: string
+        }
+        Returns: string
       }
       open_series: { Args: { _series: string }; Returns: Json }
       other_active_nc_exists: { Args: { _except: string }; Returns: boolean }
@@ -1664,11 +2721,20 @@ export type Database = {
       purge_expired_series: { Args: never; Returns: number }
       purge_expired_structure: { Args: never; Returns: number }
       purge_expired_volunteer_applications: { Args: never; Returns: number }
+      purge_expired_work_items: {
+        Args: never
+        Returns: number
+      }
+      purge_meeting: {
+        Args: { _finalize?: boolean; _id: string }
+        Returns: Json
+      }
       purge_structure_item: {
         Args: { _id: string; _type: string }
         Returns: Json
       }
       purge_volunteer_application_item: { Args: { _id: string }; Returns: Json }
+      purge_work_item: { Args: { _id: string; _type: string }; Returns: Json }
       record_privacy_choices: {
         Args: { _photo: boolean; _updates: boolean; _user: string }
         Returns: undefined
@@ -1718,6 +2784,14 @@ export type Database = {
         Returns: undefined
       }
       request_account_deletion: { Args: never; Returns: string }
+      request_scope_of: {
+        Args: { _requester: string }
+        Returns: Record<string, unknown>
+      }
+      request_target_ok: {
+        Args: { _requester: string; _target: string }
+        Returns: boolean
+      }
       require_nc: { Args: never; Returns: undefined }
       require_privacy_accepted: { Args: never; Returns: undefined }
       restore_event: {
@@ -1732,6 +2806,12 @@ export type Database = {
       }
       restore_structure: { Args: { _id: string; _type: string }; Returns: Json }
       restore_volunteer_application: { Args: { _id: string }; Returns: Json }
+      restore_work_item: { Args: { _id: string; _type: string }; Returns: Json }
+      run_task_reminders: { Args: { p_now?: string }; Returns: number }
+      scope_people: {
+        Args: { _branch: string; _region: string; _scope: string }
+        Returns: Json
+      }
       series_expand: {
         Args: {
           _dtstart: string
@@ -1762,9 +2842,22 @@ export type Database = {
         Args: { p_photo_consent: boolean; p_updates_email_consent: boolean }
         Returns: Json
       }
+      set_meeting_status: {
+        Args: { p_id: string; p_status: string }
+        Returns: string
+      }
       set_registration_show_name: {
         Args: { p_event_id: string; p_show_name: boolean }
         Returns: undefined
+      }
+      set_task_reminder_emails: { Args: { p_on: boolean }; Returns: boolean }
+      set_task_reminder_mute: {
+        Args: { p_id: string; p_muted: boolean }
+        Returns: boolean
+      }
+      set_task_status: {
+        Args: { p_id: string; p_status: string }
+        Returns: string
       }
       set_user_branch: {
         Args: { _branch: string; _target: string }
@@ -1791,8 +2884,173 @@ export type Database = {
         Returns: boolean
       }
       submit_event_request: { Args: { p: Json }; Returns: string }
+      submit_meeting_request: { Args: { p: Json }; Returns: string }
+      submit_task_request: { Args: { p: Json }; Returns: string }
       submit_volunteer_application: { Args: { p: Json }; Returns: string }
+      task_assignee_ok: {
+        Args: {
+          _branch: string
+          _region: string
+          _scope: string
+          _user: string
+        }
+        Returns: boolean
+      }
+      task_fields: {
+        Args: {
+          _t: Database["public"]["Tables"]["tasks"]["Row"]
+          p: Json
+        }
+        Returns: {
+          branch_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          decision_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          due_date: string | null
+          event_id: string | null
+          id: string
+          meeting_id: string | null
+          overdue_every_days: number | null
+          priority: string
+          region_id: string | null
+          remind_before_days: number[]
+          repeat_every_days: number | null
+          repeat_kind: string
+          repeat_start: string | null
+          scope: string
+          self_task: boolean
+          source_request_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tasks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      task_insert: {
+        Args: {
+          _assignees: string[]
+          _branch: string
+          _region: string
+          _scope: string
+          _source: string
+          p: Json
+        }
+        Returns: string
+      }
+      task_json: {
+        Args: {
+          _t: Database["public"]["Tables"]["tasks"]["Row"]
+        }
+        Returns: Json
+      }
+      task_locked: {
+        Args: { _id: string }
+        Returns: {
+          branch_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          decision_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          due_date: string | null
+          event_id: string | null
+          id: string
+          meeting_id: string | null
+          overdue_every_days: number | null
+          priority: string
+          region_id: string | null
+          remind_before_days: number[]
+          repeat_every_days: number | null
+          repeat_kind: string
+          repeat_start: string | null
+          scope: string
+          self_task: boolean
+          source_request_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tasks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      task_reminder_kind: {
+        Args: {
+          _day: string
+          _t: Database["public"]["Tables"]["tasks"]["Row"]
+        }
+        Returns: string
+      }
+      task_request_json: {
+        Args: {
+          _r: Database["public"]["Tables"]["task_requests"]["Row"]
+        }
+        Returns: Json
+      }
+      task_request_locked: {
+        Args: { _id: string }
+        Returns: {
+          branch_id: string | null
+          created_at: string
+          decline_reason: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          region_id: string | null
+          requester_id: string | null
+          reviewed_at: string | null
+          scope: string
+          status: string
+          target_id: string | null
+          task_id: string | null
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "task_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      task_set_assignees: {
+        Args: {
+          _ids: string[]
+          _t: Database["public"]["Tables"]["tasks"]["Row"]
+        }
+        Returns: string[]
+      }
+      task_status_notice: {
+        Args: {
+          _old: string
+          _t: Database["public"]["Tables"]["tasks"]["Row"]
+        }
+        Returns: undefined
+      }
+      task_visible_to: {
+        Args: { _task: string; _uid: string }
+        Returns: boolean
+      }
       unfollow_branch: { Args: { p_branch_id: string }; Returns: undefined }
+      update_agenda_item: {
+        Args: { p_id: string; p_notes?: string; p_title: string }
+        Returns: undefined
+      }
       update_event: {
         Args: { _data: Json; _event: string }
         Returns: undefined
@@ -1801,14 +3059,28 @@ export type Database = {
         Args: { p: Json; p_id: string }
         Returns: undefined
       }
+      update_meeting: { Args: { p: Json; p_id: string }; Returns: string }
+      update_meeting_decision: {
+        Args: { p_id: string; p_text: string }
+        Returns: undefined
+      }
       update_series_event: {
         Args: { _data: Json; _event: string; _mode: string; _rule?: string }
         Returns: Json
       }
+      update_task: { Args: { p: Json; p_id: string }; Returns: string }
+      wants_task_reminder_emails: { Args: { _user: string }; Returns: boolean }
       withdraw_event_request: { Args: { p_id: string }; Returns: undefined }
+      withdraw_meeting_request: { Args: { p_id: string }; Returns: undefined }
+      withdraw_task_request: { Args: { p_id: string }; Returns: undefined }
       withdraw_volunteer_application: {
         Args: { p_id: string }
         Returns: undefined
+      }
+      work_actor: { Args: never; Returns: string }
+      work_scope_valid: {
+        Args: { _branch: string; _region: string; _scope: string }
+        Returns: boolean
       }
     }
     Enums: {

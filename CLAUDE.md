@@ -69,6 +69,10 @@ Ranking: follower < volunteer < branch_manager < regional_director < national_co
 - `national_coordinator`: assigned only with SQL (`docs/nc-setup.md`), never in the app; every NC right requires an
   aal2 (MFA) session (`is_nc()`, `session_ok()`, `requireMember`). Manages RDs/BMs, regions/branches and national
   events; sees volunteers and followers only as numbers. The last active NC is protected by triggers.
+- MFA/2FA is only required for national_coordinator. It is never required or added for follower, volunteer,
+  branch_manager or regional_director. Ask the user before changing this.
+- Tasks and meetings: `docs/tasks.md`, `docs/meetings.md`. Followers get nothing; NCs only national items and
+  RD/BM/NC people (never volunteer names).
 
 ## Security rules
 - RLS is enabled on every table. RLS and grants are the real enforcement; UI checks are convenience only.

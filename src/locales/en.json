@@ -333,7 +333,25 @@
     "regionExists": "A region with this name already exists.",
     "branchExists": "A branch with this name already exists.",
     "nameLength": "The name must be 2 to 80 characters.",
-    "dateRange": "Choose at most 12 months."
+    "dateRange": "Choose at most 12 months.",
+    "workTaskNotFound": "This task no longer exists or you cannot see it.",
+    "workMeetingNotFound": "This meeting no longer exists or you cannot see it.",
+    "workCannotAssign": "You cannot assign this person to a task here.",
+    "workCannotRequest": "You cannot send a request to this person.",
+    "workTitleRequired": "Enter a title.",
+    "workReminders": "Check the reminder settings.",
+    "workEventScope": "The linked event must be in the same branch, region or national scope as the task.",
+    "workEndAfterStart": "The end must be after the start.",
+    "workOnlineUrl": "The online link must start with https://.",
+    "workLocation": "Enter a location.",
+    "workInviteeScope": "Someone you invited cannot be invited to this meeting.",
+    "workTooManyInvitees": "A meeting can have at most 100 invitees.",
+    "workTooManyAssignees": "A task can have at most 50 assignees.",
+    "workTooManyItems": "A meeting can have at most 50 agenda items.",
+    "workDecisionText": "Enter the decision.",
+    "workFileType": "This file type is not allowed.",
+    "workTooManyFiles": "A meeting can have at most 20 files.",
+    "workMeetingFiles": "The meeting's files could not be removed. Try again."
   },
   "events": {
     "title": "Calendar & Events",
@@ -553,7 +571,9 @@
       "event_request": "Event requests",
       "volunteer_application": "Volunteer applications",
       "branch": "Branches",
-      "region": "Regions"
+      "region": "Regions",
+      "task": "Tasks",
+      "meeting": "Meetings"
     },
     "types": {
       "event": "Event",
@@ -562,7 +582,9 @@
       "event_request": "Event request",
       "volunteer_application": "Volunteer application",
       "branch": "Branch",
-      "region": "Region"
+      "region": "Region",
+      "task": "Task",
+      "meeting": "Meeting"
     },
     "item": "Item",
     "branchRegion": "Branch / Region",
@@ -996,5 +1018,408 @@
     "branchCounts": "{{volunteers}} volunteers · {{followers}} followers · {{events}} upcoming events",
     "confirmDeleteRegion": "Delete {{name}} and its branches? It can be restored from the Recycle Bin for 30 days.",
     "confirmDeleteBranch": "Delete {{name}}? It can be restored from the Recycle Bin for 30 days."
+  },
+  "work": {
+    "scope": {
+      "label": "Where",
+      "national": "National",
+      "regionNamed": "Region: {{name}}",
+      "branchNamed": "Branch: {{name}}"
+    },
+    "people": {
+      "search": "Search people",
+      "none": "Nobody can be chosen here."
+    }
+  },
+  "meetings": {
+    "new": "New meeting",
+    "tabs": {
+      "upcoming": "Upcoming",
+      "past": "Past"
+    },
+    "emptyUpcoming": "No upcoming meetings.",
+    "emptyPast": "No past meetings.",
+    "loadError": "Meetings could not be loaded.",
+    "notFound": "This meeting does not exist or you cannot see it.",
+    "back": "Back to meetings",
+    "invited": "Invited",
+    "invitedText": "You are invited to this meeting.",
+    "joinOnline": "Join the online meeting",
+    "createdBy": "Created by",
+    "invitees": "Invitees",
+    "noInvitees": "Nobody has been invited yet.",
+    "actions": "Meeting actions",
+    "edit": "Edit meeting",
+    "complete": "Mark as completed",
+    "cancel": "Cancel meeting",
+    "keep": "Keep meeting",
+    "reschedule": "Reschedule",
+    "reopen": "Reopen",
+    "delete": "Delete meeting",
+    "deleting": "Deleting…",
+    "deleted": "Meeting deleted.",
+    "cancelTitle": "Cancel this meeting?",
+    "cancelText": "Invitees will see that the meeting is cancelled. You can reschedule it later.",
+    "deleteTitle": "Delete this meeting?",
+    "deleteText": "The meeting moves to the Recycle Bin with its agenda, decisions and files.",
+    "status": {
+      "scheduled": "Scheduled",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "statusChanged": {
+      "scheduled": "Meeting scheduled.",
+      "completed": "Meeting marked as completed.",
+      "cancelled": "Meeting cancelled."
+    },
+    "place": {
+      "inPerson": "In person",
+      "online": "Online"
+    },
+    "taskStatus": {
+      "todo": "To do",
+      "in_progress": "In progress",
+      "blocked": "Blocked",
+      "done": "Done"
+    },
+    "form": {
+      "createTitle": "New meeting",
+      "editTitle": "Edit meeting",
+      "approveTitle": "Approve and schedule the meeting",
+      "requiredNote": "Fields marked * are required.",
+      "title": "Title",
+      "description": "Description",
+      "start": "Start",
+      "startDate": "Start date",
+      "startTime": "Start time",
+      "end": "End",
+      "endDate": "End date",
+      "endTime": "End time",
+      "timePlaceholder": "Time",
+      "londonTime": "Times are UK time (London).",
+      "place": "Where",
+      "location": "Location",
+      "onlineUrl": "Meeting link",
+      "onlineUrlHint": "Only https:// links. Shown to invitees on the meeting page only.",
+      "invitees": "Invite people",
+      "noPeople": "Nobody can be invited here.",
+      "noScopes": "You cannot create meetings.",
+      "createSubmit": "Create meeting",
+      "approveSubmit": "Approve and create",
+      "created": "Meeting created.",
+      "updated": "Meeting updated."
+    },
+    "errors": {
+      "title": "Enter a title.",
+      "start": "Choose a valid start date and time.",
+      "end": "Choose a valid end date and time.",
+      "endAfterStart": "The end must be after the start.",
+      "tooLong": "A meeting can last at most 7 days.",
+      "location": "Enter the location.",
+      "onlineUrl": "Enter a link that starts with https://."
+    },
+    "agenda": {
+      "title": "Agenda",
+      "empty": "No agenda items yet.",
+      "add": "Add agenda item",
+      "itemTitle": "Agenda item",
+      "notes": "Notes",
+      "save": "Save item",
+      "titleRequired": "Enter the agenda item.",
+      "edit": "Edit agenda item",
+      "delete": "Delete agenda item",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "added": "Agenda item added.",
+      "updated": "Agenda item updated.",
+      "deleted": "Agenda item deleted.",
+      "deleteTitle": "Delete this agenda item?",
+      "deleteText": "\"{{title}}\" and its decisions will be deleted. Tasks created from its decisions are kept."
+    },
+    "decisions": {
+      "title": "Decisions",
+      "empty": "No decisions yet.",
+      "add": "Add decision",
+      "text": "Decision",
+      "save": "Save decision",
+      "textRequired": "Enter the decision.",
+      "edit": "Edit decision",
+      "delete": "Delete decision",
+      "added": "Decision added.",
+      "updated": "Decision updated.",
+      "deleted": "Decision deleted.",
+      "tasks": "Tasks from this decision",
+      "createTask": "Create task"
+    },
+    "files": {
+      "title": "Files",
+      "empty": "No files yet.",
+      "upload": "Upload files",
+      "working": "Uploading…",
+      "hint": "PDF, Word, PowerPoint, Excel or images (JPEG, PNG, WebP); up to 25 MB each, 20 files per meeting.",
+      "download": "Download",
+      "delete": "Delete {{name}}",
+      "deleted": "File deleted.",
+      "uploaded_one": "{{count}} file uploaded.",
+      "uploaded_other": "{{count}} files uploaded.",
+      "rejected": "{{name}}: {{reason}}",
+      "tooMany": "A meeting can have at most 20 files.",
+      "badType": "This file type is not allowed.",
+      "tooLarge": "The file is larger than 25 MB."
+    },
+    "dashboard": {
+      "title": "Upcoming meetings",
+      "viewAll": "All meetings",
+      "empty": "No upcoming meetings."
+    }
+  },
+  "workRequests": {
+    "form": {
+      "target": "Send to",
+      "targetPlaceholder": "Choose a person",
+      "targetHint": "Only the people you can ask are listed.",
+      "taskTitle": "Request a task",
+      "taskIntro": "Ask someone above you to take on a task. If they accept, it becomes a task assigned to them.",
+      "title": "Task title",
+      "description": "Description",
+      "priority": "Priority",
+      "dueDate": "Due date",
+      "submit": "Send request",
+      "meetingTitle": "Request a meeting",
+      "meetingIntro": "Ask someone above you for a meeting. If they approve, they schedule it and you are invited.",
+      "topic": "Topic",
+      "note": "Note",
+      "proposedTimes": "Proposed times",
+      "proposedHint": "Optional. Up to 3 options, in UK time.",
+      "timeOption": "Option {{n}}",
+      "removeTime": "Remove",
+      "addTime": "Add a time"
+    },
+    "errors": {
+      "target": "Choose who the request goes to.",
+      "title": "Enter a title for the task.",
+      "topic": "Enter the meeting topic.",
+      "timeIncomplete": "Enter both the date and time for each proposed start and end, or remove the option.",
+      "endAfterStart": "Each proposed end must be after its start."
+    },
+    "priorities": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "status": {
+      "submitted": "Waiting",
+      "accepted": "Accepted",
+      "approved": "Approved",
+      "declined": "Declined",
+      "withdrawn": "Withdrawn"
+    },
+    "submittedToast": "Request sent",
+    "priorityLabel": "Priority: {{priority}}",
+    "dueOn": "Due {{date}}",
+    "proposedTimes": "Proposed times",
+    "noProposedTimes": "No time proposed.",
+    "openTask": "Open task",
+    "openMeeting": "Open meeting",
+    "loadError": "Task and meeting requests could not be loaded.",
+    "mineTitle": "Task and meeting requests",
+    "sentTo": "Sent to {{name}}",
+    "emptyMine": "You have not sent any task or meeting requests yet.",
+    "withdrawText": "“{{title}}” will no longer wait for a decision. You can send a new request later.",
+    "reviewTitle": "Task and meeting requests to you",
+    "decidedTitle": "Decided task and meeting requests",
+    "emptyReview": "No task or meeting requests are waiting for you.",
+    "emptyDecided": "You have not decided any task or meeting requests yet.",
+    "declineHint": "At least {{count}} characters. The requester will see this.",
+    "accept": "Accept",
+    "acceptedToast": "Request accepted: the task is now assigned to you",
+    "approve": "Approve and schedule",
+    "noTargets": "There is nobody you can send this request to yet."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAll": "Mark all read",
+    "allRead": "All notifications marked as read",
+    "loadError": "Notifications could not be loaded.",
+    "empty": "You have no notifications.",
+    "unread": "Unread",
+    "someone": "Someone",
+    "kinds": {
+      "task_assigned": "{{actor}} assigned you a task: “{{title}}”",
+      "task_status_changed": "{{actor}} changed the status of “{{title}}” to {{status}}",
+      "task_reminder": "Reminder: “{{title}}” is due {{due}}",
+      "task_reminder_overdue": "Overdue: “{{title}}” was due {{due}}",
+      "task_request_received": "{{actor}} asked you to take on a task: “{{title}}”",
+      "task_request_accepted": "{{actor}} accepted your task request “{{title}}”",
+      "task_request_declined": "{{actor}} declined your task request “{{title}}”. Reason: {{reason}}",
+      "meeting_invited": "{{actor}} invited you to “{{title}}” on {{when}}",
+      "meeting_changed": "{{actor}} changed “{{title}}”, now on {{when}}",
+      "meeting_cancelled": "{{actor}} cancelled “{{title}}” ({{when}})",
+      "meeting_request_received": "{{actor}} asked you for a meeting: “{{title}}”",
+      "meeting_request_approved": "{{actor}} approved your meeting request “{{title}}”",
+      "meeting_request_declined": "{{actor}} declined your meeting request “{{title}}”. Reason: {{reason}}",
+      "other": "Update about “{{title}}”"
+    },
+    "taskStatus": {
+      "todo": "To do",
+      "in_progress": "In progress",
+      "blocked": "Blocked",
+      "done": "Done"
+    },
+    "badges": {
+      "requests": "{{count}} requests need your attention",
+      "tasks": "{{count}} new tasks",
+      "meetings": "{{count}} meeting updates"
+    },
+    "preferences": {
+      "title": "Task reminders",
+      "taskEmails": "Email reminders for tasks",
+      "taskEmailsOn": "We'll email you task reminders. Reminders also appear in the app.",
+      "taskEmailsOff": "Task reminders appear in the app only.",
+      "saved": "Reminder preference saved"
+    }
+  },
+  "tasks": {
+    "new": "New task",
+    "viewLabel": "Task view",
+    "views": {
+      "kanban": "Board",
+      "list": "List",
+      "calendar": "Calendar"
+    },
+    "status": {
+      "todo": "To do",
+      "in_progress": "In progress",
+      "blocked": "Blocked",
+      "done": "Done"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "loadError": "Tasks could not be loaded.",
+    "empty": "There are no tasks yet.",
+    "emptyFiltered": "No tasks match these filters.",
+    "columnEmpty": "No tasks",
+    "overdue": "Overdue",
+    "dueSoon": "Due soon",
+    "noDueDate": "No due date",
+    "unassigned": "Unassigned",
+    "changeStatus": "Change the status of “{{title}}”",
+    "filters": {
+      "all": "All",
+      "branch": "Branch",
+      "noBranch": "No branch (region or national)",
+      "dueOverdue": "Overdue",
+      "dueWeek": "Due in the next 7 days",
+      "dueNone": "No due date",
+      "sort": "Sort by",
+      "sortBy": {
+        "due": "Due date",
+        "priority": "Priority",
+        "title": "Title",
+        "status": "Status"
+      },
+      "group": "Group by",
+      "groupBy": {
+        "none": "No grouping",
+        "status": "Status",
+        "assignee": "Assigned person"
+      }
+    },
+    "calendar": {
+      "previous": "Previous month",
+      "next": "Next month",
+      "empty": "No tasks are due this month.",
+      "undated_one": "{{count}} task has no due date and is not shown in the calendar.",
+      "undated_other": "{{count}} tasks have no due date and are not shown in the calendar."
+    },
+    "form": {
+      "createTitle": "New task",
+      "editTitle": "Edit task",
+      "submitCreate": "Create task",
+      "created": "Task created.",
+      "saved": "Task updated.",
+      "noScopes": "You cannot create tasks.",
+      "fromDecision": "This task is created from a meeting decision.",
+      "title": "Title",
+      "description": "Description",
+      "status": "Status",
+      "priority": "Priority",
+      "dueDate": "Due date",
+      "assignees": "Assigned to",
+      "assigneesEmpty": "Nobody can be assigned here.",
+      "event": "Linked event",
+      "noEvent": "No linked event",
+      "unscheduled": "Not scheduled",
+      "unknownEvent": "Linked event",
+      "titleRequired": "Enter a title.",
+      "titleTooLong": "The title can be at most 200 characters.",
+      "descriptionTooLong": "The description can be at most 5000 characters.",
+      "reminders": "Reminders",
+      "remindBefore": "Remind before the due date",
+      "daysBefore_one": "{{count}} day before",
+      "daysBefore_other": "{{count}} days before",
+      "customDays": "Other (days before)",
+      "repeat": "Repeat the reminder",
+      "repeatKinds": {
+        "none": "Do not repeat",
+        "daily": "Every day",
+        "every_n": "Every few days",
+        "weekly": "Every week"
+      },
+      "repeatEvery": "Every how many days",
+      "repeatStart": "Starting on",
+      "overdue": "Keep reminding while overdue",
+      "overdueEvery": "Every how many days"
+    },
+    "errors": {
+      "beforeDays": "Reminder days must be whole numbers from 1 to 365 (at most 6).",
+      "repeatEvery": "Enter a whole number of days from 2 to 90.",
+      "overdueEvery": "Enter a whole number of days from 1 to 90."
+    },
+    "reminders": {
+      "before": "Before the due date: {{days}} day(s)",
+      "noBefore": "No reminders before the due date",
+      "daily": "Repeats every day",
+      "weekly": "Repeats every week",
+      "everyN_one": "Repeats every {{count}} day",
+      "everyN_other": "Repeats every {{count}} days",
+      "startingOn": "Starting on {{date}}",
+      "overdue_one": "While overdue: every {{count}} day",
+      "overdue_other": "While overdue: every {{count}} days"
+    },
+    "panel": {
+      "title": "Task",
+      "notFoundTitle": "Task not found",
+      "notFoundText": "This task does not exist, was deleted, or you cannot see it.",
+      "createdBy": "Created by",
+      "meeting": "Meeting",
+      "meetingFallback": "Source meeting",
+      "decision": "Decision: {{text}}",
+      "muteReminders": "Mute reminders for me",
+      "muted": "Reminders muted for this task.",
+      "unmuted": "Reminders turned back on for this task.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleting": "Deleting…",
+      "deleteTitle": "Delete this task?",
+      "deleteText": "The task moves to the Recycle Bin, where it can be restored for 30 days.",
+      "deleted": "Task moved to the Recycle Bin."
+    },
+    "card": {
+      "viewAll": "All tasks",
+      "open_one": "open",
+      "open_other": "open",
+      "overdue_one": "overdue",
+      "overdue_other": "overdue",
+      "empty": "You have no open tasks."
+    },
+    "eventLinked": {
+      "title": "Linked tasks"
+    }
   }
 }

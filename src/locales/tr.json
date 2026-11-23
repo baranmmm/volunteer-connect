@@ -333,7 +333,25 @@
     "regionExists": "Bu adda bir bölge zaten var.",
     "branchExists": "Bu adda bir şube zaten var.",
     "nameLength": "Ad 2 ile 80 karakter arasında olmalı.",
-    "dateRange": "En fazla 12 ay seçin."
+    "dateRange": "En fazla 12 ay seçin.",
+    "workTaskNotFound": "Bu görev artık yok ya da görme yetkiniz yok.",
+    "workMeetingNotFound": "Bu toplantı artık yok ya da görme yetkiniz yok.",
+    "workCannotAssign": "Bu kişiye burada görev atayamazsınız.",
+    "workCannotRequest": "Bu kişiye istek gönderemezsiniz.",
+    "workTitleRequired": "Bir başlık girin.",
+    "workReminders": "Hatırlatma ayarlarını kontrol edin.",
+    "workEventScope": "Bağlı etkinlik, görevle aynı şube, bölge ya da ulusal kapsamda olmalı.",
+    "workEndAfterStart": "Bitiş, başlangıçtan sonra olmalı.",
+    "workOnlineUrl": "Çevrim içi bağlantı https:// ile başlamalı.",
+    "workLocation": "Bir konum girin.",
+    "workInviteeScope": "Davet ettiğiniz kişilerden biri bu toplantıya davet edilemez.",
+    "workTooManyInvitees": "Bir toplantıya en fazla 100 kişi davet edilebilir.",
+    "workTooManyAssignees": "Bir göreve en fazla 50 kişi atanabilir.",
+    "workTooManyItems": "Bir toplantının en fazla 50 gündem maddesi olabilir.",
+    "workDecisionText": "Kararı yazın.",
+    "workFileType": "Bu dosya türüne izin verilmiyor.",
+    "workTooManyFiles": "Bir toplantıya en fazla 20 dosya eklenebilir.",
+    "workMeetingFiles": "Toplantı dosyaları kaldırılamadı. Yeniden deneyin."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -553,7 +571,9 @@
       "event_request": "Etkinlik talepleri",
       "volunteer_application": "Gönüllü başvuruları",
       "branch": "Şubeler",
-      "region": "Bölgeler"
+      "region": "Bölgeler",
+      "task": "Görevler",
+      "meeting": "Toplantılar"
     },
     "types": {
       "event": "Etkinlik",
@@ -562,7 +582,9 @@
       "event_request": "Etkinlik talebi",
       "volunteer_application": "Gönüllü başvurusu",
       "branch": "Şube",
-      "region": "Bölge"
+      "region": "Bölge",
+      "task": "Görev",
+      "meeting": "Toplantı"
     },
     "item": "Öğe",
     "branchRegion": "Şube / Bölge",
@@ -996,5 +1018,408 @@
     "branchCounts": "{{volunteers}} gönüllü · {{followers}} takipçi · {{events}} yaklaşan etkinlik",
     "confirmDeleteRegion": "{{name}} ve şubeleri silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir.",
     "confirmDeleteBranch": "{{name}} silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir."
+  },
+  "work": {
+    "scope": {
+      "label": "Kapsam",
+      "national": "Ulusal",
+      "regionNamed": "Bölge: {{name}}",
+      "branchNamed": "Şube: {{name}}"
+    },
+    "people": {
+      "search": "Kişi ara",
+      "none": "Burada seçilebilecek kimse yok."
+    }
+  },
+  "meetings": {
+    "new": "Yeni toplantı",
+    "tabs": {
+      "upcoming": "Yaklaşan",
+      "past": "Geçmiş"
+    },
+    "emptyUpcoming": "Yaklaşan toplantı yok.",
+    "emptyPast": "Geçmiş toplantı yok.",
+    "loadError": "Toplantılar yüklenemedi.",
+    "notFound": "Bu toplantı yok ya da görme yetkiniz yok.",
+    "back": "Toplantılara dön",
+    "invited": "Davetlisiniz",
+    "invitedText": "Bu toplantıya davetlisiniz.",
+    "joinOnline": "Çevrim içi toplantıya katıl",
+    "createdBy": "Oluşturan",
+    "invitees": "Davetliler",
+    "noInvitees": "Henüz kimse davet edilmedi.",
+    "actions": "Toplantı işlemleri",
+    "edit": "Toplantıyı düzenle",
+    "complete": "Tamamlandı olarak işaretle",
+    "cancel": "Toplantıyı iptal et",
+    "keep": "Toplantıyı koru",
+    "reschedule": "Yeniden planla",
+    "reopen": "Yeniden aç",
+    "delete": "Toplantıyı sil",
+    "deleting": "Siliniyor…",
+    "deleted": "Toplantı silindi.",
+    "cancelTitle": "Bu toplantı iptal edilsin mi?",
+    "cancelText": "Davetliler toplantının iptal edildiğini görür. Daha sonra yeniden planlayabilirsiniz.",
+    "deleteTitle": "Bu toplantı silinsin mi?",
+    "deleteText": "Toplantı; gündemi, kararları ve dosyalarıyla birlikte Geri Dönüşüm Kutusu'na taşınır.",
+    "status": {
+      "scheduled": "Planlandı",
+      "completed": "Tamamlandı",
+      "cancelled": "İptal edildi"
+    },
+    "statusChanged": {
+      "scheduled": "Toplantı planlandı.",
+      "completed": "Toplantı tamamlandı olarak işaretlendi.",
+      "cancelled": "Toplantı iptal edildi."
+    },
+    "place": {
+      "inPerson": "Yüz yüze",
+      "online": "Çevrim içi"
+    },
+    "taskStatus": {
+      "todo": "Yapılacak",
+      "in_progress": "Devam ediyor",
+      "blocked": "Engellendi",
+      "done": "Tamamlandı"
+    },
+    "form": {
+      "createTitle": "Yeni toplantı",
+      "editTitle": "Toplantıyı düzenle",
+      "approveTitle": "Onayla ve toplantıyı planla",
+      "requiredNote": "* ile işaretli alanlar zorunludur.",
+      "title": "Başlık",
+      "description": "Açıklama",
+      "start": "Başlangıç",
+      "startDate": "Başlangıç tarihi",
+      "startTime": "Başlangıç saati",
+      "end": "Bitiş",
+      "endDate": "Bitiş tarihi",
+      "endTime": "Bitiş saati",
+      "timePlaceholder": "Saat",
+      "londonTime": "Saatler Birleşik Krallık (Londra) saatidir.",
+      "place": "Yer",
+      "location": "Adres",
+      "onlineUrl": "Toplantı bağlantısı",
+      "onlineUrlHint": "Yalnızca https:// bağlantıları. Davetliler bağlantıyı yalnızca toplantı sayfasında görür.",
+      "invitees": "Kişileri davet et",
+      "noPeople": "Burada davet edilebilecek kimse yok.",
+      "noScopes": "Toplantı oluşturma yetkiniz yok.",
+      "createSubmit": "Toplantı oluştur",
+      "approveSubmit": "Onayla ve oluştur",
+      "created": "Toplantı oluşturuldu.",
+      "updated": "Toplantı güncellendi."
+    },
+    "errors": {
+      "title": "Bir başlık girin.",
+      "start": "Geçerli bir başlangıç tarihi ve saati seçin.",
+      "end": "Geçerli bir bitiş tarihi ve saati seçin.",
+      "endAfterStart": "Bitiş, başlangıçtan sonra olmalıdır.",
+      "tooLong": "Bir toplantı en fazla 7 gün sürebilir.",
+      "location": "Adresi girin.",
+      "onlineUrl": "https:// ile başlayan bir bağlantı girin."
+    },
+    "agenda": {
+      "title": "Gündem",
+      "empty": "Henüz gündem maddesi yok.",
+      "add": "Gündem maddesi ekle",
+      "itemTitle": "Gündem maddesi",
+      "notes": "Notlar",
+      "save": "Maddeyi kaydet",
+      "titleRequired": "Gündem maddesini girin.",
+      "edit": "Gündem maddesini düzenle",
+      "delete": "Gündem maddesini sil",
+      "moveUp": "Yukarı taşı",
+      "moveDown": "Aşağı taşı",
+      "added": "Gündem maddesi eklendi.",
+      "updated": "Gündem maddesi güncellendi.",
+      "deleted": "Gündem maddesi silindi.",
+      "deleteTitle": "Bu gündem maddesi silinsin mi?",
+      "deleteText": "\"{{title}}\" ve kararları silinecek. Bu kararlardan oluşturulan görevler korunur."
+    },
+    "decisions": {
+      "title": "Kararlar",
+      "empty": "Henüz karar yok.",
+      "add": "Karar ekle",
+      "text": "Karar",
+      "save": "Kararı kaydet",
+      "textRequired": "Kararı girin.",
+      "edit": "Kararı düzenle",
+      "delete": "Kararı sil",
+      "added": "Karar eklendi.",
+      "updated": "Karar güncellendi.",
+      "deleted": "Karar silindi.",
+      "tasks": "Bu karardan oluşturulan görevler",
+      "createTask": "Görev oluştur"
+    },
+    "files": {
+      "title": "Dosyalar",
+      "empty": "Henüz dosya yok.",
+      "upload": "Dosya yükle",
+      "working": "Yükleniyor…",
+      "hint": "PDF, Word, PowerPoint, Excel veya görsel (JPEG, PNG, WebP); her biri en fazla 25 MB, toplantı başına 20 dosya.",
+      "download": "İndir",
+      "delete": "{{name}} dosyasını sil",
+      "deleted": "Dosya silindi.",
+      "uploaded_one": "{{count}} dosya yüklendi.",
+      "uploaded_other": "{{count}} dosya yüklendi.",
+      "rejected": "{{name}}: {{reason}}",
+      "tooMany": "Bir toplantıda en fazla 20 dosya olabilir.",
+      "badType": "Bu dosya türüne izin verilmiyor.",
+      "tooLarge": "Dosya 25 MB'tan büyük."
+    },
+    "dashboard": {
+      "title": "Yaklaşan toplantılar",
+      "viewAll": "Tüm toplantılar",
+      "empty": "Yaklaşan toplantı yok."
+    }
+  },
+  "workRequests": {
+    "form": {
+      "target": "Kime gönderilecek",
+      "targetPlaceholder": "Bir kişi seçin",
+      "targetHint": "Yalnızca talep gönderebileceğiniz kişiler listelenir.",
+      "taskTitle": "Görev talebi",
+      "taskIntro": "Üstünüzdeki birinden bir görevi üstlenmesini isteyin. Kabul ederse, kendisine atanmış bir görev olur.",
+      "title": "Görev başlığı",
+      "description": "Açıklama",
+      "priority": "Öncelik",
+      "dueDate": "Son tarih",
+      "submit": "Talebi gönder",
+      "meetingTitle": "Toplantı talebi",
+      "meetingIntro": "Üstünüzdeki birinden toplantı isteyin. Onaylarsa toplantıyı planlar ve siz davet edilirsiniz.",
+      "topic": "Konu",
+      "note": "Not",
+      "proposedTimes": "Önerilen zamanlar",
+      "proposedHint": "İsteğe bağlı. En fazla 3 seçenek, Birleşik Krallık saatiyle.",
+      "timeOption": "Seçenek {{n}}",
+      "removeTime": "Kaldır",
+      "addTime": "Zaman ekle"
+    },
+    "errors": {
+      "target": "Talebin kime gideceğini seçin.",
+      "title": "Görev için bir başlık girin.",
+      "topic": "Toplantı konusunu girin.",
+      "timeIncomplete": "Önerilen her başlangıç ve bitiş için tarih ve saati girin ya da seçeneği kaldırın.",
+      "endAfterStart": "Önerilen her bitiş, başlangıcından sonra olmalıdır."
+    },
+    "priorities": {
+      "low": "Düşük",
+      "medium": "Orta",
+      "high": "Yüksek",
+      "urgent": "Acil"
+    },
+    "status": {
+      "submitted": "Bekliyor",
+      "accepted": "Kabul edildi",
+      "approved": "Onaylandı",
+      "declined": "Reddedildi",
+      "withdrawn": "Geri çekildi"
+    },
+    "submittedToast": "Talep gönderildi",
+    "priorityLabel": "Öncelik: {{priority}}",
+    "dueOn": "Son tarih: {{date}}",
+    "proposedTimes": "Önerilen zamanlar",
+    "noProposedTimes": "Zaman önerilmedi.",
+    "openTask": "Görevi aç",
+    "openMeeting": "Toplantıyı aç",
+    "loadError": "Görev ve toplantı talepleri yüklenemedi.",
+    "mineTitle": "Görev ve toplantı talepleri",
+    "sentTo": "Gönderilen kişi: {{name}}",
+    "emptyMine": "Henüz görev veya toplantı talebi göndermediniz.",
+    "withdrawText": "“{{title}}” artık bir karar beklemeyecek. Daha sonra yeni bir talep gönderebilirsiniz.",
+    "reviewTitle": "Size gelen görev ve toplantı talepleri",
+    "decidedTitle": "Karara bağlanan görev ve toplantı talepleri",
+    "emptyReview": "Sizi bekleyen görev veya toplantı talebi yok.",
+    "emptyDecided": "Henüz karara bağladığınız görev veya toplantı talebi yok.",
+    "declineHint": "En az {{count}} karakter. Talep sahibi bu notu görecek.",
+    "accept": "Kabul et",
+    "acceptedToast": "Talep kabul edildi: görev artık size atandı",
+    "approve": "Onayla ve planla",
+    "noTargets": "Bu talebi gönderebileceğiniz kimse henüz yok."
+  },
+  "notifications": {
+    "title": "Bildirimler",
+    "markAll": "Tümünü okundu say",
+    "allRead": "Tüm bildirimler okundu olarak işaretlendi",
+    "loadError": "Bildirimler yüklenemedi.",
+    "empty": "Hiç bildiriminiz yok.",
+    "unread": "Okunmadı",
+    "someone": "Biri",
+    "kinds": {
+      "task_assigned": "{{actor}} size bir görev atadı: “{{title}}”",
+      "task_status_changed": "{{actor}}, “{{title}}” görevinin durumunu {{status}} olarak değiştirdi",
+      "task_reminder": "Hatırlatma: “{{title}}” için son tarih {{due}}",
+      "task_reminder_overdue": "Gecikti: “{{title}}” için son tarih {{due}} idi",
+      "task_request_received": "{{actor}} sizden bir görev üstlenmenizi istedi: “{{title}}”",
+      "task_request_accepted": "{{actor}}, “{{title}}” görev talebinizi kabul etti",
+      "task_request_declined": "{{actor}}, “{{title}}” görev talebinizi reddetti. Gerekçe: {{reason}}",
+      "meeting_invited": "{{actor}} sizi {{when}} tarihindeki “{{title}}” toplantısına davet etti",
+      "meeting_changed": "{{actor}}, “{{title}}” toplantısını değiştirdi; yeni zaman: {{when}}",
+      "meeting_cancelled": "{{actor}}, “{{title}}” toplantısını iptal etti ({{when}})",
+      "meeting_request_received": "{{actor}} sizden toplantı istedi: “{{title}}”",
+      "meeting_request_approved": "{{actor}}, “{{title}}” toplantı talebinizi onayladı",
+      "meeting_request_declined": "{{actor}}, “{{title}}” toplantı talebinizi reddetti. Gerekçe: {{reason}}",
+      "other": "“{{title}}” hakkında güncelleme"
+    },
+    "taskStatus": {
+      "todo": "Yapılacak",
+      "in_progress": "Devam ediyor",
+      "blocked": "Engellendi",
+      "done": "Tamamlandı"
+    },
+    "badges": {
+      "requests": "İlginizi bekleyen {{count}} talep",
+      "tasks": "{{count}} yeni görev",
+      "meetings": "{{count}} toplantı güncellemesi"
+    },
+    "preferences": {
+      "title": "Görev hatırlatmaları",
+      "taskEmails": "Görevler için e-posta hatırlatmaları",
+      "taskEmailsOn": "Görev hatırlatmalarını size e-postayla göndereceğiz. Hatırlatmalar uygulamada da görünür.",
+      "taskEmailsOff": "Görev hatırlatmaları yalnızca uygulamada görünür.",
+      "saved": "Hatırlatma tercihi kaydedildi"
+    }
+  },
+  "tasks": {
+    "new": "Yeni görev",
+    "viewLabel": "Görev görünümü",
+    "views": {
+      "kanban": "Pano",
+      "list": "Liste",
+      "calendar": "Takvim"
+    },
+    "status": {
+      "todo": "Yapılacak",
+      "in_progress": "Devam ediyor",
+      "blocked": "Engellendi",
+      "done": "Tamamlandı"
+    },
+    "priority": {
+      "low": "Düşük",
+      "medium": "Orta",
+      "high": "Yüksek",
+      "urgent": "Acil"
+    },
+    "loadError": "Görevler yüklenemedi.",
+    "empty": "Henüz görev yok.",
+    "emptyFiltered": "Bu filtrelere uyan görev yok.",
+    "columnEmpty": "Görev yok",
+    "overdue": "Gecikmiş",
+    "dueSoon": "Süresi yaklaşıyor",
+    "noDueDate": "Son tarih yok",
+    "unassigned": "Atanmamış",
+    "changeStatus": "“{{title}}” görevinin durumunu değiştir",
+    "filters": {
+      "all": "Tümü",
+      "branch": "Şube",
+      "noBranch": "Şube yok (bölge veya ulusal)",
+      "dueOverdue": "Gecikmiş",
+      "dueWeek": "Önümüzdeki 7 gün içinde",
+      "dueNone": "Son tarih yok",
+      "sort": "Sırala",
+      "sortBy": {
+        "due": "Son tarih",
+        "priority": "Öncelik",
+        "title": "Başlık",
+        "status": "Durum"
+      },
+      "group": "Grupla",
+      "groupBy": {
+        "none": "Gruplama yok",
+        "status": "Durum",
+        "assignee": "Atanan kişi"
+      }
+    },
+    "calendar": {
+      "previous": "Önceki ay",
+      "next": "Sonraki ay",
+      "empty": "Bu ay son tarihi olan görev yok.",
+      "undated_one": "{{count}} görevin son tarihi yok, takvimde gösterilmiyor.",
+      "undated_other": "{{count}} görevin son tarihi yok, takvimde gösterilmiyor."
+    },
+    "form": {
+      "createTitle": "Yeni görev",
+      "editTitle": "Görevi düzenle",
+      "submitCreate": "Görevi oluştur",
+      "created": "Görev oluşturuldu.",
+      "saved": "Görev güncellendi.",
+      "noScopes": "Görev oluşturamazsınız.",
+      "fromDecision": "Bu görev bir toplantı kararından oluşturuluyor.",
+      "title": "Başlık",
+      "description": "Açıklama",
+      "status": "Durum",
+      "priority": "Öncelik",
+      "dueDate": "Son tarih",
+      "assignees": "Atanan kişiler",
+      "assigneesEmpty": "Burada kimse atanamaz.",
+      "event": "Bağlı etkinlik",
+      "noEvent": "Bağlı etkinlik yok",
+      "unscheduled": "Tarihi belirlenmedi",
+      "unknownEvent": "Bağlı etkinlik",
+      "titleRequired": "Bir başlık girin.",
+      "titleTooLong": "Başlık en fazla 200 karakter olabilir.",
+      "descriptionTooLong": "Açıklama en fazla 5000 karakter olabilir.",
+      "reminders": "Hatırlatmalar",
+      "remindBefore": "Son tarihten önce hatırlat",
+      "daysBefore_one": "{{count}} gün önce",
+      "daysBefore_other": "{{count}} gün önce",
+      "customDays": "Diğer (kaç gün önce)",
+      "repeat": "Hatırlatmayı tekrarla",
+      "repeatKinds": {
+        "none": "Tekrarlama",
+        "daily": "Her gün",
+        "every_n": "Birkaç günde bir",
+        "weekly": "Her hafta"
+      },
+      "repeatEvery": "Kaç günde bir",
+      "repeatStart": "Başlangıç tarihi",
+      "overdue": "Gecikince hatırlatmaya devam et",
+      "overdueEvery": "Kaç günde bir"
+    },
+    "errors": {
+      "beforeDays": "Hatırlatma günleri 1 ile 365 arasında tam sayı olmalı (en fazla 6 tane).",
+      "repeatEvery": "2 ile 90 arasında tam gün sayısı girin.",
+      "overdueEvery": "1 ile 90 arasında tam gün sayısı girin."
+    },
+    "reminders": {
+      "before": "Son tarihten önce: {{days}} gün",
+      "noBefore": "Son tarihten önce hatırlatma yok",
+      "daily": "Her gün tekrarlanır",
+      "weekly": "Her hafta tekrarlanır",
+      "everyN_one": "{{count}} günde bir tekrarlanır",
+      "everyN_other": "{{count}} günde bir tekrarlanır",
+      "startingOn": "Başlangıç: {{date}}",
+      "overdue_one": "Gecikince: {{count}} günde bir",
+      "overdue_other": "Gecikince: {{count}} günde bir"
+    },
+    "panel": {
+      "title": "Görev",
+      "notFoundTitle": "Görev bulunamadı",
+      "notFoundText": "Bu görev yok, silinmiş ya da görme yetkiniz yok.",
+      "createdBy": "Oluşturan",
+      "meeting": "Toplantı",
+      "meetingFallback": "Kaynak toplantı",
+      "decision": "Karar: {{text}}",
+      "muteReminders": "Benim için hatırlatmaları kapat",
+      "muted": "Bu görevin hatırlatmaları kapatıldı.",
+      "unmuted": "Bu görevin hatırlatmaları yeniden açıldı.",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "deleting": "Siliniyor…",
+      "deleteTitle": "Bu görev silinsin mi?",
+      "deleteText": "Görev Geri Dönüşüm Kutusu'na taşınır ve 30 gün boyunca geri yüklenebilir.",
+      "deleted": "Görev Geri Dönüşüm Kutusu'na taşındı."
+    },
+    "card": {
+      "viewAll": "Tüm görevler",
+      "open_one": "açık",
+      "open_other": "açık",
+      "overdue_one": "gecikmiş",
+      "overdue_other": "gecikmiş",
+      "empty": "Açık göreviniz yok."
+    },
+    "eventLinked": {
+      "title": "Bağlı görevler"
+    }
   }
 }

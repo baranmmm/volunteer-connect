@@ -21,6 +21,7 @@ function client(
       "purge_expired_series",
       "purge_expired_volunteer_applications",
       "purge_expired_structure",
+      "purge_expired_work_items",
     ].includes(name)
       ? Promise.resolve({ data: 0, error: null })
       : name === "purge_expired_event_requests"
@@ -45,7 +46,7 @@ function client(
         }
       : table === "events"
         ? { select: () => query }
-        : table === "event_requests"
+        : table === "event_requests" || table === "meetings"
           ? {
               select: () => ({
                 ...query,
@@ -147,6 +148,8 @@ describe("scheduled event cleanup", () => {
       failed: false,
     });
     expect(m.clientRpc).toHaveBeenCalledWith("purge_expired_event_requests");
+    // Tasks and file-less meetings past their 30 days go in the same run.
+    expect(m.clientRpc).toHaveBeenCalledWith("purge_expired_work_items");
     expect(m.update).toHaveBeenCalledWith(
       expect.objectContaining({ requests_purged: 2, outcome: "completed" }),
     );

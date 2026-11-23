@@ -10,7 +10,10 @@ export class EventPage {
 
   readonly title = () => this.page.getByTestId("event-detail-title");
   readonly notFound = () => this.page.getByTestId("event-detail-not-found");
-  readonly recurringIcon = () => this.page.getByTestId("event-recurring-icon");
+  readonly root = () => this.page.getByTestId("event-detail");
+  // Scoped to the detail page: while the router swaps pages, the previous calendar list (cards with the same icon)
+  // can still be in the DOM for a moment.
+  readonly recurringIcon = () => this.root().getByTestId("event-recurring-icon");
   readonly repeatSummary = () => this.page.getByTestId("event-repeat-summary");
   readonly editButton = () => this.page.getByTestId("event-edit-button");
   readonly deleteButton = () => this.page.getByTestId("event-delete-button");

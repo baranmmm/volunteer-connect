@@ -1,0 +1,230 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  DEFAULT_FILTERS,
+  DEFAULT_REMINDERS,
+  filterTasks,
+  groupTasks,
+  isDueSoon,
+  isOverdue,
+  readTaskView,
+  saveTaskView,
+  sortTasks,
+  validateReminders,
+  type Task,
+} from "@/lib/tasks";
+
+const TODAY = "2026-11-23";
+const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const ann = { id: id(101), full_name: "Ann" };
+const bob = { id: id(102), full_name: "Bob" };
+const branchA = id(201);
+
+function task(n: number, over: Partial<Task> = {}): Task {
+  return {
+    id: id(n),
+    scope: "branch",
+    branch_id: branchA,
+    region_id: null,
+    branch: "Branch A",
+    region: null,
+    title: `Task ${n}`,
+    description: null,
+    status: "todo",
+    priority: "medium",
+    due_date: null,
+    self_task: false,
+    created_by: null,
+    created_by_name: null,
+    event_id: null,
+    meeting_id: null,
+    decision_id: null,
+    created_at: "2026-11-01T10:00:00Z",
+    assignees: [],
+    mine: false,
+    can_edit: false,
+    can_set_status: false,
+    ...over,
+  };
+}
+
+const tasks = [
+  task(1, {
+    mine: true,
+    status: "in_progress",
+    priority: "urgent",
+    due_date: "2026-11-20",
+    assignees: [ann],
+  }),
+  task(2, { status: "done", priority: "low", due_date: "2026-11-10", assignees: [ann, bob] }),
+  task(3, {
+    priority: "high",
+    due_date: "2026-11-27",
+    branch_id: null,
+    branch: null,
+    scope: "national",
+  }),
+  task(4, { mine: true, title: "Alpha", assignees: [bob] }),
+  task(5, { due_date: "2026-12-15" }),
+];
+const ids = (list: Task[]) => list.map((t) => Number(t.id.slice(-3)));
+
+describe("filterTasks", () => {
+  it("keeps everything with the default filters", () => {
+    expect(filterTasks(tasks, DEFAULT_FILTERS, TODAY)).toHaveLength(5);
+  });
+  it("filters by mine, status, priority, assignee and branch", () => {
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, mine: true }, TODAY))).toEqual([1, 4]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, status: "done" }, TODAY))).toEqual([2]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, priority: "high" }, TODAY))).toEqual([3]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, assignee: bob.id }, TODAY))).toEqual([
+      2, 4,
+    ]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, branch: "none" }, TODAY))).toEqual([3]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, branch: branchA }, TODAY))).toEqual([
+      1, 2, 4, 5,
+    ]);
+  });
+  it("filters by due: overdue (not done), this week and no date", () => {
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, due: "overdue" }, TODAY))).toEqual([1]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, due: "week" }, TODAY))).toEqual([3]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, due: "none" }, TODAY))).toEqual([4]);
+  });
+  it("combines filters", () => {
+    expect(
+      ids(filterTasks(tasks, { ...DEFAULT_FILTERS, mine: true, assignee: ann.id }, TODAY)),
+    ).toEqual([1]);
+  });
+});
+
+describe("sortTasks", () => {
+  it("sorts by due date with undated tasks last", () => {
+    expect(ids(sortTasks(tasks, "due"))).toEqual([2, 1, 3, 5, 4]);
+  });
+  it("sorts by priority, title and status, ties by due date", () => {
+    expect(ids(sortTasks(tasks, "priority"))).toEqual([1, 3, 5, 4, 2]);
+    expect(ids(sortTasks(tasks, "title"))[0]).toBe(4);
+    expect(ids(sortTasks(tasks, "status"))).toEqual([3, 5, 4, 1, 2]);
+  });
+  it("does not change the input", () => {
+    const copy = [...tasks];
+    sortTasks(tasks, "title");
+    expect(tasks).toEqual(copy);
+  });
+});
+
+describe("groupTasks", () => {
+  it("returns one group without grouping", () => {
+    expect(groupTasks(tasks, "none", "Unassigned")).toEqual([{ key: "all", label: "", tasks }]);
+  });
+  it("groups by status in status order and skips empty groups", () => {
+    const groups = groupTasks(tasks, "status", "Unassigned");
+    expect(groups.map((g) => g.key)).toEqual(["todo", "in_progress", "done"]);
+    expect(ids(groups[0]!.tasks)).toEqual([3, 4, 5]);
+  });
+  it("puts a task with several assignees under each of them, unassigned last", () => {
+    const groups = groupTasks(tasks, "assignee", "Unassigned");
+    expect(groups.map((g) => g.label)).toEqual(["Ann", "Bob", "Unassigned"]);
+    expect(ids(groups[0]!.tasks)).toEqual([1, 2]);
+    expect(ids(groups[1]!.tasks)).toEqual([2, 4]);
+    expect(groups[2]!.key).toBe("none");
+    expect(ids(groups[2]!.tasks)).toEqual([3, 5]);
+  });
+});
+
+describe("validateReminders", () => {
+  it("accepts the defaults and valid settings", () => {
+    expect(validateReminders(DEFAULT_REMINDERS)).toEqual({});
+    expect(
+      validateReminders({
+        before_days: [1, 3, 7, 14],
+        repeat_kind: "every_n",
+        repeat_every_days: 5,
+        repeat_start: TODAY,
+        overdue_every_days: 2,
+      }),
+    ).toEqual({});
+  });
+  it("rejects invalid before days", () => {
+    expect(validateReminders({ ...DEFAULT_REMINDERS, before_days: [0] }).before_days).toBe(
+      "tasks.errors.beforeDays",
+    );
+    expect(validateReminders({ ...DEFAULT_REMINDERS, before_days: [366] }).before_days).toBe(
+      "tasks.errors.beforeDays",
+    );
+    expect(validateReminders({ ...DEFAULT_REMINDERS, before_days: [Number.NaN] }).before_days).toBe(
+      "tasks.errors.beforeDays",
+    );
+    expect(
+      validateReminders({ ...DEFAULT_REMINDERS, before_days: [1, 2, 3, 4, 5, 6, 7] }).before_days,
+    ).toBe("tasks.errors.beforeDays");
+  });
+  it("requires 2 to 90 days for every-N repeats only", () => {
+    const everyN = { ...DEFAULT_REMINDERS, repeat_kind: "every_n" as const };
+    expect(validateReminders({ ...everyN, repeat_every_days: null }).repeat_every_days).toBe(
+      "tasks.errors.repeatEvery",
+    );
+    expect(validateReminders({ ...everyN, repeat_every_days: 1 }).repeat_every_days).toBe(
+      "tasks.errors.repeatEvery",
+    );
+    expect(validateReminders({ ...everyN, repeat_every_days: 91 }).repeat_every_days).toBe(
+      "tasks.errors.repeatEvery",
+    );
+    expect(validateReminders({ ...DEFAULT_REMINDERS, repeat_kind: "weekly" })).toEqual({});
+  });
+  it("checks overdue reminders only when on", () => {
+    expect(
+      validateReminders({ ...DEFAULT_REMINDERS, overdue_every_days: 0 }).overdue_every_days,
+    ).toBe("tasks.errors.overdueEvery");
+    expect(
+      validateReminders({ ...DEFAULT_REMINDERS, overdue_every_days: 1.5 }).overdue_every_days,
+    ).toBe("tasks.errors.overdueEvery");
+    expect(validateReminders({ ...DEFAULT_REMINDERS, overdue_every_days: 90 })).toEqual({});
+  });
+});
+
+describe("isOverdue / isDueSoon", () => {
+  it("is overdue only before today and when not done", () => {
+    expect(isOverdue({ due_date: "2026-11-22", status: "todo" }, TODAY)).toBe(true);
+    expect(isOverdue({ due_date: TODAY, status: "todo" }, TODAY)).toBe(false);
+    expect(isOverdue({ due_date: "2026-11-22", status: "done" }, TODAY)).toBe(false);
+    expect(isOverdue({ due_date: null, status: "todo" }, TODAY)).toBe(false);
+  });
+  it("is due soon today or tomorrow when not done", () => {
+    expect(isDueSoon({ due_date: TODAY, status: "blocked" }, TODAY)).toBe(true);
+    expect(isDueSoon({ due_date: "2026-11-24", status: "todo" }, TODAY)).toBe(true);
+    expect(isDueSoon({ due_date: "2026-11-25", status: "todo" }, TODAY)).toBe(false);
+    expect(isDueSoon({ due_date: "2026-11-22", status: "todo" }, TODAY)).toBe(false);
+    expect(isDueSoon({ due_date: TODAY, status: "done" }, TODAY)).toBe(false);
+  });
+  it("crosses month ends", () => {
+    expect(isDueSoon({ due_date: "2026-12-01", status: "todo" }, "2026-11-30")).toBe(true);
+  });
+});
+
+describe("readTaskView / saveTaskView", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+  it("remembers the view per user and defaults to kanban", () => {
+    expect(readTaskView("u1")).toBe("kanban");
+    saveTaskView("u1", "calendar");
+    expect(readTaskView("u1")).toBe("calendar");
+    expect(readTaskView("u2")).toBe("kanban");
+    expect(readTaskView(undefined)).toBe("kanban");
+  });
+  it("ignores unknown stored values", () => {
+    localStorage.setItem("dsvh-tasks-view:u1", "table");
+    expect(readTaskView("u1")).toBe("kanban");
+  });
+  it("falls back to kanban when storage throws", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    expect(() => saveTaskView("u1", "list")).not.toThrow();
+    expect(readTaskView("u1")).toBe("kanban");
+  });
+});

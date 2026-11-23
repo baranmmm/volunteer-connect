@@ -18,11 +18,18 @@ import { primaryRole, isNationalCoordinator } from "@/lib/roles";
 import { MfaScreen, useMfaStatus } from "@/components/app/MfaGate";
 import { PublicShell } from "@/components/public/PublicShell";
 import { useTranslation } from "react-i18next";
-import { navItemsFor, forbiddenItem, MOBILE_PRIMARY, type NavItem } from "@/components/app/nav";
+import {
+  navItemsFor,
+  forbiddenItem,
+  MOBILE_PRIMARY,
+  type NavBadge,
+  type NavItem,
+} from "@/components/app/nav";
 import { Logo } from "@/components/app/Logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { usePendingRequestCount } from "@/lib/use-event-requests";
+import { useNotificationCounts } from "@/lib/use-work-notices";
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
@@ -51,6 +58,14 @@ function AppLayout() {
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const pending = usePendingRequestCount().data?.total ?? 0;
+  const notices = useNotificationCounts().data;
+  // Requests: pending event requests (managers) plus unread task/meeting request notices; Tasks: new assignments;
+  // Meetings: meeting notices. Followers have none of these (the query is off for them).
+  const badgeCounts: Record<NavBadge, number> = {
+    requests: (isManager ? pending : 0) + (notices?.requests ?? 0),
+    tasks: notices?.tasks ?? 0,
+    meetings: notices?.meetings ?? 0,
+  };
   // The current privacy notice must be confirmed before the app (the server enforces it too: requireMember, RLS).
   const privacyFn = useServerFn(getPrivacyStatus);
   const privacy = useQuery({
@@ -166,7 +181,7 @@ function AppLayout() {
               item={item}
               className="flex min-h-11 items-center gap-3 rounded-xl border-l-2 border-transparent px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent data-[status=active]:border-l-sidebar-primary data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-foreground"
             >
-              {item.badge === "requests" && isManager && <NavCount count={pending} />}
+              {item.badge && <NavCount kind={item.badge} count={badgeCounts[item.badge]} />}
             </NavLink>
           ))}
         </nav>
@@ -192,14 +207,25 @@ function AppLayout() {
         aria-label={t("navigation.main")}
         className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
-        {primary.map(({ to, testId, labelKey, icon: Icon }) => (
+        {primary.map(({ to, testId, labelKey, icon: Icon, badge }) => (
           <Link
             key={to}
             to={to}
             data-testid={testId}
-            className="flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground data-[status=active]:text-primary"
+            className="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground data-[status=active]:text-primary"
           >
-            <Icon className="h-6 w-6" aria-hidden /> {t(labelKey)}
+            <span className="relative">
+              <Icon className="h-6 w-6" aria-hidden />
+              {badge && (
+                <NavCount
+                  kind={badge}
+                  count={badgeCounts[badge]}
+                  testId={`mobile-nav-${badge}-badge`}
+                  className="absolute -right-3 -top-2 min-w-5 px-1.5 py-0 text-[0.65rem] leading-4"
+                />
+              )}
+            </span>
+            <span className="max-w-full truncate px-1">{t(labelKey)}</span>
           </Link>
         ))}
         <button
@@ -225,7 +251,7 @@ function AppLayout() {
                 onClick={() => setMoreOpen(false)}
                 className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted data-[status=active]:bg-secondary data-[status=active]:text-primary"
               >
-                {item.badge === "requests" && isManager && <NavCount count={pending} />}
+                {item.badge && <NavCount kind={item.badge} count={badgeCounts[item.badge]} />}
               </NavLink>
             ))}
             <button
@@ -284,18 +310,32 @@ function NavLink({
   );
 }
 
-/** Pending event requests next to the "Requests" menu item (hidden at zero). */
-function NavCount({ count }: { count: number }) {
+/** A count next to a menu item (hidden at zero): `nav-<kind>-badge` (`mobile-nav-<kind>-badge` in the bottom bar). */
+function NavCount({
+  kind,
+  count,
+  testId,
+  className,
+}: {
+  kind: NavBadge;
+  count: number;
+  testId?: string;
+  className?: string;
+}) {
   const { t } = useTranslation();
   if (!count) return null;
   return (
     <span
-      data-testid="nav-requests-badge"
+      data-testid={testId ?? `nav-${kind}-badge`}
       data-count={count}
-      className="ml-auto min-w-6 rounded-full bg-primary px-2 py-0.5 text-center text-xs font-semibold text-primary-foreground"
+      className={
+        className
+          ? `rounded-full bg-primary text-center font-semibold text-primary-foreground ${className}`
+          : "ml-auto min-w-6 rounded-full bg-primary px-2 py-0.5 text-center text-xs font-semibold text-primary-foreground"
+      }
     >
       <span aria-hidden>{count > 99 ? "99+" : count}</span>
-      <span className="sr-only">{t("requests.pendingBadge", { count })}</span>
+      <span className="sr-only">{t(`notifications.badges.${kind}`, { count })}</span>
     </span>
   );
 }

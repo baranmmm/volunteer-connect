@@ -2,9 +2,12 @@
 // role. Requests of fresh users are removed by the freshUser fixture and by teardown; titles start with
 // REQUEST_TITLE_PREFIX so leftovers of interrupted runs (and drafts created by approving them) can be found.
 import { adminClient, clientAs } from "./SupabaseClient";
+import { deleteWork } from "./work";
 
 export const REQUEST_TITLE_PREFIX = "E2E Request ";
 export const TEMP_BRANCH_PREFIX = "E2E Temp Branch ";
+/** Regions created through the UI by a test: "<prefix><runId>-<created ms>". */
+export const TEMP_REGION_PREFIX = "E2E Region ";
 export type RequestStatus = "submitted" | "under_review" | "approved" | "declined" | "withdrawn";
 export type RequestRow = {
   id: string; requester_id: string | null; reviewer_id: string | null; scope: "branch" | "region"; branch_id: string | null; region_id: string;
@@ -105,7 +108,23 @@ export async function deleteLeftoverTestRequests(staleBefore: number, runId?: st
     const created = Number(/-(\d{13})-/.exec(b.name)?.[1] ?? 0);
     if ((runId && b.name.startsWith(`${TEMP_BRANCH_PREFIX}${runId}-`)) || created < staleBefore) await deleteTempBranch(b.id);
   }
+  const regions = await db.from("regions").select("id, name").like("name", `${TEMP_REGION_PREFIX}%`);
+  if (regions.error) throw new Error(`find test regions: ${regions.error.message}`);
+  for (const r of regions.data as { id: string; name: string }[]) {
+    // Regions have no created_at column either; older names without a timestamp count as stale.
+    const created = Number(/(\d{13})$/.exec(r.name)?.[1] ?? 0);
+    if ((runId && r.name.startsWith(`${TEMP_REGION_PREFIX}${runId}-`)) || created < staleBefore) await deleteTestRegion(r.id);
+  }
   return orphans.data.length + (drafts.data?.length ?? 0);
+}
+
+/** Removes a test region with its branches (and everything in them, see deleteTempBranch). */
+export async function deleteTestRegion(id: string): Promise<void> {
+  const db = adminClient();
+  const branches = await db.from("branches").select("id").eq("region_id", id);
+  for (const b of (branches.data ?? []) as { id: string }[]) await deleteTempBranch(b.id);
+  const { error } = await db.from("regions").delete().eq("id", id);
+  if (error) throw new Error(`delete test region: ${error.message}`);
 }
 
 /** A branch in the seed region just for one test, so counts (badge, dashboard) are not shared with others. */
@@ -115,13 +134,18 @@ export async function createTempBranch(regionId: string, runId: string, label: s
   if (error) throw new Error(`create branch: ${error.message}`);
   return (data as { id: string }).id;
 }
-/** Removes a temporary branch: its requests, events, series and volunteer applications go, remaining profiles move to `fallbackBranch` first. */
+/** Removes a temporary branch: its requests, events, series, tasks, meetings and volunteer applications go, remaining profiles move to `fallbackBranch` first. */
 export async function deleteTempBranch(id: string, fallbackBranch?: string): Promise<void> {
   const db = adminClient();
   const requests = await db.from("event_requests").select("id").eq("branch_id", id);
   await deleteRequests((requests.data ?? []).map((r: { id: string }) => r.id));
   await db.from("events").delete().eq("branch_id", id);
   await db.from("event_series").delete().eq("branch_id", id);
+  // Tasks, meetings (files first) and task/meeting requests in the branch.
+  for (const table of ["task_requests", "meeting_requests"] as const) await db.from(table).delete().eq("branch_id", id);
+  const tasks = await db.from("tasks").select("id").eq("branch_id", id);
+  const meetings = await db.from("meetings").select("id").eq("branch_id", id);
+  await deleteWork({ tasks: (tasks.data ?? []).map((t) => t.id), meetings: (meetings.data ?? []).map((m) => m.id) });
   // Volunteer applications reference the branch without ON DELETE (they would block the delete and leave the
   // temporary branch, with its long name, on the shared QA database).
   const apps = await db.from("volunteer_applications").delete().eq("branch_id", id);
