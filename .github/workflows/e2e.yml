@@ -27,6 +27,7 @@ on:
 # A newer queued run may cancel an older *pending* one (GitHub keeps one pending run per group). That is fine:
 # every run migrates QA before its tests, so the run that does go ahead also applies the cancelled run's migrations.
 # The group is at workflow level, so the jobs of ONE run (plan, migrate, three shards, report) share it.
+# A new push to a PR cancels that PR's earlier runs (cancel-superseded.yml), so they never hold the queue.
 # Adding any label other than full-ci starts a run that does nothing: it gets its own group, so it can never
 # take the place of a real pending run.
 concurrency:
