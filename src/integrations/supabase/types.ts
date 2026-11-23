@@ -68,26 +68,26 @@ export type Database = {
       }
       branches: {
         Row: {
-          id: string
           deleted_at: string | null
           deleted_by: string | null
           deleted_with_region: boolean
+          id: string
           name: string
           region_id: string
         }
         Insert: {
-          id?: string
           deleted_at?: string | null
           deleted_by?: string | null
           deleted_with_region?: boolean
+          id?: string
           name: string
           region_id: string
         }
         Update: {
-          id?: string
           deleted_at?: string | null
           deleted_by?: string | null
           deleted_with_region?: boolean
+          id?: string
           name?: string
           region_id?: string
         }
@@ -946,7 +946,7 @@ export type Database = {
           id: string
           item_id: string
           item_type: string
-          region_id: string
+          region_id: string | null
         }
         Insert: {
           action: string
@@ -956,7 +956,7 @@ export type Database = {
           id?: string
           item_id: string
           item_type: string
-          region_id: string
+          region_id?: string | null
         }
         Update: {
           action?: string
@@ -966,7 +966,7 @@ export type Database = {
           id?: string
           item_id?: string
           item_type?: string
-          region_id?: string
+          region_id?: string | null
         }
         Relationships: [
           {
@@ -980,21 +980,21 @@ export type Database = {
       }
       regions: {
         Row: {
-          id: string
           deleted_at: string | null
           deleted_by: string | null
+          id: string
           name: string
         }
         Insert: {
-          id?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          id?: string
           name: string
         }
         Update: {
-          id?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          id?: string
           name?: string
         }
         Relationships: []
@@ -1093,7 +1093,15 @@ export type Database = {
           created_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_followed_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -1176,70 +1184,42 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "volunteer_applications_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "volunteer_applications_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "volunteer_applications_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "volunteer_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      authorize_follower_self_deletion: {
-        Args: { _target: string }
-        Returns: string
-      }
-      purge_expired_structure: { Args: never; Returns: number }
-      purge_expired_volunteer_applications: { Args: never; Returns: number }
-      approve_volunteer_application: { Args: { p_id: string }; Returns: undefined }
-      create_branch: { Args: { p_name: string; p_region_id: string }; Returns: string }
-      create_region: { Args: { p_name: string }; Returns: string }
-      decline_volunteer_application: {
-        Args: { p_id: string; p_reason: string }
-        Returns: undefined
-      }
-      delete_branch: { Args: { p_id: string }; Returns: undefined }
-      delete_region: { Args: { p_id: string }; Returns: undefined }
-      delete_volunteer_application: { Args: { p_id: string }; Returns: undefined }
-      follow_branch: { Args: { p_branch_id: string }; Returns: undefined }
-      get_followed_branches: { Args: never; Returns: Json }
-      get_nc_dashboard: { Args: never; Returns: Json }
-      get_public_event: { Args: { p_id: string }; Returns: Json }
-      get_public_event_image: { Args: { p_id: string }; Returns: string }
-      get_public_events: {
-        Args: {
-          p_branch_ids?: string[]
-          p_from?: string
-          p_include_cancelled?: boolean
-          p_region_ids?: string[]
-          p_to?: string
-        }
-        Returns: Json
-      }
-      get_regions_tree: { Args: never; Returns: Json }
-      get_volunteer_application_count: { Args: never; Returns: number }
-      has_any_role: {
-        Args: {
-          _roles: Database["public"]["Enums"]["app_role"][]
-          _uid: string
-        }
-        Returns: boolean
-      }
-      is_follower: { Args: { _uid: string }; Returns: boolean }
-      is_member: { Args: { _uid: string }; Returns: boolean }
-      is_nc: { Args: never; Returns: boolean }
-      list_my_volunteer_applications: { Args: never; Returns: Json }
-      list_volunteer_applications: {
-        Args: { p_filter?: string }
-        Returns: Json
-      }
-      rename_branch: { Args: { p_id: string; p_name: string }; Returns: undefined }
-      rename_region: { Args: { p_id: string; p_name: string }; Returns: undefined }
-      session_ok: { Args: never; Returns: boolean }
-      submit_volunteer_application: { Args: { p: Json }; Returns: string }
-      unfollow_branch: { Args: { p_branch_id: string }; Returns: undefined }
-      withdraw_volunteer_application: {
-        Args: { p_id: string }
-        Returns: undefined
-      }
       accept_privacy_notice: { Args: { p_version: string }; Returns: Json }
       add_event_media: {
         Args: {
@@ -1263,10 +1243,19 @@ export type Database = {
         Args: { p_audience?: string; p_id: string }
         Returns: Json
       }
+      approve_volunteer_application: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      authorize_follower_self_deletion: {
+        Args: { _target: string }
+        Returns: string
+      }
       authorize_user_deletion: {
         Args: { _actor: string; _request?: string; _target: string }
         Returns: string
       }
+      branch_delete_check: { Args: { _branch: string }; Returns: undefined }
       can_manage_deleted_user: {
         Args: { _actor: string; _target: string }
         Returns: boolean
@@ -1291,6 +1280,10 @@ export type Database = {
         Args: { _r: Database["public"]["Tables"]["event_requests"]["Row"] }
         Returns: boolean
       }
+      can_review_volunteer_application: {
+        Args: { _branch: string }
+        Returns: boolean
+      }
       can_view_event: { Args: { _event: string }; Returns: boolean }
       can_view_event_media: { Args: { _event: string }; Returns: boolean }
       can_view_series: { Args: { _series: string }; Returns: boolean }
@@ -1302,12 +1295,23 @@ export type Database = {
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       cancel_registration: { Args: { p_event_id: string }; Returns: Json }
+      clean_structure_name: { Args: { _name: string }; Returns: string }
+      create_branch: {
+        Args: { p_name: string; p_region_id: string }
+        Returns: string
+      }
       create_event: { Args: { _data: Json }; Returns: string }
+      create_region: { Args: { p_name: string }; Returns: string }
       create_series: { Args: { _data: Json; _rule: string }; Returns: Json }
       decline_event_request: {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
       }
+      decline_volunteer_application: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      delete_branch: { Args: { p_id: string }; Returns: undefined }
       delete_event: {
         Args: { _complete?: boolean; _event: string; _title?: string }
         Returns: Json
@@ -1318,7 +1322,12 @@ export type Database = {
         Args: { p_media_id: string }
         Returns: undefined
       }
+      delete_region: { Args: { p_id: string }; Returns: undefined }
       delete_series: { Args: { _event: string; _mode: string }; Returns: Json }
+      delete_volunteer_application: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       dismiss_event_request_notice: {
         Args: { p_id: string }
         Returns: undefined
@@ -1332,6 +1341,10 @@ export type Database = {
         Returns: string
       }
       event_has_registrations: { Args: { _event: string }; Returns: boolean }
+      event_is_upcoming: {
+        Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
+        Returns: boolean
+      }
       event_request_actor: { Args: never; Returns: string }
       event_request_apply: {
         Args: {
@@ -1467,6 +1480,7 @@ export type Database = {
         Args: { _id: string; _operation: string }
         Returns: undefined
       }
+      follow_branch: { Args: { p_branch_id: string }; Returns: undefined }
       get_event_deletion_state: { Args: { _event: string }; Returns: Json }
       get_event_registration_summary: {
         Args: { p_event_id: string }
@@ -1490,6 +1504,7 @@ export type Database = {
       }
       get_event_request: { Args: { p_id: string }; Returns: Json }
       get_event_request_duplicates: { Args: { p_id: string }; Returns: Json }
+      get_followed_branches: { Args: never; Returns: Json }
       get_my_registrations: {
         Args: never
         Returns: {
@@ -1508,8 +1523,22 @@ export type Database = {
           waitlist_position: number
         }[]
       }
+      get_nc_dashboard: { Args: never; Returns: Json }
       get_pending_event_request_count: { Args: never; Returns: Json }
       get_privacy_status: { Args: never; Returns: Json }
+      get_public_event: { Args: { p_id: string }; Returns: Json }
+      get_public_event_image: { Args: { p_id: string }; Returns: string }
+      get_public_events: {
+        Args: {
+          p_branch_ids?: string[]
+          p_from?: string
+          p_include_cancelled?: boolean
+          p_region_ids?: string[]
+          p_to?: string
+        }
+        Returns: Json
+      }
+      get_regions_tree: { Args: never; Returns: Json }
       get_user_audit_history: {
         Args: { _offset?: number; _target: string }
         Returns: {
@@ -1523,12 +1552,28 @@ export type Database = {
       }
       get_user_branch: { Args: { _user_id: string }; Returns: string }
       get_user_region: { Args: { _user_id: string }; Returns: string }
+      get_volunteer_application_count: { Args: never; Returns: number }
       has_accepted_privacy_notice: { Args: never; Returns: boolean }
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _uid: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_active_nc: { Args: { _uid: string }; Returns: boolean }
+      is_follower: { Args: { _uid: string }; Returns: boolean }
+      is_member: { Args: { _uid: string }; Returns: boolean }
+      is_nc: { Args: never; Returns: boolean }
+      is_public_event: {
+        Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
         Returns: boolean
       }
       list_deleted_events: {
@@ -1552,6 +1597,7 @@ export type Database = {
         Returns: Json
       }
       list_my_event_requests: { Args: never; Returns: Json }
+      list_my_volunteer_applications: { Args: never; Returns: Json }
       list_recycle_bin: {
         Args: { _offset?: number; _search?: string; _type?: string }
         Returns: {
@@ -1570,6 +1616,10 @@ export type Database = {
           type: string
         }[]
       }
+      list_volunteer_applications: {
+        Args: { p_filter?: string }
+        Returns: Json
+      }
       manager_update_event_request: {
         Args: { p: Json; p_id: string }
         Returns: undefined
@@ -1579,6 +1629,7 @@ export type Database = {
         Returns: undefined
       }
       open_series: { Args: { _series: string }; Returns: Json }
+      other_active_nc_exists: { Args: { _except: string }; Returns: boolean }
       permanent_delete_item: {
         Args: { _confirmation: string; _id: string; _type: string }
         Returns: Json
@@ -1589,6 +1640,18 @@ export type Database = {
       }
       privacy_notice_version: { Args: never; Returns: string }
       promote_waitlist: { Args: { _event: string }; Returns: number }
+      public_event_image_path: {
+        Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
+        Returns: string
+      }
+      public_event_json: {
+        Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
+        Returns: Json
+      }
+      public_registration_state: {
+        Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
+        Returns: string
+      }
       purge_event: {
         Args: { _event: string; _finalize?: boolean }
         Returns: Json
@@ -1599,6 +1662,13 @@ export type Database = {
       }
       purge_expired_event_requests: { Args: never; Returns: number }
       purge_expired_series: { Args: never; Returns: number }
+      purge_expired_structure: { Args: never; Returns: number }
+      purge_expired_volunteer_applications: { Args: never; Returns: number }
+      purge_structure_item: {
+        Args: { _id: string; _type: string }
+        Returns: Json
+      }
+      purge_volunteer_application_item: { Args: { _id: string }; Returns: Json }
       record_privacy_choices: {
         Args: { _photo: boolean; _updates: boolean; _user: string }
         Returns: undefined
@@ -1635,11 +1705,21 @@ export type Database = {
         Args: { _r: Database["public"]["Tables"]["event_registrations"]["Row"] }
         Returns: Json
       }
+      rename_branch: {
+        Args: { p_id: string; p_name: string }
+        Returns: undefined
+      }
+      rename_region: {
+        Args: { p_id: string; p_name: string }
+        Returns: undefined
+      }
       reorder_event_media: {
         Args: { _event: string; _ids: string[] }
         Returns: undefined
       }
       request_account_deletion: { Args: never; Returns: string }
+      require_nc: { Args: never; Returns: undefined }
+      require_privacy_accepted: { Args: never; Returns: undefined }
       restore_event: {
         Args: { _event: string; _finalize?: boolean }
         Returns: Json
@@ -1650,6 +1730,8 @@ export type Database = {
         Args: { _finalize?: boolean; _series: string }
         Returns: Json
       }
+      restore_structure: { Args: { _id: string; _type: string }; Returns: Json }
+      restore_volunteer_application: { Args: { _id: string }; Returns: Json }
       series_expand: {
         Args: {
           _dtstart: string
@@ -1675,6 +1757,7 @@ export type Database = {
         Returns: string
       }
       series_timing: { Args: { _data: Json }; Returns: Record<string, unknown> }
+      session_ok: { Args: never; Returns: boolean }
       set_consent_preferences: {
         Args: { p_photo_consent: boolean; p_updates_email_consent: boolean }
         Returns: Json
@@ -1703,7 +1786,13 @@ export type Database = {
         Returns: undefined
       }
       start_review_event_request: { Args: { p_id: string }; Returns: undefined }
+      structure_in_use: {
+        Args: { _id: string; _type: string }
+        Returns: boolean
+      }
       submit_event_request: { Args: { p: Json }; Returns: string }
+      submit_volunteer_application: { Args: { p: Json }; Returns: string }
+      unfollow_branch: { Args: { p_branch_id: string }; Returns: undefined }
       update_event: {
         Args: { _data: Json; _event: string }
         Returns: undefined
@@ -1717,6 +1806,10 @@ export type Database = {
         Returns: Json
       }
       withdraw_event_request: { Args: { p_id: string }; Returns: undefined }
+      withdraw_volunteer_application: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
