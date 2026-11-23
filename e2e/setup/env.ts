@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 
 export const E2E_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const REPO_ROOT = path.resolve(E2E_DIR, "..");
-export const AUTH_DIR = path.join(E2E_DIR, ".auth");
+// The local stack keeps its own seed state and sessions (e2e/.auth/local), so it never overwrites QA's.
+export const AUTH_DIR = process.env["E2E_TARGET"] === "local" ? path.join(E2E_DIR, ".auth", "local") : path.join(E2E_DIR, ".auth");
 export const SEED_STATE_FILE = path.join(AUTH_DIR, "users.json");
 /** storageState file written by setup/auth.setup.ts for a seeded role. */
 export const storageFile = (role: string) => path.join(AUTH_DIR, `${role}.json`);
@@ -20,7 +21,8 @@ export const LOCAL_ENV_FILE = path.join(E2E_DIR, ".env.local");
 
 // Loads e2e/.env.qa (QA) or e2e/.env.local (local stack, written by `npm run local:up`) — never the repo-root
 // .env, which points at production. Values already present in the environment (e.g. GitHub Actions secrets) win.
-config({ path: isLocalTarget() ? LOCAL_ENV_FILE : path.join(E2E_DIR, ".env.qa") });
+// Locally the generated file wins over the shell, so a QA value exported in the terminal can never mix in.
+config(isLocalTarget() ? { path: LOCAL_ENV_FILE, override: true } : { path: path.join(E2E_DIR, ".env.qa") });
 
 export function requireEnv(name: string): string {
   const value = process.env[name]?.trim();

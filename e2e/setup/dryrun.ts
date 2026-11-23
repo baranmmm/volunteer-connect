@@ -48,6 +48,17 @@ const client = new pg.Client(connectionConfig());
 const t0 = Date.now();
 let problems = 0;
 await client.connect();
+// A dry run is only meaningful before the migration is applied (write it, dry-run it, then local:migrate).
+const versions = files.map((f) => path.basename(f).split("_")[0]!);
+const applied = (await client.query<{ version: string }>(
+  "SELECT version FROM supabase_migrations.schema_migrations WHERE version = ANY($1)", [versions],
+).catch(() => ({ rows: [] as { version: string }[] }))).rows.map((r) => r.version);
+if (applied.length) {
+  console.error(`[dryrun] Already applied here: ${applied.join(", ")}. Dry-run a migration before applying it` +
+    (isLocalTarget() ? " (local:up applies every migration in supabase/migrations: write the new one after local:up)." : "."));
+  await client.end();
+  process.exit(2);
+}
 try {
   await client.query("BEGIN");
   await client.query("SET LOCAL statement_timeout = '60s'; SET LOCAL lock_timeout = '5s'");
