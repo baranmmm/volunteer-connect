@@ -37,7 +37,7 @@ npm run local:reset     # fresh database (all migrations again) + seed
 npm run local:down
 ```
 
-Never run the full suite locally; CI runs it nightly and when a PR has the `full-ci` label.
+Never run the full suite locally; CI runs it nightly on QA and on PRs with the `full-ci` label (local stack).
 
 To reproduce CI's parallel shards locally (only when asked), give each shard its own app port with `E2E_LOCAL_PORT`.
 Seed state stays shared; sessions go to `e2e/.auth/local/port-<port>/`.
@@ -131,13 +131,20 @@ against production by hand.
 ## CI
 
 - `.github/workflows/checks.yml`: every PR and push to main — tsc (app, e2e), ESLint on changed files, Vitest.
-- `.github/workflows/e2e.yml`: guard → **QA migrate** → seed → tests in 3 shards (own `E2E_RUN_ID` and teardown
-  each) → merged HTML report artifact. Which tests:
+- `.github/workflows/e2e-pr.yml` (**E2E (local)**), every pull request: 3 shards, each on its own runner with its own
+  local Supabase stack (`npm run local:up`: every migration, seed, a local TOTP authenticator for the National
+  Coordinator). No QA access and no secrets. Unused containers are skipped (`E2E_LOCAL_EXCLUDE`); the stack's
+  Docker images are cached (`docker save` + zstd, keyed by CLI version and local config) and so are the Playwright
+  browsers. Merged HTML report artifact. Which tests:
   - **pull request**: `@smoke` + the specs related to the changed files (`scripts/select-specs.mjs`, shown in the
     run's summary). A changed migration runs every spec of each area it touches; changes to `e2e/setup`,
     `e2e/fixtures`, the Playwright config, package files or the Supabase client run the full suite.
   - **`full-ci` label** on the PR: the full suite (adding another label starts a run that does nothing).
+  - A new push to the PR cancels its earlier runs (`cancel-superseded.yml`).
+- `.github/workflows/e2e.yml` (**E2E (QA)**): guard → **QA migrate** → seed → tests in 3 shards (own `E2E_RUN_ID`
+  and teardown each) → merged HTML report artifact.
   - **push to main**: `@smoke`. **Nightly 02:00 UTC** on main: the full suite (including `qa:migrate`).
+    **workflow_dispatch**: full, smoke or selected.
   - The migrate step runs `npm run qa:migrate` (Supabase CLI 3.2.0). It applies the commit's pending migrations
     before the tests run against them. When nothing is pending it logs
     `No pending migrations: QA is up to date, nothing applied.` and does not run `db push`.
@@ -152,12 +159,9 @@ against production by hand.
   GitHub keeps one _pending_ run per group, so a newer push can cancel an older queued E2E run. Nothing is lost:
   the run that goes ahead migrates first and so also applies the cancelled run's migrations.
   `prod-db-migrate.yml` uses its own `prod-db` group.
-- **Feature-branch migrations reach QA.** QA is shared, so a migration pushed on a branch is applied to QA before
-  it is merged. Migrations are never edited (see `CLAUDE.md`), so this is harmless while the branch gets merged.
-  If a branch is abandoned after its migration reached QA, later `db push` runs fail with
-  _remote migration versions not found in the local migrations directory_. Ask the repo owner before repairing QA:
-  undo the migration's objects, then mark it reverted with
-  `supabase migration repair --status reverted <version> --db-url <QA pooler URL>`.
+- **Migrations reach QA after merge.** PR runs apply migrations to their own local stack only; QA gets them from the
+  push-to-main run (or the nightly run). A migration written on a branch that is later abandoned therefore never
+  reaches QA. (Migrations already on QA from earlier feature-branch runs stay; ask the repo owner before repairing.)
 - Secrets live in the GitHub environment `qa`: `QA_SUPABASE_URL`, `QA_SUPABASE_PUBLISHABLE_KEY`,
   `QA_SUPABASE_SERVICE_ROLE_KEY`, `QA_SUPABASE_DB_POOLER_URL` (no password), `QA_SUPABASE_DB_PASSWORD`, `E2E_USER_PASSWORD`.
 
