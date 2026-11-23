@@ -100,6 +100,8 @@ jobs:
       SUPABASE_DB_POOLER_URL: ${{ secrets.QA_SUPABASE_DB_POOLER_URL }}
       SUPABASE_DB_PASSWORD: ${{ secrets.QA_SUPABASE_DB_PASSWORD }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      # The seeded National Coordinator's authenticator (npm run qa:nc-mfa); optional: fresh NCs enrol their own.
+      E2E_NC_TOTP_SECRET: ${{ secrets.E2E_NC_TOTP_SECRET }}
       E2E_RUN_ID: gh${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
@@ -155,6 +157,8 @@ jobs:
       SUPABASE_DB_POOLER_URL: ${{ secrets.QA_SUPABASE_DB_POOLER_URL }}
       SUPABASE_DB_PASSWORD: ${{ secrets.QA_SUPABASE_DB_PASSWORD }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      # The seeded National Coordinator's authenticator (npm run qa:nc-mfa); optional: fresh NCs enrol their own.
+      E2E_NC_TOTP_SECRET: ${{ secrets.E2E_NC_TOTP_SECRET }}
       # One run id per shard, so shards never share (or tear down) each other's fresh users.
       E2E_RUN_ID: gh${{ github.run_id }}-${{ github.run_attempt }}-s${{ matrix.shard }}
     steps:

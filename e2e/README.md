@@ -70,7 +70,11 @@ without touching a CI run in progress: `E2E_RUN_ID=local-$(date +%s) npm test`, 
 ## How it works
 
 - **Seeded users** (`data/users.ts`): regional director (South of England), manager + volunteer + pending in
-  Medway and in Brighton, and one disposable user. Tests never modify them.
+  Medway and in Brighton, a follower of Medway, a National Coordinator and one disposable user. Tests never modify them.
+- **National Coordinators** need MFA: `freshUser({ role: "national_coordinator" })` enrols an authenticator in-process
+  (`totpSecret` on the returned user, never stored) and `pageAs` signs it in at aal2. The seeded NC's secret is local
+  (`.auth/local/nc-totp.json`, written by the seed) or, on QA, `E2E_NC_TOTP_SECRET` from `npm run qa:nc-mfa` (run once by
+  a person; it writes `.env.qa` without printing the value, then copy it to the GitHub `qa` secret).
 - **Fresh events**: `freshEvent()` creates events as a fresh manager through the app's RPCs (`create_event`,
   `cancel_event`), titled `E2E Event …`, and deletes them after the test.
   `freshSeries()` does the same for recurring series (`create_series`); `trackSeries()` registers a series created
