@@ -2,7 +2,7 @@
 // The service_role key is used ONLY here (never in browser code).
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { requireEnv, userPassword } from "../setup/env";
-import { QA_REF, assertQaEnvironment } from "../setup/guard";
+import { assertQaEnvironment } from "../setup/guard";
 
 assertQaEnvironment();
 
@@ -60,7 +60,9 @@ export async function clientAs(email: string): Promise<SupabaseClient> {
 
 /** Playwright storageState for a signed-in session (supabase-js keeps it in localStorage). */
 export function storageStateFor(session: Session, origin: string, language: Lang | null = "en") {
-  const localStorage = [{ name: `sb-${QA_REF}-auth-token`, value: JSON.stringify(session) }];
+  // supabase-js's default storage key: sb-<first label of the API host>-auth-token (the QA ref, or "127" locally).
+  const ref = new URL(requireEnv("SUPABASE_URL")).hostname.split(".")[0];
+  const localStorage = [{ name: `sb-${ref}-auth-token`, value: JSON.stringify(session) }];
   if (language) localStorage.push({ name: "dsvh-language", value: language });
   return { cookies: [], origins: [{ origin, localStorage }] };
 }

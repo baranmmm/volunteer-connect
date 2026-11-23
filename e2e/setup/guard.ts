@@ -1,4 +1,4 @@
-import { isMain } from "./env";
+import { isLocalTarget, isMain } from "./env";
 
 export const QA_REF = "impdbvwsaancutwlrmac";
 export const PROD_REF = "kcxmjscxooqqhsgrhknb";
@@ -32,6 +32,7 @@ export function assertQaEnvironment(env: Env = process.env, opts: { requireDb?: 
   for (const [name, value] of Object.entries(env)) {
     if (value?.includes(PROD_REF)) throw new GuardError(`${name} contains the production project ref`);
   }
+  if (env["E2E_TARGET"] === "local") return assertLocalEnvironment(env, opts);
 
   // 2. Explicit QA ref and URL.
   if (env["SUPABASE_PROJECT_REF"] !== QA_REF) {
@@ -86,10 +87,36 @@ export function assertQaEnvironment(env: Env = process.env, opts: { requireDb?: 
   }
 }
 
+const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
+
+/** E2E_TARGET=local: every Supabase URL (API and database) must point at this machine. */
+function assertLocalEnvironment(env: Env, opts: { requireDb?: boolean }): void {
+  const local = (name: string, required: boolean) => {
+    const value = env[name];
+    if (value === undefined && !required) return;
+    let host = "";
+    try {
+      host = new URL(value ?? "").hostname;
+    } catch {
+      throw new GuardError(`${name} is missing or not a URL (local target; run npm run local:up)`);
+    }
+    if (!LOCAL_HOSTS.has(host)) throw new GuardError(`${name} must point at the local stack (got ${host})`);
+  };
+  local("SUPABASE_URL", true);
+  local("VITE_SUPABASE_URL", false);
+  local("SUPABASE_DB_URL", !!opts.requireDb);
+  if (env["SUPABASE_DB_POOLER_URL"]) throw new GuardError("SUPABASE_DB_POOLER_URL (remote QA) is set while the target is local");
+  for (const [name, value] of Object.entries(env)) {
+    if (!name.startsWith("VITE_")) continue;
+    if (/SERVICE|SECRET/i.test(name)) throw new GuardError(`${name} looks like a server secret in a VITE_ variable`);
+    if (value?.startsWith("sb_secret_")) throw new GuardError(`${name} contains a secret API key`);
+  }
+}
+
 if (isMain(import.meta.url)) {
   try {
     assertQaEnvironment();
-    console.log(`[e2e guard] OK — environment targets ${QA_HOST}`);
+    console.log(`[e2e guard] OK — environment targets ${isLocalTarget() ? "the local stack" : QA_HOST}`);
   } catch (e) {
     console.error((e as Error).message);
     process.exit(1);

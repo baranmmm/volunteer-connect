@@ -4,20 +4,21 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { REPO_ROOT, baseUrl, requireEnv } from "./env";
+import { REPO_ROOT, baseUrl, isLocalTarget, requireEnv } from "./env";
 import { QA_REF, assertQaEnvironment } from "./guard";
 
 const url = new URL(baseUrl());
+const projectId = isLocalTarget() ? "local" : QA_REF;
 const env: NodeJS.ProcessEnv = {
   ...process.env,
   SUPABASE_URL: requireEnv("SUPABASE_URL"),
   SUPABASE_PUBLISHABLE_KEY: requireEnv("SUPABASE_PUBLISHABLE_KEY"),
-  SUPABASE_PROJECT_ID: QA_REF,
+  SUPABASE_PROJECT_ID: projectId,
   // Server-only: used by the deleteUser server function. Never prefixed with VITE_.
   SUPABASE_SERVICE_ROLE_KEY: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
   VITE_SUPABASE_URL: requireEnv("SUPABASE_URL"),
   VITE_SUPABASE_PUBLISHABLE_KEY: requireEnv("SUPABASE_PUBLISHABLE_KEY"),
-  VITE_SUPABASE_PROJECT_ID: QA_REF,
+  VITE_SUPABASE_PROJECT_ID: projectId,
 };
 
 try {
