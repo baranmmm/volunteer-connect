@@ -4,6 +4,7 @@ import { REQUEST_TITLE_PREFIX, rpcAs, submitRequestAs } from "../../api/eventReq
 import { RequestsPage } from "../../pages/RequestsPage";
 import { EventRequestFormDialog } from "../../pages/components/EventRequestFormDialog";
 import { Sidebar } from "../../pages/components/Sidebar";
+import { APP_LOAD_TIMEOUT } from "../../pages/app";
 
 test.describe("My Requests", () => {
   for (const role of ["volunteer", "branch_manager", "regional_director"] as const) {
@@ -76,8 +77,9 @@ test.describe("My Requests", () => {
   test("volunteers see their list without manager tabs", async ({ freshUser, pageAs }) => {
     const page = await pageAs(await freshUser());
     await page.goto("/requests");
+    // Wait for the page first: before it loads, the absence checks below would pass for any role.
+    await expect(page.getByTestId("my-requests-list")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(page.getByTestId("manager-requests-page")).toHaveCount(0);
-    await expect(page.getByTestId("my-requests-list")).toBeVisible();
     await expect(page.getByTestId("requests-tab-review")).toHaveCount(0);
     await page.goto("/my-requests");
     await expect(page).toHaveURL(/\/requests\?tab=mine$/);
