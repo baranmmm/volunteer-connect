@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 import { EventFormDialog } from "./components/EventFormDialog";
 
 export type SeriesScope = "this" | "following" | "all";
@@ -38,7 +39,7 @@ export class EventPage {
 
   async goto(eventId: string) {
     await this.page.goto(`/events/${eventId}`);
-    await expect(this.title().or(this.notFound())).toBeVisible();
+    await expect(this.title().or(this.notFound())).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   async chooseScope(scope: SeriesScope) {

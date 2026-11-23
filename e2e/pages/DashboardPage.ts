@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 
 export class DashboardPage {
   constructor(readonly page: Page) {}
@@ -34,8 +35,8 @@ export class DashboardPage {
   }
 
   async expectLoaded() {
-    await expect(this.page).toHaveURL(/\/dashboard$/);
-    await expect(this.welcome()).toBeVisible();
+    await expect(this.page).toHaveURL(/\/dashboard$/, { timeout: APP_LOAD_TIMEOUT });
+    await expect(this.welcome()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   /** Waits until the upcoming-events card has finished loading (rows or the empty state). */

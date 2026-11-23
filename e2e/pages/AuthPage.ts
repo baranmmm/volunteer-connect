@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 
 export class AuthPage {
   constructor(readonly page: Page) {}
@@ -17,7 +18,7 @@ export class AuthPage {
 
   async goto() {
     await this.page.goto("/auth");
-    await expect(this.signInForm()).toBeVisible();
+    await expect(this.signInForm()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   async signIn(email: string, password: string) {

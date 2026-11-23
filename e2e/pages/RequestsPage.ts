@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 
 export type ManagerTab = "pending" | "review" | "decided";
 
@@ -41,7 +42,7 @@ export class RequestsPage {
   /** Reviewers' page (/requests). */
   async goto() {
     await this.page.goto("/requests?tab=review");
-    await expect(this.managerPage()).toBeVisible();
+    await expect(this.managerPage()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
   /** Requesters' own list in the shared Requests workspace. */
   readonly myPage = () => this.page.getByTestId("my-requests-page");
@@ -52,7 +53,7 @@ export class RequestsPage {
     this.page.getByTestId(`my-requests-filter-${filter}`);
   async gotoMine() {
     await this.page.goto("/requests?tab=mine");
-    await expect(this.myList()).toBeVisible();
+    await expect(this.myList()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
   /** "New request" → the Event card → the event request form (type choice next). */
   async newEventRequest() {

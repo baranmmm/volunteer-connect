@@ -3,6 +3,7 @@
 // deleted after each test. Brighton is used only by the cancelled-events test, so the dashboard's top 5 there
 // is not crowded by events from the other tests running in parallel.
 import { test, expect } from "../../fixtures/roles";
+import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { CalendarPage, type CalendarView } from "../../pages/CalendarPage";
 import { DashboardPage } from "../../pages/DashboardPage";
 
@@ -51,8 +52,9 @@ test.describe("Event status and dashboard cards", () => {
     await expect(dashboard.upcomingItem(mine.id)).toHaveCount(0);
 
     await dashboard.draftEdit(mine.id).click();
+    // The form opens once the event and the manage permission have loaded; the page then drops ?edit=true.
+    await expect(page.getByTestId("event-form")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(page).toHaveURL(new RegExp(`/events/${mine.id}$`));
-    await expect(page.getByTestId("event-form")).toBeVisible();
   });
 
   test("?edit=true never opens the form for users who cannot manage the event", async ({ freshUser, freshEvent, pageAs }) => {

@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { APP_LOAD_TIMEOUT } from "./app";
 
 export type CalendarView = "list" | "month";
 
@@ -13,7 +14,7 @@ export class CalendarPage {
   /** `?view=` makes the view independent of the device's default. */
   async goto(view: CalendarView) {
     await this.page.goto(`/calendar?view=${view}`);
-    await expect(view === "list" ? this.listView() : this.monthView()).toBeVisible();
+    await expect(view === "list" ? this.listView() : this.monthView()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   /**
