@@ -55,10 +55,13 @@ function Dashboard() {
     const timer = window.setInterval(() => setNow(new Date()), 30000);
     return () => window.clearInterval(timer);
   }, []);
-  const follower = isFollowerRoles(roles), nc = isNationalCoordinator(roles);
+  const follower = isFollowerRoles(roles),
+    nc = isNationalCoordinator(roles);
   // Upcoming events of followed branches (members: their own scope plus followed public events).
   const followed = useFollowedBranches(session?.user.id);
-  const upcoming = nc ? events.data ?? [] : (events.data ?? []).filter((e) => inFollowedBranches(e, followed.data ?? []));
+  const upcoming = nc
+    ? (events.data ?? [])
+    : (events.data ?? []).filter((e) => inFollowedBranches(e, followed.data ?? []));
   const drafts = isManager || nc ? ownDrafts(events.data ?? [], session?.user.id) : [];
   return (
     <div className="space-y-8">
@@ -83,7 +86,11 @@ function Dashboard() {
       </section>
       <div data-testid="dashboard-grid" className="grid gap-5 lg:grid-cols-2">
         {nc && <NcDashboard />}
-        {follower && <div data-testid="follower-dashboard" className="grid gap-5 lg:col-span-2 lg:grid-cols-2"><FollowerCards /></div>}
+        {follower && (
+          <div data-testid="follower-dashboard" className="grid gap-5 lg:col-span-2 lg:grid-cols-2">
+            <FollowerCards />
+          </div>
+        )}
         {!follower && !nc && <RequestNotices />}
         <UpcomingEventsCard
           events={upcoming}

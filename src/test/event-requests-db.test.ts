@@ -200,10 +200,9 @@ describe("event requests (database)", () => {
       const r = await submit(ids.bm);
       await as(ids.rd);
       const approved = (
-        await db.query<{ a: { event_id: string } }>(
-          "SELECT public.approve_event_request($1) a",
-          [r],
-        )
+        await db.query<{ a: { event_id: string } }>("SELECT public.approve_event_request($1) a", [
+          r,
+        ])
       ).rows[0]!.a;
       await fails("SELECT public.approve_event_request($1)", [r], "Request already decided");
       await as(null);
@@ -291,7 +290,11 @@ describe("event requests (database)", () => {
         [v],
         "permission denied",
       );
-      await fails("SELECT public.event_request_fields('{}'::jsonb, 'proposal')", [], "permission denied");
+      await fails(
+        "SELECT public.event_request_fields('{}'::jsonb, 'proposal')",
+        [],
+        "permission denied",
+      );
       await fails("SELECT public.restore_event_request($1)", [v], "permission denied");
       await fails("SELECT public.purge_expired_event_requests()", [], "permission denied");
       await as(ids.vol2);

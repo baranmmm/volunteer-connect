@@ -1,5 +1,5 @@
-import type { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
+import type { PGlite } from "@electric-sql/pglite";
+import { readFileSync, readdirSync } from "node:fs";
 
 export async function initializeRecycleDatabase(db: PGlite) {
   await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
@@ -15,7 +15,8 @@ export async function initializeRecycleDatabase(db: PGlite) {
     GRANT SELECT,INSERT,DELETE ON storage.objects TO authenticated;
     CREATE FUNCTION storage.extension(name text) RETURNS text LANGUAGE sql AS $$SELECT reverse(split_part(reverse(name),'.',1))$$;
     CREATE FUNCTION public.rls_auto_enable() RETURNS event_trigger LANGUAGE plpgsql AS $$BEGIN END$$;`);
-  for (const file of readdirSync('supabase/migrations').sort()) await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'));
+  for (const file of readdirSync("supabase/migrations").sort())
+    await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   // Test-only (PGlite): sign-up needs a followed branch, and the older DB tests were written when a new account was a
   // pending volunteer. A fixture branch fills in a missing branch_id, and unless the metadata says "follower": true the
   // new follower is turned back into a pending volunteer (branch from the metadata). Real sign-up is tested with
@@ -39,6 +40,6 @@ export async function initializeRecycleDatabase(db: PGlite) {
 }
 
 /** The privacy notice version the database requires (sign-up metadata must carry it). */
-export const PRIVACY_VERSION = '1.1';
-export const FIXTURE_REGION = 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1';
-export const FIXTURE_BRANCH = 'f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2';
+export const PRIVACY_VERSION = "1.1";
+export const FIXTURE_REGION = "f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1";
+export const FIXTURE_BRANCH = "f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2";

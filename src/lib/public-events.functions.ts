@@ -8,7 +8,11 @@ export const getPublicEvents = createServerFn({ method: "POST" })
   .inputValidator(z.object({ branch: branchParam, includeCancelled: z.boolean().optional() }))
   .handler(async ({ data }) => {
     const { fetchPublicEvents } = await import("@/lib/public-events.server");
-    return fetchPublicEvents({ branchSlugs: data.branch ?? null, months: 12, includeCancelled: !!data.includeCancelled });
+    return fetchPublicEvents({
+      branchSlugs: data.branch ?? null,
+      months: 12,
+      includeCancelled: !!data.includeCancelled,
+    });
   });
 
 export const getPublicEvent = createServerFn({ method: "POST" })

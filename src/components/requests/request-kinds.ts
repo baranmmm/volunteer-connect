@@ -6,7 +6,11 @@ import { isOpenRequest, type RequestStatus } from "@/lib/event-requests";
  * "Coming soon" and will plug in here with their own form and list.
  */
 /** volunteer: a follower's application to become a volunteer (the only kind available to followers). */
-export type RequestKind = { id: "event" | "task" | "meeting" | "volunteer"; icon: LucideIcon; enabled: boolean };
+export type RequestKind = {
+  id: "event" | "task" | "meeting" | "volunteer";
+  icon: LucideIcon;
+  enabled: boolean;
+};
 export const REQUEST_KINDS: RequestKind[] = [
   { id: "event", icon: CalendarDays, enabled: true },
   { id: "task", icon: ListChecks, enabled: false },

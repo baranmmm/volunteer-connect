@@ -126,17 +126,46 @@ export function FollowerDeleteDialog({ open, onClose }: { open: boolean; onClose
     }
   }
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!busy && !o) onClose(); }}>
-      <DialogContent data-testid="follower-delete-dialog" className="max-w-[calc(100%-2rem)] sm:max-w-lg">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!busy && !o) onClose();
+      }}
+    >
+      <DialogContent
+        data-testid="follower-delete-dialog"
+        className="max-w-[calc(100%-2rem)] sm:max-w-lg"
+      >
         <DialogHeader>
           <DialogTitle>{t("profile.followerDeleteTitle")}</DialogTitle>
           <DialogDescription>{t("profile.followerDeleteText")}</DialogDescription>
         </DialogHeader>
-        <Label htmlFor="follower-delete-name">{t("profile.typeYourName", { name: expected })}</Label>
-        <Input id="follower-delete-name" data-testid="follower-delete-name-input" value={name} autoComplete="off" onChange={(e) => setName(e.target.value)} className="h-11" />
+        <Label htmlFor="follower-delete-name">
+          {t("profile.typeYourName", { name: expected })}
+        </Label>
+        <Input
+          id="follower-delete-name"
+          data-testid="follower-delete-name-input"
+          value={name}
+          autoComplete="off"
+          onChange={(e) => setName(e.target.value)}
+          className="h-11"
+        />
         <DialogFooter className="gap-2">
-          <Button data-testid="confirm-dialog-cancel-button" variant="outline" disabled={busy} onClick={onClose}>{t("profile.keepAccount")}</Button>
-          <Button data-testid="follower-delete-confirm" variant="destructive" disabled={busy || !expected || name.trim() !== expected} onClick={() => void confirm()}>
+          <Button
+            data-testid="confirm-dialog-cancel-button"
+            variant="outline"
+            disabled={busy}
+            onClick={onClose}
+          >
+            {t("profile.keepAccount")}
+          </Button>
+          <Button
+            data-testid="follower-delete-confirm"
+            variant="destructive"
+            disabled={busy || !expected || name.trim() !== expected}
+            onClick={() => void confirm()}
+          >
             {busy ? t("profile.sending") : t("profile.deleteNow")}
           </Button>
         </DialogFooter>

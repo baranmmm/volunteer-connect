@@ -1,4 +1,11 @@
-import { createFileRoute, Link, Navigate, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Navigate,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useRedirect } from "@/lib/use-redirect";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -53,7 +60,9 @@ function AppLayout() {
     staleTime: 300000,
   });
 
-  useEffect(() => { void refresh().catch(() => undefined); }, [pathname, refresh]);
+  useEffect(() => {
+    void refresh().catch(() => undefined);
+  }, [pathname, refresh]);
 
   // A public event's page (/events/:id) also works signed out, in the public layout.
   const publicPath = pathname.startsWith("/events/");
@@ -62,14 +71,31 @@ function AppLayout() {
   const mfa = useMfaStatus(nc && !loading, session?.user.id);
   useRedirect(!loading && !session && !publicPath, "/auth");
 
-  if (loading) return <div data-testid="app-loading" className="flex min-h-screen items-center justify-center text-muted-foreground">{t("common.loading")}</div>;
-  if (!session) return publicPath ? <PublicShell><Outlet /></PublicShell> : null;
+  if (loading)
+    return (
+      <div
+        data-testid="app-loading"
+        className="flex min-h-screen items-center justify-center text-muted-foreground"
+      >
+        {t("common.loading")}
+      </div>
+    );
+  if (!session)
+    return publicPath ? (
+      <PublicShell>
+        <Outlet />
+      </PublicShell>
+    ) : null;
 
   if (!profile || profile.status !== "active") {
     const inactive = profile?.status === "inactive";
     return (
       <div className="flex min-h-screen items-center justify-center px-5">
-        <div data-testid="pending-approval-screen" data-status={profile?.status ?? "pending"} className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-soft">
+        <div
+          data-testid="pending-approval-screen"
+          data-status={profile?.status ?? "pending"}
+          className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-soft"
+        >
           <Clock className="mx-auto h-12 w-12 text-primary" aria-hidden />
           <h1 className="mt-4 text-2xl font-bold">
             {inactive ? t("navigation.inactiveTitle") : t("navigation.pendingTitle")}
@@ -77,7 +103,12 @@ function AppLayout() {
           <p className="mt-3 text-muted-foreground">
             {inactive ? t("navigation.inactiveText") : t("navigation.pendingText")}
           </p>
-          <Button data-testid="pending-sign-out-button" variant="outline" className="mt-6 h-12 rounded-xl" onClick={signOut}>
+          <Button
+            data-testid="pending-sign-out-button"
+            variant="outline"
+            className="mt-6 h-12 rounded-xl"
+            onClick={signOut}
+          >
             <LogOut className="mr-2 h-4 w-4" /> {t("navigation.signOut")}
           </Button>
         </div>
@@ -86,11 +117,29 @@ function AppLayout() {
   }
 
   // National Coordinators act only with MFA (aal2): until then they see only the set-up / verification screen.
-  if (nc && (mfa.isLoading || !mfa.data)) return <div data-testid="app-loading" className="flex min-h-screen items-center justify-center text-muted-foreground">{t("common.loading")}</div>;
-  if (nc && mfa.data && !mfa.data.aal2) return <MfaScreen factorId={mfa.data.factorId} userId={session.user.id} onSignOut={signOut} />;
+  if (nc && (mfa.isLoading || !mfa.data))
+    return (
+      <div
+        data-testid="app-loading"
+        className="flex min-h-screen items-center justify-center text-muted-foreground"
+      >
+        {t("common.loading")}
+      </div>
+    );
+  if (nc && mfa.data && !mfa.data.aal2)
+    return <MfaScreen factorId={mfa.data.factorId} userId={session.user.id} onSignOut={signOut} />;
 
-  if (privacy.isLoading) return <div data-testid="app-loading" className="flex min-h-screen items-center justify-center text-muted-foreground">{t("common.loading")}</div>;
-  if (privacy.data && !privacy.data.current_accepted) return <PrivacyGate status={privacy.data} onSignOut={signOut} />;
+  if (privacy.isLoading)
+    return (
+      <div
+        data-testid="app-loading"
+        className="flex min-h-screen items-center justify-center text-muted-foreground"
+      >
+        {t("common.loading")}
+      </div>
+    );
+  if (privacy.data && !privacy.data.current_accepted)
+    return <PrivacyGate status={privacy.data} onSignOut={signOut} />;
 
   // Pages a role may not open go back to the dashboard (their data is refused by the server as well).
   if (forbiddenItem(role, pathname)) return <Navigate to="/dashboard" replace />;
@@ -102,16 +151,30 @@ function AppLayout() {
 
   return (
     <div className="min-h-screen lg:flex">
-      <aside data-testid="app-sidebar" className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-5 text-sidebar-foreground lg:flex">
+      <aside
+        data-testid="app-sidebar"
+        className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-5 text-sidebar-foreground lg:flex"
+      >
         <Logo className="mb-8 w-full" />
-        <nav aria-label={t("navigation.main")} className="-mx-1 min-h-0 flex-1 space-y-1 overflow-y-auto px-1">
+        <nav
+          aria-label={t("navigation.main")}
+          className="-mx-1 min-h-0 flex-1 space-y-1 overflow-y-auto px-1"
+        >
           {items.map((item) => (
-            <NavLink key={item.to} item={item} className="flex min-h-11 items-center gap-3 rounded-xl border-l-2 border-transparent px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent data-[status=active]:border-l-sidebar-primary data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-foreground">
+            <NavLink
+              key={item.to}
+              item={item}
+              className="flex min-h-11 items-center gap-3 rounded-xl border-l-2 border-transparent px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent data-[status=active]:border-l-sidebar-primary data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-foreground"
+            >
               {item.badge === "requests" && isManager && <NavCount count={pending} />}
             </NavLink>
           ))}
         </nav>
-        <button data-testid="nav-sign-out" onClick={signOut} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent">
+        <button
+          data-testid="nav-sign-out"
+          onClick={signOut}
+          className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent"
+        >
           <LogOut className="h-5 w-5" aria-hidden /> {t("navigation.signOut")}
         </button>
       </aside>
@@ -124,9 +187,18 @@ function AppLayout() {
         <Outlet />
       </main>
 
-      <nav data-testid="mobile-bottom-nav" aria-label={t("navigation.main")} className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav
+        data-testid="mobile-bottom-nav"
+        aria-label={t("navigation.main")}
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
+      >
         {primary.map(({ to, testId, labelKey, icon: Icon }) => (
-          <Link key={to} to={to} data-testid={testId} className="flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground data-[status=active]:text-primary">
+          <Link
+            key={to}
+            to={to}
+            data-testid={testId}
+            className="flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground data-[status=active]:text-primary"
+          >
             <Icon className="h-6 w-6" aria-hidden /> {t(labelKey)}
           </Link>
         ))}
@@ -142,14 +214,25 @@ function AppLayout() {
 
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent data-testid="mobile-nav-more-sheet" side="bottom" className="rounded-t-3xl">
-          <SheetHeader><SheetTitle>{t("navigation.more")}</SheetTitle></SheetHeader>
+          <SheetHeader>
+            <SheetTitle>{t("navigation.more")}</SheetTitle>
+          </SheetHeader>
           <div className="grid gap-1 p-4 pt-0">
             {more.map((item) => (
-              <NavLink key={item.to} item={item} onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted data-[status=active]:bg-secondary data-[status=active]:text-primary">
+              <NavLink
+                key={item.to}
+                item={item}
+                onClick={() => setMoreOpen(false)}
+                className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted data-[status=active]:bg-secondary data-[status=active]:text-primary"
+              >
                 {item.badge === "requests" && isManager && <NavCount count={pending} />}
               </NavLink>
             ))}
-            <button data-testid="mobile-nav-sign-out" onClick={signOut} className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted">
+            <button
+              data-testid="mobile-nav-sign-out"
+              onClick={signOut}
+              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted"
+            >
               <LogOut className="h-5 w-5" aria-hidden /> {t("navigation.signOut")}
             </button>
           </div>
@@ -160,19 +243,45 @@ function AppLayout() {
 }
 
 /** A menu entry: an in-app link, or an external one (Donate) that opens in a new tab. */
-function NavLink({ item, className, onClick, children }: { item: NavItem; className: string; onClick?: () => void; children?: ReactNode }) {
+function NavLink({
+  item,
+  className,
+  onClick,
+  children,
+}: {
+  item: NavItem;
+  className: string;
+  onClick?: () => void;
+  children?: ReactNode;
+}) {
   const { t } = useTranslation();
   const Icon = item.icon;
-  const body = (<><Icon className="h-5 w-5" aria-hidden /> {t(item.labelKey)}{children}</>);
+  const body = (
+    <>
+      <Icon className="h-5 w-5" aria-hidden /> {t(item.labelKey)}
+      {children}
+    </>
+  );
   if (item.href) {
     return (
-      <a href={item.href} target="_blank" rel="noopener noreferrer" data-testid={item.testId} onClick={onClick} className={className}>
+      <a
+        href={item.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-testid={item.testId}
+        onClick={onClick}
+        className={className}
+      >
         {body}
         <span className="sr-only"> {t("common.opensInNewTab")}</span>
       </a>
     );
   }
-  return <Link to={item.to} data-testid={item.testId} onClick={onClick} className={className}>{body}</Link>;
+  return (
+    <Link to={item.to} data-testid={item.testId} onClick={onClick} className={className}>
+      {body}
+    </Link>
+  );
 }
 
 /** Pending event requests next to the "Requests" menu item (hidden at zero). */
@@ -180,7 +289,11 @@ function NavCount({ count }: { count: number }) {
   const { t } = useTranslation();
   if (!count) return null;
   return (
-    <span data-testid="nav-requests-badge" data-count={count} className="ml-auto min-w-6 rounded-full bg-primary px-2 py-0.5 text-center text-xs font-semibold text-primary-foreground">
+    <span
+      data-testid="nav-requests-badge"
+      data-count={count}
+      className="ml-auto min-w-6 rounded-full bg-primary px-2 py-0.5 text-center text-xs font-semibold text-primary-foreground"
+    >
       <span aria-hidden>{count > 99 ? "99+" : count}</span>
       <span className="sr-only">{t("requests.pendingBadge", { count })}</span>
     </span>

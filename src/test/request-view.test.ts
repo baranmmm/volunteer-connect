@@ -30,7 +30,12 @@ describe("unified Requests views", () => {
     const items = NAV_ITEMS.filter((item) => item.to.includes("requests"));
     expect(items).toHaveLength(1);
     expect(items[0]?.to).toBe("/requests");
-    expect(items[0]?.roles).toEqual(["follower", "volunteer", "branch_manager", "regional_director"]); // NCs see request numbers on their dashboard
+    expect(items[0]?.roles).toEqual([
+      "follower",
+      "volunteer",
+      "branch_manager",
+      "regional_director",
+    ]); // NCs see request numbers on their dashboard
     expect(items[0]?.badge).toBe("requests");
   });
 });

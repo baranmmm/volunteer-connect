@@ -16,7 +16,9 @@ export function detectLanguage(): Lang {
   try {
     const saved = window.localStorage.getItem(LANG_STORAGE_KEY);
     if (isLang(saved)) return saved;
-  } catch { /* storage unavailable */ }
+  } catch {
+    /* storage unavailable */
+  }
   return (navigator.language || "").toLowerCase().startsWith("tr") ? "tr" : "en";
 }
 
@@ -28,7 +30,8 @@ void i18n.use(initReactI18next).init({
 });
 
 function applyHtmlLang(lang: Lang) {
-  if (typeof document !== "undefined") document.documentElement.lang = lang === "tr" ? "tr" : "en-GB";
+  if (typeof document !== "undefined")
+    document.documentElement.lang = lang === "tr" ? "tr" : "en-GB";
 }
 applyHtmlLang(currentLang());
 i18n.on("languageChanged", (l) => applyHtmlLang(isLang(l) ? l : "en"));
@@ -38,7 +41,11 @@ export function currentLang(): Lang {
 }
 
 export function setLanguage(lang: Lang) {
-  try { window.localStorage.setItem(LANG_STORAGE_KEY, lang); } catch { /* ignore */ }
+  try {
+    window.localStorage.setItem(LANG_STORAGE_KEY, lang);
+  } catch {
+    /* ignore */
+  }
   if (i18n.language !== lang) void i18n.changeLanguage(lang);
   applyHtmlLang(lang);
 }
@@ -47,8 +54,13 @@ export function dateLocale(lang: string = i18n.language) {
   return lang === "tr" ? "tr-TR" : "en-GB";
 }
 
-export function formatDate(value: string | Date, opts: Intl.DateTimeFormatOptions = { dateStyle: "medium" }) {
-  return new Intl.DateTimeFormat(dateLocale(), { timeZone: "Europe/London", ...opts }).format(new Date(value));
+export function formatDate(
+  value: string | Date,
+  opts: Intl.DateTimeFormatOptions = { dateStyle: "medium" },
+) {
+  return new Intl.DateTimeFormat(dateLocale(), { timeZone: "Europe/London", ...opts }).format(
+    new Date(value),
+  );
 }
 
 const ERROR_KEYS: Record<string, string> = {
@@ -151,8 +163,10 @@ const ERROR_KEYS: Record<string, string> = {
   "Only active Regional Directors can move users": "errors.directorOnlyMove",
   "Profile not found": "errors.profileNotFound",
   "Regional Directors cannot be deleted": "errors.directorCannotBeDeleted",
-  "Regional Directors must contact the Dialogue Society office to delete their account": "errors.directorSelfDelete",
-  "Role must be Volunteer or Branch Manager; Regional Director cannot be assigned": "errors.invalidRole",
+  "Regional Directors must contact the Dialogue Society office to delete their account":
+    "errors.directorSelfDelete",
+  "Role must be Volunteer or Branch Manager; Regional Director cannot be assigned":
+    "errors.invalidRole",
   "The new branch must belong to your region": "errors.branchOutsideRegion",
   "This deletion request is no longer pending": "errors.requestNotPending",
   "User not found": "errors.userNotFound",
@@ -163,9 +177,12 @@ const ERROR_KEYS: Record<string, string> = {
   "You cannot manage this user": "errors.cannotManage",
   "You cannot move your own branch": "errors.ownBranch",
   "Deletion could not be logged. The account has not been deleted.": "errors.deleteNotLogged",
-  "The account could not be deleted. The failed attempt was recorded; any related deletion request remains pending. Please try again.": "errors.deleteFailedRecorded",
-  "The account could not be deleted, and the failed attempt could not be recorded. Please try again.": "errors.deleteFailedUnrecorded",
-  "The account was deleted and its history was saved, but the deletion request could not be marked completed.": "errors.deleteRequestNotCompleted",
+  "The account could not be deleted. The failed attempt was recorded; any related deletion request remains pending. Please try again.":
+    "errors.deleteFailedRecorded",
+  "The account could not be deleted, and the failed attempt could not be recorded. Please try again.":
+    "errors.deleteFailedUnrecorded",
+  "The account was deleted and its history was saved, but the deletion request could not be marked completed.":
+    "errors.deleteRequestNotCompleted",
   "Invalid login credentials": "errors.invalidLogin",
   "Email not confirmed": "errors.emailNotConfirmed",
   "User already registered": "errors.userExists",
@@ -173,9 +190,15 @@ const ERROR_KEYS: Record<string, string> = {
 
 /** Map known server/database messages to translation keys; anything else becomes a generic error. */
 export function errorKey(e: unknown): string {
-  const msg = e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : typeof e === "string" ? e : "";
+  const msg =
+    e && typeof e === "object" && "message" in e
+      ? String((e as { message: unknown }).message)
+      : typeof e === "string"
+        ? e
+        : "";
   if (ERROR_KEYS[msg]) return ERROR_KEYS[msg];
-  if (/password/i.test(msg) && /(weak|short|least|characters)/i.test(msg)) return "errors.weakPassword";
+  if (/password/i.test(msg) && /(weak|short|least|characters)/i.test(msg))
+    return "errors.weakPassword";
   return "errors.generic";
 }
 

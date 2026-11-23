@@ -21,7 +21,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { PrivacyPreferences } from "@/components/app/PrivacyPreferences";
-import { AccountDeletionDialog, FollowerDeleteDialog, useAccountDeletion } from "@/components/app/AccountDeletion";
+import {
+  AccountDeletionDialog,
+  FollowerDeleteDialog,
+  useAccountDeletion,
+} from "@/components/app/AccountDeletion";
 
 export const Route = createFileRoute("/_app/profile")({
   head: () => pageHead("Profile", "Manage your volunteer profile."),
@@ -34,7 +38,8 @@ function ProfilePage() {
   const { t, i18n } = useTranslation();
   // Regional Directors and National Coordinators cannot be deleted in the app; followers delete their account directly.
   const isDirector = roles.includes("regional_director") || isNationalCoordinator(roles);
-  const follower = isFollowerRoles(roles), nc = isNationalCoordinator(roles);
+  const follower = isFollowerRoles(roles),
+    nc = isNationalCoordinator(roles);
   const [followerDeleting, setFollowerDeleting] = useState(false);
   const mfa = useMfaStatus(nc, session?.user.id);
   const deletion = useAccountDeletion(profile?.id, !isDirector && !follower);
@@ -167,9 +172,21 @@ function ProfilePage() {
       </form>
       <FollowedBranches />
       {nc && (
-        <section data-testid="profile-mfa" aria-labelledby="mfa-h" className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft">
-          <h2 id="mfa-h" className="text-xl font-semibold">{t("mfa.title")}</h2>
-          {mfa.data?.factorId ? <p data-testid="profile-mfa-on" className="text-sm">{t("mfa.on")}</p> : <MfaSetup onDone={() => void mfa.refetch()} />}
+        <section
+          data-testid="profile-mfa"
+          aria-labelledby="mfa-h"
+          className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft"
+        >
+          <h2 id="mfa-h" className="text-xl font-semibold">
+            {t("mfa.title")}
+          </h2>
+          {mfa.data?.factorId ? (
+            <p data-testid="profile-mfa-on" className="text-sm">
+              {t("mfa.on")}
+            </p>
+          ) : (
+            <MfaSetup onDone={() => void mfa.refetch()} />
+          )}
         </section>
       )}
       <PrivacyPreferences />
@@ -187,7 +204,12 @@ function ProfilePage() {
         ) : follower ? (
           <>
             <p className="text-sm text-muted-foreground">{t("profile.followerDeleteIntro")}</p>
-            <Button variant="destructive" className="h-11 rounded-xl" data-testid="profile-delete-account-button" onClick={() => setFollowerDeleting(true)}>
+            <Button
+              variant="destructive"
+              className="h-11 rounded-xl"
+              data-testid="profile-delete-account-button"
+              onClick={() => setFollowerDeleting(true)}
+            >
               {t("profile.deleteTitle")}
             </Button>
           </>

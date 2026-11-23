@@ -32,12 +32,24 @@ export const publicEventsSchema = z.array(publicEventSchema);
 
 /** Branch names in URLs: lower case, spaces as hyphens (/events?branch=medway,brighton). */
 export function branchSlug(name: string) {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /** Comma-separated slugs → branch ids (unknown slugs are ignored). */
-export function branchIdsFromSlugs(param: string | null | undefined, branches: { id: string; name: string }[]) {
-  const wanted = new Set((param ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean));
+export function branchIdsFromSlugs(
+  param: string | null | undefined,
+  branches: { id: string; name: string }[],
+) {
+  const wanted = new Set(
+    (param ?? "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  );
   return branches.filter((b) => wanted.has(branchSlug(b.name))).map((b) => b.id);
 }
 
@@ -45,19 +57,31 @@ export function branchIdsFromSlugs(param: string | null | undefined, branches: {
 export const branchParam = z.string().max(4000).optional();
 
 function escapeIcs(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/;/g, "\\;").replace(/,/g, "\\,");
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,");
 }
 function foldLine(line: string) {
-  let result = "", bytes = 0;
+  let result = "",
+    bytes = 0;
   for (const char of line) {
     const size = new TextEncoder().encode(char).length;
-    if (bytes + size > 75) { result += "\r\n "; bytes = 1; }
+    if (bytes + size > 75) {
+      result += "\r\n ";
+      bytes = 1;
+    }
     result += char;
     bytes += size;
   }
   return result;
 }
-const utcStamp = (value: string | Date) => new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+const utcStamp = (value: string | Date) =>
+  new Date(value)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
 const dateStamp = (value: string) => value.replace(/-/g, "");
 function nextDay(date: string) {
   const d = new Date(`${date}T12:00:00Z`);
@@ -69,21 +93,54 @@ function nextDay(date: string) {
  * The public calendar feed: one VEVENT per event, UID = event id, cancelled events as STATUS:CANCELLED, the public
  * detail page as URL. No online links (the "Online event" flag only), no attendee or contact data.
  */
-export function publicEventsIcs(events: PublicEvent[], origin: string, name: string, now = new Date()) {
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Dialogue Society//Volunteer Hub public events//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeIcs(name)}`, "X-WR-TIMEZONE:Europe/London", "REFRESH-INTERVAL;VALUE=DURATION:PT1H"];
+export function publicEventsIcs(
+  events: PublicEvent[],
+  origin: string,
+  name: string,
+  now = new Date(),
+) {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Dialogue Society//Volunteer Hub public events//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${escapeIcs(name)}`,
+    "X-WR-TIMEZONE:Europe/London",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+  ];
   for (const event of events) {
     const start = eventStart(event);
     if (!start) continue;
     const end = eventEnd(event);
     const url = `${origin}/events/${event.id}`;
-    const where = [event.location, event.is_online ? "Online event" : null, [event.branch, event.region].filter(Boolean).join(", ") || null].filter(Boolean).join(" · ");
+    const where = [
+      event.location,
+      event.is_online ? "Online event" : null,
+      [event.branch, event.region].filter(Boolean).join(", ") || null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
     lines.push("BEGIN:VEVENT", `UID:${event.id}@dialoguesociety.org`, `DTSTAMP:${utcStamp(now)}`);
-    if (event.all_day) lines.push(`DTSTART;VALUE=DATE:${dateStamp(start)}`, `DTEND;VALUE=DATE:${dateStamp(nextDay(end ?? start))}`);
-    else { lines.push(`DTSTART:${utcStamp(start)}`); if (end) lines.push(`DTEND:${utcStamp(end)}`); }
-    lines.push(`SUMMARY:${escapeIcs(event.title)}`, `DESCRIPTION:${escapeIcs(`${event.description}\n\n${url}`.trim())}`);
+    if (event.all_day)
+      lines.push(
+        `DTSTART;VALUE=DATE:${dateStamp(start)}`,
+        `DTEND;VALUE=DATE:${dateStamp(nextDay(end ?? start))}`,
+      );
+    else {
+      lines.push(`DTSTART:${utcStamp(start)}`);
+      if (end) lines.push(`DTEND:${utcStamp(end)}`);
+    }
+    lines.push(
+      `SUMMARY:${escapeIcs(event.title)}`,
+      `DESCRIPTION:${escapeIcs(`${event.description}\n\n${url}`.trim())}`,
+    );
     if (where) lines.push(`LOCATION:${escapeIcs(where)}`);
-    lines.push(`URL:${escapeIcs(url)}`, `STATUS:${event.status === "cancelled" ? "CANCELLED" : "CONFIRMED"}`, "END:VEVENT");
+    lines.push(
+      `URL:${escapeIcs(url)}`,
+      `STATUS:${event.status === "cancelled" ? "CANCELLED" : "CONFIRMED"}`,
+      "END:VEVENT",
+    );
   }
   lines.push("END:VCALENDAR");
   return lines.map(foldLine).join("\r\n") + "\r\n";

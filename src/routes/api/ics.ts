@@ -13,7 +13,11 @@ export const Route = createFileRoute("/api/ics")({
         try {
           const { fetchPublicEvents } = await import("@/lib/public-events.server");
           const { publicEventsIcs } = await import("@/lib/public-events");
-          const events = await fetchPublicEvents({ branchSlugs: branch, months: 6, includeCancelled: true });
+          const events = await fetchPublicEvents({
+            branchSlugs: branch,
+            months: 6,
+            includeCancelled: true,
+          });
           const body = publicEventsIcs(events, url.origin, "Dialogue Society events");
           return new Response(body, {
             status: 200,
@@ -24,7 +28,10 @@ export const Route = createFileRoute("/api/ics")({
             },
           });
         } catch {
-          return new Response("Calendar unavailable", { status: 503, headers: { "Cache-Control": "no-store" } });
+          return new Response("Calendar unavailable", {
+            status: 503,
+            headers: { "Cache-Control": "no-store" },
+          });
         }
       },
     },

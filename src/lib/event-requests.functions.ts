@@ -69,7 +69,10 @@ export const approveEventRequest = createServerFn({ method: "POST" })
   .middleware([requireMember])
   .inputValidator(requestId.extend({ audience: z.enum(["public", "members"]).optional() }))
   .handler(async ({ data, context }) => {
-    const result = await context.supabase.rpc("approve_event_request", { p_id: data.id, p_audience: data.audience ?? "members" });
+    const result = await context.supabase.rpc("approve_event_request", {
+      p_id: data.id,
+      p_audience: data.audience ?? "members",
+    });
     fail(result.error);
     const approved = z
       .object({

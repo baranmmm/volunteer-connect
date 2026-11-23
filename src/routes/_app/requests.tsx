@@ -9,7 +9,11 @@ import { EventDialog } from "@/components/events/EventDialog";
 import { EventRequestForm } from "@/components/requests/EventRequestForm";
 import { useAuth } from "@/lib/auth";
 import { isFollowerRoles } from "@/lib/roles";
-import { MyVolunteerApplications, ReviewVolunteerApplications, VolunteerApplicationForm } from "@/components/requests/VolunteerApplications";
+import {
+  MyVolunteerApplications,
+  ReviewVolunteerApplications,
+  VolunteerApplicationForm,
+} from "@/components/requests/VolunteerApplications";
 import { useMyApplications } from "@/lib/volunteer-applications";
 import { requestViewSearch, resolveRequestView } from "@/lib/request-view";
 import { ManagerEventRequests } from "@/components/requests/ManagerEventRequests";
@@ -140,7 +144,10 @@ function RequestsPage() {
       >
         <ul className="grid gap-3 sm:grid-cols-2">
           {REQUEST_KINDS.map((kind) => {
-            const available = kind.id === "volunteer" ? follower && !hasOpenApplication : kind.enabled && !follower && (kind.id !== "event" || canRequestEvents);
+            const available =
+              kind.id === "volunteer"
+                ? follower && !hasOpenApplication
+                : kind.enabled && !follower && (kind.id !== "event" || canRequestEvents);
             const Icon = kind.icon;
             return (
               <li key={kind.id}>
@@ -161,7 +168,15 @@ function RequestsPage() {
                     <Badge variant="secondary">{t("requests.comingSoon")}</Badge>
                   ) : !available ? (
                     <span className="text-xs text-muted-foreground">
-                      {t(kind.id === "volunteer" ? (follower ? "applications.alreadyOpen" : "applications.onlyFollowers") : follower ? "applications.followersApply" : "requests.errors.directorsCreate")}
+                      {t(
+                        kind.id === "volunteer"
+                          ? follower
+                            ? "applications.alreadyOpen"
+                            : "applications.onlyFollowers"
+                          : follower
+                            ? "applications.followersApply"
+                            : "requests.errors.directorsCreate",
+                      )}
                     </span>
                   ) : null}
                 </Button>
@@ -170,7 +185,9 @@ function RequestsPage() {
           })}
         </ul>
       </EventDialog>
-      {form === "volunteer" && <VolunteerApplicationForm onClose={() => setForm(null)} onSaved={() => setForm(null)} />}
+      {form === "volunteer" && (
+        <VolunteerApplicationForm onClose={() => setForm(null)} onSaved={() => setForm(null)} />
+      )}
       {form === "event" && (
         <EventRequestForm
           onClose={() => setForm(null)}

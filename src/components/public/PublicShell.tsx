@@ -12,20 +12,46 @@ export function PublicShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link to="/events" aria-label={t("publicEvents.title")}><Logo size="sm" /></Link>
+          <Link to="/events" aria-label={t("publicEvents.title")}>
+            <Logo size="sm" />
+          </Link>
           <nav aria-label={t("publicEvents.navLabel")} className="flex items-center gap-4 text-sm">
-            <Link to="/events" data-testid="public-nav-events" className="min-h-11 content-center font-medium hover:text-primary">{t("publicEvents.title")}</Link>
+            <Link
+              to="/events"
+              data-testid="public-nav-events"
+              className="min-h-11 content-center font-medium hover:text-primary"
+            >
+              {t("publicEvents.title")}
+            </Link>
             {session ? (
-              <Link to="/dashboard" data-testid="public-nav-dashboard" className="min-h-11 content-center font-medium hover:text-primary">{t("navigation.dashboard")}</Link>
+              <Link
+                to="/dashboard"
+                data-testid="public-nav-dashboard"
+                className="min-h-11 content-center font-medium hover:text-primary"
+              >
+                {t("navigation.dashboard")}
+              </Link>
             ) : (
-              <Link to="/auth" data-testid="public-nav-sign-in" className="min-h-11 content-center font-medium hover:text-primary">{t("publicEvents.signIn")}</Link>
+              <Link
+                to="/auth"
+                data-testid="public-nav-sign-in"
+                className="min-h-11 content-center font-medium hover:text-primary"
+              >
+                {t("publicEvents.signIn")}
+              </Link>
             )}
           </nav>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">{children}</main>
       <footer className="mx-auto max-w-5xl px-4 pb-8 text-sm text-muted-foreground sm:px-6">
-        <Link to="/privacy" data-testid="public-privacy-link" className="underline underline-offset-4 hover:text-foreground">{t("publicEvents.privacyLink")}</Link>
+        <Link
+          to="/privacy"
+          data-testid="public-privacy-link"
+          className="underline underline-offset-4 hover:text-foreground"
+        >
+          {t("publicEvents.privacyLink")}
+        </Link>
       </footer>
     </div>
   );

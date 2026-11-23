@@ -29,7 +29,9 @@ export const Route = createFileRoute("/auth")({
   }),
   // ?redirect=/events/<id> returns there after signing in; ?mode=signup opens the sign-up form.
   validateSearch: (search: Record<string, unknown>): { redirect?: string; mode?: "signup" } => ({
-    ...(typeof search["redirect"] === "string" && safeRedirect(search["redirect"]) ? { redirect: search["redirect"] } : {}),
+    ...(typeof search["redirect"] === "string" && safeRedirect(search["redirect"])
+      ? { redirect: search["redirect"] }
+      : {}),
     ...(search["mode"] === "signup" ? { mode: "signup" as const } : {}),
   }),
   component: AuthPage,
@@ -50,7 +52,8 @@ function AuthPage() {
   const navigate = useNavigate();
   useRedirect(!loading && !!session && !search.redirect, "/dashboard");
   useEffect(() => {
-    if (!loading && session && search.redirect) void navigate({ to: search.redirect, replace: true });
+    if (!loading && session && search.redirect)
+      void navigate({ to: search.redirect, replace: true });
   }, [loading, session, search.redirect, navigate]);
   if (!loading && session) return null;
 
@@ -77,7 +80,11 @@ function AuthPage() {
   );
 }
 
-function Field({ id, label, ...props }: { id: string; label: string } & React.ComponentProps<typeof Input>) {
+function Field({
+  id,
+  label,
+  ...props
+}: { id: string; label: string } & React.ComponentProps<typeof Input>) {
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
@@ -106,19 +113,50 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
         <h2 className="text-3xl font-semibold">{t("auth.welcomeBack")}</h2>
         <p className="mt-1 text-muted-foreground">{t("auth.signInIntro")}</p>
       </div>
-      <Field id="email" name="email" type="email" label={t("auth.email")} data-testid="auth-email-input" autoComplete="email" required />
+      <Field
+        id="email"
+        name="email"
+        type="email"
+        label={t("auth.email")}
+        data-testid="auth-email-input"
+        autoComplete="email"
+        required
+      />
       <div className="space-y-2">
         <Label htmlFor="password">{t("auth.password")}</Label>
-        <PasswordInput data-testid="auth-password-input" id="password" name="password" autoComplete="current-password" required className="h-12 rounded-xl" />
+        <PasswordInput
+          data-testid="auth-password-input"
+          id="password"
+          name="password"
+          autoComplete="current-password"
+          required
+          className="h-12 rounded-xl"
+        />
       </div>
-      <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy}>
+      <Button
+        data-testid="auth-submit-button"
+        type="submit"
+        size="lg"
+        className="h-12 w-full rounded-xl"
+        disabled={busy}
+      >
         {busy ? t("auth.signingIn") : t("auth.signIn")}
       </Button>
       <div className="flex flex-wrap justify-between gap-2 text-sm">
-        <button data-testid="auth-forgot-password-link" type="button" className="min-h-11 font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("forgot")}>
+        <button
+          data-testid="auth-forgot-password-link"
+          type="button"
+          className="min-h-11 font-medium text-primary underline-offset-4 hover:underline"
+          onClick={() => setMode("forgot")}
+        >
           {t("auth.forgot")}
         </button>
-        <button type="button" className="min-h-11 font-medium text-primary underline-offset-4 hover:underline" data-testid="auth-toggle-mode-link" onClick={() => setMode("signup")}>
+        <button
+          type="button"
+          className="min-h-11 font-medium text-primary underline-offset-4 hover:underline"
+          data-testid="auth-toggle-mode-link"
+          onClick={() => setMode("signup")}
+        >
           {t("auth.createAccountLink")}
         </button>
       </div>
@@ -135,10 +173,14 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
   const [confirm, setConfirm] = useState("");
   const mismatch = confirm.length > 0 && password !== confirm;
   // The privacy notice must be confirmed (the server refuses the account otherwise); the two consents are optional.
-  const [privacyRead, setPrivacyRead] = useState(false), [privacyError, setPrivacyError] = useState(false);
-  const [photoConsent, setPhotoConsent] = useState(false), [updatesConsent, setUpdatesConsent] = useState(false);
+  const [privacyRead, setPrivacyRead] = useState(false),
+    [privacyError, setPrivacyError] = useState(false);
+  const [photoConsent, setPhotoConsent] = useState(false),
+    [updatesConsent, setUpdatesConsent] = useState(false);
   useEffect(() => {
-    fetchRegionGroups().then(setGroups).catch(() => toast.error(t("errors.branchesLoad")));
+    fetchRegionGroups()
+      .then(setGroups)
+      .catch(() => toast.error(t("errors.branchesLoad")));
   }, []);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -146,21 +188,43 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
     const f = new FormData(e.currentTarget);
     const branch_id = String(f.get("branch") || "");
     if (password !== confirm) return;
-    if (!branch_id) { toast.error(t("errors.chooseBranch")); return; }
-    if (!privacyRead) { setPrivacyError(true); document.getElementById("signup-privacy")?.focus(); return; }
+    if (!branch_id) {
+      toast.error(t("errors.chooseBranch"));
+      return;
+    }
+    if (!privacyRead) {
+      setPrivacyError(true);
+      document.getElementById("signup-privacy")?.focus();
+      return;
+    }
     setBusy(true);
     const version = await supabase.rpc("privacy_notice_version");
-    if (version.error || !version.data) { setBusy(false); toast.error(translateError(version.error)); return; }
+    if (version.error || !version.data) {
+      setBusy(false);
+      toast.error(translateError(version.error));
+      return;
+    }
     const { data, error } = await supabase.auth.signUp({
       email: String(f.get("email")),
       password: String(f.get("password")),
       options: {
         emailRedirectTo: window.location.origin,
-        data: { full_name: String(f.get("full_name")), phone: String(f.get("phone")), branch_id, preferred_language: currentLang(), privacy_notice_version: version.data, photo_consent: photoConsent, updates_email_consent: updatesConsent },
+        data: {
+          full_name: String(f.get("full_name")),
+          phone: String(f.get("phone")),
+          branch_id,
+          preferred_language: currentLang(),
+          privacy_notice_version: version.data,
+          photo_consent: photoConsent,
+          updates_email_consent: updatesConsent,
+        },
       },
     });
     setBusy(false);
-    if (error) { toast.error(translateError(error)); return; }
+    if (error) {
+      toast.error(translateError(error));
+      return;
+    }
     if (!data.session) setDone(true);
   }
 
@@ -169,7 +233,14 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
       <div data-testid="auth-check-email-screen" className="space-y-4">
         <h2 className="text-3xl font-semibold">{t("auth.checkEmailTitle")}</h2>
         <p className="text-muted-foreground">{t("auth.checkEmailText")}</p>
-        <Button data-testid="auth-back-to-sign-in-button" variant="outline" className="h-12 rounded-xl" onClick={() => setMode("signin")}>{t("auth.backToSignIn")}</Button>
+        <Button
+          data-testid="auth-back-to-sign-in-button"
+          variant="outline"
+          className="h-12 rounded-xl"
+          onClick={() => setMode("signin")}
+        >
+          {t("auth.backToSignIn")}
+        </Button>
       </div>
     );
   }
@@ -180,55 +251,178 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
         <h2 className="text-3xl font-semibold">{t("auth.joinTitle")}</h2>
         <p className="mt-1 text-muted-foreground">{t("auth.joinIntro")}</p>
       </div>
-      <Field id="full_name" name="full_name" label={t("auth.fullName")} data-testid="auth-full-name-input" autoComplete="name" required />
-      <Field id="email" name="email" type="email" label={t("auth.email")} data-testid="auth-email-input" autoComplete="email" required />
-      <Field id="phone" name="phone" type="tel" label={t("auth.phone")} data-testid="auth-phone-input" autoComplete="tel" required />
+      <Field
+        id="full_name"
+        name="full_name"
+        label={t("auth.fullName")}
+        data-testid="auth-full-name-input"
+        autoComplete="name"
+        required
+      />
+      <Field
+        id="email"
+        name="email"
+        type="email"
+        label={t("auth.email")}
+        data-testid="auth-email-input"
+        autoComplete="email"
+        required
+      />
+      <Field
+        id="phone"
+        name="phone"
+        type="tel"
+        label={t("auth.phone")}
+        data-testid="auth-phone-input"
+        autoComplete="tel"
+        required
+      />
       <div className="space-y-2">
         <Label htmlFor="password">{t("auth.password")}</Label>
-        <PasswordInput data-testid="auth-password-input" id="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required aria-describedby="password-help" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl" />
-        <p id="password-help" className="text-sm text-muted-foreground">{t("auth.passwordHelp", { count: MIN_PASSWORD_LENGTH })}</p>
+        <PasswordInput
+          data-testid="auth-password-input"
+          id="password"
+          name="password"
+          autoComplete="new-password"
+          minLength={MIN_PASSWORD_LENGTH}
+          required
+          aria-describedby="password-help"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="h-12 rounded-xl"
+        />
+        <p id="password-help" className="text-sm text-muted-foreground">
+          {t("auth.passwordHelp", { count: MIN_PASSWORD_LENGTH })}
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirm">{t("auth.confirmPassword")}</Label>
-        <PasswordInput data-testid="auth-confirm-password-input" id="confirm" name="confirm" autoComplete="new-password" required aria-invalid={mismatch} aria-describedby={mismatch ? "confirm-error" : undefined} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-12 rounded-xl" />
-        {mismatch && <p data-testid="auth-error-message" id="confirm-error" role="alert" className="text-sm font-medium text-destructive">{t("auth.passwordsDontMatch")}</p>}
+        <PasswordInput
+          data-testid="auth-confirm-password-input"
+          id="confirm"
+          name="confirm"
+          autoComplete="new-password"
+          required
+          aria-invalid={mismatch}
+          aria-describedby={mismatch ? "confirm-error" : undefined}
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          className="h-12 rounded-xl"
+        />
+        {mismatch && (
+          <p
+            data-testid="auth-error-message"
+            id="confirm-error"
+            role="alert"
+            className="text-sm font-medium text-destructive"
+          >
+            {t("auth.passwordsDontMatch")}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="branch">{t("auth.followBranch")}</Label>
-        <select data-testid="signup-branch-select" aria-describedby="branch-help" id="branch" name="branch" required defaultValue="" className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
-          <option value="" disabled>{t("auth.chooseBranch")}</option>
+        <select
+          data-testid="signup-branch-select"
+          aria-describedby="branch-help"
+          id="branch"
+          name="branch"
+          required
+          defaultValue=""
+          className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+        >
+          <option value="" disabled>
+            {t("auth.chooseBranch")}
+          </option>
           {groups.map((g) => (
             <optgroup key={g.id} label={g.name}>
-              {g.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              {g.branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
             </optgroup>
           ))}
         </select>
-        <p id="branch-help" className="text-sm text-muted-foreground">{t("auth.followBranchHelp")}</p>
+        <p id="branch-help" className="text-sm text-muted-foreground">
+          {t("auth.followBranchHelp")}
+        </p>
       </div>
       <fieldset className="space-y-3 rounded-xl border p-4">
         <legend className="px-1 text-sm font-medium">{t("privacy.signupLegend")}</legend>
         <div className="flex items-start gap-3">
-          <Checkbox id="signup-privacy" data-testid="signup-privacy-checkbox" checked={privacyRead} aria-required aria-invalid={privacyError} aria-describedby={privacyError ? "signup-privacy-error" : undefined} onCheckedChange={(v) => { setPrivacyRead(v === true); setPrivacyError(false); }} />
+          <Checkbox
+            id="signup-privacy"
+            data-testid="signup-privacy-checkbox"
+            checked={privacyRead}
+            aria-required
+            aria-invalid={privacyError}
+            aria-describedby={privacyError ? "signup-privacy-error" : undefined}
+            onCheckedChange={(v) => {
+              setPrivacyRead(v === true);
+              setPrivacyError(false);
+            }}
+          />
           <Label htmlFor="signup-privacy" className="leading-snug">
             {t("privacy.signupRead")}{" "}
-            <Link to="/privacy" target="_blank" className="font-medium text-primary underline underline-offset-4">{t("privacy.noticeLink")}</Link> *
+            <Link
+              to="/privacy"
+              target="_blank"
+              className="font-medium text-primary underline underline-offset-4"
+            >
+              {t("privacy.noticeLink")}
+            </Link>{" "}
+            *
           </Label>
         </div>
-        {privacyError && <p id="signup-privacy-error" role="alert" className="text-sm font-medium text-destructive">{t("privacy.signupRequired")}</p>}
+        {privacyError && (
+          <p
+            id="signup-privacy-error"
+            role="alert"
+            className="text-sm font-medium text-destructive"
+          >
+            {t("privacy.signupRequired")}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">{t("privacy.optionalIntro")}</p>
         <div className="flex items-start gap-3">
-          <Checkbox id="signup-photo" data-testid="signup-photo-consent" checked={photoConsent} onCheckedChange={(v) => setPhotoConsent(v === true)} />
-          <Label htmlFor="signup-photo" className="leading-snug">{t("privacy.photoConsent")}</Label>
+          <Checkbox
+            id="signup-photo"
+            data-testid="signup-photo-consent"
+            checked={photoConsent}
+            onCheckedChange={(v) => setPhotoConsent(v === true)}
+          />
+          <Label htmlFor="signup-photo" className="leading-snug">
+            {t("privacy.photoConsent")}
+          </Label>
         </div>
         <div className="flex items-start gap-3">
-          <Checkbox id="signup-updates" data-testid="signup-updates-consent" checked={updatesConsent} onCheckedChange={(v) => setUpdatesConsent(v === true)} />
-          <Label htmlFor="signup-updates" className="leading-snug">{t("privacy.updatesConsent")}</Label>
+          <Checkbox
+            id="signup-updates"
+            data-testid="signup-updates-consent"
+            checked={updatesConsent}
+            onCheckedChange={(v) => setUpdatesConsent(v === true)}
+          />
+          <Label htmlFor="signup-updates" className="leading-snug">
+            {t("privacy.updatesConsent")}
+          </Label>
         </div>
       </fieldset>
-      <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={busy || password !== confirm}>
+      <Button
+        data-testid="auth-submit-button"
+        type="submit"
+        size="lg"
+        className="h-12 w-full rounded-xl"
+        disabled={busy || password !== confirm}
+      >
         {busy ? t("auth.creatingAccount") : t("auth.createAccount")}
       </Button>
-      <button data-testid="auth-toggle-mode-link" type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
+      <button
+        data-testid="auth-toggle-mode-link"
+        type="button"
+        className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline"
+        onClick={() => setMode("signin")}
+      >
         {t("auth.haveAccount")}
       </button>
     </form>
@@ -251,13 +445,39 @@ function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
     <form data-testid="auth-forgot-form" onSubmit={submit} className="space-y-5">
       <div>
         <h2 className="text-3xl font-semibold">{t("auth.resetTitle")}</h2>
-        <p data-testid={sent ? "auth-reset-sent-message" : undefined} className="mt-1 text-muted-foreground">
+        <p
+          data-testid={sent ? "auth-reset-sent-message" : undefined}
+          className="mt-1 text-muted-foreground"
+        >
           {sent ? t("auth.resetSent") : t("auth.resetIntro")}
         </p>
       </div>
-      {!sent && <Field id="email" name="email" type="email" label={t("auth.email")} data-testid="auth-email-input" required />}
-      {!sent && <Button data-testid="auth-submit-button" type="submit" size="lg" className="h-12 w-full rounded-xl">{t("auth.sendReset")}</Button>}
-      <button data-testid="auth-back-to-sign-in-button" type="button" className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
+      {!sent && (
+        <Field
+          id="email"
+          name="email"
+          type="email"
+          label={t("auth.email")}
+          data-testid="auth-email-input"
+          required
+        />
+      )}
+      {!sent && (
+        <Button
+          data-testid="auth-submit-button"
+          type="submit"
+          size="lg"
+          className="h-12 w-full rounded-xl"
+        >
+          {t("auth.sendReset")}
+        </Button>
+      )}
+      <button
+        data-testid="auth-back-to-sign-in-button"
+        type="button"
+        className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline"
+        onClick={() => setMode("signin")}
+      >
         {t("auth.backToSignIn")}
       </button>
     </form>

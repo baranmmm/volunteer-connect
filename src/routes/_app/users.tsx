@@ -12,7 +12,13 @@ import { pageHead } from "@/components/app/head";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_app/users")({
   head: () => pageHead("Users", "Manage volunteer roles, branches, approvals and member history."),
@@ -21,8 +27,33 @@ export const Route = createFileRoute("/_app/users")({
 
 const STATUSES = ["pending", "active", "inactive"] as const;
 
-function Choice({ label, value, onChange, options, testId }: { testId: string; label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
-  return <Select value={value} onValueChange={onChange}><SelectTrigger data-testid={testId} aria-label={label} className="h-11"><SelectValue placeholder={label} /></SelectTrigger><SelectContent>{options.map((o) => <SelectItem key={o.value} value={o.value} data-testid={`${testId}-option-${o.value}`}>{o.label}</SelectItem>)}</SelectContent></Select>;
+function Choice({
+  label,
+  value,
+  onChange,
+  options,
+  testId,
+}: {
+  testId: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger data-testid={testId} aria-label={label} className="h-11">
+        <SelectValue placeholder={label} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value} data-testid={`${testId}-option-${o.value}`}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function UsersPage() {
@@ -33,9 +64,17 @@ function UsersPage() {
   // National Coordinators list Regional Directors and Branch Managers; volunteers are numbers per branch.
   const nc = isNationalCoordinator(roles);
   const director = canEditRoleOrBranch(profile?.status, roles);
-  const members = useQuery({ queryKey: ["members", uid], queryFn: () => fetchMembers(uid), enabled: !!uid && (isManager || nc) });
+  const members = useQuery({
+    queryKey: ["members", uid],
+    queryFn: () => fetchMembers(uid),
+    enabled: !!uid && (isManager || nc),
+  });
   const tree = useRegionsTree(uid, nc);
-  const branches = useQuery({ queryKey: ["director-branches", uid, director, profile?.branch_id], queryFn: () => fetchDirectorBranches(uid), enabled: !!uid && director });
+  const branches = useQuery({
+    queryKey: ["director-branches", uid, director, profile?.branch_id],
+    queryFn: () => fetchDirectorBranches(uid),
+    enabled: !!uid && director,
+  });
   const [search, setSearch] = useState("");
   const [status, setStatusFilter] = useState("all");
   const [role, setRoleFilter] = useState("all");
@@ -45,29 +84,185 @@ function UsersPage() {
   const all = members.data ?? [];
   const filtered = filterMembers(all, { search, status, role, branch: director ? branch : "all" });
   const branchOptions = (branches.data ?? []).map((b) => ({ value: b.id, label: b.name }));
-  const roleOptions = nc ? [{ value: "branch_manager", label: t("common.roles.branch_manager") }, { value: "regional_director", label: t("common.roles.regional_director") }] : [{ value: "volunteer", label: t("common.roles.volunteer") }, { value: "branch_manager", label: t("common.roles.branch_manager") }];
+  const roleOptions = nc
+    ? [
+        { value: "branch_manager", label: t("common.roles.branch_manager") },
+        { value: "regional_director", label: t("common.roles.regional_director") },
+      ]
+    : [
+        { value: "volunteer", label: t("common.roles.volunteer") },
+        { value: "branch_manager", label: t("common.roles.branch_manager") },
+      ];
 
-  return <div className="space-y-6">
-    <h1 className="text-3xl font-bold">{t("users.title")}</h1>
-    {nc && <section data-testid="users-branch-counts" aria-labelledby="users-counts-h" className="space-y-2 rounded-2xl border bg-card p-4">
-      <h2 id="users-counts-h" className="font-semibold">{t("users.volunteerCounts")}</h2>
-      <ul className="grid gap-1 text-sm sm:grid-cols-2">{(tree.data ?? []).flatMap((r) => r.branches.map((b) => <li key={b.id} data-testid="users-branch-count" data-branch-id={b.id} data-volunteers={b.volunteers}>{t("users.branchCount", { branch: b.name, region: r.name, volunteers: b.volunteers, followers: b.followers })}</li>))}</ul>
-    </section>}
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" aria-hidden /><Input data-testid="users-search-input" aria-label={t("users.search")} placeholder={t("users.search")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 pl-9" /></div>
-      <Choice testId="users-filter-status" label={t("users.filterStatus")} value={status} onChange={setStatusFilter} options={[{ value: "all", label: t("users.allStatuses") }, ...STATUSES.map((value) => ({ value, label: t(`common.status.${value}`) }))]} />
-      <Choice testId="users-filter-role" label={t("users.filterRole")} value={role} onChange={setRoleFilter} options={[{ value: "all", label: t("users.allRoles") }, ...roleOptions]} />
-      {director && <Choice testId="users-filter-branch" label={t("users.filterBranch")} value={branch} onChange={setBranchFilter} options={[{ value: "all", label: t("users.allBranches") }, ...branchOptions]} />}
-    </div>
-    {director && branches.isError && <p role="alert" className="text-destructive">{t("users.branchesError")} <Button variant="link" onClick={() => branches.refetch()}>{t("common.retry")}</Button></p>}
-    {members.isLoading ? <p data-testid="users-loading" className="text-muted-foreground">{t("common.loading")}</p> : members.isError ? <div data-testid="users-load-error" role="alert"><p className="text-destructive">{t("users.loadError")}</p><Button variant="outline" onClick={() => members.refetch()}>{t("common.retry")}</Button></div> : !filtered.length ? <p data-testid="users-empty-state" className="border-y py-10 text-center text-muted-foreground">{all.length ? t("users.noMatch") : t("users.empty")}</p> : <ul className="divide-y border-y">
-      {filtered.map((m) => <li key={m.id} data-testid="users-row" data-user-id={m.id} role="link" tabIndex={0} aria-label={t("users.viewDetailsFor", { name: m.full_name || t("common.unnamed") })} onClick={(e) => { if (e.target instanceof Element && e.target.closest("a")) return; navigate({ to: "/users/$id", params: { id: m.id } }); }} onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) { e.preventDefault(); navigate({ to: "/users/$id", params: { id: m.id } }); } }} className="flex cursor-pointer flex-col gap-4 px-3 py-5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0"><Link data-testid="users-row-name" to="/users/$id" params={{ id: m.id }} className="font-semibold break-words underline-offset-4 hover:underline">{m.full_name || t("common.unnamed")}</Link><p data-testid="users-row-email" className="text-sm text-muted-foreground break-all">{m.email}</p><p data-testid="users-row-branch" className="text-sm text-muted-foreground">{m.branches?.name ?? t("common.noBranch")}</p></div>
-          <div className="flex flex-wrap gap-2"><Badge data-testid="users-row-role-badge" variant="outline">{t(`common.roles.${primaryRole(m.roles)}`)}</Badge><Badge data-testid="users-row-status-badge" variant={m.status === "active" ? "default" : "secondary"}>{t(`common.status.${m.status}`)}</Badge></div>
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold">{t("users.title")}</h1>
+      {nc && (
+        <section
+          data-testid="users-branch-counts"
+          aria-labelledby="users-counts-h"
+          className="space-y-2 rounded-2xl border bg-card p-4"
+        >
+          <h2 id="users-counts-h" className="font-semibold">
+            {t("users.volunteerCounts")}
+          </h2>
+          <ul className="grid gap-1 text-sm sm:grid-cols-2">
+            {(tree.data ?? []).flatMap((r) =>
+              r.branches.map((b) => (
+                <li
+                  key={b.id}
+                  data-testid="users-branch-count"
+                  data-branch-id={b.id}
+                  data-volunteers={b.volunteers}
+                >
+                  {t("users.branchCount", {
+                    branch: b.name,
+                    region: r.name,
+                    volunteers: b.volunteers,
+                    followers: b.followers,
+                  })}
+                </li>
+              )),
+            )}
+          </ul>
+        </section>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" aria-hidden />
+          <Input
+            data-testid="users-search-input"
+            aria-label={t("users.search")}
+            placeholder={t("users.search")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-11 pl-9"
+          />
         </div>
-        <Button asChild variant="outline" className="h-11 shrink-0 self-start sm:self-auto"><Link data-testid="users-row-view-details" to="/users/$id" params={{ id: m.id }} aria-label={t("users.viewDetailsFor", { name: m.full_name || t("common.unnamed") })}>{t("users.viewDetails")}<ChevronRight className="ml-2 h-4 w-4" aria-hidden /></Link></Button>
-      </li>)}
-    </ul>}
-  </div>;
+        <Choice
+          testId="users-filter-status"
+          label={t("users.filterStatus")}
+          value={status}
+          onChange={setStatusFilter}
+          options={[
+            { value: "all", label: t("users.allStatuses") },
+            ...STATUSES.map((value) => ({ value, label: t(`common.status.${value}`) })),
+          ]}
+        />
+        <Choice
+          testId="users-filter-role"
+          label={t("users.filterRole")}
+          value={role}
+          onChange={setRoleFilter}
+          options={[{ value: "all", label: t("users.allRoles") }, ...roleOptions]}
+        />
+        {director && (
+          <Choice
+            testId="users-filter-branch"
+            label={t("users.filterBranch")}
+            value={branch}
+            onChange={setBranchFilter}
+            options={[{ value: "all", label: t("users.allBranches") }, ...branchOptions]}
+          />
+        )}
+      </div>
+      {director && branches.isError && (
+        <p role="alert" className="text-destructive">
+          {t("users.branchesError")}{" "}
+          <Button variant="link" onClick={() => branches.refetch()}>
+            {t("common.retry")}
+          </Button>
+        </p>
+      )}
+      {members.isLoading ? (
+        <p data-testid="users-loading" className="text-muted-foreground">
+          {t("common.loading")}
+        </p>
+      ) : members.isError ? (
+        <div data-testid="users-load-error" role="alert">
+          <p className="text-destructive">{t("users.loadError")}</p>
+          <Button variant="outline" onClick={() => members.refetch()}>
+            {t("common.retry")}
+          </Button>
+        </div>
+      ) : !filtered.length ? (
+        <p
+          data-testid="users-empty-state"
+          className="border-y py-10 text-center text-muted-foreground"
+        >
+          {all.length ? t("users.noMatch") : t("users.empty")}
+        </p>
+      ) : (
+        <ul className="divide-y border-y">
+          {filtered.map((m) => (
+            <li
+              key={m.id}
+              data-testid="users-row"
+              data-user-id={m.id}
+              role="link"
+              tabIndex={0}
+              aria-label={t("users.viewDetailsFor", { name: m.full_name || t("common.unnamed") })}
+              onClick={(e) => {
+                if (e.target instanceof Element && e.target.closest("a")) return;
+                navigate({ to: "/users/$id", params: { id: m.id } });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.target === e.currentTarget) {
+                  e.preventDefault();
+                  navigate({ to: "/users/$id", params: { id: m.id } });
+                }
+              }}
+              className="flex cursor-pointer flex-col gap-4 px-3 py-5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Link
+                    data-testid="users-row-name"
+                    to="/users/$id"
+                    params={{ id: m.id }}
+                    className="font-semibold break-words underline-offset-4 hover:underline"
+                  >
+                    {m.full_name || t("common.unnamed")}
+                  </Link>
+                  <p
+                    data-testid="users-row-email"
+                    className="text-sm text-muted-foreground break-all"
+                  >
+                    {m.email}
+                  </p>
+                  <p data-testid="users-row-branch" className="text-sm text-muted-foreground">
+                    {m.branches?.name ?? t("common.noBranch")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge data-testid="users-row-role-badge" variant="outline">
+                    {t(`common.roles.${primaryRole(m.roles)}`)}
+                  </Badge>
+                  <Badge
+                    data-testid="users-row-status-badge"
+                    variant={m.status === "active" ? "default" : "secondary"}
+                  >
+                    {t(`common.status.${m.status}`)}
+                  </Badge>
+                </div>
+              </div>
+              <Button asChild variant="outline" className="h-11 shrink-0 self-start sm:self-auto">
+                <Link
+                  data-testid="users-row-view-details"
+                  to="/users/$id"
+                  params={{ id: m.id }}
+                  aria-label={t("users.viewDetailsFor", {
+                    name: m.full_name || t("common.unnamed"),
+                  })}
+                >
+                  {t("users.viewDetails")}
+                  <ChevronRight className="ml-2 h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }

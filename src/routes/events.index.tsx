@@ -3,8 +3,25 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
-import { CalendarPlus, ChevronLeft, ChevronRight, List, CalendarDays, MapPin, Video } from "lucide-react";
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameMonth,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
+import {
+  CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  CalendarDays,
+  MapPin,
+  Video,
+} from "lucide-react";
 import { pageHead } from "@/components/app/head";
 import { PublicShell } from "@/components/public/PublicShell";
 import { PublicRegistrationState, publicWhere } from "@/components/public/PublicEventDetail";
@@ -21,11 +38,16 @@ type Search = { branch?: string; region?: string; view?: "list" | "month" };
 export const Route = createFileRoute("/events/")({
   ssr: false,
   validateSearch: (search: Record<string, unknown>): Search => ({
-    ...(typeof search["branch"] === "string" && search["branch"].length <= 4000 ? { branch: search["branch"] } : {}),
-    ...(typeof search["region"] === "string" && /^[0-9a-f-]{36}$/i.test(search["region"]) ? { region: search["region"] } : {}),
+    ...(typeof search["branch"] === "string" && search["branch"].length <= 4000
+      ? { branch: search["branch"] }
+      : {}),
+    ...(typeof search["region"] === "string" && /^[0-9a-f-]{36}$/i.test(search["region"])
+      ? { region: search["region"] }
+      : {}),
     ...(search["view"] === "month" ? { view: "month" as const } : {}),
   }),
-  head: () => pageHead("Events", "Upcoming public events of the Dialogue Society, by branch and region."),
+  head: () =>
+    pageHead("Events", "Upcoming public events of the Dialogue Society, by branch and region."),
   component: PublicEventsPage,
 });
 
@@ -33,30 +55,46 @@ function PublicEventsPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/events/" });
-  const fetchEvents = useServerFn(getPublicEvents), fetchStructure = useServerFn(getPublicStructure);
-  const structure = useQuery({ queryKey: ["public-structure"], queryFn: () => fetchStructure(), staleTime: 600_000 });
-  const events = useQuery({ queryKey: ["public-events", search.branch ?? ""], queryFn: () => fetchEvents({ data: search.branch ? { branch: search.branch } : {} }), staleTime: 300_000 });
+  const fetchEvents = useServerFn(getPublicEvents),
+    fetchStructure = useServerFn(getPublicStructure);
+  const structure = useQuery({
+    queryKey: ["public-structure"],
+    queryFn: () => fetchStructure(),
+    staleTime: 600_000,
+  });
+  const events = useQuery({
+    queryKey: ["public-events", search.branch ?? ""],
+    queryFn: () => fetchEvents({ data: search.branch ? { branch: search.branch } : {} }),
+    staleTime: 300_000,
+  });
   const selected = new Set((search.branch ?? "").split(",").filter(Boolean));
   const view = search.view ?? "list";
   const shown = useMemo(
-    () => (events.data ?? []).filter((e) => !search.region || e.scope === "national" || e.region_id === search.region),
+    () =>
+      (events.data ?? []).filter(
+        (e) => !search.region || e.scope === "national" || e.region_id === search.region,
+      ),
     [events.data, search.region],
   );
   type Patch = { [K in keyof Search]?: Search[K] | undefined };
-  const setSearch = (next: Patch) => void navigate({
-    search: (prev: Search) => {
-      const merged: Record<string, unknown> = { ...prev, ...next };
-      for (const key of Object.keys(merged)) if (merged[key] === undefined) delete merged[key];
-      return merged as Search;
-    },
-    replace: true,
-  });
+  const setSearch = (next: Patch) =>
+    void navigate({
+      search: (prev: Search) => {
+        const merged: Record<string, unknown> = { ...prev, ...next };
+        for (const key of Object.keys(merged)) if (merged[key] === undefined) delete merged[key];
+        return merged as Search;
+      },
+      replace: true,
+    });
   function toggleBranch(slug: string) {
     const next = new Set(selected);
-    if (next.has(slug)) next.delete(slug); else next.add(slug);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
     setSearch({ branch: [...next].join(",") || undefined });
   }
-  const branches = (structure.data?.branches ?? []).filter((b) => !search.region || b.region_id === search.region);
+  const branches = (structure.data?.branches ?? []).filter(
+    (b) => !search.region || b.region_id === search.region,
+  );
   return (
     <PublicShell>
       <div data-testid="public-events-page" className="space-y-6">
@@ -64,40 +102,105 @@ function PublicEventsPage() {
           <h1 className="text-3xl font-bold">{t("publicEvents.title")}</h1>
           <p className="text-muted-foreground">{t("publicEvents.intro")}</p>
         </header>
-        <section className="space-y-3 rounded-2xl border bg-card p-4" aria-label={t("publicEvents.filters")}>
+        <section
+          className="space-y-3 rounded-2xl border bg-card p-4"
+          aria-label={t("publicEvents.filters")}
+        >
           <div className="flex flex-wrap items-center gap-3">
-            <label htmlFor="public-region" className="text-sm font-medium">{t("publicEvents.region")}</label>
-            <select id="public-region" data-testid="public-events-region-filter" value={search.region ?? ""} onChange={(e) => setSearch({ region: e.target.value || undefined })}
-              className="h-11 rounded-xl border border-input bg-background px-3 text-sm">
+            <label htmlFor="public-region" className="text-sm font-medium">
+              {t("publicEvents.region")}
+            </label>
+            <select
+              id="public-region"
+              data-testid="public-events-region-filter"
+              value={search.region ?? ""}
+              onChange={(e) => setSearch({ region: e.target.value || undefined })}
+              className="h-11 rounded-xl border border-input bg-background px-3 text-sm"
+            >
               <option value="">{t("publicEvents.allRegions")}</option>
-              {(structure.data?.regions ?? []).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {(structure.data?.regions ?? []).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
             </select>
           </div>
           <fieldset data-testid="public-events-branch-filter">
             <legend className="mb-2 text-sm font-medium">{t("publicEvents.branches")}</legend>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" variant={selected.size ? "outline" : "default"} aria-pressed={!selected.size} data-testid="public-events-branch-all"
-                onClick={() => setSearch({ branch: undefined })}>{t("publicEvents.allBranches")}</Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={selected.size ? "outline" : "default"}
+                aria-pressed={!selected.size}
+                data-testid="public-events-branch-all"
+                onClick={() => setSearch({ branch: undefined })}
+              >
+                {t("publicEvents.allBranches")}
+              </Button>
               {branches.map((b) => {
-                const slug = branchSlug(b.name), on = selected.has(slug);
+                const slug = branchSlug(b.name),
+                  on = selected.has(slug);
                 return (
-                  <Button key={b.id} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on}
-                    data-testid="public-events-branch-option" data-slug={slug} onClick={() => toggleBranch(slug)}>{b.name}</Button>
+                  <Button
+                    key={b.id}
+                    type="button"
+                    size="sm"
+                    variant={on ? "default" : "outline"}
+                    aria-pressed={on}
+                    data-testid="public-events-branch-option"
+                    data-slug={slug}
+                    onClick={() => toggleBranch(slug)}
+                  >
+                    {b.name}
+                  </Button>
                 );
               })}
             </div>
           </fieldset>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="inline-flex rounded-xl border p-1" role="group" aria-label={t("publicEvents.view")}>
-              <Button type="button" size="sm" variant={view === "list" ? "default" : "ghost"} aria-pressed={view === "list"} data-testid="public-events-view-list" onClick={() => setSearch({ view: undefined })}><List />{t("publicEvents.list")}</Button>
-              <Button type="button" size="sm" variant={view === "month" ? "default" : "ghost"} aria-pressed={view === "month"} data-testid="public-events-view-month" onClick={() => setSearch({ view: "month" })}><CalendarDays />{t("publicEvents.month")}</Button>
+            <div
+              className="inline-flex rounded-xl border p-1"
+              role="group"
+              aria-label={t("publicEvents.view")}
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant={view === "list" ? "default" : "ghost"}
+                aria-pressed={view === "list"}
+                data-testid="public-events-view-list"
+                onClick={() => setSearch({ view: undefined })}
+              >
+                <List />
+                {t("publicEvents.list")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={view === "month" ? "default" : "ghost"}
+                aria-pressed={view === "month"}
+                data-testid="public-events-view-month"
+                onClick={() => setSearch({ view: "month" })}
+              >
+                <CalendarDays />
+                {t("publicEvents.month")}
+              </Button>
             </div>
             <Subscribe branch={search.branch} />
           </div>
         </section>
-        {events.isLoading ? <p className="text-muted-foreground">{t("common.loading")}</p>
-          : events.isError ? <p role="alert" className="text-destructive">{t("publicEvents.loadError")}</p>
-          : view === "list" ? <PublicList events={shown} /> : <PublicMonth events={shown} />}
+        {events.isLoading ? (
+          <p className="text-muted-foreground">{t("common.loading")}</p>
+        ) : events.isError ? (
+          <p role="alert" className="text-destructive">
+            {t("publicEvents.loadError")}
+          </p>
+        ) : view === "list" ? (
+          <PublicList events={shown} />
+        ) : (
+          <PublicMonth events={shown} />
+        )}
       </div>
     </PublicShell>
   );
@@ -105,19 +208,46 @@ function PublicEventsPage() {
 
 function PublicList({ events }: { events: PublicEvent[] }) {
   const { t } = useTranslation();
-  if (!events.length) return <p data-testid="public-events-empty" className="text-muted-foreground">{t("publicEvents.empty")}</p>;
+  if (!events.length)
+    return (
+      <p data-testid="public-events-empty" className="text-muted-foreground">
+        {t("publicEvents.empty")}
+      </p>
+    );
   return (
     <ul data-testid="public-events-list" className="grid gap-3 sm:grid-cols-2">
       {events.map((e) => (
-        <li key={e.id} data-testid="public-event-card" data-event-id={e.id} className="rounded-2xl border bg-card p-4">
-          <Link to="/events/$id" params={{ id: e.id }} className="block space-y-2 hover:text-primary">
-            <div className="flex flex-wrap items-center gap-2"><Badge variant="secondary">{t(`events.categories.${e.category}`)}</Badge><PublicRegistrationState state={e.registration} /></div>
+        <li
+          key={e.id}
+          data-testid="public-event-card"
+          data-event-id={e.id}
+          className="rounded-2xl border bg-card p-4"
+        >
+          <Link
+            to="/events/$id"
+            params={{ id: e.id }}
+            className="block space-y-2 hover:text-primary"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">{t(`events.categories.${e.category}`)}</Badge>
+              <PublicRegistrationState state={e.registration} />
+            </div>
             <h2 className="text-lg font-semibold">{e.title}</h2>
             <p className="text-sm">{eventWhen(e, dateLocale())?.text}</p>
             <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               {publicWhere(e) && <span>{publicWhere(e)}</span>}
-              {e.location && <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" aria-hidden />{e.location}</span>}
-              {e.is_online && <span className="inline-flex items-center gap-1"><Video className="size-3.5" aria-hidden />{t("publicEvents.online")}</span>}
+              {e.location && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="size-3.5" aria-hidden />
+                  {e.location}
+                </span>
+              )}
+              {e.is_online && (
+                <span className="inline-flex items-center gap-1">
+                  <Video className="size-3.5" aria-hidden />
+                  {t("publicEvents.online")}
+                </span>
+              )}
             </p>
           </Link>
         </li>
@@ -129,26 +259,59 @@ function PublicList({ events }: { events: PublicEvent[] }) {
 function PublicMonth({ events }: { events: PublicEvent[] }) {
   const { t } = useTranslation();
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
-  const days = eachDayOfInterval({ start: startOfWeek(month, { weekStartsOn: 1 }), end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }) });
+  const days = eachDayOfInterval({
+    start: startOfWeek(month, { weekStartsOn: 1 }),
+    end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
+  });
   return (
     <section data-testid="public-events-month" className="space-y-3">
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="icon" aria-label={t("publicEvents.previousMonth")} onClick={() => setMonth((m) => addMonths(m, -1))}><ChevronLeft /></Button>
-        <h2 className="text-lg font-semibold">{new Intl.DateTimeFormat(dateLocale(), { month: "long", year: "numeric" }).format(month)}</h2>
-        <Button variant="outline" size="icon" aria-label={t("publicEvents.nextMonth")} onClick={() => setMonth((m) => addMonths(m, 1))}><ChevronRight /></Button>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t("publicEvents.previousMonth")}
+          onClick={() => setMonth((m) => addMonths(m, -1))}
+        >
+          <ChevronLeft />
+        </Button>
+        <h2 className="text-lg font-semibold">
+          {new Intl.DateTimeFormat(dateLocale(), { month: "long", year: "numeric" }).format(month)}
+        </h2>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t("publicEvents.nextMonth")}
+          onClick={() => setMonth((m) => addMonths(m, 1))}
+        >
+          <ChevronRight />
+        </Button>
       </div>
       <ol className="grid grid-cols-1 gap-2 sm:grid-cols-7">
         {days.map((day) => {
           const key = format(day, "yyyy-MM-dd");
           const on = events.filter((e) => eventOccursOn(e, key));
-          if (!isSameMonth(day, month) && !on.length) return <li key={key} className="hidden sm:block" aria-hidden />;
+          if (!isSameMonth(day, month) && !on.length)
+            return <li key={key} className="hidden sm:block" aria-hidden />;
           return (
-            <li key={key} className={`min-h-20 rounded-xl border p-2 text-xs ${isSameMonth(day, month) ? "bg-card" : "bg-muted/50"} ${on.length ? "" : "hidden sm:block"}`}>
-              <span className="font-semibold">{new Intl.DateTimeFormat(dateLocale(), { weekday: "short", day: "numeric" }).format(day)}</span>
+            <li
+              key={key}
+              className={`min-h-20 rounded-xl border p-2 text-xs ${isSameMonth(day, month) ? "bg-card" : "bg-muted/50"} ${on.length ? "" : "hidden sm:block"}`}
+            >
+              <span className="font-semibold">
+                {new Intl.DateTimeFormat(dateLocale(), { weekday: "short", day: "numeric" }).format(
+                  day,
+                )}
+              </span>
               <ul className="mt-1 space-y-1">
                 {on.map((e) => (
                   <li key={e.id} data-testid="public-event-month-entry" data-event-id={e.id}>
-                    <Link to="/events/$id" params={{ id: e.id }} className="block truncate rounded bg-secondary px-1 py-0.5 hover:underline">{e.title}</Link>
+                    <Link
+                      to="/events/$id"
+                      params={{ id: e.id }}
+                      className="block truncate rounded bg-secondary px-1 py-0.5 hover:underline"
+                    >
+                      {e.title}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -169,13 +332,36 @@ function Subscribe({ branch }: { branch?: string | undefined }) {
   const webcal = https.replace(/^https?:/, "webcal:");
   return (
     <div className="space-y-2">
-      <Button type="button" variant="outline" size="sm" data-testid="public-events-subscribe" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <CalendarPlus />{t("publicEvents.subscribe")}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        data-testid="public-events-subscribe"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <CalendarPlus />
+        {t("publicEvents.subscribe")}
       </Button>
       {open && (
-        <div data-testid="public-events-subscribe-panel" className="max-w-xl space-y-2 rounded-xl border bg-background p-3 text-sm">
-          <Button asChild size="sm"><a data-testid="public-events-subscribe-webcal" href={webcal}>{t("publicEvents.subscribeApp")}</a></Button>
-          <p>{t("publicEvents.subscribeLink")} <code data-testid="public-events-subscribe-url" className="break-all rounded bg-muted px-1">{https}</code></p>
+        <div
+          data-testid="public-events-subscribe-panel"
+          className="max-w-xl space-y-2 rounded-xl border bg-background p-3 text-sm"
+        >
+          <Button asChild size="sm">
+            <a data-testid="public-events-subscribe-webcal" href={webcal}>
+              {t("publicEvents.subscribeApp")}
+            </a>
+          </Button>
+          <p>
+            {t("publicEvents.subscribeLink")}{" "}
+            <code
+              data-testid="public-events-subscribe-url"
+              className="break-all rounded bg-muted px-1"
+            >
+              {https}
+            </code>
+          </p>
           <p className="text-muted-foreground">{t("publicEvents.subscribeGoogle")}</p>
           <p className="text-muted-foreground">{t("publicEvents.subscribeOutlook")}</p>
         </div>

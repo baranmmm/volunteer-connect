@@ -1,32 +1,153 @@
-import { addDays, addMonths, endOfMonth, endOfWeek, isSameMonth, startOfMonth, startOfWeek } from 'date-fns';
-import { ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
-import { Link } from '@tanstack/react-router';
-import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
-import { dateLocale, formatDate } from '@/lib/i18n';
-import { eventOccursOn, londonInput, type HubEvent } from '@/lib/event-rules';
-import { eventDisplayStatus } from '@/lib/event-status';
-import { cn } from '@/lib/utils';
-import { HappeningNowBadge } from './HappeningNowBadge';
-import { EventStatusBadge } from './EventStatus';
-import { ExternalBadge } from './ExternalBadge';
-import { PublicBadge } from './PublicBadge';
-import { STATUS_CELL, cancelledTitle } from './event-status-styles';
-import { RegistrationBadge } from './RegistrationBadge';
+import {
+  addDays,
+  addMonths,
+  endOfMonth,
+  endOfWeek,
+  isSameMonth,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
+import { ChevronLeft, ChevronRight, Repeat } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import { dateLocale, formatDate } from "@/lib/i18n";
+import { eventOccursOn, londonInput, type HubEvent } from "@/lib/event-rules";
+import { eventDisplayStatus } from "@/lib/event-status";
+import { cn } from "@/lib/utils";
+import { HappeningNowBadge } from "./HappeningNowBadge";
+import { EventStatusBadge } from "./EventStatus";
+import { ExternalBadge } from "./ExternalBadge";
+import { PublicBadge } from "./PublicBadge";
+import { STATUS_CELL, cancelledTitle } from "./event-status-styles";
+import { RegistrationBadge } from "./RegistrationBadge";
 
-export function MonthEvents({ events, month, onMonth, now = new Date() }: { events: HubEvent[]; month: Date; onMonth: (date: Date) => void; now?: Date }) {
+export function MonthEvents({
+  events,
+  month,
+  onMonth,
+  now = new Date(),
+}: {
+  events: HubEvent[];
+  month: Date;
+  onMonth: (date: Date) => void;
+  now?: Date;
+}) {
   const { t, i18n } = useTranslation();
   const first = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
   const last = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
   const days: Date[] = [];
-  for (let day = first; day <= last; day = addDays(day,1)) days.push(day);
-  const key = (day: Date) => `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
-  const today = londonInput(now).slice(0,10);
-  return <section data-testid="calendar-month-view" className="space-y-4">
-    <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">{new Intl.DateTimeFormat(dateLocale(i18n.language), { month:'long', year:'numeric' }).format(month)}</h2><div className="flex gap-1"><Button data-testid="calendar-month-previous" variant="outline" size="icon" aria-label={t('events.previous')} title={t('events.previous')} onClick={() => onMonth(addMonths(month,-1))}><ChevronLeft /></Button><Button data-testid="calendar-month-next" variant="outline" size="icon" aria-label={t('events.next')} title={t('events.next')} onClick={() => onMonth(addMonths(month,1))}><ChevronRight /></Button></div></div>
-    <div className="overflow-x-auto"><div className="grid min-w-[630px] grid-cols-7 border-l border-t">
-      {days.slice(0,7).map(day => <div key={key(day)} className="border-b border-r bg-secondary p-2 text-center text-xs font-semibold text-secondary-foreground">{new Intl.DateTimeFormat(dateLocale(i18n.language), { weekday:'short' }).format(day)}</div>)}
-      {days.map(day => <div key={key(day)} className={`min-h-28 min-w-0 border-b border-r p-2 ${isSameMonth(day,month) ? 'bg-card' : 'bg-muted/50'}`}><span className={`inline-flex size-6 items-center justify-center rounded-full text-xs ${key(day) === today ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{day.getDate()}</span><div className="mt-1 space-y-1">{events.filter(e => eventOccursOn(e, key(day))).sort((a, b) => Number(!!b.all_day) - Number(!!a.all_day)).map(e => <Link key={e.id} to="/events/$id" params={{ id:e.id }} data-testid="event-card" data-event-id={e.id} data-start={e.all_day ? e.start_date : e.start_at} data-all-day={e.all_day ? 'true' : undefined} data-status={e.status} className={cn('@container block break-words rounded-md p-1 text-xs hover:bg-accent', STATUS_CELL[eventDisplayStatus(e, now)])}><span className="flex flex-wrap items-center justify-between gap-1 font-medium"><span>{e.all_day ? t('events.allDay') : e.start_at ? formatDate(e.start_at, { timeStyle:'short' }) : ''}</span><span className="inline-flex items-center gap-1">{e.series_id && <span data-testid="event-recurring-icon" title={t('events.recurring.label')} className="inline-flex shrink-0 text-muted-foreground"><Repeat className="size-3" aria-hidden /><span className="sr-only">{t('events.recurring.label')}</span></span>}<RegistrationBadge status={e.my_registration} compact />{e.audience === 'public' && <PublicBadge compact />}{e.is_external && <ExternalBadge compact />}<EventStatusBadge status={e.status} compact /></span></span><span className={cancelledTitle(e.status)}>{e.title}</span><span className="mt-0.5 block empty:hidden"><HappeningNowBadge event={e} now={now} compact /></span></Link>)}</div></div>)}
-    </div></div>
-  </section>;
+  for (let day = first; day <= last; day = addDays(day, 1)) days.push(day);
+  const key = (day: Date) =>
+    `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+  const today = londonInput(now).slice(0, 10);
+  return (
+    <section data-testid="calendar-month-view" className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">
+          {new Intl.DateTimeFormat(dateLocale(i18n.language), {
+            month: "long",
+            year: "numeric",
+          }).format(month)}
+        </h2>
+        <div className="flex gap-1">
+          <Button
+            data-testid="calendar-month-previous"
+            variant="outline"
+            size="icon"
+            aria-label={t("events.previous")}
+            title={t("events.previous")}
+            onClick={() => onMonth(addMonths(month, -1))}
+          >
+            <ChevronLeft />
+          </Button>
+          <Button
+            data-testid="calendar-month-next"
+            variant="outline"
+            size="icon"
+            aria-label={t("events.next")}
+            title={t("events.next")}
+            onClick={() => onMonth(addMonths(month, 1))}
+          >
+            <ChevronRight />
+          </Button>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[630px] grid-cols-7 border-l border-t">
+          {days.slice(0, 7).map((day) => (
+            <div
+              key={key(day)}
+              className="border-b border-r bg-secondary p-2 text-center text-xs font-semibold text-secondary-foreground"
+            >
+              {new Intl.DateTimeFormat(dateLocale(i18n.language), { weekday: "short" }).format(day)}
+            </div>
+          ))}
+          {days.map((day) => (
+            <div
+              key={key(day)}
+              className={`min-h-28 min-w-0 border-b border-r p-2 ${isSameMonth(day, month) ? "bg-card" : "bg-muted/50"}`}
+            >
+              <span
+                className={`inline-flex size-6 items-center justify-center rounded-full text-xs ${key(day) === today ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              >
+                {day.getDate()}
+              </span>
+              <div className="mt-1 space-y-1">
+                {events
+                  .filter((e) => eventOccursOn(e, key(day)))
+                  .sort((a, b) => Number(!!b.all_day) - Number(!!a.all_day))
+                  .map((e) => (
+                    <Link
+                      key={e.id}
+                      to="/events/$id"
+                      params={{ id: e.id }}
+                      data-testid="event-card"
+                      data-event-id={e.id}
+                      data-start={e.all_day ? e.start_date : e.start_at}
+                      data-all-day={e.all_day ? "true" : undefined}
+                      data-status={e.status}
+                      className={cn(
+                        "@container block break-words rounded-md p-1 text-xs hover:bg-accent",
+                        STATUS_CELL[eventDisplayStatus(e, now)],
+                      )}
+                    >
+                      <span className="flex flex-wrap items-center justify-between gap-1 font-medium">
+                        <span>
+                          {e.all_day
+                            ? t("events.allDay")
+                            : e.start_at
+                              ? formatDate(e.start_at, { timeStyle: "short" })
+                              : ""}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          {e.series_id && (
+                            <span
+                              data-testid="event-recurring-icon"
+                              title={t("events.recurring.label")}
+                              className="inline-flex shrink-0 text-muted-foreground"
+                            >
+                              <Repeat className="size-3" aria-hidden />
+                              <span className="sr-only">{t("events.recurring.label")}</span>
+                            </span>
+                          )}
+                          <RegistrationBadge status={e.my_registration} compact />
+                          {e.audience === "public" && <PublicBadge compact />}
+                          {e.is_external && <ExternalBadge compact />}
+                          <EventStatusBadge status={e.status} compact />
+                        </span>
+                      </span>
+                      <span className={cancelledTitle(e.status)}>{e.title}</span>
+                      <span className="mt-0.5 block empty:hidden">
+                        <HappeningNowBadge event={e} now={now} compact />
+                      </span>
+                    </Link>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
