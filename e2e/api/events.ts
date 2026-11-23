@@ -165,11 +165,12 @@ export async function deleteLeftoverTestEvents(freshUserIds: string[]): Promise<
     if (r.error) throw new Error(`delete fresh users' registrations: ${r.error.message}`);
   }
   for (let i = 0; i < freshUserIds.length; i += 100) {
-    const { data, error } = await adminClient().from("events").delete().in("created_by", freshUserIds.slice(i, i + 100)).select("id");
+    // Meetings' calendar entries go with their meetings (deleteWorkOfUsers), never on their own.
+    const { data, error } = await adminClient().from("events").delete().in("created_by", freshUserIds.slice(i, i + 100)).neq("category", "meeting").select("id");
     if (error) throw new Error(`delete fresh users' events: ${error.message}`);
     deleted += data?.length ?? 0;
   }
-  const { data, error } = await adminClient().from("events").delete().like("title", `${EVENT_TITLE_PREFIX}%`).is("created_by", null).select("id");
+  const { data, error } = await adminClient().from("events").delete().like("title", `${EVENT_TITLE_PREFIX}%`).is("created_by", null).neq("category", "meeting").select("id");
   if (error) throw new Error(`delete orphaned test events: ${error.message}`);
   // Series rows of the same users / orphaned test series (their events are gone by now).
   for (let i = 0; i < freshUserIds.length; i += 100) {

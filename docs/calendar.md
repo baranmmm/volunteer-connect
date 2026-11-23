@@ -29,6 +29,58 @@ RLS policies and SECURITY DEFINER RPCs. The interface only reflects them.
 - Timed events store UTC instants and are always shown in Europe/London time.
 - Events created from an external request are marked "External" and show "Organised by …".
 
+## One calendar: meetings in the calendar
+
+Every meeting is also a calendar entry: an event with the category **Meeting** (`MEETING_CATEGORY`,
+`isMeetingEvent()` in `src/lib/event-rules.ts`), linked by `meetings.event_id`. The database keeps the two in step.
+
+| Rule | Behaviour |
+| --- | --- |
+| Who sees it | Exactly the people who can see the meeting: its creator, its invitees and the managers of its scope. Other members of the branch do not. |
+| Never public | Members only. Never on the public `/events` pages, in `get_public_*` or in the ICS feed. |
+| No registration | No registration, capacity, waiting list, event files or event recurrence. |
+| Calendar | List and month views show it with a Meeting badge. Clicking it opens the event page, where **Open meeting** leads to `/meetings/<id>`. |
+| Managing it | People who can edit the meeting get Edit (the meeting form), Cancel / Reopen and Delete on the event page. These act on the meeting. For a recurring meeting, Delete asks "this / this and following / all". Deleting the event directly is refused. |
+| Recurring meetings | A meeting series (weekly or monthly, every 1–4, 2–52 meetings within 12 months). Each occurrence has its own calendar entry (`events.series_id` stays empty). |
+| Counts | Dashboard "Upcoming events" and the other event counts leave meetings out. Meetings have their own dashboard card. |
+| Tasks | Every viewer of an event (meetings included) sees its linked tasks on the event page. |
+
+## Event form
+
+The form shows only **title, category, date/time and place** (in person or online). The online link sits next to
+the place, because it is required when the event is online. Everything else is in collapsible sections. They are
+all collapsed whenever the form opens:
+
+| Section | Fields |
+| --- | --- |
+| Description | Description, organiser (default "Dialogue Society") |
+| Registration & capacity | Capacity (default unlimited), registration open (default on) |
+| Audience | Branch (fixed for a BM) or national (NC), visible to (default members only) |
+| Files | Images, PDFs, Word and PowerPoint (max 5) |
+| Repeat | Event recurrence (new events, or a series edited for "following" / "all") |
+
+A Regional Director's scope and branch stay visible, because the branch must be chosen. A validation error inside a
+collapsed section opens that section and focuses the field. A BM publishes with title, place and start: End follows
+Start + 2 hours.
+
+**Category Meeting** (create only) turns the form into a meeting form. It shows invitees (people of the chosen
+scope, from `listMeetingPeople`) and the meeting repeat (does not repeat / weekly / monthly, every 1–4,
+2–52 meetings). It hides registration, audience, files, all day and "Save draft". Saving calls `createMeeting` and
+opens the new meeting's page. An existing event can never become a meeting, and a meeting can never become an
+event: edit lists only event categories, and the database refuses the change.
+
+### Test ids
+
+| Element | Test id |
+| --- | --- |
+| Section / its trigger (`aria-expanded`) | `event-form-section-<description\|registration\|audience\|files\|repeat>` (`data-open`) / `…-toggle` |
+| Category options | `event-form-category-option-<category>` |
+| Form mode | `event-form` has `data-mode="event"` or `"meeting"` |
+| Meeting invitees | `event-form-invitees` (PeopleCombobox: `-open`, `-option`, `-chip`, `-search`) |
+| Meeting repeat | `event-form-meeting-repeat-freq` (`-option-<none\|weekly\|monthly>`), `event-form-meeting-repeat-interval` (`-option-<1..4>`), `event-form-meeting-repeat-count` |
+| Meeting badge (card, month entry) | `event-meeting-badge`; cards and month entries carry `data-category` |
+| Event page of a meeting | `event-detail[data-category="meeting"]`, `event-open-meeting`, `event-meeting-actions`, `event-reopen-meeting-button` (Edit, Cancel and Delete keep `event-edit-button`, `event-cancel-event-button`, `event-delete-button`, `event-delete-confirm`) |
+
 ## Recurring events
 
 | Rule | Behaviour |

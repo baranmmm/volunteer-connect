@@ -6,9 +6,13 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   CalendarDays,
+  CalendarRange,
+  ChevronLeft,
+  ChevronRight,
   CircleCheck,
   MapPin,
   Pencil,
+  Repeat,
   RotateCcw,
   Trash2,
   Video,
@@ -21,14 +25,26 @@ import { MeetingAgenda } from "@/components/meetings/MeetingAgenda";
 import { MeetingScope } from "@/components/meetings/MeetingCard";
 import { MeetingFiles } from "@/components/meetings/MeetingFiles";
 import { MeetingFormDialog } from "@/components/meetings/MeetingFormDialog";
+import { MeetingFromLast } from "@/components/meetings/MeetingFromLast";
+import {
+  MeetingScopeDialog,
+  type MeetingScopeAction,
+} from "@/components/meetings/MeetingScopeDialog";
+import { MeetingSeriesPanel } from "@/components/meetings/MeetingSeriesPanel";
 import { MeetingStatusBadge } from "@/components/meetings/MeetingStatusBadge";
 import { meetingWhen } from "@/components/meetings/meeting-ui";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
-import type { MeetingStatus } from "@/lib/meetings";
-import { deleteMeeting, getMeeting, setMeetingStatus } from "@/lib/meetings.functions";
+import type { MeetingDetail, MeetingSeriesMode, MeetingStatus } from "@/lib/meetings";
+import {
+  deleteMeeting,
+  deleteMeetingSeries,
+  getMeeting,
+  listMeetings,
+  setMeetingStatus,
+} from "@/lib/meetings.functions";
 import { useMarkNoticesRead } from "@/lib/use-work-notices";
 
 export const Route = createFileRoute("/_app/meetings_/$id")({
@@ -50,7 +66,9 @@ function MeetingDetailPage() {
   const navigate = useNavigate();
   const fetch = useServerFn(getMeeting),
     setStatus = useServerFn(setMeetingStatus),
-    remove = useServerFn(deleteMeeting);
+    remove = useServerFn(deleteMeeting),
+    removeSeries = useServerFn(deleteMeetingSeries),
+    list = useServerFn(listMeetings);
   const query = useQuery({
     queryKey: ["meeting", id, uid],
     queryFn: () => fetch({ data: { id } }),
@@ -65,6 +83,8 @@ function MeetingDetailPage() {
   const [editing, setEditing] = useState(false),
     [rescheduling, setRescheduling] = useState(false),
     [confirm, setConfirm] = useState<"cancel" | "delete" | null>(null),
+    // An occurrence of a recurring meeting: cancel and delete first ask which occurrences.
+    [scopeAction, setScopeAction] = useState<Exclude<MeetingScopeAction, "edit"> | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
 
@@ -130,7 +150,74 @@ function MeetingDetailPage() {
     }
   }
 
+  /** Cancels the chosen occurrences that are still scheduled (each one notifies its invitees). */
+  async function cancelOccurrences(current: MeetingDetail, mode: MeetingSeriesMode) {
+    if (mode === "this") return [current.id];
+    const lists = await Promise.all([
+      list({ data: { when: "upcoming", limit: 500 } }),
+      list({ data: { when: "past", limit: 500 } }),
+    ]);
+    const ids = new Set<string>();
+    for (const m of lists.flat())
+      if (
+        m.series_id === current.series_id &&
+        m.can_edit &&
+        m.status === "scheduled" &&
+        (mode === "all" || Date.parse(m.starts_at) >= Date.parse(current.starts_at))
+      )
+        ids.add(m.id);
+    return [...ids];
+  }
+  async function confirmScope(current: MeetingDetail, mode: MeetingSeriesMode) {
+    setBusy(true);
+    setError("");
+    try {
+      if (scopeAction === "delete") {
+        const { count } = await removeSeries({ data: { id, mode } });
+        qc.removeQueries({ queryKey: ["meeting", id] });
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["meetings"] }),
+          qc.invalidateQueries({ queryKey: ["meeting"] }),
+          qc.invalidateQueries({ queryKey: ["recycle-bin"] }),
+          qc.invalidateQueries({ queryKey: ["events"] }),
+        ]);
+        toast.success(count > 1 ? t("meetings.deletedMany", { count }) : t("meetings.deleted"));
+        setScopeAction(null);
+        await navigate({ to: "/meetings" });
+        return;
+      }
+      const targets = await cancelOccurrences(current, mode);
+      for (const target of targets) await setStatus({ data: { id: target, status: "cancelled" } });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["meeting"] }),
+        qc.invalidateQueries({ queryKey: ["meetings"] }),
+        qc.invalidateQueries({ queryKey: ["events"] }),
+      ]);
+      toast.success(
+        targets.length > 1
+          ? t("meetings.cancelledMany", { count: targets.length })
+          : t("meetings.statusChanged.cancelled"),
+      );
+      setScopeAction(null);
+    } catch (e) {
+      setError(translateError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const editor = meeting.can_edit;
+  const series = meeting.series;
+  const askCancel = () => {
+    setError("");
+    if (series) setScopeAction("cancel");
+    else setConfirm("cancel");
+  };
+  const askDelete = () => {
+    setError("");
+    if (series) setScopeAction("delete");
+    else setConfirm("delete");
+  };
   return (
     <article
       data-testid="meeting-detail"
@@ -161,6 +248,54 @@ function MeetingDetailPage() {
         >
           {meeting.title}
         </h1>
+        {series && (
+          <nav
+            data-testid="meeting-series-info"
+            data-position={meeting.series_position ?? undefined}
+            data-count={meeting.series_count ?? undefined}
+            aria-label={t("meetings.series.navigation")}
+            className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-sm"
+          >
+            <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground">
+              <Repeat className="size-4 shrink-0" aria-hidden />
+              {t("meetings.series.position", {
+                n: meeting.series_position ?? 1,
+                total: meeting.series_count ?? series.count,
+              })}
+              <span className="sr-only">
+                {" "}
+                {t(`meetings.series.every.${series.freq}`, { count: series.interval })}
+              </span>
+            </span>
+            <span aria-hidden className="hidden text-muted-foreground sm:inline">
+              {t(`meetings.series.every.${series.freq}`, { count: series.interval })}
+            </span>
+            <span className="flex flex-wrap gap-3">
+              {series.previous_id && (
+                <Link
+                  to="/meetings/$id"
+                  params={{ id: series.previous_id }}
+                  data-testid="meeting-series-previous"
+                  className="inline-flex min-h-11 items-center gap-1 text-primary underline-offset-4 hover:underline"
+                >
+                  <ChevronLeft className="size-4" aria-hidden />
+                  {t("meetings.series.previous")}
+                </Link>
+              )}
+              {series.next_id && (
+                <Link
+                  to="/meetings/$id"
+                  params={{ id: series.next_id }}
+                  data-testid="meeting-series-next"
+                  className="inline-flex min-h-11 items-center gap-1 text-primary underline-offset-4 hover:underline"
+                >
+                  {t("meetings.series.next")}
+                  <ChevronRight className="size-4" aria-hidden />
+                </Link>
+              )}
+            </span>
+          </nav>
+        )}
       </header>
       <div className="min-w-0 space-y-4 border-y py-5">
         <p className="flex min-w-0 items-start gap-3 font-semibold" data-testid="meeting-when">
@@ -203,6 +338,15 @@ function MeetingDetailPage() {
             </dd>
           </div>
         </dl>
+        <Link
+          to="/events/$id"
+          params={{ id: meeting.event_id }}
+          data-testid="meeting-open-calendar"
+          className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          <CalendarRange className="size-4 shrink-0" aria-hidden />
+          {t("meetings.openCalendar")}
+        </Link>
       </div>
       {meeting.description && (
         <p
@@ -242,10 +386,7 @@ function MeetingDetailPage() {
                   variant="outline"
                   className="h-11 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
                   disabled={busy}
-                  onClick={() => {
-                    setError("");
-                    setConfirm("cancel");
-                  }}
+                  onClick={askCancel}
                 >
                   <X />
                   {t("meetings.cancel")}
@@ -281,10 +422,7 @@ function MeetingDetailPage() {
               variant="destructive"
               className="h-11"
               disabled={busy}
-              onClick={() => {
-                setError("");
-                setConfirm("delete");
-              }}
+              onClick={askDelete}
             >
               <Trash2 />
               {t("meetings.delete")}
@@ -292,6 +430,8 @@ function MeetingDetailPage() {
           </div>
         </section>
       )}
+      {meeting.from_last && <MeetingFromLast fromLast={meeting.from_last} />}
+      <MeetingAgenda meeting={meeting} />
       <section
         data-testid="meeting-invitees"
         aria-labelledby="meeting-invitees-title"
@@ -327,8 +467,11 @@ function MeetingDetailPage() {
           </ul>
         )}
       </section>
-      <MeetingAgenda meeting={meeting} />
       <MeetingFiles meeting={meeting} />
+      <MeetingSeriesPanel
+        key={`${meeting.id}:${meeting.series?.agenda_template.join("\n")}`}
+        meeting={meeting}
+      />
       {editor && (
         <>
           <MeetingFormDialog
@@ -344,6 +487,7 @@ function MeetingDetailPage() {
             mode="edit"
             meeting={meeting}
             testId="meeting-reschedule-form"
+            seriesMode="this"
             onClose={() => setRescheduling(false)}
             onSaved={() => void changeStatus("scheduled")}
           />
@@ -397,6 +541,14 @@ function MeetingDetailPage() {
           )}
         </div>
       </EventDialog>
+      <MeetingScopeDialog
+        open={scopeAction !== null && editor}
+        action={scopeAction ?? "cancel"}
+        busy={busy}
+        error={error}
+        onClose={() => setScopeAction(null)}
+        onConfirm={(mode) => void confirmScope(meeting, mode)}
+      />
     </article>
   );
 }

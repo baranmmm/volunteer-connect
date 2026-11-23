@@ -139,13 +139,14 @@ export async function deleteTempBranch(id: string, fallbackBranch?: string): Pro
   const db = adminClient();
   const requests = await db.from("event_requests").select("id").eq("branch_id", id);
   await deleteRequests((requests.data ?? []).map((r: { id: string }) => r.id));
-  await db.from("events").delete().eq("branch_id", id);
-  await db.from("event_series").delete().eq("branch_id", id);
-  // Tasks, meetings (files first) and task/meeting requests in the branch.
+  // Tasks, meetings (files first, then their calendar entries) and task/meeting requests in the branch, before the
+  // branch's other events (a meeting's event cannot go while its meeting exists).
   for (const table of ["task_requests", "meeting_requests"] as const) await db.from(table).delete().eq("branch_id", id);
   const tasks = await db.from("tasks").select("id").eq("branch_id", id);
   const meetings = await db.from("meetings").select("id").eq("branch_id", id);
   await deleteWork({ tasks: (tasks.data ?? []).map((t) => t.id), meetings: (meetings.data ?? []).map((m) => m.id) });
+  await db.from("events").delete().eq("branch_id", id);
+  await db.from("event_series").delete().eq("branch_id", id);
   // Volunteer applications reference the branch without ON DELETE (they would block the delete and leave the
   // temporary branch, with its long name, on the shared QA database).
   const apps = await db.from("volunteer_applications").delete().eq("branch_id", id);

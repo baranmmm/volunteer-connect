@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, MailOpen, MapPin, Video } from "lucide-react";
+import { CalendarDays, MailOpen, MapPin, Repeat, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BranchName } from "@/components/app/BranchName";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +73,23 @@ export function MeetingCard({
           )
         )}
         <MeetingStatusBadge status={meeting.status} testId={`${testId}-status`} />
+        {meeting.series_id && (
+          <span
+            data-testid="meeting-card-recurring"
+            className="inline-flex shrink-0 items-center gap-1"
+            title={t("meetings.series.recurring")}
+          >
+            <Repeat className="size-4" aria-hidden />
+            <span className={compact ? "sr-only" : undefined}>
+              {meeting.series_position && meeting.series_count
+                ? t("meetings.series.position", {
+                    n: meeting.series_position,
+                    total: meeting.series_count,
+                  })
+                : t("meetings.series.recurring")}
+            </span>
+          </span>
+        )}
         {meeting.invited && (
           <Badge variant="secondary" data-testid={`${testId}-invited`} className="shrink-0 gap-1">
             <MailOpen className="size-3.5" aria-hidden />

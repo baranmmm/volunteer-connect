@@ -1,13 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowUp, ArrowDown, Trash2, FileText, Image, Upload } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
+  CALENDAR_CATEGORIES,
   EVENT_CATEGORIES,
   EVENT_FILE_ACCEPT,
+  isMeetingEvent,
   eventFileExtension,
   eventFileKind,
   type EventFileKind,
@@ -36,6 +38,9 @@ import {
   type SeriesInfo,
 } from "@/lib/recurrence";
 import { validateEventForm } from "@/lib/event-form-rules";
+import { validateMeetingForm } from "@/lib/meetings";
+import { createMeeting, listMeetingPeople } from "@/lib/meetings.functions";
+import { listMyWorkScopes } from "@/lib/work-scopes";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
@@ -54,6 +59,19 @@ import { EventDialog } from "./EventDialog";
 import { RepeatFields } from "./RepeatFields";
 import { DateField, DateTimeField } from "./DateTimeField";
 import type { SeriesMode } from "./RecurringScopeDialog";
+import { FormSection } from "./FormSection";
+import { MeetingRepeatFields } from "./MeetingRepeatFields";
+import {
+  defaultMeetingRepeat,
+  meetingRecurrenceOf,
+  meetingRepeatError,
+  type MeetingRepeatState,
+} from "@/lib/event-meeting-repeat";
+import { PeopleCombobox } from "@/components/work/PeopleCombobox";
+
+/** Collapsible sections of the form (all collapsed when the form opens). */
+const SECTIONS = ["description", "registration", "audience", "files", "repeat"] as const;
+type Section = (typeof SECTIONS)[number];
 
 type Item = {
   key: string;
@@ -63,7 +81,12 @@ type Item = {
   media?: EventMedia;
   preview?: string;
 };
-/** With `series` + `seriesMode`, saves an occurrence of a recurring event ('this', 'following' or 'all'). */
+/**
+ * Create or edit an event. Title, category, date/time and place are always visible; the rest sits in collapsed sections
+ * that open on a validation error. With `series` + `seriesMode`, saves an occurrence of a recurring event ('this',
+ * 'following' or 'all'). Creating with the category "Meeting" turns it into a meeting form (invitees, meeting repeat)
+ * that saves through createMeeting and opens the meeting page.
+ */
 export function EventForm({
   event,
   series,
@@ -98,8 +121,22 @@ export function EventForm({
   const [description, setDescription] = useState(event?.description ?? "");
   const [location, setLocation] = useState(event?.location ?? "");
   const [organizer, setOrganizer] = useState(event?.organizer ?? "Dialogue Society");
-  const initialCategory = EVENT_CATEGORIES.find((c) => c === event?.category) ?? "dialogue";
-  const [category, setCategory] = useState<typeof initialCategory>(initialCategory);
+  // A meeting's calendar entry is edited through its meeting; an event never becomes a meeting (or back).
+  const editingMeeting = !!event && isMeetingEvent(event);
+  const categories = event
+    ? editingMeeting
+      ? CALENDAR_CATEGORIES
+      : EVENT_CATEGORIES
+    : CALENDAR_CATEGORIES;
+  const initialCategory = CALENDAR_CATEGORIES.find((c) => c === event?.category) ?? "dialogue";
+  const [category, setCategory] = useState<(typeof CALENDAR_CATEGORIES)[number]>(initialCategory);
+  const meetingMode = !event && isMeetingEvent({ category });
+  const navigate = useNavigate();
+  const createMeetingFn = useServerFn(createMeeting),
+    scopesFn = useServerFn(listMyWorkScopes),
+    peopleFn = useServerFn(listMeetingPeople);
+  const [open, setOpen] = useState<Partial<Record<Section, boolean>>>({});
+  const toggle = (name: Section) => setOpen((current) => ({ ...current, [name]: !current[name] }));
   const [allDay, setAllDay] = useState(!!event?.all_day);
   // Timed events: a date input plus a quarter-hour time list per side; `start`/`end` are London "YYYY-MM-DDTHH:mm".
   const initialStart = event?.start_at ? londonInput(event.start_at) : "",
@@ -167,6 +204,44 @@ export function EventForm({
   );
   const attached = useRef<EventMedia[]>(event?.media ?? []);
   const [savedId, setSavedId] = useState(event?.id ?? null);
+  // Meeting mode: invitees from the meeting's scope, and the meeting repeat.
+  const [invitees, setInvitees] = useState<string[]>([]);
+  const [meetingRepeat, setMeetingRepeat] = useState<MeetingRepeatState>(defaultMeetingRepeat);
+  const workScopes = useQuery({
+    queryKey: ["work-scopes", session?.user.id],
+    queryFn: () => scopesFn(),
+    enabled: meetingMode && !!session,
+    staleTime: 60000,
+  });
+  const regionId = (workScopes.data ?? []).find((s) => s.scope === "region")?.region_id ?? null;
+  const meetingScope =
+    scope === "national"
+      ? { scope: "national" as const, branch_id: null, region_id: null }
+      : scope === "region"
+        ? { scope: "region" as const, branch_id: null, region_id: regionId }
+        : { scope: "branch" as const, branch_id: branch || null, region_id: null };
+  const meetingScopeReady =
+    meetingScope.scope === "national" ||
+    (meetingScope.scope === "region" ? !!meetingScope.region_id : !!meetingScope.branch_id);
+  const people = useQuery({
+    queryKey: [
+      "meeting-people",
+      session?.user.id,
+      meetingScope.scope,
+      meetingScope.branch_id,
+      meetingScope.region_id,
+    ],
+    queryFn: () =>
+      peopleFn({
+        data: {
+          scope: meetingScope.scope,
+          branchId: meetingScope.branch_id,
+          regionId: meetingScope.region_id,
+        },
+      }),
+    enabled: meetingMode && meetingScopeReady && !!session,
+    staleTime: 60000,
+  });
   // Repeat: new events, or a series edited for 'following' / 'all'. Files of a series live on its media holder.
   const repeatEditable =
     !event || (!!event.series_id && (seriesMode === "following" || seriesMode === "all"));
@@ -249,8 +324,124 @@ export function EventForm({
     setItems(next);
     setError("");
   }
+  /** Shows the errors: opens every section holding one, then focuses the first invalid field. */
+  function showErrors(validation: Record<string, string>) {
+    setFieldErrors(validation);
+    const sectionOf: Record<string, Section> = {
+      organizer: "description",
+      capacity: "registration",
+      "repeat-until": "repeat",
+      "repeat-count": "repeat",
+      "meeting-repeat-count": "repeat",
+      ...(director ? {} : { branch: "audience" as const, scope: "audience" as const }),
+    };
+    const opened = Object.keys(validation).flatMap((key) => {
+      const section = sectionOf[key];
+      return section ? [section] : [];
+    });
+    if (opened.length)
+      setOpen((current) => ({ ...current, ...Object.fromEntries(opened.map((x) => [x, true])) }));
+    const first = [
+      "title",
+      "category",
+      "start",
+      "end",
+      "start-date",
+      "end-date",
+      "location-type",
+      "location",
+      "online-url",
+      "scope",
+      "branch",
+      "organizer",
+      "capacity",
+      "repeat-until",
+      "repeat-count",
+      "meeting-repeat-count",
+    ].find((key) => validation[key]);
+    if (!first) return false;
+    // Timed Start/End errors focus the missing half (date first).
+    const target =
+      !allDay && (first === "start" || first === "end")
+        ? `${first}-${(first === "start" ? startDay : endDay) ? "time" : "date"}`
+        : first;
+    // Two frames: a section opened above renders before the field is focused.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const node = formRef.current?.querySelector<HTMLElement>(
+          `[data-testid="event-form-${target}"]`,
+        );
+        node?.scrollIntoView({ behavior: "smooth", block: "center" });
+        node?.focus();
+      }),
+    );
+    return true;
+  }
+  /** Meeting mode: one meeting (or a recurring series) with its calendar entry, then the meeting page. */
+  async function submitMeeting() {
+    if (busy) return;
+    const iso = (value: string) => {
+      if (!value) return null;
+      try {
+        return londonToIso(value);
+      } catch {
+        return undefined;
+      }
+    };
+    const startIso = iso(start),
+      endIso = iso(end);
+    const found = validateMeetingForm({
+      title,
+      start: startIso ? new Date(startIso) : null,
+      end: endIso ? new Date(endIso) : null,
+      location_type: locationType,
+      location,
+      online_url: onlineUrl,
+    });
+    const validation: Record<string, string> = {};
+    if (found.title) validation["title"] = found.title;
+    if (found.start || startIso === undefined)
+      validation["start"] = found.start ?? "meetings.errors.start";
+    if (found.end || endIso === undefined) validation["end"] = found.end ?? "meetings.errors.end";
+    if (found.location) validation["location"] = found.location;
+    if (found.online_url) validation["online-url"] = found.online_url;
+    if (!meetingScopeReady)
+      validation[director && scope === "branch" ? "branch" : "scope"] = "events.fieldRequired";
+    const repeatError = meetingRepeatError(meetingRepeat);
+    if (repeatError) validation["meeting-repeat-count"] = repeatError;
+    if (showErrors(validation) || !startIso || !endIso) return;
+    setBusy(true);
+    setError("");
+    try {
+      const id = await createMeetingFn({
+        data: {
+          ...meetingScope,
+          title: title.trim(),
+          description: description.trim() || null,
+          starts_at: startIso,
+          ends_at: endIso,
+          location_type: locationType,
+          location: locationType === "in_person" ? location.trim() : null,
+          online_url: locationType === "online" ? onlineUrl.trim() : null,
+          invitee_ids: invitees,
+          recurrence: meetingRecurrenceOf(meetingRepeat),
+        },
+      });
+      await Promise.all(
+        ["events", "meetings", "meeting"].map((key) => qc.invalidateQueries({ queryKey: [key] })),
+      );
+      toast.success(t("meetings.form.created"));
+      onClose();
+      void navigate({ to: "/meetings/$id", params: { id } });
+    } catch (e) {
+      setError(translateError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   async function submit(status: "draft" | "published" | "cancelled") {
     if (busy) return;
+    if (meetingMode) return submitMeeting();
     const timesChanged =
       !event ||
       event.status !== "published" ||
@@ -299,39 +490,7 @@ export function EventForm({
       )
         validation["repeat-count"] = "events.invalid";
     }
-    setFieldErrors(validation);
-    const first = [
-      "title",
-      "location-type",
-      "location",
-      "online-url",
-      "organizer",
-      "category",
-      "start",
-      "end",
-      "start-date",
-      "end-date",
-      "repeat-until",
-      "repeat-count",
-      "scope",
-      "branch",
-      "capacity",
-    ].find((key) => validation[key]);
-    if (first) {
-      // Timed Start/End errors focus the missing half (date first).
-      const target =
-        !allDay && (first === "start" || first === "end")
-          ? `${first}-${(first === "start" ? startDay : endDay) ? "time" : "date"}`
-          : first;
-      requestAnimationFrame(() => {
-        const node = formRef.current?.querySelector<HTMLElement>(
-          `[data-testid="event-form-${target}"]`,
-        );
-        node?.scrollIntoView({ behavior: "smooth", block: "center" });
-        node?.focus();
-      });
-      return;
-    }
+    if (showErrors(validation)) return;
     if (preparing) {
       setError(t("events.filePreparing"));
       return;
@@ -350,7 +509,7 @@ export function EventForm({
         location_type: locationType,
         online_url: locationType === "online" && onlineUrl.trim() ? onlineUrl.trim() : null,
         organizer: organizer.trim() || "Dialogue Society",
-        category,
+        category: EVENT_CATEGORIES.find((c) => c === category) ?? "other",
         all_day: allDay,
         start_date: allDay && startDate ? startDate : null,
         end_date: allDay && endDate ? endDate : null,
@@ -560,6 +719,16 @@ export function EventForm({
       />
     );
   }
+  const section = (name: Section, children: ReactNode) => (
+    <FormSection
+      name={name}
+      title={t(`events.sections.${name}`)}
+      open={!!open[name]}
+      onToggle={() => toggle(name)}
+    >
+      {children}
+    </FormSection>
+  );
   return (
     <EventDialog
       open
@@ -572,6 +741,7 @@ export function EventForm({
         ref={formRef}
         noValidate
         data-testid="event-form"
+        data-mode={meetingMode ? "meeting" : "event"}
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
@@ -581,15 +751,64 @@ export function EventForm({
         <p className="text-sm text-muted-foreground">{t("events.requiredNote")}</p>
         {field(t("events.titleLabel"), "event-form-title", title, setTitle, "text", true)}
         <div className="space-y-1.5">
-          <Label htmlFor="event-form-description">{t("events.description")}</Label>
-          <Textarea
-            id="event-form-description"
-            data-testid="event-form-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            disabled={busy}
-            rows={3}
-          />
+          <Label>{t("events.category")} *</Label>
+          <Select
+            value={category}
+            disabled={busy || editingMeeting}
+            onValueChange={(v) => {
+              const c = categories.find((x) => x === v);
+              if (!c) return;
+              setCategory(c);
+              // Meetings are always timed.
+              if (!event && isMeetingEvent({ category: c })) setAllDay(false);
+            }}
+          >
+            <SelectTrigger
+              data-testid="event-form-category"
+              aria-label={t("events.category")}
+              className="h-11"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c} value={c} data-testid={`event-form-category-option-${c}`}>
+                  {t(`events.categories.${c}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {fieldError("category")}
+          {meetingMode && (
+            <p data-testid="event-form-meeting-hint" className="text-xs text-muted-foreground">
+              {t("events.meetingForm.hint")}
+            </p>
+          )}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {!meetingMode && (
+            <div className="flex min-h-11 items-center gap-3 sm:col-span-2">
+              <Switch
+                id="event-form-all-day"
+                data-testid="event-form-all-day"
+                checked={allDay}
+                disabled={busy}
+                onCheckedChange={setAllDay}
+              />
+              <Label htmlFor="event-form-all-day">{t("events.allDay")}</Label>
+            </div>
+          )}
+          {allDay && !meetingMode ? (
+            <>
+              {dateField("start-date", t("events.startDate"), startDate, setStartDate, true)}
+              {dateField("end-date", t("events.endDate"), endDate, setEndDate, false)}
+            </>
+          ) : (
+            <>
+              {dateTime("start", startDay, startTime, setStart)}
+              {dateTime("end", endDay, endTime, setEnd)}
+            </>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label>{t("events.locationType")} *</Label>
@@ -611,6 +830,7 @@ export function EventForm({
             </SelectContent>
           </Select>
         </div>
+        {/* The online link is required when online, so it sits with the place, never in a collapsed section. */}
         {locationType === "online" ? (
           <div className="space-y-1">
             {field(
@@ -626,74 +846,17 @@ export function EventForm({
         ) : (
           field(t("events.location"), "event-form-location", location, setLocation, "text", true)
         )}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {field(t("events.organizer"), "event-form-organizer", organizer, setOrganizer, "text")}
-          <div className="space-y-1.5">
-            <Label>{t("events.category")} *</Label>
-            <Select
-              value={category}
-              disabled={busy}
-              onValueChange={(v) => {
-                const c = EVENT_CATEGORIES.find((x) => x === v);
-                if (c) setCategory(c);
-              }}
-            >
-              <SelectTrigger
-                data-testid="event-form-category"
-                aria-label={t("events.category")}
-                className="h-11"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EVENT_CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {t(`events.categories.${c}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {fieldError("category")}
-          </div>
-          <div className="flex min-h-11 items-center gap-3 sm:col-span-2">
-            <Switch
-              id="event-form-all-day"
-              data-testid="event-form-all-day"
-              checked={allDay}
-              disabled={busy}
-              onCheckedChange={setAllDay}
-            />
-            <Label htmlFor="event-form-all-day">{t("events.allDay")}</Label>
-          </div>
-          {allDay ? (
-            <>
-              {dateField("start-date", t("events.startDate"), startDate, setStartDate, true)}
-              {dateField("end-date", t("events.endDate"), endDate, setEndDate, false)}
-            </>
-          ) : (
-            <>
-              {dateTime("start", startDay, startTime, setStart)}
-              {dateTime("end", endDay, endTime, setEnd)}
-            </>
-          )}
-          {repeatEditable && (
-            <div className="sm:col-span-2">
-              <RepeatFields
-                value={repeat}
-                onChange={setRepeat}
-                start={repeatStart}
-                disabled={busy}
-                errors={fieldErrors}
-              />
-            </div>
-          )}
-          {director && (
+        {director && (
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>{t("events.scope")} *</Label>
               <Select
                 value={scope}
                 disabled={busy}
-                onValueChange={(v) => setScope(v === "region" ? "region" : "branch")}
+                onValueChange={(v) => {
+                  setScope(v === "region" ? "region" : "branch");
+                  setInvitees([]);
+                }}
               >
                 <SelectTrigger
                   data-testid="event-form-scope"
@@ -709,206 +872,294 @@ export function EventForm({
               </Select>
               {fieldError("scope")}
             </div>
-          )}
-          {director && scope === "branch" && (
-            <div className="space-y-1.5">
-              <Label>{t("events.branch")} *</Label>
-              <Select
-                value={branch}
-                onValueChange={setBranch}
-                disabled={busy || branches.isLoading}
-              >
-                <SelectTrigger
-                  data-testid="event-form-branch"
-                  aria-label={t("events.branch")}
-                  className="h-11"
+            {scope === "branch" ? (
+              <div className="space-y-1.5">
+                <Label>{t("events.branch")} *</Label>
+                <Select
+                  value={branch}
+                  onValueChange={(v) => {
+                    setBranch(v);
+                    setInvitees([]);
+                  }}
+                  disabled={busy || branches.isLoading}
                 >
-                  <SelectValue placeholder={t("auth.chooseBranch")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(branches.data ?? []).map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {fieldError("branch")}
-            </div>
-          )}
-          {nc && (
-            <div className="space-y-1.5">
-              <Label>{t("events.scope")}</Label>
-              <p
-                data-testid="event-form-scope-national"
-                className="flex min-h-11 items-center text-sm"
-              >
-                {t("events.national")}
-              </p>
-            </div>
-          )}
-          {!director && !nc && (
-            <div className="space-y-1.5">
-              <Label htmlFor="event-form-branch">{t("events.branch")} *</Label>
-              <Input
-                id="event-form-branch"
-                data-testid="event-form-branch"
-                readOnly
-                aria-readonly
-                value={
-                  (branches.data ?? []).find((b) => b.id === branch)?.name ??
-                  profile?.branches?.name ??
-                  ""
-                }
-                className="h-11 bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">{t("events.branchFixed")}</p>
-              {fieldError("branch")}
-            </div>
-          )}
-          {scope === "region" && (
-            <div className="space-y-1.5">
-              <Label>{t("events.region")} *</Label>
-              <p className="text-sm">{profile?.branches?.regions?.name ?? t("events.region")}</p>
-            </div>
-          )}
-          <div className="space-y-1">
-            {field(t("events.capacity"), "event-form-capacity", capacity, setCapacity, "number")}
-            <p className="text-xs text-muted-foreground">{t("registrations.capacityHint")}</p>
+                  <SelectTrigger
+                    data-testid="event-form-branch"
+                    aria-label={t("events.branch")}
+                    className="h-11"
+                  >
+                    <SelectValue placeholder={t("auth.chooseBranch")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(branches.data ?? []).map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldError("branch")}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>{t("events.region")} *</Label>
+                <p className="flex min-h-11 items-center text-sm">
+                  {profile?.branches?.regions?.name ?? t("events.region")}
+                </p>
+              </div>
+            )}
           </div>
-          <div className="flex min-h-11 items-center gap-3">
-            <Switch
-              id="event-form-registration-enabled"
-              data-testid="event-form-registration-enabled"
-              checked={registrationEnabled}
-              disabled={busy}
-              onCheckedChange={setRegistrationEnabled}
-            />
-            <Label htmlFor="event-form-registration-enabled">{t("registrations.open")}</Label>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>{t("events.visibleTo")}</Label>
-            <Select
-              value={audience}
-              disabled={busy}
-              onValueChange={(v) => setAudience(v === "public" ? "public" : "members")}
-            >
-              <SelectTrigger
-                data-testid="event-form-audience"
-                aria-label={t("events.visibleTo")}
-                className="h-11"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="members" data-testid="event-form-audience-option-members">
-                  {t("events.audience.members")}
-                </SelectItem>
-                <SelectItem value="public" data-testid="event-form-audience-option-public">
-                  {t("events.audience.public")}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">{t("events.audienceHint")}</p>
-          </div>
-        </div>
+        )}
         {branches.isError && (
           <p role="alert" className="text-sm text-destructive">
             {t("errors.branchesLoad")}
           </p>
         )}
-        <section className="space-y-3 border-t pt-4">
-          <h3 className="font-semibold">{t("events.files")}</h3>
-          <p className="text-xs text-muted-foreground">{t("events.fileLimits")}</p>
-          <Label
-            htmlFor="event-form-file-input"
-            className="flex min-h-11 items-center gap-2 text-primary"
-          >
-            <Upload className="size-4" />
-            {t("events.files")}
-          </Label>
-          <Input
-            id="event-form-file-input"
-            data-testid="event-form-file-input"
-            type="file"
-            accept={EVENT_FILE_ACCEPT}
-            multiple
-            disabled={busy || preparing || items.length >= MAX_EVENT_FILES}
-            onChange={(e) => {
-              void addFiles(e.target.files);
-              e.target.value = "";
-            }}
+        {meetingMode && (
+          <PeopleCombobox
+            testId="event-form-invitees"
+            label={t("events.meetingForm.invitees")}
+            people={people.data ?? []}
+            selected={invitees}
+            onChange={setInvitees}
+            disabled={busy}
+            loading={people.isLoading}
+            emptyText={
+              meetingScopeReady ? t("events.meetingForm.noPeople") : t("events.meetingForm.noScope")
+            }
           />
-          {preparing && (
-            <p role="status" className="text-sm text-muted-foreground">
-              {t("events.filePreparing")}
-            </p>
-          )}
-          <ol className="space-y-2">
-            {items.map((item, i) => (
-              <li
-                key={item.key}
-                data-testid="event-form-file-item"
-                data-position={i}
-                className="flex min-w-0 flex-wrap items-center gap-2 border-b py-2"
-              >
-                {(item.preview ?? item.media?.url) && item.kind === "image" ? (
-                  <img
-                    src={item.preview ?? item.media?.url ?? ""}
-                    alt=""
-                    className="size-12 rounded-md object-cover"
-                  />
-                ) : item.kind !== "image" ? (
-                  <FileText className="size-6 text-muted-foreground" />
-                ) : (
-                  <Image className="size-6 text-muted-foreground" />
+        )}
+        <div className="space-y-0">
+          {section(
+            "description",
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="event-form-description">{t("events.description")}</Label>
+                <Textarea
+                  id="event-form-description"
+                  data-testid="event-form-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={busy}
+                  rows={3}
+                />
+              </div>
+              {!meetingMode &&
+                field(
+                  t("events.organizer"),
+                  "event-form-organizer",
+                  organizer,
+                  setOrganizer,
+                  "text",
                 )}
-                <span className="min-w-0 flex-1 break-all text-xs">
-                  {item.name}
-                  {i === 0 && item.kind === "image" && (
-                    <span className="ml-2 font-semibold text-primary">{t("events.cover")}</span>
+            </>,
+          )}
+          {!meetingMode &&
+            section(
+              "registration",
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  {field(
+                    t("events.capacity"),
+                    "event-form-capacity",
+                    capacity,
+                    setCapacity,
+                    "number",
                   )}
-                </span>
-                <div className="flex shrink-0 gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={busy || preparing || i === 0}
-                    aria-label={t("events.moveUp")}
-                    title={t("events.moveUp")}
-                    onClick={() => move(i, -1)}
-                  >
-                    <ArrowUp />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={busy || preparing || i === items.length - 1}
-                    aria-label={t("events.moveDown")}
-                    title={t("events.moveDown")}
-                    onClick={() => move(i, 1)}
-                  >
-                    <ArrowDown />
-                  </Button>
-                  <Button
-                    data-testid="event-form-file-remove"
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={busy || preparing}
-                    aria-label={t("events.remove")}
-                    title={t("events.remove")}
-                    onClick={() => setItems(items.filter((_, index) => index !== i))}
-                  >
-                    <Trash2 />
-                  </Button>
+                  <p className="text-xs text-muted-foreground">{t("registrations.capacityHint")}</p>
                 </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+                <div className="flex min-h-11 items-center gap-3">
+                  <Switch
+                    id="event-form-registration-enabled"
+                    data-testid="event-form-registration-enabled"
+                    checked={registrationEnabled}
+                    disabled={busy}
+                    onCheckedChange={setRegistrationEnabled}
+                  />
+                  <Label htmlFor="event-form-registration-enabled">{t("registrations.open")}</Label>
+                </div>
+              </div>,
+            )}
+          {!meetingMode &&
+            section(
+              "audience",
+              <>
+                {nc && (
+                  <div className="space-y-1.5">
+                    <Label>{t("events.scope")}</Label>
+                    <p
+                      data-testid="event-form-scope-national"
+                      className="flex min-h-11 items-center text-sm"
+                    >
+                      {t("events.national")}
+                    </p>
+                  </div>
+                )}
+                {!director && !nc && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="event-form-branch">{t("events.branch")} *</Label>
+                    <Input
+                      id="event-form-branch"
+                      data-testid="event-form-branch"
+                      readOnly
+                      aria-readonly
+                      value={
+                        (branches.data ?? []).find((b) => b.id === branch)?.name ??
+                        profile?.branches?.name ??
+                        ""
+                      }
+                      className="h-11 bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">{t("events.branchFixed")}</p>
+                    {fieldError("branch")}
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label>{t("events.visibleTo")}</Label>
+                  <Select
+                    value={audience}
+                    disabled={busy}
+                    onValueChange={(v) => setAudience(v === "public" ? "public" : "members")}
+                  >
+                    <SelectTrigger
+                      data-testid="event-form-audience"
+                      aria-label={t("events.visibleTo")}
+                      className="h-11"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="members" data-testid="event-form-audience-option-members">
+                        {t("events.audience.members")}
+                      </SelectItem>
+                      <SelectItem value="public" data-testid="event-form-audience-option-public">
+                        {t("events.audience.public")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">{t("events.audienceHint")}</p>
+                </div>
+              </>,
+            )}
+          {!meetingMode &&
+            section(
+              "files",
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">{t("events.fileLimits")}</p>
+                <Label
+                  htmlFor="event-form-file-input"
+                  className="flex min-h-11 items-center gap-2 text-primary"
+                >
+                  <Upload className="size-4" />
+                  {t("events.files")}
+                </Label>
+                <Input
+                  id="event-form-file-input"
+                  data-testid="event-form-file-input"
+                  type="file"
+                  accept={EVENT_FILE_ACCEPT}
+                  multiple
+                  disabled={busy || preparing || items.length >= MAX_EVENT_FILES}
+                  onChange={(e) => {
+                    void addFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                {preparing && (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {t("events.filePreparing")}
+                  </p>
+                )}
+                <ol className="space-y-2">
+                  {items.map((item, i) => (
+                    <li
+                      key={item.key}
+                      data-testid="event-form-file-item"
+                      data-position={i}
+                      className="flex min-w-0 flex-wrap items-center gap-2 border-b py-2"
+                    >
+                      {(item.preview ?? item.media?.url) && item.kind === "image" ? (
+                        <img
+                          src={item.preview ?? item.media?.url ?? ""}
+                          alt=""
+                          className="size-12 rounded-md object-cover"
+                        />
+                      ) : item.kind !== "image" ? (
+                        <FileText className="size-6 text-muted-foreground" />
+                      ) : (
+                        <Image className="size-6 text-muted-foreground" />
+                      )}
+                      <span className="min-w-0 flex-1 break-all text-xs">
+                        {item.name}
+                        {i === 0 && item.kind === "image" && (
+                          <span className="ml-2 font-semibold text-primary">
+                            {t("events.cover")}
+                          </span>
+                        )}
+                      </span>
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={busy || preparing || i === 0}
+                          aria-label={t("events.moveUp")}
+                          title={t("events.moveUp")}
+                          onClick={() => move(i, -1)}
+                        >
+                          <ArrowUp />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={busy || preparing || i === items.length - 1}
+                          aria-label={t("events.moveDown")}
+                          title={t("events.moveDown")}
+                          onClick={() => move(i, 1)}
+                        >
+                          <ArrowDown />
+                        </Button>
+                        <Button
+                          data-testid="event-form-file-remove"
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={busy || preparing}
+                          aria-label={t("events.remove")}
+                          title={t("events.remove")}
+                          onClick={() => setItems(items.filter((_, index) => index !== i))}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>,
+            )}
+          {meetingMode
+            ? section(
+                "repeat",
+                <MeetingRepeatFields
+                  value={meetingRepeat}
+                  onChange={setMeetingRepeat}
+                  disabled={busy}
+                  error={fieldErrors["meeting-repeat-count"]}
+                />,
+              )
+            : repeatEditable &&
+              section(
+                "repeat",
+                <RepeatFields
+                  value={repeat}
+                  onChange={setRepeat}
+                  start={repeatStart}
+                  disabled={busy}
+                  errors={fieldErrors}
+                />,
+              )}
+        </div>
         {fileErrors.length > 0 && (
           <ul
             data-testid="event-form-file-errors"
@@ -933,7 +1184,7 @@ export function EventForm({
           </Button>
         )}
         <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
-          {event?.status !== "cancelled" && (
+          {event?.status !== "cancelled" && !meetingMode && (
             <Button
               data-testid="event-form-save-draft"
               type="button"
@@ -947,9 +1198,11 @@ export function EventForm({
           <Button data-testid="event-form-publish" type="submit" disabled={busy}>
             {busy
               ? t("common.saving")
-              : event?.status === "cancelled"
-                ? t("common.save")
-                : t("events.publish")}
+              : meetingMode
+                ? t("events.meetingForm.submit")
+                : event?.status === "cancelled"
+                  ? t("common.save")
+                  : t("events.publish")}
           </Button>
         </div>
       </form>

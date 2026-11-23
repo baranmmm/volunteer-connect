@@ -6,6 +6,8 @@ import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { userPassword } from "../../setup/env";
 import { EventFormDialog } from "../../pages/components/EventFormDialog";
 import { EVENT_TITLE_PREFIX, deleteEvents } from "../../api/events";
+import { MEETING_TITLE_PREFIX, createMeetingAs, inDays } from "../../api/work";
+import { adminClient } from "../../api/SupabaseClient";
 
 const londonDay = (days: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date(Date.now() + days * 86400000));
 
@@ -67,6 +69,24 @@ test.describe("Public events (signed out)", () => {
     }
   });
 
+  test("a meeting's calendar entry is never public: not on /events, not by id, not in the ICS feed", async ({ browser, freshUser, request }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const meetingId = await createMeetingAs(manager, { scope: "branch", branch_id: manager.branchId, title: `${MEETING_TITLE_PREFIX}${runId} public-${Date.now()}`, starts_at: inDays(4), ends_at: inDays(4, 1) });
+    const { data } = await adminClient().from("meetings").select("event_id").eq("id", meetingId).single();
+    const eventId = data!.event_id as string;
+    const context = await browser.newContext(); // no session
+    const page = await context.newPage();
+    await page.goto("/events");
+    await expect(page.getByTestId("public-events-page")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page.locator(`[data-event-id="${eventId}"]`)).toHaveCount(0);
+    await page.goto(`/events/${eventId}`);
+    await expect(page.getByTestId("public-event-not-found")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await context.close();
+    const ics = await request.get("/api/ics");
+    expect(ics.status()).toBe(200);
+    expect(await ics.text()).not.toContain(eventId);
+  });
+
   test("a members-only event is not shown publicly by id", async ({ browser, freshUser, freshEvent }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const members = await freshEvent(manager, { label: "hidden", status: "published", startInMinutes: 4 * 24 * 60 });
@@ -89,6 +109,7 @@ test.describe("Event audience", () => {
     await form.title().fill(title);
     await form.location().fill("E2E Public Hall");
     await form.setStart(`${londonDay(5)}T18:00`);
+    await form.openSection("audience");
     await page.getByTestId("event-form-audience").click();
     await page.getByTestId("event-form-audience-option-public").click();
     await form.publish();

@@ -6,6 +6,8 @@ export const NOTIFICATION_KINDS = [
   "task_assigned",
   "task_status_changed",
   "task_reminder",
+  "task_note_mention",
+  "task_note_added",
   "task_request_received",
   "task_request_accepted",
   "task_request_declined",

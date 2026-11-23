@@ -3,11 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { ArrowDown, ArrowUp, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ListChecks, Pencil, Plus, Repeat, Trash2 } from "lucide-react";
 import { EventDialog } from "@/components/events/EventDialog";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +21,7 @@ import {
   deleteAgendaItem,
   deleteMeetingDecision,
   moveAgendaItem,
+  setAgendaItemResolved,
   updateAgendaItem,
   updateMeetingDecision,
 } from "@/lib/meetings.functions";
@@ -35,6 +37,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
     update = useServerFn(updateAgendaItem),
     remove = useServerFn(deleteAgendaItem),
     move = useServerFn(moveAgendaItem),
+    setResolved = useServerFn(setAgendaItemResolved),
     addDecision = useServerFn(addMeetingDecision),
     updateDecision = useServerFn(updateMeetingDecision),
     removeDecision = useServerFn(deleteMeetingDecision);
@@ -45,12 +48,25 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   const [editingDecision, setEditingDecision] = useState<string | null>(null);
   const [removing, setRemoving] = useState<AgendaItem | null>(null);
   const [taskFor, setTaskFor] = useState<Decision | null>(null);
+  // Resolved checkboxes answer at once; the saved value replaces this once the meeting is read again.
+  const [resolving, setResolving] = useState<Record<string, boolean>>({});
+  async function toggleResolved(id: string, resolved: boolean) {
+    setResolving((r) => ({ ...r, [id]: resolved }));
+    await run(
+      () => setResolved({ data: { id, resolved } }),
+      resolved ? t("meetings.agenda.markedResolved") : t("meetings.agenda.markedOpen"),
+    );
+    setResolving(({ [id]: _, ...rest }) => rest);
+  }
 
   async function run(action: () => Promise<unknown>, success?: string) {
     setBusy(true);
     try {
       await action();
-      await qc.invalidateQueries({ queryKey: ["meeting", meeting.id] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["meeting", meeting.id] }),
+        qc.invalidateQueries({ queryKey: ["meeting-series-tasks"] }),
+      ]);
       if (success) toast.success(success);
       return true;
     } catch (e) {
@@ -114,6 +130,8 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
               key={item.id}
               data-testid="meeting-agenda-item"
               data-item-id={item.id}
+              data-resolved={resolving[item.id] ?? item.resolved}
+              data-standing={item.standing}
               className="min-w-0 rounded-xl border p-3 sm:p-4"
             >
               {editingItem === item.id ? (
@@ -144,6 +162,38 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                     >
                       {item.title}
                     </h3>
+                    {(item.standing || (item.resolved && !editable)) && (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {item.standing && (
+                          <Badge
+                            variant="secondary"
+                            data-testid="meeting-agenda-standing"
+                            className="gap-1"
+                          >
+                            <Repeat className="size-3" aria-hidden />
+                            {t("meetings.agenda.standing")}
+                          </Badge>
+                        )}
+                        {item.resolved && !editable && (
+                          <Badge variant="outline" data-testid="meeting-agenda-resolved-badge">
+                            {t("meetings.agenda.resolved")}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    {editable && (
+                      <label className="mt-1 inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                        <Checkbox
+                          data-testid="meeting-agenda-resolved"
+                          checked={resolving[item.id] ?? item.resolved}
+                          disabled={busy}
+                          onCheckedChange={(checked) =>
+                            void toggleResolved(item.id, checked === true)
+                          }
+                        />
+                        {t("meetings.agenda.resolved")}
+                      </label>
+                    )}
                     {item.notes && (
                       <p
                         data-testid="meeting-agenda-item-notes"
@@ -419,6 +469,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
           onSaved={() => {
             setTaskFor(null);
             void qc.invalidateQueries({ queryKey: ["meeting", meeting.id] });
+            void qc.invalidateQueries({ queryKey: ["meeting-series-tasks"] });
           }}
         />
       )}

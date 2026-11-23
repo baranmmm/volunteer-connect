@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { Pencil, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { TASK_STATUSES, isOverdue, londonDay, type TaskDetail, type TaskStatus } from "@/lib/tasks";
 import { deleteTask, getTask, setTaskReminderMute } from "@/lib/tasks.functions";
@@ -17,7 +17,9 @@ import { Switch } from "@/components/ui/switch";
 import { EventDialog } from "@/components/events/EventDialog";
 import { TaskPriorityBadge, TaskStatusBadge } from "./TaskBadges";
 import { TaskFormDialog } from "./TaskFormDialog";
+import { TaskNotes } from "./TaskNotes";
 import { useSetTaskStatus } from "./use-task-status";
+import { useTaskArchive } from "./use-task-archive";
 import { formatDay, scopeText, selectClass } from "./task-display";
 
 /** The task detail side panel (full width on phones). `taskId` null closes it. */
@@ -98,6 +100,8 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
   const setStatus = useSetTaskStatus();
   const mute = useServerFn(setTaskReminderMute);
   const remove = useServerFn(deleteTask);
+  const archive = useTaskArchive();
+  const [archiving, setArchiving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -151,11 +155,18 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
     r.overdue_every_days ? t("tasks.reminders.overdue", { count: r.overdue_every_days }) : null,
   ].filter((x): x is string => !!x);
 
+  async function toggleArchive(archived: boolean) {
+    setArchiving(true);
+    await archive.setArchived(task.id, archived);
+    setArchiving(false);
+  }
+
   return (
     <div
       className="flex min-w-0 flex-col gap-5 p-5 sm:p-6"
       data-testid="task-panel-detail"
       data-status={task.status}
+      data-archived={!!task.archived_at}
     >
       <div className="min-w-0 space-y-2 pr-8">
         <SheetTitle className="text-xl [overflow-wrap:anywhere]" data-testid="task-panel-title">
@@ -164,6 +175,15 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
         <div className="flex flex-wrap gap-2">
           <TaskStatusBadge status={task.status} />
           <TaskPriorityBadge priority={task.priority} />
+          {task.archived_at && (
+            <span
+              data-testid="task-panel-archived"
+              className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold text-muted-foreground"
+            >
+              <Archive className="size-3.5" aria-hidden />
+              {t("tasks.archive.badge")}
+            </span>
+          )}
         </div>
       </div>
       {task.description && (
@@ -281,6 +301,37 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
           />
         </div>
       )}
+      {task.can_set_status && (task.archived_at || task.status === "done") && (
+        <div className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            {task.archived_at ? t("tasks.archive.archivedHint") : t("tasks.archive.hint")}
+          </p>
+          {task.archived_at ? (
+            <Button
+              data-testid="task-panel-unarchive"
+              variant="outline"
+              className="h-11 shrink-0"
+              disabled={archiving}
+              onClick={() => void toggleArchive(false)}
+            >
+              <ArchiveRestore />
+              {t("tasks.archive.unarchive")}
+            </Button>
+          ) : (
+            <Button
+              data-testid="task-panel-archive"
+              variant="outline"
+              className="h-11 shrink-0"
+              disabled={archiving}
+              onClick={() => void toggleArchive(true)}
+            >
+              <Archive />
+              {t("tasks.archive.archive")}
+            </Button>
+          )}
+        </div>
+      )}
+      <TaskNotes taskId={task.id} canWrite={task.can_set_status} />
       {task.can_edit && (
         <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row">
           <Button

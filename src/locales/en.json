@@ -351,7 +351,22 @@
     "workDecisionText": "Enter the decision.",
     "workFileType": "This file type is not allowed.",
     "workTooManyFiles": "A meeting can have at most 20 files.",
-    "workMeetingFiles": "The meeting's files could not be removed. Try again."
+    "workMeetingFiles": "The meeting's files could not be removed. Try again.",
+    "meetingRepeatInvalid": "Choose how often the meeting repeats (every 1–4 weeks or months, 2–52 times).",
+    "meetingRepeatTooLong": "A recurring meeting can span at most 12 months.",
+    "meetingAgendaInvalid": "Agenda items need a title of up to 200 characters (at most 30 items).",
+    "meetingNotRecurring": "This meeting does not repeat.",
+    "meetingDeleteThroughMeeting": "This calendar entry is a meeting: delete it from the meeting.",
+    "meetingCategoryFixed": "A meeting cannot be turned into another kind of event.",
+    "meetingFilesOnMeeting": "Add files to a meeting on the meeting page.",
+    "meetingRepeatFromMeetingForm": "Use the meeting form to create a recurring meeting.",
+    "taskArchiveNotDone": "Only done tasks can be archived.",
+    "taskNoteRequired": "Write a note first.",
+    "taskNoteTooMany": "This task has too many notes.",
+    "taskNoteTooManyMentions": "You can mention at most 20 people in a note.",
+    "taskNoteMentionHidden": "Someone you mentioned cannot see this task.",
+    "taskTooMany": "Too many tasks were selected at once.",
+    "taskChooseAssignee": "Choose at least one person."
   },
   "events": {
     "title": "Calendar & Events",
@@ -456,7 +471,8 @@
       "interfaith": "Interfaith",
       "community": "Community",
       "education": "Education",
-      "other": "Other"
+      "other": "Other",
+      "meeting": "Meeting"
     },
     "pastPublishError": "A published event cannot end in the past.",
     "onlineUrlError": "Enter a valid https:// meeting link.",
@@ -558,7 +574,34 @@
       "members": "Members only",
       "public": "Public (followers and website)"
     },
-    "audienceHint": "Public events are shown to followers and on the website without signing in. Online links stay visible only to signed-in people."
+    "audienceHint": "Public events are shown to followers and on the website without signing in. Online links stay visible only to signed-in people.",
+    "openMeeting": "Open meeting",
+    "meetingEntryHint": "This is a meeting in the calendar. The agenda, decisions and files are on the meeting page.",
+    "sections": {
+      "description": "Description",
+      "registration": "Registration & capacity",
+      "audience": "Audience",
+      "files": "Files",
+      "repeat": "Repeat"
+    },
+    "meetingForm": {
+      "hint": "Only the people you invite and the managers of its branch or region see a meeting. Add the agenda and files on the meeting page.",
+      "invitees": "Invite people",
+      "noPeople": "Nobody can be invited here.",
+      "submit": "Create meeting",
+      "noScope": "You cannot create a meeting here."
+    },
+    "meetingRepeat": {
+      "freq": {
+        "none": "Does not repeat",
+        "weekly": "Weekly",
+        "monthly": "Monthly"
+      },
+      "every": "Every",
+      "count": "Occurrences",
+      "countHint": "From 2 to 52 meetings, within 12 months.",
+      "countError": "Enter a number from 2 to 52."
+    }
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
@@ -1028,7 +1071,10 @@
     },
     "people": {
       "search": "Search people",
-      "none": "Nobody can be chosen here."
+      "none": "Nobody can be chosen here.",
+      "remove": "Remove {{name}}",
+      "add": "Add people…",
+      "noMatch": "Nobody matches this search."
     }
   },
   "meetings": {
@@ -1107,7 +1153,20 @@
       "createSubmit": "Create meeting",
       "approveSubmit": "Approve and create",
       "created": "Meeting created.",
-      "updated": "Meeting updated."
+      "updated": "Meeting updated.",
+      "moreOptions": "More options",
+      "agenda": "Agenda",
+      "agendaPlaceholder": "Add an agenda item",
+      "agendaAdd": "Add",
+      "agendaRemove": "Remove {{title}}",
+      "filesPick": "Choose files",
+      "filesHint": "Uploaded after the meeting is created (to the first meeting of a series). PDF, Word, PowerPoint, Excel or images; up to 25 MB each.",
+      "filesFailed": "The meeting was created, but some files were not uploaded:",
+      "continue": "Continue",
+      "updatedMany_one": "{{count}} meeting updated.",
+      "updatedMany_other": "{{count}} meetings updated.",
+      "createdSeries_one": "{{count}} meeting created.",
+      "createdSeries_other": "{{count}} meetings created."
     },
     "errors": {
       "title": "Enter a title.",
@@ -1134,7 +1193,11 @@
       "updated": "Agenda item updated.",
       "deleted": "Agenda item deleted.",
       "deleteTitle": "Delete this agenda item?",
-      "deleteText": "\"{{title}}\" and its decisions will be deleted. Tasks created from its decisions are kept."
+      "deleteText": "\"{{title}}\" and its decisions will be deleted. Tasks created from its decisions are kept.",
+      "standing": "Standing",
+      "resolved": "Resolved",
+      "markedResolved": "Agenda item marked as resolved.",
+      "markedOpen": "Agenda item marked as open."
     },
     "decisions": {
       "title": "Decisions",
@@ -1171,6 +1234,76 @@
       "title": "Upcoming meetings",
       "viewAll": "All meetings",
       "empty": "No upcoming meetings."
+    },
+    "openCalendar": "Open in calendar",
+    "deletedMany_one": "{{count}} meeting deleted.",
+    "deletedMany_other": "{{count}} meetings deleted.",
+    "cancelledMany_one": "{{count}} meeting cancelled.",
+    "cancelledMany_other": "{{count}} meetings cancelled.",
+    "repeat": {
+      "label": "Repeat",
+      "none": "Does not repeat",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "every": "How often",
+      "weeklyEvery_one": "Every week",
+      "weeklyEvery_other": "Every {{count}} weeks",
+      "monthlyEvery_one": "Every month",
+      "monthlyEvery_other": "Every {{count}} months",
+      "count": "Number of meetings",
+      "hint": "Every meeting is created now, each with its own calendar entry. Invitees and agenda items are copied to each one; invitees are told once.",
+      "errors": {
+        "interval": "Choose every 1 to 4 weeks or months.",
+        "count": "Enter between 2 and 52 meetings.",
+        "tooLong": "A recurring meeting can span at most 12 months."
+      }
+    },
+    "scope": {
+      "editTitle": "Edit recurring meeting",
+      "editText": "Which meetings should change?",
+      "editConfirm": "Save",
+      "cancelTitle": "Cancel recurring meeting",
+      "cancelText": "Which meetings should be cancelled? Invitees will see that they are cancelled.",
+      "cancelConfirm": "Cancel meetings",
+      "deleteTitle": "Delete recurring meeting",
+      "deleteText": "Which meetings should be deleted? They move to the Recycle Bin with their agenda, decisions and files.",
+      "deleteConfirm": "Delete",
+      "this": "This meeting",
+      "following": "This and following meetings",
+      "all": "All meetings in the series"
+    },
+    "fromLast": {
+      "title": "From last meeting",
+      "open": "Last meeting: {{when}}",
+      "empty": "Nothing left open from the last meeting.",
+      "items": "Unresolved agenda items",
+      "tasks": "Open tasks"
+    },
+    "series": {
+      "title": "Recurring meeting",
+      "recurring": "Recurring meeting",
+      "position": "Meeting {{n}} of {{total}}",
+      "navigation": "Meetings in this series",
+      "previous": "Previous meeting",
+      "next": "Next meeting",
+      "every": {
+        "weekly_one": "Every week",
+        "weekly_other": "Every {{count}} weeks",
+        "monthly_one": "Every month",
+        "monthly_other": "Every {{count}} months"
+      },
+      "tasks": "Series tasks",
+      "filter": "Show",
+      "filters": {
+        "open": "Open tasks",
+        "all": "All tasks"
+      },
+      "tasksEmpty": "No tasks here.",
+      "agenda": "Standing agenda items",
+      "agendaHint": "One item per line. New items are added to the upcoming meetings of the series.",
+      "agendaTooMany": "At most 30 standing items.",
+      "agendaSave": "Save standing items",
+      "agendaSaved": "Standing agenda items saved."
     }
   },
   "workRequests": {
@@ -1259,7 +1392,9 @@
       "meeting_request_received": "{{actor}} asked you for a meeting: “{{title}}”",
       "meeting_request_approved": "{{actor}} approved your meeting request “{{title}}”",
       "meeting_request_declined": "{{actor}} declined your meeting request “{{title}}”. Reason: {{reason}}",
-      "other": "Update about “{{title}}”"
+      "other": "Update about “{{title}}”",
+      "task_note_mention": "{{actor}} mentioned you in a note on “{{title}}”",
+      "task_note_added": "{{actor}} added a note to “{{title}}”"
     },
     "taskStatus": {
       "todo": "To do",
@@ -1327,8 +1462,11 @@
       "groupBy": {
         "none": "No grouping",
         "status": "Status",
-        "assignee": "Assigned person"
-      }
+        "assignee": "Assigned person",
+        "mine": "Mine first"
+      },
+      "groupMine": "Assigned to you",
+      "groupOthers": "Other tasks"
     },
     "calendar": {
       "previous": "Previous month",
@@ -1374,7 +1512,11 @@
       "repeatEvery": "Every how many days",
       "repeatStart": "Starting on",
       "overdue": "Keep reminding while overdue",
-      "overdueEvery": "Every how many days"
+      "overdueEvery": "Every how many days",
+      "moreOptions": "More options",
+      "fromEvent": "This task is linked to the event “{{title}}”.",
+      "remindMe": "Remind me",
+      "remindersNeedDue": "Set a due date to turn on reminders."
     },
     "errors": {
       "beforeDays": "Reminder days must be whole numbers from 1 to 365 (at most 6).",
@@ -1419,7 +1561,53 @@
       "empty": "You have no open tasks."
     },
     "eventLinked": {
-      "title": "Linked tasks"
+      "title": "Linked tasks",
+      "add": "Add task",
+      "empty": "No tasks are linked to this event yet."
+    },
+    "mine": "Assigned to you",
+    "emptyMine": "No tasks are assigned to you here.",
+    "showAll": "Show all tasks",
+    "archive": {
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "unarchiveTitle": "Unarchive “{{title}}”",
+      "archived": "Task archived.",
+      "unarchived": "Task moved back to the board.",
+      "archivedMany_one": "{{count}} task archived.",
+      "archivedMany_other": "{{count}} tasks archived.",
+      "archiveAllDone_one": "Archive done ({{count}})",
+      "archiveAllDone_other": "Archive all done ({{count}})",
+      "badge": "Archived",
+      "hint": "Archive this done task to hide it from the board, list and calendar. It is not deleted.",
+      "archivedHint": "This task is archived. It is hidden from the board, list and calendar.",
+      "filter": "Archived",
+      "empty": "There are no archived tasks."
+    },
+    "notes": {
+      "title": "Notes",
+      "loadError": "Notes could not be loaded.",
+      "empty": "No notes yet.",
+      "newLabel": "Add a note",
+      "placeholder": "Write a note… Type @ to mention someone.",
+      "mention": "Mention",
+      "mentionNone": "Nobody else can see this task.",
+      "mentionsLabel": "Mentioned people",
+      "removeMention": "Remove the mention of {{name}}",
+      "mentioned": "Mentioned: {{names}}",
+      "edited": "(edited)",
+      "add": "Add note",
+      "added": "Note added.",
+      "saved": "Note updated.",
+      "edit": "Edit note",
+      "delete": "Delete note",
+      "deleteTitle": "Delete this note?",
+      "deleteText": "The note is removed for everyone. This cannot be undone.",
+      "deleted": "Note deleted.",
+      "required": "Write a note first.",
+      "tooLong": "A note can be at most 4000 characters.",
+      "count_one": "{{count}} note",
+      "count_other": "{{count}} notes"
     }
   }
 }

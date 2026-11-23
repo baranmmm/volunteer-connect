@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarDays, MapPin, Pencil, PencilLine, Plus, Repeat, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
@@ -10,7 +10,7 @@ import { inFollowedBranches, useFollowedBranches } from "@/lib/followed-branches
 import { useTranslation } from "react-i18next";
 import { listEvents } from "@/lib/events.functions";
 import { eventDisplayStatus, ownDrafts, upcomingDashboardEvents } from "@/lib/event-status";
-import type { HubEvent } from "@/lib/event-rules";
+import { isMeetingEvent, type HubEvent } from "@/lib/event-rules";
 import { formatDate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { pageHead } from "@/components/app/head";
@@ -53,9 +53,12 @@ function Dashboard() {
     nc = isNationalCoordinator(roles);
   // Upcoming events of followed branches (members: their own scope plus followed public events).
   const followed = useFollowedBranches(session?.user.id);
-  const upcoming = nc
-    ? (events.data ?? [])
-    : (events.data ?? []).filter((e) => inFollowedBranches(e, followed.data ?? []));
+  // Meetings have their own card ("Upcoming meetings"), so their calendar entries are left out here.
+  const upcoming = (
+    nc
+      ? (events.data ?? [])
+      : (events.data ?? []).filter((e) => inFollowedBranches(e, followed.data ?? []))
+  ).filter((e) => !isMeetingEvent(e));
   const drafts = isManager || nc ? ownDrafts(events.data ?? [], session?.user.id) : [];
   return (
     <div className="space-y-8">
@@ -150,6 +153,20 @@ function UpcomingEventsCard({
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const upcoming = upcomingDashboardEvents(events, now);
+  // The open form is not re-rendered by the clock tick (`now`), so its lists and pickers stay still while in use.
+  const createForm = useMemo(
+    () =>
+      creating ? (
+        <EventForm
+          onClose={() => setCreating(false)}
+          onSaved={(id) => {
+            setCreating(false);
+            void navigate({ to: "/events/$id", params: { id } });
+          }}
+        />
+      ) : null,
+    [creating, navigate],
+  );
   return (
     <section
       data-testid="dashboard-upcoming-events"
@@ -247,15 +264,7 @@ function UpcomingEventsCard({
           ))}
         </ul>
       )}
-      {creating && (
-        <EventForm
-          onClose={() => setCreating(false)}
-          onSaved={(id) => {
-            setCreating(false);
-            void navigate({ to: "/events/$id", params: { id } });
-          }}
-        />
-      )}
+      {createForm}
     </section>
   );
 }

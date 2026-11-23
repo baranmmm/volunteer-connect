@@ -1,5 +1,6 @@
 // Tasks through PostgREST and the RPCs (the database is the enforcement): assignment rules per role, visibility,
-// status-only edits by assignees, upward task requests, notices, the Recycle Bin and followers. Every item is created
+// status-only edits by assignees, reminders off by default, archiving, notes with @mentions, event tasks, upward task
+// requests, notices, the Recycle Bin and followers. Every item is created
 // by fresh users (cleaned up by the fixtures) and every check looks at this test's own ids only.
 import { test, expect, runId } from "../../fixtures/roles";
 import { adminClient, clientAs } from "../../api/SupabaseClient";
@@ -15,7 +16,7 @@ const kinds = async (userId: string, entityId: string) =>
   ((await adminClient().from("notifications").select("kind").eq("user_id", userId).eq("entity_id", entityId)).data ?? []).map((n) => n.kind).sort();
 
 test.describe("Tasks (database rules)", () => {
-  test("assignment: BM within the branch, RD anyone in the region, NC only RDs/BMs/NCs, a volunteer only themselves", { tag: "@smoke" }, async ({ freshUser, seed }) => {
+  test("assignment: BM within the branch, RD anyone in the region, NC only RDs/BMs/NCs, a volunteer themselves and branch volunteers", { tag: "@smoke" }, async ({ freshUser, seed }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const volunteer = await freshUser({ role: "volunteer" });
     const brighton = await freshUser({ role: "volunteer", branch: seed.branches.Brighton });
@@ -39,10 +40,20 @@ test.describe("Tasks (database rules)", () => {
     // Without MFA a National Coordinator gets nothing.
     expect((await workRpc({ email: nc.email }, "create_task", { p: { scope: "national", title: title("x") } })).error?.message).toBe("Not allowed");
 
-    const self = await createTaskAs(volunteer, { ...medway, title: title("self"), assignee_ids: [manager.id] });
+    // A volunteer: themselves when nobody is chosen, other volunteers of their branch, never upward or another branch.
+    const self = await createTaskAs(volunteer, { ...medway, title: title("self") });
     const detail = (await workRpc(volunteer, "get_task", { p_id: self })).data as { self_task: boolean; assignees: { id: string }[] };
     expect(detail.self_task).toBe(true);
     expect(detail.assignees.map((a) => a.id)).toEqual([volunteer.id]);
+    const colleague = await freshUser({ role: "volunteer" });
+    const shared = await createTaskAs(volunteer, { ...medway, title: title("colleague"), assignee_ids: [colleague.id] });
+    expect(((await workRpc(volunteer, "get_task", { p_id: shared })).data as { assignees: { id: string }[] }).assignees.map((a) => a.id)).toEqual([colleague.id]);
+    expect(await kinds(colleague.id, shared)).toEqual(["task_assigned"]);
+    const offered = ((await workRpc(volunteer, "list_task_people", { p_scope: "branch", p_branch: seed.branches.Medway })).data as { id: string }[]).map((p) => p.id);
+    expect(offered).toEqual(expect.arrayContaining([volunteer.id, colleague.id]));
+    expect(offered).not.toContain(manager.id);
+    expect((await workRpc(volunteer, "create_task", { p: { ...medway, title: title("x"), assignee_ids: [manager.id] } })).error?.message).toBe("This person cannot be assigned");
+    expect((await workRpc(volunteer, "create_task", { p: { ...medway, title: title("x"), assignee_ids: [brighton.id] } })).error?.message).toBe("This person cannot be assigned");
     expect((await workRpc(volunteer, "create_task", { p: { scope: "branch", branch_id: seed.branches.Brighton, title: title("x") } })).error?.message).toBe("Not allowed");
   });
 
@@ -111,5 +122,70 @@ test.describe("Tasks (database rules)", () => {
     expect(mine.find((r) => r.id === declined)).toMatchObject({ status: "declined", decline_reason: "We are covering this next month." });
     expect(mine.find((r) => r.id === accepted)).toMatchObject({ status: "accepted" });
     expect(await kinds(volunteer.id, declined)).toEqual(["task_request_declined"]);
+  });
+
+  test("reminders are off for a new task unless sent; existing settings are kept on edits without reminders", async ({ freshUser, seed }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const medway = { scope: "branch" as const, branch_id: seed.branches.Medway };
+    const reminders = async (id: string) => ((await workRpc(manager, "get_task", { p_id: id })).data as { reminders: Record<string, unknown> }).reminders;
+    const plain = await createTaskAs(manager, { ...medway, title: title("no reminders"), due_date: "2030-01-10" });
+    expect(await reminders(plain)).toEqual({ before_days: [], repeat_kind: "none", repeat_every_days: null, repeat_start: null, overdue_every_days: null });
+    const on = (await workRpc(manager, "create_task", { p: { ...medway, title: title("reminders"), due_date: "2030-01-10", reminders: { before_days: [3], repeat_kind: "none", repeat_every_days: null, repeat_start: null, overdue_every_days: null } } })).data as string;
+    expect(await reminders(on)).toMatchObject({ before_days: [3] });
+    expect((await workRpc(manager, "update_task", { p_id: on, p: { title: title("renamed") } })).error).toBeNull();
+    expect(await reminders(on)).toMatchObject({ before_days: [3] });
+  });
+
+  test("archive: only done tasks, by assignees and editors; leaving done unarchives; Archive all done counts", async ({ freshUser, seed }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const assignee = await freshUser({ role: "volunteer" });
+    const other = await freshUser({ role: "volunteer" });
+    const medway = { scope: "branch" as const, branch_id: seed.branches.Medway };
+    const task = await createTaskAs(manager, { ...medway, title: title("archive"), assignee_ids: [assignee.id] });
+    const archivedAt = async (id: string) => ((await workRpc(manager, "list_tasks")).data as { id: string; archived_at: string | null }[]).find((t) => t.id === id)?.archived_at ?? null;
+    expect((await workRpc(assignee, "archive_task", { p_id: task, p_archived: true })).error?.message).toBe("Only done tasks can be archived");
+    expect((await workRpc(assignee, "set_task_status", { p_id: task, p_status: "done" })).error).toBeNull();
+    expect((await workRpc(other, "archive_task", { p_id: task, p_archived: true })).error?.message).toBe("Not allowed");
+    expect((await workRpc(assignee, "archive_task", { p_id: task, p_archived: true })).error).toBeNull();
+    expect(await archivedAt(task)).not.toBeNull();
+    // Archive is not delete: the task is still listed (with archived_at) and readable.
+    expect((await workRpc(other, "get_task", { p_id: task })).data).not.toBeNull();
+    expect((await workRpc(assignee, "set_task_status", { p_id: task, p_status: "in_progress" })).error).toBeNull();
+    expect(await archivedAt(task)).toBeNull();
+
+    const done1 = await createTaskAs(manager, { ...medway, title: title("done 1"), status: "done" });
+    const done2 = await createTaskAs(manager, { ...medway, title: title("done 2"), status: "done" });
+    expect((await workRpc(other, "archive_done_tasks", { p_ids: [done1, done2, task] })).data).toBe(0);
+    expect((await workRpc(manager, "archive_done_tasks", { p_ids: [done1, done2, task] })).data).toBe(2);
+    expect(await archivedAt(done1)).not.toBeNull();
+    expect((await workRpc(manager, "archive_task", { p_id: done1, p_archived: false })).error).toBeNull();
+    expect(await archivedAt(done1)).toBeNull();
+  });
+
+  test("notes: who writes, @mentions only of people who can see the task, notices, author-only edits", async ({ freshUser, seed }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const assignee = await freshUser({ role: "volunteer" });
+    const member = await freshUser({ role: "volunteer" });
+    const brighton = await freshUser({ role: "volunteer", branch: seed.branches.Brighton });
+    const task = await createTaskAs(manager, { scope: "branch", branch_id: seed.branches.Medway, title: title("notes"), assignee_ids: [assignee.id] });
+    const people = ((await workRpc(assignee, "list_task_mention_people", { p_task: task })).data as { id: string }[]).map((p) => p.id);
+    expect(people).toEqual(expect.arrayContaining([manager.id, member.id]));
+    expect(people).not.toContain(brighton.id);
+    expect(people).not.toContain(assignee.id);
+    expect((await workRpc(assignee, "add_task_note", { p_task: task, p_body: "x", p_mentions: [brighton.id] })).error?.message).toBe("This person cannot see the task");
+    // A branch member who is not assigned cannot write.
+    expect((await workRpc(member, "add_task_note", { p_task: task, p_body: "x", p_mentions: [] })).error?.message).toBe("Not allowed");
+    const note = (await workRpc(assignee, "add_task_note", { p_task: task, p_body: "Booked the hall", p_mentions: [member.id] })).data as string;
+    expect(await kinds(member.id, task)).toEqual(["task_note_mention"]);
+    expect(await kinds(manager.id, task)).toEqual(["task_note_added"]);
+    const notes = (await workRpc(member, "list_task_notes", { p_task: task })).data as { id: string; mine: boolean; mentions: { id: string }[] }[];
+    expect(notes.map((n) => [n.id, n.mine, n.mentions.map((m) => m.id)])).toEqual([[note, false, [member.id]]]);
+    expect((await workRpc(manager, "update_task_note", { p_id: note, p_body: "changed", p_mentions: [] })).error?.message).toBe("Not allowed");
+    expect((await workRpc(manager, "delete_task_note", { p_id: note })).error?.message).toBe("Not allowed");
+    expect((await workRpc(assignee, "update_task_note", { p_id: note, p_body: "Booked the hall for Friday", p_mentions: [member.id] })).error).toBeNull();
+    const listed = ((await workRpc(manager, "list_tasks")).data as { id: string; note_count: number }[]).find((t) => t.id === task);
+    expect(listed?.note_count).toBe(1);
+    expect((await workRpc(assignee, "delete_task_note", { p_id: note })).error).toBeNull();
+    expect((await workRpc(assignee, "list_task_notes", { p_task: task })).data).toEqual([]);
   });
 });

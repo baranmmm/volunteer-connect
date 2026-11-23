@@ -12,7 +12,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { dateLocale, formatDate } from "@/lib/i18n";
-import { eventOccursOn, londonInput, type HubEvent } from "@/lib/event-rules";
+import { eventOccursOn, isMeetingEvent, londonInput, type HubEvent } from "@/lib/event-rules";
 import { eventDisplayStatus } from "@/lib/event-status";
 import { cn } from "@/lib/utils";
 import { HappeningNowBadge } from "./HappeningNowBadge";
@@ -21,6 +21,7 @@ import { ExternalBadge } from "./ExternalBadge";
 import { PublicBadge } from "./PublicBadge";
 import { STATUS_CELL, cancelledTitle } from "./event-status-styles";
 import { RegistrationBadge } from "./RegistrationBadge";
+import { MeetingBadge } from "./MeetingBadge";
 
 export function MonthEvents({
   events,
@@ -107,6 +108,7 @@ export function MonthEvents({
                       data-start={e.all_day ? e.start_date : e.start_at}
                       data-all-day={e.all_day ? "true" : undefined}
                       data-status={e.status}
+                      data-category={e.category}
                       className={cn(
                         "@container block break-words rounded-md p-1 text-xs hover:bg-accent",
                         STATUS_CELL[eventDisplayStatus(e, now)],
@@ -131,6 +133,7 @@ export function MonthEvents({
                               <span className="sr-only">{t("events.recurring.label")}</span>
                             </span>
                           )}
+                          {isMeetingEvent(e) && <MeetingBadge compact />}
                           <RegistrationBadge status={e.my_registration} compact />
                           {e.audience === "public" && <PublicBadge compact />}
                           {e.is_external && <ExternalBadge compact />}

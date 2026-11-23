@@ -1,8 +1,20 @@
 # Meetings
 
 Meetings belong to a scope: a **branch**, a **region** or **national**. The database enforces every rule below through
-RLS and SECURITY DEFINER RPCs (`supabase/migrations/20261125090200_meetings.sql`). The screens only reflect those
+RLS and SECURITY DEFINER RPCs (`supabase/migrations/20261125090200_meetings.sql`, then
+`20261126090000_meeting_calendar_link.sql` and `20261126090100_recurring_meetings.sql`). The screens only reflect those
 rules. Followers have no access to meetings or meeting requests.
+
+## One calendar
+
+Every meeting is also a calendar entry: `meetings.event_id` links it to an event with the category `meeting`.
+- The entry is members-only, has no registration, capacity or waitlist, and is visible to exactly the people who can
+  see the meeting. It never appears in `get_public_events`, `get_public_event` or the ICS feed, and upcoming-event
+  counts leave it out.
+- Title, description, start/end, place and cancellation are mirrored both ways by triggers in the same transaction.
+- Deleting and restoring go through the meeting: its entry disappears and comes back with it. Deleting the entry
+  directly is refused.
+- The meeting page links to its entry ("Open in calendar", `/events/<event_id>`).
 
 ## Visibility
 
@@ -42,7 +54,8 @@ Meetings never appear on the public `/events` pages or the ICS feed.
 | Invitees | At most 100 |
 
 **Agenda.** Ordered items, each with a title and notes. Each item has decisions (text). The creator and the scope's
-managers edit them; invitees read only.
+managers edit them; invitees read only. Editors can mark an item **resolved**; items copied from a series template are
+**standing** (badge "Standing").
 
 **Decision to task.** "Create task" on a decision opens the task form prefilled:
 - the title comes from the decision;
@@ -59,10 +72,48 @@ The decision then shows the linked task and its status, and the task links back 
 - Download: signed URLs valid for 5 minutes, only for people who can see the meeting.
 - Removal: the Storage object first, then the row (`delete_meeting_file`).
 
+## The meeting form
+
+Visible: title, start and end (the end follows start + 1 hour until it is changed), in person or online with the
+place or link, and invitees (a searchable people picker with chips). In person is the default, so a meeting saves with
+title, date, time and location. Times are London time.
+
+"More options" is collapsed every time the form opens. It holds the description and, when creating:
+- **Agenda**: titles added one by one, sent as `agenda` (standing items for a recurring meeting).
+- **Files**: picked before saving and uploaded with the usual reserve-then-upload flow once the meeting exists (to the
+  first occurrence of a series). Rejected files are listed one by one; the meeting is still created.
+- **Repeat**: does not repeat, weekly or monthly; every 1-4 weeks/months; 2-52 meetings, the last at most 12 months
+  after the first. Sent as `recurrence`.
+
+Approving a meeting request uses the same form without the people picker and the create-only options.
+
+## Recurring meetings
+
+`create_meeting` with `recurrence` creates every occurrence at once (`meeting_series`). Each occurrence is an ordinary
+meeting with its own calendar entry, agenda, decisions, notes and files. London wall-clock time is kept across clock
+changes. Invitees are copied to every occurrence and told once (about the first one).
+
+- **Who.** The same rights as single meetings: whoever may create a meeting in a scope may create a recurring one.
+- **Edit.** Editing an occurrence asks: this meeting, this and following, or all (`update_meeting_series`). A time
+  change moves every chosen occurrence by the same amount. Only the edited occurrence's invitees are notified.
+- **Cancel and delete.** Both ask the same question. Delete uses `delete_meeting_series` (each occurrence goes to the
+  Recycle Bin). Cancel sets each chosen occurrence that is still scheduled to cancelled (each notifies its invitees).
+  Rescheduling a cancelled occurrence changes that occurrence only.
+- **Standing agenda items.** The series template (`set_meeting_series_agenda`, editors). New items are added to the
+  upcoming occurrences that do not have them yet.
+- **From last meeting.** On an occurrence with an earlier one, `get_meeting` returns `from_last`: the previous
+  occurrence's unresolved agenda items and its open (not done) tasks, read live. Resolving the item or finishing the
+  task removes it.
+- **Series tasks.** `get_meeting_series_tasks` lists every task created from a decision in any occurrence (only tasks
+  the caller can see), with a status filter on the page (open by default).
+- The page shows "Meeting n of N" with links to the previous and next occurrence; list cards show a repeat icon.
+
 ## Pages
 
 - `/meetings` has Upcoming and Past tabs.
-- `/meetings/<id>` shows details, invitees, the agenda with decisions, and files.
+- `/meetings/<id>` shows, in order: details (with "Open in calendar" and, for a series, its position and links), the
+  editor actions, "From last meeting", the agenda with decisions, invitees, files, and for a series the series tasks
+  and (editors) the standing agenda items.
 - The dashboard card "Upcoming meetings" shows the next 3 meetings the user can see.
 
 ## Meeting requests
@@ -82,7 +133,7 @@ A request has a topic, up to 3 proposed times and a note. The target either:
 
 | Event | Who is notified | Notice |
 |---|---|---|
-| Invited (on create or when added) | The invitee | `meeting_invited` |
+| Invited (on create or when added; once for a recurring meeting) | The invitee | `meeting_invited` |
 | Time or place changed | Every invitee | `meeting_changed` |
 | Cancelled | Every invitee | `meeting_cancelled` |
 | Meeting request received | The target | `meeting_request_received` |
@@ -107,15 +158,20 @@ All kebab-case, never derived from text. Lists expose `data-meeting-id`, `data-i
 - **List** (`/meetings`):
   - Header and tabs: `meetings-new`, `meetings-tab-upcoming|past`
   - Lists: `meetings-list` and `meetings-empty` (data-when), `meetings-retry`
-  - Cards: `meeting-card` (data-meeting-id, data-status), with `meeting-card-title`, `meeting-card-status`, `meeting-card-invited`, `meeting-card-scope`
+  - Cards: `meeting-card` (data-meeting-id, data-status), with `meeting-card-title`, `meeting-card-status`, `meeting-card-invited`, `meeting-card-scope`, `meeting-card-recurring`
 - **Detail**:
   - Page: `meeting-detail` (data-meeting-id, data-status), `meeting-not-found`, `meeting-back`
-  - Facts: `meeting-title`, `meeting-status`, `meeting-invited`, `meeting-when`, `meeting-online-link`, `meeting-location`, `meeting-scope`, `meeting-creator`, `meeting-description`
+  - Facts: `meeting-title`, `meeting-status`, `meeting-invited`, `meeting-when`, `meeting-online-link`, `meeting-location`, `meeting-scope`, `meeting-creator`, `meeting-description`, `meeting-open-calendar`
+  - Series: `meeting-series-info` (data-position, data-count), `meeting-series-previous`, `meeting-series-next`
+  - From last meeting: `meeting-from-last` (data-meeting-id), `meeting-from-last-item` (data-item-id), `meeting-from-last-task` (data-task-id, data-status), `meeting-from-last-link`, `meeting-from-last-empty`
+  - Series panel: `meeting-series` (data-series-id), `meeting-series-tasks` (data-filter), `meeting-series-tasks-filter`, `meeting-series-task` (data-task-id, data-status, data-meeting-id), `meeting-series-tasks-empty`; editors: `meeting-series-agenda`, `meeting-series-agenda-input` (one item per line), `meeting-series-agenda-save`, `meeting-series-agenda-error`
+  - Scope dialog (series edit, cancel, delete): `meeting-scope-dialog`, `meeting-scope-this|following|all` (radios), `meeting-scope-confirm`, `meeting-scope-dismiss`, `meeting-scope-error`
   - Invitees: `meeting-invitees`, `meeting-invitee` (data-user-id), `meeting-invitees-empty`
   - Editors: `meeting-edit`, `meeting-complete`, `meeting-cancel`, `meeting-reschedule`, `meeting-reopen`, `meeting-delete`
   - Confirm dialog: `meeting-confirm-dialog`, `meeting-cancel-confirm`, `meeting-delete-confirm`, `meeting-confirm-dismiss`, `meeting-confirm-error`
 - **Agenda**:
-  - `meeting-agenda`, `meeting-agenda-empty`, `meeting-agenda-item` (data-item-id), `meeting-agenda-item-title`, `meeting-agenda-item-notes`
+  - `meeting-agenda`, `meeting-agenda-empty`, `meeting-agenda-item` (data-item-id, data-resolved, data-standing), `meeting-agenda-item-title`, `meeting-agenda-item-notes`, `meeting-agenda-standing`, `meeting-agenda-resolved-badge` (read only)
+  - Resolved checkbox (editors): `meeting-agenda-resolved`
   - Editing: `meeting-agenda-add`, `meeting-agenda-form`, `meeting-agenda-title`, `meeting-agenda-notes`, `meeting-agenda-save`, `meeting-agenda-cancel`, `meeting-agenda-edit`, `meeting-agenda-up`, `meeting-agenda-down`
   - Delete: `meeting-agenda-delete`, then `meeting-agenda-delete-dialog`, `-confirm`, `-cancel`
 - **Decisions**:
@@ -127,7 +183,9 @@ All kebab-case, never derived from text. Lists expose `data-meeting-id`, `data-i
   - Shell and scope: `-dialog`, `-scope` (or `-scope-fixed`)
   - Fields: `-title`, `-description`, `-start-date`, `-start-time`, `-end-date`, `-end-time`
   - Place: `-place-in-person`, `-place-online`, `-location`, `-online-url`
-  - Invitees: `-invitees` (PersonPicker)
+  - Invitees: `-invitees` (PeopleCombobox, data-count) with `-invitees-open`, `-invitees-search`, `-invitees-option` (data-user-id), `-invitees-chip` (data-user-id), `-invitees-chip-remove`, `-invitees-empty`
+  - More options: `-more` (data-state), `-more-content`; agenda `-agenda` (data-count), `-agenda-input`, `-agenda-add`, `-agenda-item`, `-agenda-remove`; files `-files` (data-count), `-files-input`, `-files-pick`, `-file`, `-file-remove`, `-file-errors`; repeat `-repeat-none|weekly|monthly`, `-repeat-interval`, `-repeat-count`, `-repeat-error`
+  - After a create with rejected files: `-file-errors` and `-submit` (continue)
   - Errors and buttons: `-<field>-error`, `-submit`, `-cancel`, `-error`
 - **Dashboard**: `dashboard-upcoming-meetings`, `dashboard-upcoming-meeting-item` (data-meeting-id, data-status), `dashboard-upcoming-meetings-empty`, `dashboard-upcoming-meetings-link`
 - **Meeting request form**:

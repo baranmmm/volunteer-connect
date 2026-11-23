@@ -11,7 +11,7 @@ import {
   Repeat,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { eventStart } from "@/lib/event-rules";
+import { eventStart, isMeetingEvent } from "@/lib/event-rules";
 import type { HubEvent } from "@/lib/event-rules";
 import { eventDisplayStatus } from "@/lib/event-status";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ import { PublicBadge } from "./PublicBadge";
 import { STATUS_CARD, cancelledTitle } from "./event-status-styles";
 import { eventDateText } from "./event-display";
 import { RegistrationBadge } from "./RegistrationBadge";
+import { MeetingBadge } from "./MeetingBadge";
 
 export function CategoryIcon({ category, className }: { category: string; className?: string }) {
   const Icon =
@@ -33,6 +34,7 @@ export function CategoryIcon({ category, className }: { category: string; classN
         interfaith: HeartHandshake,
         community: Users,
         education: GraduationCap,
+        meeting: Users,
       } as Record<string, typeof Tag>
     )[category] ?? Tag;
   return <Icon className={className} aria-hidden />;
@@ -48,6 +50,7 @@ export function EventCard({ event, now = new Date() }: { event: HubEvent; now?: 
       data-event-id={event.id}
       data-start={eventStart(event)}
       data-status={event.status}
+      data-category={event.category}
       className={cn(
         "group flex min-w-0 flex-col overflow-hidden rounded-lg border transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-ring sm:flex-row",
         STATUS_CARD[eventDisplayStatus(event, now)],
@@ -92,6 +95,7 @@ export function EventCard({ event, now = new Date() }: { event: HubEvent; now?: 
           {event.title}
         </h2>
         <div className="flex flex-wrap items-center gap-2">
+          {isMeetingEvent(event) && <MeetingBadge />}
           <EventStatusBadge status={event.status} />
           <HappeningNowBadge event={event} now={now} />
           <RegistrationBadge status={event.my_registration} />

@@ -1,7 +1,7 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { imageDimensions, LONDON } from "@/lib/event-rules";
 import { dateLocale } from "@/lib/i18n";
-import type { Meeting } from "@/lib/meetings";
+import type { Meeting, MeetingSeriesTask } from "@/lib/meetings";
 
 // Meeting display helpers (London time, like events) and the browser-side image re-encoding for uploads.
 
@@ -57,4 +57,71 @@ export async function prepareMeetingFile(
   } finally {
     bitmap.close();
   }
+}
+
+/**
+ * The form's repeat settings, checked like the database does: 1-4 weeks/months apart, 2-52 occurrences, the last one
+ * at most 12 months after the first. null when valid; otherwise an i18n key.
+ */
+export function meetingRecurrenceError(
+  startIso: string,
+  r: { freq: "weekly" | "monthly"; interval: number; count: number },
+): string | null {
+  if (!Number.isInteger(r.interval) || r.interval < 1 || r.interval > 4)
+    return "meetings.repeat.errors.interval";
+  if (!Number.isInteger(r.count) || r.count < 2 || r.count > 52)
+    return "meetings.repeat.errors.count";
+  // London wall-clock dates: compare calendar days, so a clock change cannot tip the check.
+  const day = formatInTimeZone(new Date(startIso), LONDON, "yyyy-MM-dd");
+  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+  const steps = (r.count - 1) * r.interval;
+  const last =
+    r.freq === "weekly"
+      ? Date.UTC(y, m - 1, d + 7 * steps)
+      : Date.UTC(y, m - 1 + steps, Math.min(d, daysInMonth(y, m - 1 + steps)));
+  const limit = Date.UTC(y, m - 1 + 12, Math.min(d, daysInMonth(y, m - 1 + 12)));
+  return last > limit ? "meetings.repeat.errors.tooLong" : null;
+}
+const daysInMonth = (year: number, month: number) =>
+  new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+
+/** "Mon, 24 Nov 2026" in London time. */
+export function meetingDay(iso: string) {
+  return new Intl.DateTimeFormat(dateLocale(), {
+    timeZone: LONDON,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
+export const SERIES_TASK_FILTERS = [
+  "open",
+  "all",
+  "todo",
+  "in_progress",
+  "blocked",
+  "done",
+] as const;
+export type SeriesTaskFilter = (typeof SERIES_TASK_FILTERS)[number];
+
+/** Series tasks shown for a filter: "open" is every status except done. */
+export function filterSeriesTasks(tasks: MeetingSeriesTask[], filter: SeriesTaskFilter) {
+  if (filter === "all") return tasks;
+  if (filter === "open") return tasks.filter((task) => task.status !== "done");
+  return tasks.filter((task) => task.status === filter);
+}
+
+/** Standing agenda items from the editor's text: one per line, trimmed, blank lines and repeats dropped. */
+export function parseStandingAgenda(text: string) {
+  const seen = new Set<string>();
+  const titles: string[] = [];
+  for (const line of text.split("\n")) {
+    const title = line.trim().slice(0, 200);
+    if (!title || seen.has(title.toLowerCase())) continue;
+    seen.add(title.toLowerCase());
+    titles.push(title);
+  }
+  return titles;
 }

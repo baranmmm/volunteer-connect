@@ -1,13 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, List, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
 import { inFollowedBranches, useFollowedBranches } from "@/lib/followed-branches";
-import { EVENT_CATEGORIES, filterEvents, isScheduled, londonInput } from "@/lib/event-rules";
+import { CALENDAR_CATEGORIES, filterEvents, isScheduled, londonInput } from "@/lib/event-rules";
 import { listEvents } from "@/lib/events.functions";
 import { pageHead } from "@/components/app/head";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,20 @@ function CalendarPage() {
     () => new Date(`${londonInput(new Date()).slice(0, 7)}-01T12:00:00`),
   );
   const [creating, setCreating] = useState(false);
+  // The open form is not re-rendered by the clock tick (`now`), so its lists and pickers stay still while in use.
+  const createForm = useMemo(
+    () =>
+      creating ? (
+        <EventForm
+          onClose={() => setCreating(false)}
+          onSaved={(id) => {
+            setCreating(false);
+            void navigate({ to: "/events/$id", params: { id } });
+          }}
+        />
+      ) : null,
+    [creating, navigate],
+  );
   const [now, setNow] = useState(() => new Date());
   // Advance cached events through start/end boundaries without another network read.
   useEffect(() => {
@@ -184,7 +198,7 @@ function CalendarPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("events.allCategories")}</SelectItem>
-            {EVENT_CATEGORIES.map((c) => (
+            {CALENDAR_CATEGORIES.map((c) => (
               <SelectItem key={c} value={c}>
                 {t(`events.categories.${c}`)}
               </SelectItem>
@@ -229,15 +243,7 @@ function CalendarPage() {
           )}
         </section>
       )}
-      {creating && (
-        <EventForm
-          onClose={() => setCreating(false)}
-          onSaved={(id) => {
-            setCreating(false);
-            void navigate({ to: "/events/$id", params: { id } });
-          }}
-        />
-      )}
+      {createForm}
       {view === "month" && filtered.some((e) => !isScheduled(e)) && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">{t("events.unscheduled")}</h2>

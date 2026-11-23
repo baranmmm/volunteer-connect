@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listEvents } from "@/lib/events.functions";
+import { isMeetingEvent } from "@/lib/event-rules";
 import { eventTimeState, isScheduled } from "@/lib/event-rules";
 import { useTranslation } from "react-i18next";
 import { Building2, Network, Pencil, Plus, Trash2 } from "lucide-react";
@@ -54,6 +55,8 @@ function RegionsPage() {
     const now = new Date();
     return (events.data ?? []).filter(
       (e) =>
+        // Meetings are in the calendar but are not region-wide events.
+        !isMeetingEvent(e) &&
         e.scope === "region" &&
         e.region_id === regionId &&
         e.status === "published" &&

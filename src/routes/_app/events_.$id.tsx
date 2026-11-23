@@ -17,12 +17,13 @@ import {
   CalendarDays,
   Trash2,
   Repeat,
+  Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { getEvent, cancelEvent } from "@/lib/events.functions";
 import { deleteEvent, deleteSeries } from "@/lib/delete-event.functions";
-import { eventWhen } from "@/lib/event-rules";
+import { eventWhen, isMeetingEvent } from "@/lib/event-rules";
 import { describeRule, type SeriesInfo } from "@/lib/recurrence";
 import { AddToCalendarMenu } from "@/components/events/AddToCalendarMenu";
 import { dateLocale, translateError } from "@/lib/i18n";
@@ -43,6 +44,7 @@ import { RecurringScopeDialog, type SeriesMode } from "@/components/events/Recur
 import { EventStatusBadge } from "@/components/events/EventStatus";
 import { cancelledTitle } from "@/components/events/event-status-styles";
 import { ManagerRegistrations, RegistrationPanel } from "@/components/events/EventRegistration";
+import { MeetingEventActions } from "@/components/events/MeetingEventActions";
 
 export const Route = createFileRoute("/_app/events_/$id")({
   ssr: false,
@@ -109,8 +111,10 @@ function MemberEventDetail() {
   const [image, setImage] = useState<number | null>(null),
     touch = useRef<number | null>(null);
   // "Edit" links (dashboard drafts) open the form once the user is known to manage the event.
+  // A meeting's calendar entry is managed through its meeting (MeetingEventActions), never with the event form.
+  const meetingEntry = !!query.data?.event && isMeetingEvent(query.data.event);
   const { edit } = Route.useSearch(),
-    canManageLoaded = !!query.data?.canManage,
+    canManageLoaded = !!query.data?.canManage && !meetingEntry,
     recurring = !!query.data?.event?.series_id;
   useEffect(() => {
     if (!edit || !canManageLoaded) return;
@@ -140,7 +144,10 @@ function MemberEventDetail() {
         </Button>
       </div>
     );
-  const { event, canManage, deletion } = query.data;
+  const { event, deletion } = query.data;
+  const meetingId = query.data.meetingId ?? null;
+  // Event management (form, registrations, files) never applies to a meeting's entry.
+  const canManage = query.data.canManage && !meetingEntry;
   const series: SeriesInfo | null = query.data.series ?? null;
   const canDelete = deletion.canDelete;
   const images = event.media.filter((m) => m.kind === "image" && m.url),
@@ -223,6 +230,7 @@ function MemberEventDetail() {
       data-testid="event-detail"
       data-event-id={event.id}
       data-status={event.status}
+      data-category={event.category}
       className={`space-y-6 ${event.status === "published" ? "border-l-4 border-l-status-published pl-4" : event.status === "cancelled" ? "border-l-4 border-l-status-cancelled pl-4" : "rounded-lg border border-dashed border-status-draft-border bg-status-draft-bg p-4"}`}
     >
       <Link
@@ -234,7 +242,12 @@ function MemberEventDetail() {
       </Link>
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge data-testid="event-detail-category" variant="secondary">
+          <Badge
+            data-testid="event-detail-category"
+            variant="secondary"
+            className={meetingEntry ? "gap-1" : undefined}
+          >
+            {meetingEntry && <Users className="size-3.5" aria-hidden />}
             {t(`events.categories.${event.category}`)}
           </Badge>
           <EventStatusBadge status={event.status} />
@@ -267,78 +280,93 @@ function MemberEventDetail() {
             : event.organizer}
         </p>
       </header>
-      <section
-        data-testid="event-detail-gallery"
-        aria-label={t("events.gallery")}
-        className="space-y-3"
-      >
-        {images.length ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {images.map((m, i) => (
-              <Button
-                key={m.id}
-                variant="ghost"
-                data-testid="event-detail-image"
-                data-position={m.position}
-                aria-label={t("events.imageNumber", { position: i + 1, count: images.length })}
-                className={`h-auto overflow-hidden rounded-lg border bg-muted p-0 ${i === 0 ? "sm:col-span-2" : ""}`}
-                onClick={() => setImage(i)}
-              >
-                <img
-                  src={m.url ?? ""}
-                  alt={event.title}
-                  className={`block w-full bg-muted object-cover ${i === 0 ? "h-56 sm:h-80" : "h-44 sm:h-48"}`}
-                />
-              </Button>
-            ))}
-          </div>
-        ) : (
-          <div className="flex h-36 items-center justify-center border-y bg-secondary text-secondary-foreground">
-            <CategoryIcon category={event.category} className="size-14" />
-          </div>
-        )}
-        {documents.length > 0 && (
-          <ul aria-label={t("events.documents")} className="space-y-2">
-            {documents.map((m) => (
-              <li
-                key={m.id}
-                data-testid="event-media-document"
-                className="flex min-w-0 items-center gap-3 rounded-lg border bg-card p-3"
-              >
-                <FileText className="size-6 shrink-0 text-muted-foreground" aria-hidden />
-                <span className="min-w-0 flex-1 break-all text-sm">
-                  {m.original_name || m.storage_path.split("/").pop()}
-                </span>
-                <Button asChild variant="outline" size="sm">
-                  <a
-                    data-testid="event-media-download"
-                    href={m.url ?? ""}
-                    download={m.original_name || undefined}
-                    rel="noopener noreferrer"
-                  >
-                    <Download />
-                    {t("events.download")}
-                  </a>
+      {meetingEntry && (
+        <section className="space-y-2 rounded-lg border bg-card p-4">
+          <p className="text-sm text-muted-foreground">{t("events.meetingEntryHint")}</p>
+          {meetingId && (
+            <Button asChild className="h-11">
+              <Link to="/meetings/$id" params={{ id: meetingId }} data-testid="event-open-meeting">
+                <Users />
+                {t("events.openMeeting")}
+              </Link>
+            </Button>
+          )}
+        </section>
+      )}
+      {!meetingEntry && (
+        <section
+          data-testid="event-detail-gallery"
+          aria-label={t("events.gallery")}
+          className="space-y-3"
+        >
+          {images.length ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {images.map((m, i) => (
+                <Button
+                  key={m.id}
+                  variant="ghost"
+                  data-testid="event-detail-image"
+                  data-position={m.position}
+                  aria-label={t("events.imageNumber", { position: i + 1, count: images.length })}
+                  className={`h-auto overflow-hidden rounded-lg border bg-muted p-0 ${i === 0 ? "sm:col-span-2" : ""}`}
+                  onClick={() => setImage(i)}
+                >
+                  <img
+                    src={m.url ?? ""}
+                    alt={event.title}
+                    className={`block w-full bg-muted object-cover ${i === 0 ? "h-56 sm:h-80" : "h-44 sm:h-48"}`}
+                  />
                 </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {pdfs.map((m, i) => (
-          <Button key={m.id} asChild variant="outline">
-            <a
-              data-testid="event-detail-pdf-link"
-              href={m.url ?? ""}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <FileText />
-              {t("events.leaflet")}
-              {pdfs.length > 1 ? ` ${i + 1}` : ""}
-            </a>
-          </Button>
-        ))}
-      </section>
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-36 items-center justify-center border-y bg-secondary text-secondary-foreground">
+              <CategoryIcon category={event.category} className="size-14" />
+            </div>
+          )}
+          {documents.length > 0 && (
+            <ul aria-label={t("events.documents")} className="space-y-2">
+              {documents.map((m) => (
+                <li
+                  key={m.id}
+                  data-testid="event-media-document"
+                  className="flex min-w-0 items-center gap-3 rounded-lg border bg-card p-3"
+                >
+                  <FileText className="size-6 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="min-w-0 flex-1 break-all text-sm">
+                    {m.original_name || m.storage_path.split("/").pop()}
+                  </span>
+                  <Button asChild variant="outline" size="sm">
+                    <a
+                      data-testid="event-media-download"
+                      href={m.url ?? ""}
+                      download={m.original_name || undefined}
+                      rel="noopener noreferrer"
+                    >
+                      <Download />
+                      {t("events.download")}
+                    </a>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {pdfs.map((m, i) => (
+            <Button key={m.id} asChild variant="outline">
+              <a
+                data-testid="event-detail-pdf-link"
+                href={m.url ?? ""}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileText />
+                {t("events.leaflet")}
+                {pdfs.length > 1 ? ` ${i + 1}` : ""}
+              </a>
+            </Button>
+          ))}
+        </section>
+      )}
       <div className="space-y-4 border-y py-5">
         <div className="flex items-start gap-3">
           <CalendarDays className="mt-1 size-5 shrink-0 text-primary" />
@@ -408,10 +436,12 @@ function MemberEventDetail() {
             <dt className="text-muted-foreground">{t("events.region")}</dt>
             <dd>{query.data.regionName ?? "—"}</dd>
           </div>
-          <div>
-            <dt className="text-muted-foreground">{t("events.capacity")}</dt>
-            <dd>{event.capacity ?? t("events.unlimited")}</dd>
-          </div>
+          {!meetingEntry && (
+            <div>
+              <dt className="text-muted-foreground">{t("events.capacity")}</dt>
+              <dd>{event.capacity ?? t("events.unlimited")}</dd>
+            </div>
+          )}
         </dl>
       </div>
       {event.description && (
@@ -436,9 +466,20 @@ function MemberEventDetail() {
           </Button>
         </div>
       )}
-      <RegistrationPanel event={event} now={now} />
+      {!meetingEntry && <RegistrationPanel event={event} now={now} />}
       {canManage && <ManagerRegistrations event={event} now={now} />}
-      {canManage && <EventLinkedTasks eventId={event.id} />}
+      <EventLinkedTasks
+        event={{
+          id: event.id,
+          title: event.title,
+          scope: event.scope,
+          branch_id: event.branch_id,
+          region_id: event.region_id,
+        }}
+      />
+      {meetingEntry && meetingId && (
+        <MeetingEventActions meetingId={meetingId} eventId={event.id} />
+      )}
       {canManage && (
         <section className="space-y-3 border-t pt-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">

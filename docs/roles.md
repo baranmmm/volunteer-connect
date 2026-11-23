@@ -26,12 +26,13 @@ SECURITY DEFINER functions; the menus and screens only reflect it.
 | Change roles, move branches | — | — | — | Volunteer ↔ BM, within the region | RD ↔ BM ↔ volunteer (RDs with a region), any branch; never NC |
 | Regions and branches | — | — | — | — | Create, rename, delete (only without active users and upcoming events), restore |
 | Recycle Bin | — | — | Own branch (events, tasks, meetings, users) | Region | National events, tasks, meetings; regions, branches |
-| Tasks: see | — | All tasks of own branch; own and assigned tasks | Same (+ region tasks of own region) | All tasks in the region | National tasks; tasks assigned to them |
-| Tasks: create / assign | — | Self-tasks in own branch only | Branch tasks; volunteers and BMs of own branch | Region or branch tasks; anyone in the region | National tasks; RDs, BMs and NCs only |
-| Tasks: edit | — | Own self-tasks; status of tasks assigned to them | Tasks of own branch; status when assigned | Tasks in the region | National tasks |
+| Tasks: see | — | All tasks of own branch; own and assigned tasks; linked tasks on events they can see | Same (+ region tasks of own region) | All tasks in the region | National tasks; tasks assigned to them |
+| Tasks: create / assign | — | Tasks in own branch for themselves and/or other volunteers of the branch (never upward: that is a task request) | Branch tasks; volunteers and BMs of own branch | Region or branch tasks; anyone in the region | National tasks; RDs, BMs and NCs only |
+| Tasks: edit | — | Tasks they created; status of tasks assigned to them | Tasks of own branch; status when assigned | Tasks in the region | National tasks |
+| Tasks: archive / notes | — | Archive done tasks and write notes on tasks assigned to them or they created; edit/delete own notes; @mention people who can see the task | Same, plus tasks of own branch | Same, plus tasks in the region | Same, for national tasks |
 | Task / meeting requests | — | To own BM or RD | To own RD; review those sent to them | To an NC; review those sent to them | Review those sent to them |
 | Meetings: see | — | Created by them or invited | Same + meetings of own branch | Same + meetings in the region | Same + national meetings |
-| Meetings: create / invite | — | Own branch; branch members | Own branch; branch members and the RD | Region or a branch in it; people in the region | National; RDs, BMs and NCs only |
+| Meetings: create / invite (single or recurring) | — | Own branch; branch members | Own branch; branch members and the RD | Region or a branch in it; people in the region | National; RDs, BMs and NCs only |
 | Approvals, Media, Training, Contacts | Hidden and refused | Yes | Yes | Yes | Yes (Approvals: no) |
 | Delete own account | Directly (type full name) | Request to manager | Request to RD | Contact the office | Contact the office (never in the app) |
 | Donate (external link) | Menu and dashboard | Menu | Menu | Menu | Menu |
