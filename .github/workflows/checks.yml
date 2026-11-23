@@ -1,7 +1,7 @@
 name: Checks
 
 # Type check, lint (changed files only: the rest of src/ has known formatting issues) and Vitest.
-# No QA access and no secrets, so it runs in parallel with E2E (QA) and outside its qa-db queue.
+# No QA access and no secrets, so it runs in parallel with the E2E workflows and outside the qa-db queue.
 on:
   push:
     branches: [main]

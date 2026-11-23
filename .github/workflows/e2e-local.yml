@@ -1,0 +1,158 @@
+name: E2E on the local stack
+
+# Reusable: the e2e suite against a throwaway Supabase stack on each shard's own runner (e2e/local: Docker, every
+# migration in supabase/migrations, seeded users, a local TOTP authenticator for the National Coordinator).
+# No QA access, no secrets, no shared database. Called by e2e-pr.yml (pull requests) and e2e.yml (nightly full
+# suite, and manual runs with target "local"). 3 shards, then one merged HTML report.
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "full, or anything else to run only the tests matching grep"
+        type: string
+        required: true
+      grep:
+        description: "Playwright --grep for non-full runs (@smoke + related specs)"
+        type: string
+        default: "@smoke"
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+  # Pinned: the same CLI as local runs and the QA workflows. Update deliberately (the image cache key uses it).
+  SUPABASE_CLI_VERSION: 3.2.0
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      E2E_TARGET: local
+      E2E_RUN_ID: gh${{ github.run_id }}-${{ github.run_attempt }}-s${{ matrix.shard }}
+      # Containers the app and the tests never use: not pulled, not started.
+      E2E_LOCAL_EXCLUDE: realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      IMAGES_TAR: /tmp/supabase-images.tar.zst
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - uses: oven-sh/setup-bun@v2
+      - name: Install app dependencies (root)
+        run: bun install --frozen-lockfile
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      # Docker images of the local stack, cached per CLI version and local config (docker load instead of pulling).
+      - name: Restore Supabase Docker images
+        id: images
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.IMAGES_TAR }}
+          key: supabase-images-${{ runner.os }}-cli${{ env.SUPABASE_CLI_VERSION }}-${{ hashFiles('e2e/local/supabase/config.toml', '.github/workflows/e2e-local.yml') }}
+      - name: Load Supabase Docker images
+        if: steps.images.outputs.cache-hit == 'true'
+        run: zstd -dc "$IMAGES_TAR" | docker load
+      - name: Start the local Supabase stack (migrations + seed, local TOTP for the NC)
+        working-directory: e2e
+        run: npm run local:up
+      - name: Pack Supabase Docker images for the cache
+        if: steps.images.outputs.cache-hit != 'true' && matrix.shard == 1
+        run: |
+          # The images of the running stack only (what local:up started), one per line.
+          mapfile -t images < <(docker ps --format '{{.Image}}' | sort -u)
+          echo "Caching ${#images[@]} images: ${images[*]}"
+          docker save "${images[@]}" | zstd -T0 -3 -q -o "$IMAGES_TAR"
+          ls -lh "$IMAGES_TAR"
+      - name: Save Supabase Docker images
+        if: steps.images.outputs.cache-hit != 'true' && matrix.shard == 1
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.IMAGES_TAR }}
+          key: ${{ steps.images.outputs.cache-primary-key }}
+
+      # Browsers are cached per Playwright version (lockfile); the system libraries are installed every time.
+      - name: Cache Playwright browsers
+        id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+      - name: Install Playwright Chromium
+        if: steps.browsers.outputs.cache-hit != 'true'
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+      - name: Install Playwright system dependencies
+        if: steps.browsers.outputs.cache-hit == 'true'
+        working-directory: e2e
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright tests (${{ inputs.mode }}, shard ${{ matrix.shard }}/3)
+        working-directory: e2e
+        env:
+          MODE: ${{ inputs.mode }}
+          GREP: ${{ inputs.grep }}
+        run: |
+          if [ "$MODE" = "full" ]; then
+            npx playwright test --shard=${{ matrix.shard }}/3
+          else
+            npx playwright test --shard=${{ matrix.shard }}/3 --grep "$GREP" --pass-with-no-tests
+          fi
+      # The redaction reporter masks passwords already; this re-checks every file before it leaves the runner.
+      - name: Mask secrets in test artifacts
+        if: always()
+        working-directory: e2e
+        run: npx tsx setup/redact.ts blob-report test-results
+      - name: Upload blob report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: e2e/blob-report
+          retention-days: 1
+
+  report:
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Download shard reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: e2e/all-blob-reports
+          merge-multiple: true
+      - name: Merge into one HTML report
+        working-directory: e2e
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - name: Mask secrets in the merged report
+        working-directory: e2e
+        run: npx tsx setup/redact.ts playwright-report
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 14

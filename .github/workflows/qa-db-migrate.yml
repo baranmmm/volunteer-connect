@@ -7,8 +7,7 @@ on:
         description: "Run seed + API smoke tests after migrating"
         type: boolean
         default: true
-  # No schedule: the nightly full suite in E2E (QA) migrates QA at 02:00 (two runs queued in the qa-db group at
-  # once could cancel each other's pending run). No push trigger: E2E (QA) migrates QA before every test run.
+  # No schedule (QA has a limited disk IO budget). No push trigger: E2E migrates QA before its push-to-main run.
 
 concurrency:
   group: qa-db

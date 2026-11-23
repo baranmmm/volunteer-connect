@@ -1,10 +1,10 @@
-name: E2E (QA)
+name: E2E
 
-# The shared hosted QA project. Pull requests do not use it: they run against their own local stack (e2e-pr.yml).
-# Which tests run here:
-#   push to main            @smoke only.
-#   schedule 02:00 UTC      the full suite on main, after migrating QA.
-#   workflow_dispatch       the suite you choose.
+# Runs on main and by hand. Pull requests use e2e-pr.yml (local stack).
+#   push to main            @smoke on the shared hosted QA project (after migrating it): the one regular QA run.
+#   schedule 02:00 UTC      the full suite on the local stack (e2e-local.yml); QA is not touched.
+#   workflow_dispatch       the suite you choose, on the target you choose: local (default) or qa.
+# QA runs on a small instance with a limited disk IO budget, so nothing else runs there on a schedule.
 # tsc, ESLint and Vitest run in "Checks" (checks.yml), without QA and in parallel.
 on:
   push:
@@ -13,18 +13,22 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch:
     inputs:
+      target:
+        description: "Where to run: local (throwaway stack per shard) or qa (the shared QA project)"
+        type: choice
+        options: [local, qa]
+        default: local
       suite:
         description: "Tests to run"
         type: choice
         options: [full, smoke, selected]
         default: full
 
-# The QA database is shared: never run two e2e/migrate runs at the same time, never cancel a running one.
-# A newer queued run may cancel an older *pending* one (GitHub keeps one pending run per group). That is fine:
-# every run migrates QA before its tests, so the run that does go ahead also applies the cancelled run's migrations.
-# The group is at workflow level, so the jobs of ONE run (plan, migrate, three shards, report) share it.
+# QA runs (push to main, manual qa) share the qa-db group with qa-db-migrate.yml: never two at the same time, never
+# cancel a running one. A newer queued run may cancel an older *pending* one (GitHub keeps one pending run per
+# group); that is fine, because every QA run migrates first. Local runs touch nothing shared: each gets its own group.
 concurrency:
-  group: qa-db
+  group: ${{ (github.event_name == 'push' || inputs.target == 'qa') && 'qa-db' || format('e2e-local-{0}', github.run_id) }}
   cancel-in-progress: false
 
 permissions:
@@ -37,12 +41,14 @@ env:
   BASE_URL: http://localhost:3100
 
 jobs:
-  # Decides the suite: full, smoke, or (workflow_dispatch "selected") @smoke + the specs related to the changes.
+  # Decides the target (qa for push to main, local for the nightly run, the chosen one by hand) and the suite:
+  # full, smoke, or (workflow_dispatch "selected") @smoke + the specs related to the changes.
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       run: ${{ steps.plan.outputs.run }}
+      target: ${{ steps.plan.outputs.target }}
       mode: ${{ steps.plan.outputs.mode }}
       grep: ${{ steps.plan.outputs.grep }}
     steps:
@@ -57,6 +63,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           SUITE: ${{ inputs.suite }}
+          TARGET: ${{ inputs.target }}
           BASE_REF: ${{ github.base_ref }}
         run: |
           run=true; mode=""
@@ -65,7 +72,13 @@ jobs:
           elif [ "$EVENT" = "push" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$SUITE" = "smoke" ]; }; then
             mode=smoke
           fi
-          echo "run=$run" >> "$GITHUB_OUTPUT"
+          case "$EVENT" in
+            push) target=qa ;;
+            schedule) target=local ;;
+            *) target="${TARGET:-local}" ;;
+          esac
+          echo "run=$run" >> "$GITHUB_OUTPUT"; echo "target=$target" >> "$GITHUB_OUTPUT"
+          printf 'Target: %s\n' "$target" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$mode" ]; then
             echo "mode=$mode" >> "$GITHUB_OUTPUT"; echo "grep=@smoke" >> "$GITHUB_OUTPUT"
             printf '### E2E selection\n\nMode: %s (%s)\n' "$mode" "$EVENT" >> "$GITHUB_STEP_SUMMARY"
@@ -77,7 +90,7 @@ jobs:
   # Once per run, before any shard: guard, migrate (this commit's pending migrations), seed.
   migrate:
     needs: plan
-    if: needs.plan.outputs.run == 'true'
+    if: needs.plan.outputs.run == 'true' && needs.plan.outputs.target == 'qa'
     runs-on: ubuntu-latest
     environment: qa
     timeout-minutes: 15
@@ -132,6 +145,7 @@ jobs:
 
   e2e:
     needs: [plan, migrate]
+    if: needs.plan.outputs.target == 'qa'
     runs-on: ubuntu-latest
     environment: qa
     timeout-minutes: 30
@@ -204,7 +218,7 @@ jobs:
 
   report:
     needs: [plan, e2e]
-    if: always() && needs.plan.outputs.run == 'true'
+    if: always() && needs.plan.outputs.run == 'true' && needs.plan.outputs.target == 'qa'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -235,3 +249,12 @@ jobs:
           name: playwright-report
           path: e2e/playwright-report
           retention-days: 14
+
+  # Nightly and manual "local" runs: the same local stack, shards and report as pull requests.
+  local:
+    needs: plan
+    if: needs.plan.outputs.run == 'true' && needs.plan.outputs.target == 'local'
+    uses: ./.github/workflows/e2e-local.yml
+    with:
+      mode: ${{ needs.plan.outputs.mode }}
+      grep: ${{ needs.plan.outputs.grep }}

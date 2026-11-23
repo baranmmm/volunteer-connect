@@ -37,7 +37,7 @@ npm run local:reset     # fresh database (all migrations again) + seed
 npm run local:down
 ```
 
-Never run the full suite locally; CI runs it nightly on QA and on PRs with the `full-ci` label (local stack).
+Never run the full suite locally; CI runs it nightly and on PRs with the `full-ci` label (both on the local stack in CI).
 
 To reproduce CI's parallel shards locally (only when asked), give each shard its own app port with `E2E_LOCAL_PORT`.
 Seed state stays shared; sessions go to `e2e/.auth/local/port-<port>/`.
@@ -131,36 +131,41 @@ against production by hand.
 ## CI
 
 - `.github/workflows/checks.yml`: every PR and push to main — tsc (app, e2e), ESLint on changed files, Vitest.
-- `.github/workflows/e2e-pr.yml` (**E2E (local)**), every pull request: 3 shards, each on its own runner with its own
-  local Supabase stack (`npm run local:up`: every migration, seed, a local TOTP authenticator for the National
-  Coordinator). No QA access and no secrets. Unused containers are skipped (`E2E_LOCAL_EXCLUDE`); the stack's
-  Docker images are cached (`docker save` + zstd, keyed by CLI version and local config) and so are the Playwright
-  browsers. Merged HTML report artifact. Which tests:
+- `.github/workflows/e2e-local.yml` (reusable, `workflow_call`): the **local-stack run** used by pull requests, the
+  nightly run and manual local runs.
+  - **Shards:** 3, each on its own runner with its own local Supabase stack (`npm run local:up`: every migration,
+    seed, a local TOTP authenticator for the National Coordinator).
+  - **Isolation:** no QA access and no secrets.
+  - **Speed-ups:** unused containers are skipped (`E2E_LOCAL_EXCLUDE`). The stack's Docker images are cached
+    (`docker save` + zstd, keyed by CLI version and local config), and so are the Playwright browsers.
+  - **Report:** one merged HTML report artifact.
+- `.github/workflows/e2e-pr.yml` (**E2E (local)**), every pull request, through `e2e-local.yml`. Which tests:
   - **pull request**: `@smoke` + the specs related to the changed files (`scripts/select-specs.mjs`, shown in the
     run's summary). A changed migration runs every spec of each area it touches; changes to `e2e/setup`,
     `e2e/fixtures`, the Playwright config, package files or the Supabase client run the full suite.
   - **`full-ci` label** on the PR: the full suite (adding another label starts a run that does nothing).
   - A new push to the PR cancels its earlier runs (`cancel-superseded.yml`).
-- `.github/workflows/e2e.yml` (**E2E (QA)**): guard → **QA migrate** → seed → tests in 3 shards (own `E2E_RUN_ID`
-  and teardown each) → merged HTML report artifact.
-  - **push to main**: `@smoke`. **Nightly 02:00 UTC** on main: the full suite (including `qa:migrate`).
-    **workflow_dispatch**: full, smoke or selected.
-  - The migrate step runs `npm run qa:migrate` (Supabase CLI 3.2.0). It applies the commit's pending migrations
+- `.github/workflows/e2e.yml` (**E2E**):
+  - **Nightly 02:00 UTC** on main: the full suite on the local stack (`e2e-local.yml`). QA is not touched.
+  - **push to main**: `@smoke` on **QA**: guard → **QA migrate** → seed → 3 shards (own `E2E_RUN_ID` and teardown
+    each) → merged report. This is the only regular QA run: QA is a small instance with a limited disk IO budget.
+  - **workflow_dispatch**: `suite` (full, smoke, selected) and `target` (`local` by default, or `qa`).
+  - The QA migrate step runs `npm run qa:migrate` (Supabase CLI 3.2.0). It applies the commit's pending migrations
     before the tests run against them. When nothing is pending it logs
     `No pending migrations: QA is up to date, nothing applied.` and does not run `db push`.
-- `.github/workflows/qa-db-migrate.yml`: manual only, with a seed + API smoke run (the nightly migrate is part of
-  the nightly full suite).
+- `.github/workflows/qa-db-migrate.yml`: manual only, with a seed + API smoke run.
 - **Secret masking**: `setup/redact-reporter.ts` is the first reporter; it masks the test password and any value
   typed into a `password` field in step titles, errors, traces and error-context before other reporters copy them.
   Every job also runs `setup/redact.ts` over its artifacts before uploading. Screenshots and videos show password
   fields as dots.
 - `.github/workflows/prod-db-migrate.yml`: production, manual only; see _Production migrations_ above.
-- The two QA workflows share the `qa-db` concurrency group, so they never overlap on the shared QA database.
-  GitHub keeps one _pending_ run per group, so a newer push can cancel an older queued E2E run. Nothing is lost:
+- QA runs of `e2e.yml` and `qa-db-migrate.yml` share the `qa-db` concurrency group, so they never overlap on the shared
+  QA database (local runs get their own group). GitHub keeps one _pending_ run per group, so a newer push can cancel
+  an older queued QA run. Nothing is lost:
   the run that goes ahead migrates first and so also applies the cancelled run's migrations.
   `prod-db-migrate.yml` uses its own `prod-db` group.
 - **Migrations reach QA after merge.** PR runs apply migrations to their own local stack only; QA gets them from the
-  push-to-main run (or the nightly run). A migration written on a branch that is later abandoned therefore never
+  push-to-main run (or a manual `qa` run). A migration written on a branch that is later abandoned therefore never
   reaches QA. (Migrations already on QA from earlier feature-branch runs stay; ask the repo owner before repairing.)
 - Secrets live in the GitHub environment `qa`: `QA_SUPABASE_URL`, `QA_SUPABASE_PUBLISHABLE_KEY`,
   `QA_SUPABASE_SERVICE_ROLE_KEY`, `QA_SUPABASE_DB_POOLER_URL` (no password), `QA_SUPABASE_DB_PASSWORD`, `E2E_USER_PASSWORD`.
