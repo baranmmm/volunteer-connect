@@ -785,6 +785,7 @@
       "outdated": "Gizlilik Bildirimi güncellendi. Lütfen yeni sürümü okuyun.",
       "notAccepted": "Lütfen önce Gizlilik Bildirimi'ni onaylayın.",
       "invalidConsent": "Gizlilik tercihlerinizi kontrol edip tekrar deneyin."
-    }
+    },
+    "gateDeleteAccount": "Hesabımı sil"
   }
 }

@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { PrivacyNotice } from "./PrivacyNotice";
+import { AccountDeletionDialog, useAccountDeletion } from "./AccountDeletion";
+import { useAuth } from "@/lib/auth";
+import { formatDate } from "@/lib/i18n";
 
 /** Shown instead of the app until the member confirms the current privacy notice version. */
 export function PrivacyGate({
@@ -21,6 +24,10 @@ export function PrivacyGate({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const accept = useServerFn(acceptPrivacyNotice);
+  const { session, roles } = useAuth();
+  // Directors cannot be deleted in-app (CLAUDE.md), so they get no deletion link here either.
+  const canDelete = !roles.includes("regional_director");
+  const deletion = useAccountDeletion(session?.user.id, canDelete);
   const [read, setRead] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -96,6 +103,32 @@ export function PrivacyGate({
           {t("navigation.signOut")}
         </Button>
       </div>
+      {canDelete &&
+        !deletion.myRequest.isLoading &&
+        (deletion.myRequest.data ? (
+          <p data-testid="privacy-gate-deletion-pending" className="text-sm text-muted-foreground">
+            {t("profile.requestedOn", { date: formatDate(deletion.myRequest.data.requested_at) })}{" "}
+            <button
+              type="button"
+              data-testid="privacy-gate-cancel-deletion"
+              className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+              disabled={deletion.busy}
+              onClick={() => void deletion.run("cancel")}
+            >
+              {t("profile.cancelRequest")}
+            </button>
+          </p>
+        ) : (
+          <button
+            type="button"
+            data-testid="privacy-gate-delete-account"
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            onClick={() => deletion.setConfirmOpen(true)}
+          >
+            {t("privacy.gateDeleteAccount")}
+          </button>
+        ))}
+      <AccountDeletionDialog deletion={deletion} />
     </main>
   );
 }

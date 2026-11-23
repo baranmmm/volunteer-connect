@@ -57,7 +57,7 @@ test.describe("Privacy notice", () => {
     }
   });
 
-  test("a member without the current confirmation sees the confirmation screen first, then the app; Profile shows it", async ({ freshUser, pageAs }) => {
+  test("a member without the current confirmation sees the confirmation screen first, then the app; Profile shows it", { tag: "@smoke" }, async ({ freshUser, pageAs }) => {
     const volunteer = await freshUser();
     await adminClient().from("privacy_notice_acceptances").update({ notice_version: "0.9" }).eq("user_id", volunteer.id);
     const page = await pageAs(volunteer);
@@ -76,6 +76,38 @@ test.describe("Privacy notice", () => {
     await page.reload();
     await expect(page.getByTestId("profile-photo-consent")).toHaveAttribute("data-state", "checked");
     await expect(page.getByTestId("profile-updates-consent")).toHaveAttribute("data-state", "unchecked");
+  });
+
+  test("a member who does not want to confirm can ask for account deletion from the confirmation screen, and cancel it", async ({ freshUser, pageAs }) => {
+    const volunteer = await freshUser();
+    await adminClient().from("privacy_notice_acceptances").delete().eq("user_id", volunteer.id);
+    const page = await pageAs(volunteer);
+    await page.goto("/dashboard");
+    await expect(page.getByTestId("privacy-gate")).toBeVisible();
+    await page.getByTestId("privacy-gate-delete-account").click();
+    const dialog = page.getByTestId("profile-delete-confirm-dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByTestId("confirm-dialog-confirm-button").click();
+    await expect(page.getByTestId("toast-success").last()).toBeVisible();
+    await expect(page.getByTestId("privacy-gate-deletion-pending")).toBeVisible();
+    const pending = await adminClient().from("account_deletion_requests").select("status").eq("user_id", volunteer.id).eq("status", "pending");
+    expect(pending.data).toHaveLength(1);
+    // Still behind the confirmation screen.
+    await expect(page.getByTestId("dashboard-welcome")).toHaveCount(0);
+    await page.getByTestId("privacy-gate-cancel-deletion").click();
+    await expect(page.getByTestId("privacy-gate-delete-account")).toBeVisible();
+    const after = await adminClient().from("account_deletion_requests").select("status").eq("user_id", volunteer.id).eq("status", "pending");
+    expect(after.data).toEqual([]);
+  });
+
+  test("directors get no deletion link on the confirmation screen (they cannot be deleted in-app)", async ({ freshUser, pageAs }) => {
+    const director = await freshUser({ role: "regional_director" });
+    await adminClient().from("privacy_notice_acceptances").delete().eq("user_id", director.id);
+    const page = await pageAs(director);
+    await page.goto("/dashboard");
+    await expect(page.getByTestId("privacy-gate")).toBeVisible();
+    await expect(page.getByTestId("privacy-gate-signout")).toBeVisible();
+    await expect(page.getByTestId("privacy-gate-delete-account")).toHaveCount(0);
   });
 
   test("signing out from the confirmation screen", async ({ freshUser, pageAs }) => {

@@ -785,6 +785,7 @@
       "outdated": "The Privacy Notice has been updated. Please read the new version.",
       "notAccepted": "Please confirm the Privacy Notice first.",
       "invalidConsent": "Check your privacy preferences and try again."
-    }
+    },
+    "gateDeleteAccount": "Delete my account"
   }
 }
