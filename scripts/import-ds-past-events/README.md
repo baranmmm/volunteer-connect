@@ -13,7 +13,11 @@ the Dialogue Society website, so the landing page does not start empty.
    long side reaches 1920 px (never the 5000 px originals), then re-encodes it to WebP (quality 80, max 1920 px long
    side, EXIF orientation applied, all metadata stripped) and uploads it to the private `event-media` bucket as
    `<event id>/<media id>.webp`. Each `event_media` row has `kind = image`, `in_gallery = true`, `source_url` = the
-   original photo URL on the site, the WebP `width`/`height` and `original_name`.
+   original photo URL on the site, the WebP `width`/`height` and `original_name`. Next to each photo it stores the
+   two resized copies the public pages use (`<media id>.w640.webp`, `<media id>.w1280.webp`; long side 640/1280 px,
+   WebP quality 78, never upscaled; made by `scripts/backfill-image-copies/copies.ts`) and sets `has_variants = true`.
+   If a copy fails the photo is kept with `has_variants = false` (the backfill adds the copies later); the cleanup
+   paths remove the copies together with the photo.
 3. **Event rows** (inserted directly with the service role, which `validate_event` allows for `past_record` rows):
    title, a short description, organizer "Dialogue Society", category `other`, `status = published`,
    `audience = public`, all-day on the event date (`start_date = end_date`), registration off, `past_record = true`,

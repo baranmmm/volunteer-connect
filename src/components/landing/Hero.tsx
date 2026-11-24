@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Building2, CalendarDays, MapPin, Video } from "lucide-react";
+import { ResponsiveImage } from "@/components/public/ResponsiveImage";
+import type { SignedImage } from "@/lib/image-variants";
+import { HERO_SIZES } from "@/lib/landing.functions";
 import type { LandingEvent } from "@/lib/landing.server";
 import { isoOf, startOf, whenText } from "./format";
 
@@ -38,7 +41,7 @@ export function Hero({
   onImageDone,
 }: {
   event: LandingEvent | undefined;
-  fallbackPhoto: string | null;
+  fallbackPhoto: SignedImage | null;
   subscribe: ReactNode;
   /** Called once the cover has loaded (or failed), so images further down start only after it. */
   onImageDone: () => void;
@@ -50,9 +53,10 @@ export function Hero({
         image={
           <>
             {fallbackPhoto ? (
-              <img
-                src={fallbackPhoto}
-                alt=""
+              <ResponsiveImage
+                image={fallbackPhoto}
+                sizes={HERO_SIZES}
+                loading="eager"
                 width={1600}
                 height={900}
                 fetchPriority="high"
@@ -96,9 +100,9 @@ export function Hero({
       image={
         <>
           {event.image ? (
-            <img
-              src={event.image}
-              alt=""
+            <ResponsiveImage
+              image={event.image}
+              sizes={HERO_SIZES}
               width={1600}
               height={900}
               fetchPriority="high"

@@ -8,6 +8,7 @@ import { EventFormDialog } from "../../pages/components/EventFormDialog";
 import { EVENT_TITLE_PREFIX, deleteEvents } from "../../api/events";
 import { MEETING_TITLE_PREFIX, createMeetingAs, inDays } from "../../api/work";
 import { adminClient } from "../../api/SupabaseClient";
+import { copyNames, solidPng, storedEventObjects } from "../../api/images";
 
 const londonDay = (days: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date(Date.now() + days * 86400000));
 
@@ -112,8 +113,8 @@ test.describe("Event audience", () => {
     await form.openSection("audience");
     await page.getByTestId("event-form-audience").click();
     await page.getByTestId("event-form-audience-option-public").click();
-    // A public event needs a cover image to be published.
-    await form.attachImage("cover.png", TINY_PNG);
+    // A public event needs a cover image to be published. Large enough for both resized copies (640 and 1280 px).
+    await form.attachImage("cover.png", solidPng(1600, 900));
     await form.publish();
     await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/);
     const id = new URL(page.url()).pathname.split("/").pop()!;
@@ -121,10 +122,24 @@ test.describe("Event audience", () => {
       // The detail header (the calendar list behind the closing form can briefly show the event's card too).
       await expect(page.getByTestId("event-detail-title")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
       await expect(page.getByTestId("event-public-badge").first()).toBeVisible();
+      // The upload stored both copies next to the cover and flagged the row.
+      const media = await adminClient().from("event_media").select("storage_path, has_variants, width, height").eq("event_id", id);
+      expect(media.data).toHaveLength(1);
+      const cover = media.data![0]!;
+      expect(cover).toMatchObject({ has_variants: true, width: 1600, height: 900 });
+      const name = cover.storage_path.split("/").pop()!;
+      expect(await storedEventObjects(id)).toEqual([name, ...copyNames(name)].sort());
       const context = await browser.newContext();
       const anon = await context.newPage();
       await anon.goto(`/events/${id}`);
       await expect(anon.getByTestId("public-event-detail")).toHaveAttribute("data-event-id", id, { timeout: APP_LOAD_TIMEOUT });
+      // The cover offers the copies through srcset (5-minute signed links, as for the original).
+      const image = anon.getByTestId("public-event-image");
+      await expect(image).toHaveAttribute("srcset", / 640w, .+ 1280w, .+ 1600w$/);
+      await expect(image).toHaveAttribute("sizes", /.+/);
+      const srcset = (await image.getAttribute("srcset"))!;
+      expect(srcset).toContain("/storage/v1/object/sign/event-media/");
+      expect(srcset).toContain(".w640.webp?token=");
       await context.close();
     } finally {
       await deleteEvents([id]);
