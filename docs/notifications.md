@@ -14,7 +14,8 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
 | I am @mentioned in a task note | The mentioned person | `task_note_mention` | `mention` |
 | Requests wait for my review | Each reviewer, one grouped notice | `review_waiting` | `review` |
 | A task I created moves to Blocked or Done (by someone else) | The creator | `task_status_changed` | `task_status` |
-| An assignee writes a note on a task I created | The creator (unless mentioned) | `task_note_added` | `task_note` |
+| Someone writes a note on a task assigned to me | Every assignee except the author; someone also @mentioned gets only the mention | `task_note_added` | `task_note` |
+| An assignee writes a note on a task I created | The creator (unless mentioned, or already told as an assignee) | `task_note_added` | `task_note` |
 | A reminder of a task assigned to me | The assignee (only when reminders are turned on) | `task_reminder` | `task_reminder` |
 | I am invited to a meeting; it changes or is cancelled | The invitees | `meeting_invited` / `meeting_changed` / `meeting_cancelled` | `meeting` |
 | My task or meeting request is decided | The requester | `task_request_accepted` / `_declined`, `meeting_request_approved` / `_declined` | `request_decided` |
@@ -28,9 +29,13 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
 
 - **Locked** (always on, immediate): `task_assigned`, `mention`, `review`. Shown with a disabled switch, no delivery
   choice and a short explanation.
-- **Task reminders** (`task_reminder`): always immediate, never in the daily summary
-  (`20261129090000_task_reminders_immediate.sql`); only the on/off switch is shown (`delivery_locked`).
-- **Changeable**: `task_status`, `task_note`, `meeting`, `request_decided`: on/off, and delivery **Immediately** or
+- **Task reminders** (`task_reminder`) and **task notes** (`task_note`): always immediate, never in the daily summary
+  (`20261129090000_task_reminders_immediate.sql`, `20261129090100_task_note_notices.sql`); only the on/off switch is
+  shown (`delivery_locked`).
+- **Note notices group per task**: while a person's "new note" notice for a task is unread, further notes update it
+  ("3 new notes on: <task>", `payload.count`). Note and mention notices link to `/tasks?task=<id>&note=<note id>`;
+  the panel scrolls to that note and highlights it (`task-note` with `data-highlighted="true"`).
+- **Changeable**: `task_status`, `meeting`, `request_decided`: on/off, and delivery **Immediately** or
   **Daily summary** (`set_notification_setting`; the database refuses locked types and keeps reminders immediate).
 - **Default delivery**: immediately for volunteers, daily summary for Branch Managers, Regional Directors and
   National Coordinators (`notification_default_delivery`).

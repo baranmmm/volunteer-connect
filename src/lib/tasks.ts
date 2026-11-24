@@ -167,7 +167,12 @@ export type TaskFilters = {
   status: TaskStatus | "all";
   priority: TaskPriority | "all";
   assignee: string | "all";
-  branch: string | "all";
+  /**
+   * Branch filter (RD/NC): branch ids and/or REGION_WIDE; empty = all. Region filter (NC): region ids and/or
+   * NATIONAL; empty = all. Both are ignored while "My tasks" is on (it shows every task assigned to the caller).
+   */
+  branches: string[];
+  regions: string[];
   due: "all" | "overdue" | "week" | "none";
   /** true: only archived tasks; false or missing: archived tasks are hidden. */
   archived?: boolean;
@@ -177,9 +182,34 @@ export const DEFAULT_FILTERS: TaskFilters = {
   status: "all",
   priority: "all",
   assignee: "all",
-  branch: "all",
+  branches: [],
+  regions: [],
   due: "all",
 };
+
+/** Branch filter value for region-scope tasks. */
+export const REGION_WIDE = "region-wide";
+/** Region filter value for national tasks. */
+export const NATIONAL = "national";
+
+/** Whether a task passes the branch/region filters (empty filter = all). "My tasks" overrides both. */
+export function matchesScopeFilter(
+  t: Pick<Task, "scope" | "branch_id" | "region_id" | "mine">,
+  f: Pick<TaskFilters, "mine" | "branches" | "regions">,
+) {
+  if (f.mine) return true;
+  const regionOk =
+    f.regions.length === 0 ||
+    (t.scope === "national"
+      ? f.regions.includes(NATIONAL)
+      : !!t.region_id && f.regions.includes(t.region_id));
+  const branchOk =
+    f.branches.length === 0 ||
+    (t.scope === "branch"
+      ? !!t.branch_id && f.branches.includes(t.branch_id)
+      : t.scope === "region" && f.branches.includes(REGION_WIDE));
+  return regionOk && branchOk;
+}
 
 export function filterTasks(tasks: Task[], f: TaskFilters, today: string) {
   return tasks.filter(
@@ -189,7 +219,7 @@ export function filterTasks(tasks: Task[], f: TaskFilters, today: string) {
       (f.status === "all" || t.status === f.status) &&
       (f.priority === "all" || t.priority === f.priority) &&
       (f.assignee === "all" || t.assignees.some((a) => a.id === f.assignee)) &&
-      (f.branch === "all" || (f.branch === "none" ? !t.branch_id : t.branch_id === f.branch)) &&
+      matchesScopeFilter(t, f) &&
       (f.due === "all" ||
         (f.due === "overdue" && isOverdue(t, today)) ||
         (f.due === "none" && !t.due_date) ||
@@ -412,6 +442,110 @@ export function saveTaskView(userId: string | undefined, view: TaskView) {
   if (!userId || typeof window === "undefined") return;
   try {
     window.localStorage.setItem(viewKey(userId), view);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Branch/region filters for people with more than one work scope (RD, NC).
+
+type ScopeSource = {
+  scope: WorkScope;
+  branch_id: string | null;
+  region_id: string | null;
+};
+export type ScopeFilterOptions = {
+  /** [region id or NATIONAL, label (null for NATIONAL: the view translates it)] */
+  regions: [string, string | null][];
+  /** [branch id or REGION_WIDE, label (null for REGION_WIDE)] */
+  branches: [string, string | null][];
+};
+
+/**
+ * Options for the branch/region filters, from the visible tasks and the caller's work scopes (labels from task names
+ * and scope labels). Branch options narrow to the selected regions; "Region-wide" is offered when there is a
+ * region-scope task or scope in them, "National" when there is a national one.
+ */
+export function scopeFilterOptions(
+  tasks: (ScopeSource & { branch: string | null; region: string | null })[],
+  scopes: (ScopeSource & { label: string | null })[],
+  selectedRegions: string[],
+  unnamed: string,
+): ScopeFilterOptions {
+  const regions = new Map<string, string>();
+  const branches = new Map<string, { label: string; region: string | null }>();
+  let national = false;
+  const regionWideIn = new Set<string>();
+  const add = (s: ScopeSource, branchLabel: string | null, regionLabel: string | null) => {
+    if (s.scope === "national") {
+      national = true;
+      return;
+    }
+    if (s.region_id && (regionLabel || !regions.has(s.region_id)))
+      regions.set(s.region_id, regionLabel ?? regions.get(s.region_id) ?? unnamed);
+    if (s.scope === "region" && s.region_id) regionWideIn.add(s.region_id);
+    if (s.scope === "branch" && s.branch_id && (branchLabel || !branches.has(s.branch_id)))
+      branches.set(s.branch_id, {
+        label: branchLabel ?? branches.get(s.branch_id)?.label ?? unnamed,
+        region: s.region_id ?? branches.get(s.branch_id)?.region ?? null,
+      });
+  };
+  for (const s of scopes)
+    add(s, s.scope === "branch" ? s.label : null, s.scope === "region" ? s.label : null);
+  for (const t of tasks) add(t, t.branch, t.region);
+  const byLabel = (a: [string, string], b: [string, string]) => a[1].localeCompare(b[1]);
+  const inRegions = (region: string | null) =>
+    selectedRegions.length === 0 || (!!region && selectedRegions.includes(region));
+  const branchList = [...branches]
+    .filter(([, b]) => inRegions(b.region))
+    .map(([id, b]) => [id, b.label] as [string, string])
+    .sort(byLabel);
+  const regionWide = [...regionWideIn].some(inRegions);
+  return {
+    regions: [
+      ...[...regions].sort(byLabel),
+      ...(national ? [[NATIONAL, null] as [string, null]] : []),
+    ],
+    branches: [...branchList, ...(regionWide ? [[REGION_WIDE, null] as [string, null]] : [])],
+  };
+}
+
+/** The selection limited to values that are still offered (a remembered branch that is gone no longer filters). */
+export function effectiveScopeSelection(selected: string[], options: [string, unknown][]) {
+  const offered = new Set(options.map(([v]) => v));
+  return selected.filter((v) => offered.has(v));
+}
+
+// The chosen branch/region filters (per user, per browser). Storage may be unavailable: then nothing is filtered.
+export type RememberedScopeFilter = { branches: string[]; regions: string[] };
+const EMPTY_SCOPE_FILTER: RememberedScopeFilter = { branches: [], regions: [] };
+const filtersKey = (userId: string) => `dsvh-tasks-filters:${userId}`;
+const filterValues = (v: unknown) =>
+  Array.isArray(v)
+    ? v
+        .filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= 64)
+        .slice(0, 200)
+    : [];
+export function readTaskScopeFilter(userId: string | undefined): RememberedScopeFilter {
+  if (!userId || typeof window === "undefined") return EMPTY_SCOPE_FILTER;
+  try {
+    const raw = window.localStorage.getItem(filtersKey(userId));
+    if (!raw) return EMPTY_SCOPE_FILTER;
+    const v = JSON.parse(raw) as { branches?: unknown; regions?: unknown } | null;
+    if (!v || typeof v !== "object") return EMPTY_SCOPE_FILTER;
+    return { branches: filterValues(v.branches), regions: filterValues(v.regions) };
+  } catch {
+    return EMPTY_SCOPE_FILTER;
+  }
+}
+export function saveTaskScopeFilter(userId: string | undefined, f: RememberedScopeFilter) {
+  if (!userId || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      filtersKey(userId),
+      JSON.stringify({ branches: f.branches, regions: f.regions }),
+    );
   } catch {
     /* storage unavailable */
   }

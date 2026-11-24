@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 
 import { PrivacyPreferences } from "@/components/app/PrivacyPreferences";
 import { NotificationSettings } from "@/components/app/NotificationSettings";
+import { ChangePassword } from "@/components/app/ChangePassword";
 import {
   AccountDeletionDialog,
   FollowerDeleteDialog,
@@ -172,6 +173,7 @@ function ProfilePage() {
           {busy ? t("common.saving") : t("common.save")}
         </Button>
       </form>
+      <ChangePassword />
       <FollowedBranches />
       {nc && (
         <section

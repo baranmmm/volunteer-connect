@@ -240,6 +240,88 @@ describe("task reminders are always immediate", () => {
     }));
 });
 
+describe("task note notices", () => {
+  it("every assignee hears about a note (never the author); a mentioned assignee gets only the mention; notes group while unread", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const t = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Hall",
+        assignee_ids: [ids.vol1, ids.vol1b, ids.bm1],
+      });
+      // The Branch Manager (an assignee and the creator) writes and mentions vol1b.
+      const first = await one<string>("SELECT public.add_task_note($1, 'Booked', $2::jsonb) v", [
+        t,
+        JSON.stringify([ids.vol1b]),
+      ]);
+      const vol1 = await stored(ids.vol1, "task_note_added");
+      expect(vol1).toHaveLength(1);
+      expect(vol1[0]).toMatchObject({
+        held: false,
+        payload: expect.objectContaining({ count: 1, note_id: first }),
+      });
+      expect(await stored(ids.vol1b, "task_note_added")).toEqual([]);
+      expect(await stored(ids.vol1b, "task_note_mention")).toHaveLength(1);
+      expect(await stored(ids.bm1, "task_note_added")).toEqual([]);
+      await as(null);
+      expect(await one("SELECT link v FROM notifications WHERE id=$1", [vol1[0]!.id])).toBe(
+        `/tasks?task=${t}&note=${first}`,
+      );
+      // Two more notes while vol1's notice is unread: the same notice now says 3.
+      await as(ids.bm1);
+      await one("SELECT public.add_task_note($1, 'Paid', '[]'::jsonb) v", [t]);
+      await as(ids.vol1b);
+      const third = await one<string>(
+        "SELECT public.add_task_note($1, 'Keys collected', '[]'::jsonb) v",
+        [t],
+      );
+      const grouped = await stored(ids.vol1, "task_note_added");
+      expect(grouped.map((n) => n.id)).toEqual([vol1[0]!.id]);
+      expect(grouped[0]!.payload).toMatchObject({ count: 3, note_id: third });
+      // The creator (also an assignee, and a manager who defaults to the daily summary) hears at once, once.
+      const creator = await stored(ids.bm1, "task_note_added");
+      expect(creator).toHaveLength(1);
+      expect(creator[0]).toMatchObject({
+        held: false,
+        payload: expect.objectContaining({ count: 1 }),
+      });
+      // Read: the next note starts a new notice.
+      await as(null);
+      await db.exec(`UPDATE notifications SET read_at = now() WHERE user_id = '${ids.vol1}'`);
+      await as(ids.bm1);
+      await one("SELECT public.add_task_note($1, 'One more', '[]'::jsonb) v", [t]);
+      // Same transaction, same now(): compare without order.
+      const counts = (await stored(ids.vol1, "task_note_added")).map((n) =>
+        Number(n.payload["count"]),
+      );
+      expect(counts.sort()).toEqual([1, 3]);
+    }));
+
+  it("the creator who is not an assignee still hears about notes by assignees; turned off, nothing", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const t = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Tea",
+        assignee_ids: [ids.vol1],
+      });
+      await as(ids.vol1);
+      await one("SELECT public.add_task_note($1, 'Bought', '[]'::jsonb) v", [t]);
+      expect((await stored(ids.bm1, "task_note_added")).map((n) => n.held)).toEqual([false]);
+      await as(ids.bm1);
+      expect(
+        await one("SELECT public.set_notification_setting('task_note', false, 'digest') v"),
+      ).toMatchObject({ enabled: false, delivery: "immediate" });
+      await as(null);
+      await db.exec(`DELETE FROM notifications WHERE user_id = '${ids.bm1}'`);
+      await as(ids.vol1);
+      await one("SELECT public.add_task_note($1, 'Milk too', '[]'::jsonb) v", [t]);
+      expect(await stored(ids.bm1, "task_note_added")).toEqual([]);
+    }));
+});
+
 describe("requests waiting for review", () => {
   it("one grouped notice per reviewer, updated in place, gone when nothing waits; counts include applications", () =>
     tx(async () => {

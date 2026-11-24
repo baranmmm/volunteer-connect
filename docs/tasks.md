@@ -77,8 +77,15 @@ nothing.
   (`TASK_MINE`, `TASK_OTHER`, `TASK_OTHER_TEXT` in `task-status-colors.ts`).
 - **Scope labels.** Cards, list rows, calendar items (screen-reader text and tooltip) and the panel show the scope
   (branch, region or national) only to someone with more than one scope (Regional Directors). With one scope every
-  task comes from there, so the labels are hidden. The list's branch filter appears only when the tasks come from more
-  than one branch.
+  task comes from there, so the labels are hidden.
+- **Branch and region filters (RD, NC).** Shown only to someone with more than one scope, above every view (Kanban,
+  list and calendar). Branch is a multi-select of the branches (from the visible tasks and the work scopes) plus
+  "Region-wide" (region-scope tasks); National Coordinators also get Region (regions plus "National" for national
+  tasks), and the branch options narrow to the chosen regions. Nothing chosen means all; a task must match both. The
+  choice is stored per user in `localStorage` (`dsvh-tasks-filters:<user id>`, try/catch; a remembered value that is no
+  longer offered stops filtering). "My tasks" shows every task assigned to you in any branch, region or scope: while
+  it is on, both filters are ignored, shown disabled with a short hint, and come back when it is turned off
+  (`matchesScopeFilter`, `scopeFilterOptions` in `src/lib/tasks.ts`). Branch Managers and volunteers see no such filter.
 - **Archive.** Done tasks can be archived (panel button, or "Archive all done" in the Kanban Done column header, in
   the Done group of the list grouped by status, or in the list filter bar; it archives the shown done tasks you may
   change and reports how many). Archived tasks are hidden from Kanban, list and calendar. The "Archived" chip shows
@@ -182,7 +189,11 @@ All kebab-case, never derived from text. Lists expose `data-task-id` / `data-req
 
 - **Page**:
   - Header and views: `tasks-new`, `tasks-view-kanban|list|calendar` (aria-pressed), `tasks-filter-mine` and `tasks-filter-archived` (aria-pressed), `tasks-empty` (with `tasks-empty-show-all`)
-  - List filters: `tasks-filter-status|priority|assignee|branch|due`, `tasks-sort`, `tasks-group` (none, status, assignee, mine), `tasks-archive-done` (data-count)
+  - Branch/region filters (RD, NC; every view): `tasks-filter-branches` (opener, data-count; data-disabled and
+    aria-disabled while My tasks is on) with `tasks-filter-branches-option` (data-value = branch id or `region-wide`,
+    aria-checked) and `tasks-filter-branches-all`; `tasks-filter-regions` (NC) with `tasks-filter-regions-option`
+    (data-value = region id or `national`) and `tasks-filter-regions-all`; `tasks-filter-scope-hint` (My tasks on)
+  - List filters: `tasks-filter-status|priority|assignee|due`, `tasks-sort`, `tasks-group` (none, status, assignee, mine), `tasks-archive-done` (data-count)
 - **Kanban**:
   - Board: `tasks-kanban`, `tasks-kanban-column` (data-status), `tasks-kanban-count`, `tasks-kanban-archive-done` (data-count, Done column)
   - Cards: `task-card` (data-task-id, data-status, data-overdue, data-mine, data-archived), `task-card-open`, `task-card-mine`, `task-card-scope` (data-scope; more than one scope only), `task-card-notes` (data-count), `task-card-assignees`, `task-card-status` (the keyboard alternative to dragging), `task-card-unarchive`, `task-due` (data-overdue)
@@ -217,3 +228,24 @@ All kebab-case, never derived from text. Lists expose `data-task-id` / `data-req
   - Dashboard card: `dashboard-notifications`, `dashboard-notification` (data-notification-id, data-kind, data-unread), `dashboard-notifications-mark-all`, `dashboard-notifications-empty`
   - Nav badges (data-count): `nav-tasks-badge`, `nav-requests-badge`, `mobile-nav-tasks-badge`, `mobile-nav-requests-badge`
   - Profile: `profile-task-reminder-emails`
+
+## Profile: change password (and the logo link)
+
+Not task-specific, but documented here with the other Profile sections.
+
+- **Change password** (`src/components/app/ChangePassword.tsx`, `src/lib/change-password.ts`): a collapsed section
+  with the current, new and confirm fields (show/hide toggles), the sign-up strength rule (at least 8 characters; Supabase
+  Auth checks again) and "Sign out of other devices" (on by default).
+  - The current password is checked by signing in with it on a separate, throwaway Supabase client (no storage), so
+    the app's own session is never replaced.
+  - People without an authenticator: the new password is set on that fresh session (this also satisfies Supabase's
+    "Secure password change", which needs a sign-in within the last 24 hours). National Coordinators: it is set on
+    their own aal2 (MFA) session; an aal1 session cannot change it.
+  - The throwaway session is always signed out; with the option on, `signOut({ scope: "others" })` ends every other
+    session. Passwords are never logged or shown; e2e types them only into fields whose test id contains `password`.
+  - Test ids: `profile-password`, `profile-password-toggle` (aria-expanded), `profile-password-current`,
+    `profile-password-new`, `profile-password-confirm` (each with `-error`), `profile-password-sign-out-others`,
+    `profile-password-submit`, `profile-password-cancel`, `profile-password-error`.
+- **Logo link** (`src/components/app/LogoLink.tsx`): the logo and title in the sidebar, the mobile header, the public
+  pages and the privacy page link home: `/dashboard` when signed in, `/` when signed out; accessible name "Go to home".
+  Test id `logo-home-link` (`data-target`).

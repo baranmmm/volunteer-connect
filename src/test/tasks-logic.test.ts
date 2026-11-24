@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_FILTERS,
   DEFAULT_REMINDERS,
+  NATIONAL,
   NO_REMINDERS,
+  REGION_WIDE,
+  effectiveScopeSelection,
+  matchesScopeFilter,
+  readTaskScopeFilter,
+  saveTaskScopeFilter,
+  scopeFilterOptions,
   archivableDoneIds,
   buildReminders,
   isSingleScope,
@@ -92,8 +99,7 @@ describe("filterTasks", () => {
     expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, assignee: bob.id }, TODAY))).toEqual([
       2, 4,
     ]);
-    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, branch: "none" }, TODAY))).toEqual([3]);
-    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, branch: branchA }, TODAY))).toEqual([
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, branches: [branchA] }, TODAY))).toEqual([
       1, 2, 4, 5,
     ]);
   });
@@ -370,5 +376,129 @@ describe("isSingleScope", () => {
     expect(isSingleScope([])).toBe(false);
     expect(isSingleScope(undefined)).toBe(false);
     expect(isSingleScope([{ scope: "region" }, { scope: "branch" }])).toBe(false);
+  });
+});
+
+describe("branch and region filters (RD, NC)", () => {
+  const regionN = id(301);
+  const regionS = id(302);
+  const branchB = id(202);
+  const branchC = id(203);
+  const list = [
+    task(21, { region_id: regionN, region: "North" }),
+    task(22, { branch_id: branchB, branch: "Branch B", region_id: regionN, region: "North" }),
+    task(23, {
+      scope: "region",
+      branch_id: null,
+      branch: null,
+      region_id: regionN,
+      region: "North",
+    }),
+    task(24, {
+      branch_id: branchC,
+      branch: "Branch C",
+      region_id: regionS,
+      region: "South",
+      mine: true,
+    }),
+    task(25, { scope: "national", branch_id: null, branch: null }),
+  ];
+  const f = (over: Partial<typeof DEFAULT_FILTERS>) => ({ ...DEFAULT_FILTERS, ...over });
+
+  it("filters by branches and the region-wide option", () => {
+    expect(ids(filterTasks(list, f({ branches: [branchA] }), TODAY))).toEqual([21]);
+    expect(ids(filterTasks(list, f({ branches: [branchA, REGION_WIDE] }), TODAY))).toEqual([
+      21, 23,
+    ]);
+    expect(ids(filterTasks(list, f({ branches: [REGION_WIDE] }), TODAY))).toEqual([23]);
+  });
+  it("filters by regions with the national option, and needs both filters to match", () => {
+    expect(ids(filterTasks(list, f({ regions: [regionS] }), TODAY))).toEqual([24]);
+    expect(ids(filterTasks(list, f({ regions: [NATIONAL] }), TODAY))).toEqual([25]);
+    expect(ids(filterTasks(list, f({ regions: [regionN, NATIONAL] }), TODAY))).toEqual([
+      21, 22, 23, 25,
+    ]);
+    expect(ids(filterTasks(list, f({ regions: [regionN], branches: [branchB] }), TODAY))).toEqual([
+      22,
+    ]);
+    expect(ids(filterTasks(list, f({ regions: [regionS], branches: [branchB] }), TODAY))).toEqual(
+      [],
+    );
+  });
+  it("My tasks overrides the branch and region filters", () => {
+    expect(
+      ids(filterTasks(list, f({ mine: true, branches: [branchA], regions: [regionN] }), TODAY)),
+    ).toEqual([24]);
+    expect(
+      matchesScopeFilter(list[3]!, { mine: true, branches: [branchA], regions: [NATIONAL] }),
+    ).toBe(true);
+    expect(matchesScopeFilter(list[3]!, { mine: false, branches: [branchA], regions: [] })).toBe(
+      false,
+    );
+  });
+  it("builds options from tasks and work scopes, narrowing branches to the chosen regions", () => {
+    const scopes = [
+      { scope: "region" as const, branch_id: null, region_id: regionN, label: "North region" },
+      { scope: "branch" as const, branch_id: id(204), region_id: regionN, label: "Branch D" },
+      { scope: "national" as const, branch_id: null, region_id: null, label: null },
+    ];
+    const all = scopeFilterOptions(list, scopes, [], "?");
+    expect(all.regions).toEqual([
+      [regionN, "North"],
+      [regionS, "South"],
+      [NATIONAL, null],
+    ]);
+    expect(all.branches.map(([v]) => v)).toEqual([branchA, branchB, branchC, id(204), REGION_WIDE]);
+    const south = scopeFilterOptions(list, scopes, [regionS], "?");
+    expect(south.branches).toEqual([[branchC, "Branch C"]]);
+    const national = scopeFilterOptions(list, scopes, [NATIONAL], "?");
+    expect(national.branches).toEqual([]);
+    // An RD without national scope or tasks gets no National option.
+    expect(scopeFilterOptions(list.slice(0, 3), scopes.slice(0, 2), [], "?").regions).toEqual([
+      [regionN, "North"],
+    ]);
+  });
+  it("drops remembered values that are no longer offered", () => {
+    expect(effectiveScopeSelection([branchA, "gone"], [[branchA, "A"]])).toEqual([branchA]);
+    expect(effectiveScopeSelection(["gone"], [])).toEqual([]);
+  });
+});
+
+describe("readTaskScopeFilter / saveTaskScopeFilter", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+  it("remembers the branch and region choice per user", () => {
+    expect(readTaskScopeFilter("u1")).toEqual({ branches: [], regions: [] });
+    saveTaskScopeFilter("u1", { branches: [branchA, REGION_WIDE], regions: [NATIONAL] });
+    expect(localStorage.getItem("dsvh-tasks-filters:u1")).not.toBeNull();
+    expect(readTaskScopeFilter("u1")).toEqual({
+      branches: [branchA, REGION_WIDE],
+      regions: [NATIONAL],
+    });
+    expect(readTaskScopeFilter("u2")).toEqual({ branches: [], regions: [] });
+    expect(readTaskScopeFilter(undefined)).toEqual({ branches: [], regions: [] });
+  });
+  it("ignores malformed stored values", () => {
+    localStorage.setItem("dsvh-tasks-filters:u1", "{not json");
+    expect(readTaskScopeFilter("u1")).toEqual({ branches: [], regions: [] });
+    localStorage.setItem(
+      "dsvh-tasks-filters:u1",
+      JSON.stringify({ branches: "x", regions: [1, "r", ""] }),
+    );
+    expect(readTaskScopeFilter("u1")).toEqual({ branches: [], regions: ["r"] });
+    localStorage.setItem("dsvh-tasks-filters:u1", "null");
+    expect(readTaskScopeFilter("u1")).toEqual({ branches: [], regions: [] });
+  });
+  it("shows everything when storage throws", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    expect(() => saveTaskScopeFilter("u1", { branches: [branchA], regions: [] })).not.toThrow();
+    expect(readTaskScopeFilter("u1")).toEqual({ branches: [], regions: [] });
   });
 });

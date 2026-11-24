@@ -36,7 +36,8 @@
       "inactive": "Inactive"
     },
     "hubName": "Volunteer Hub",
-    "opensInNewTab": "(opens in a new tab)"
+    "opensInNewTab": "(opens in a new tab)",
+    "goHomeLabel": "Go to home"
   },
   "navigation": {
     "main": "Main",
@@ -265,7 +266,21 @@
     "followerDeleteText": "Your account is deleted straight away and cannot be restored.",
     "typeYourName": "Type your full name to confirm: {{name}}",
     "deleteNow": "Delete my account",
-    "followerDeleted": "Your account has been deleted."
+    "followerDeleted": "Your account has been deleted.",
+    "password": {
+      "title": "Change password",
+      "current": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "signOutOthers": "Sign out of other devices",
+      "submit": "Change password",
+      "changed": "Your password was changed.",
+      "changedSignedOut": "Your password was changed and your other devices were signed out.",
+      "errors": {
+        "currentRequired": "Enter your current password.",
+        "currentWrong": "Your current password is not correct."
+      }
+    }
   },
   "history": {
     "title": "History",
@@ -377,7 +392,9 @@
     "taskNoteMentionHidden": "Someone you mentioned cannot see this task.",
     "taskTooMany": "Too many tasks were selected at once.",
     "taskChooseAssignee": "Choose at least one person.",
-    "notificationLocked": "Assignments, mentions and requests waiting for you are always sent at once."
+    "notificationLocked": "Assignments, mentions and requests waiting for you are always sent at once.",
+    "passwordSame": "Choose a new password that is different from your current one.",
+    "passwordReauth": "For your security, sign out and sign in again, then change your password."
   },
   "events": {
     "title": "Calendar & Events",
@@ -1417,7 +1434,7 @@
       "meeting_request_declined": "{{actor}} declined your meeting request “{{title}}”. Reason: {{reason}}",
       "other": "Update about “{{title}}”",
       "task_note_mention": "{{actor}} mentioned you in a note on “{{title}}”",
-      "task_note_added": "{{actor}} added a note to “{{title}}”",
+      "task_note_added": "{{actor}} added a note to: “{{title}}”",
       "review_waiting_one": "{{count}} request is waiting for you",
       "review_waiting_other": "{{count}} requests are waiting for you",
       "review_waiting_branch_one": "{{count}} request from {{branches}} is waiting for you",
@@ -1425,7 +1442,8 @@
       "review_waiting_branches_one": "{{count}} request from {{branches}} is waiting for you",
       "review_waiting_branches_other": "{{count}} requests from {{branches}} are waiting for you",
       "daily_digest_one": "Your daily summary: {{count}} update",
-      "daily_digest_other": "Your daily summary: {{count}} updates"
+      "daily_digest_other": "Your daily summary: {{count}} updates",
+      "task_note_added_many": "{{count}} new notes on: “{{title}}”"
     },
     "taskStatus": {
       "todo": "To do",
@@ -1531,7 +1549,6 @@
     "filters": {
       "all": "All",
       "branch": "Branch",
-      "noBranch": "No branch (region or national)",
       "dueOverdue": "Overdue",
       "dueWeek": "Due in the next 7 days",
       "dueNone": "No due date",
@@ -1550,7 +1567,14 @@
         "mine": "Mine first"
       },
       "groupMine": "Assigned to you",
-      "groupOthers": "Other tasks"
+      "groupOthers": "Other tasks",
+      "branches": "Branch",
+      "regions": "Region",
+      "regionWide": "Region-wide",
+      "national": "National",
+      "selectedCount_one": "{{count}} selected",
+      "selectedCount_other": "{{count}} selected",
+      "scopeHint": "My tasks shows all your tasks in every branch"
     },
     "calendar": {
       "previous": "Previous month",

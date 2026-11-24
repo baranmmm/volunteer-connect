@@ -8,12 +8,18 @@ import { z } from "zod";
 import { useAuth } from "@/lib/auth";
 import {
   DEFAULT_FILTERS,
+  NATIONAL,
+  REGION_WIDE,
   TASK_PRIORITIES,
   TASK_STATUSES,
   filterTasks,
+  effectiveScopeSelection,
   londonDay,
+  readTaskScopeFilter,
   readTaskView,
+  saveTaskScopeFilter,
   saveTaskView,
+  scopeFilterOptions,
   sortTasks,
   type TaskFilters,
   type TaskGroup,
@@ -26,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { TaskPanel } from "@/components/tasks/TaskPanel";
+import { TaskScopeFilter } from "@/components/tasks/TaskScopeFilter";
 import {
   ArchiveDoneButton,
   CalendarView,
@@ -35,13 +42,18 @@ import {
 import { selectClass } from "@/components/tasks/task-display";
 import { useWorkScopes } from "@/components/work/use-work-scopes";
 
-const tasksSearch = z.object({ task: z.string().uuid().optional().catch(undefined) });
+const tasksSearch = z.object({
+  task: z.string().uuid().optional().catch(undefined),
+  /** A note to highlight in the open task (links from note notices). */
+  note: z.string().uuid().optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/_app/tasks")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>): { task?: string } => {
+  validateSearch: (search: Record<string, unknown>): { task?: string; note?: string } => {
     const parsed = tasksSearch.parse(search);
-    return parsed.task ? { task: parsed.task } : {};
+    if (!parsed.task) return {};
+    return parsed.note ? { task: parsed.task, note: parsed.note } : { task: parsed.task };
   },
   head: () => pageHead("Tasks", "Plan and follow up Dialogue Society tasks."),
   component: TasksPage,
@@ -54,7 +66,7 @@ function TasksPage() {
   const { session } = useAuth();
   const uid = session?.user.id;
   const navigate = useNavigate();
-  const { task: openTask } = Route.useSearch();
+  const { task: openTask, note: highlightNote } = Route.useSearch();
   const fetchTasks = useServerFn(listTasks);
   const tasks = useQuery({ queryKey: ["tasks", uid], queryFn: () => fetchTasks(), enabled: !!uid });
   const work = useWorkScopes();
@@ -66,20 +78,63 @@ function TasksPage() {
     saveTaskView(uid, v);
   };
   // Every task the user can see by default; "My tasks" starts off (their own tasks are marked instead).
-  const [filters, setFilters] = useState<TaskFilters>(DEFAULT_FILTERS);
+  // The branch/region choice is remembered per user (applies to every view).
+  const [filters, setFilters] = useState<TaskFilters>(() => ({
+    ...DEFAULT_FILTERS,
+    ...readTaskScopeFilter(uid),
+  }));
   const [sort, setSort] = useState<TaskSort>("due");
   const [group, setGroup] = useState<TaskGroup>("none");
   const [creating, setCreating] = useState(false);
   const today = londonDay();
   const all = useMemo(() => tasks.data ?? [], [tasks.data]);
 
+  // Branch/region filters only for someone who works in more than one place (RD, NC). Options come from the visible
+  // tasks and the work scopes; branch options narrow to the chosen regions, and a remembered value that is no longer
+  // offered stops filtering.
+  const scopeFilters = showScope;
+  const regionOptionsRaw = useMemo(
+    () => scopeFilterOptions(all, work.scopes, [], t("common.unnamed")).regions,
+    [all, work.scopes, t],
+  );
+  const regions = scopeFilters ? effectiveScopeSelection(filters.regions, regionOptionsRaw) : [];
+  const regionsKey = regions.join(",");
+  const branchOptionsRaw = useMemo(
+    () =>
+      scopeFilterOptions(
+        all,
+        work.scopes,
+        regionsKey ? regionsKey.split(",") : [],
+        t("common.unnamed"),
+      ).branches,
+    [all, work.scopes, regionsKey, t],
+  );
+  const branches = scopeFilters ? effectiveScopeSelection(filters.branches, branchOptionsRaw) : [];
+  const branchesKey = branches.join(",");
+  const showRegionFilter =
+    scopeFilters &&
+    (work.scopes.some((s) => s.scope === "national") || regionOptionsRaw.length > 1);
+  const showBranchFilter = scopeFilters && branchOptionsRaw.length > 0;
+  const regionOptions: [string, string][] = regionOptionsRaw.map(([v, text]) => [
+    v,
+    v === NATIONAL ? t("tasks.filters.national") : (text ?? ""),
+  ]);
+  const branchOptions: [string, string][] = branchOptionsRaw.map(([v, text]) => [
+    v,
+    v === REGION_WIDE ? t("tasks.filters.regionWide") : (text ?? ""),
+  ]);
+
   const shown = useMemo(() => {
+    const scope = {
+      branches: branchesKey ? branchesKey.split(",") : [],
+      regions: regionsKey ? regionsKey.split(",") : [],
+    };
     const active: TaskFilters =
       view === "list"
-        ? filters
-        : { ...DEFAULT_FILTERS, mine: filters.mine, archived: !!filters.archived };
+        ? { ...filters, ...scope }
+        : { ...DEFAULT_FILTERS, ...scope, mine: filters.mine, archived: !!filters.archived };
     return sortTasks(filterTasks(all, active, today), view === "list" ? sort : "due");
-  }, [all, filters, view, sort, today]);
+  }, [all, filters, view, sort, today, branchesKey, regionsKey]);
 
   const assigneeOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -87,22 +142,20 @@ function TasksPage() {
       for (const a of x.assignees) map.set(a.id, a.full_name ?? t("common.formerMember"));
     return [...map].sort((a, b) => a[1].localeCompare(b[1]));
   }, [all, t]);
-  const branchOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const x of all) if (x.branch_id) map.set(x.branch_id, x.branch ?? t("common.unnamed"));
-    return [...map].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [all, t]);
-  const hasNoBranch = all.some((x) => !x.branch_id);
-  // The branch filter only helps when the tasks come from more than one place.
-  const showBranchFilter = branchOptions.length + (hasNoBranch ? 1 : 0) > 1;
 
   const open = (id: string) => void navigate({ to: "/tasks", search: { task: id } });
   const close = () => void navigate({ to: "/tasks", search: {} });
   const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
+  const setScope = (key: "branches" | "regions", values: string[]) =>
+    setFilters((f) => {
+      const next = { ...f, [key]: values };
+      saveTaskScopeFilter(uid, { branches: next.branches, regions: next.regions });
+      return next;
+    });
 
   const filterSelect = (
-    key: "status" | "priority" | "assignee" | "branch" | "due",
+    key: "status" | "priority" | "assignee" | "due",
     label: string,
     options: [string, string][],
   ) => (
@@ -179,6 +232,41 @@ function TasksPage() {
           </Button>
         </div>
       </div>
+      {(showRegionFilter || showBranchFilter) && (
+        <div className="flex min-w-0 flex-wrap items-end gap-3">
+          {showRegionFilter && (
+            <TaskScopeFilter
+              testId="tasks-filter-regions"
+              label={t("tasks.filters.regions")}
+              options={regionOptions}
+              selected={regions}
+              onChange={(v) => setScope("regions", v)}
+              disabled={filters.mine}
+              describedBy={filters.mine ? "tasks-filter-scope-hint" : undefined}
+            />
+          )}
+          {showBranchFilter && (
+            <TaskScopeFilter
+              testId="tasks-filter-branches"
+              label={t("tasks.filters.branches")}
+              options={branchOptions}
+              selected={branches}
+              onChange={(v) => setScope("branches", v)}
+              disabled={filters.mine}
+              describedBy={filters.mine ? "tasks-filter-scope-hint" : undefined}
+            />
+          )}
+          {filters.mine && (
+            <p
+              id="tasks-filter-scope-hint"
+              data-testid="tasks-filter-scope-hint"
+              className="min-w-0 pb-3 text-sm text-muted-foreground"
+            >
+              {t("tasks.filters.scopeHint")}
+            </p>
+          )}
+        </div>
+      )}
       {view === "list" && (
         <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {filterSelect(
@@ -192,13 +280,6 @@ function TasksPage() {
             TASK_PRIORITIES.map((p) => [p, t(`tasks.priority.${p}`)]),
           )}
           {filterSelect("assignee", t("tasks.form.assignees"), assigneeOptions)}
-          {showBranchFilter &&
-            filterSelect("branch", t("tasks.filters.branch"), [
-              ...branchOptions,
-              ...(hasNoBranch
-                ? ([["none", t("tasks.filters.noBranch")]] as [string, string][])
-                : []),
-            ])}
           {filterSelect("due", t("tasks.form.dueDate"), [
             ["overdue", t("tasks.filters.dueOverdue")],
             ["week", t("tasks.filters.dueWeek")],
@@ -301,7 +382,7 @@ function TasksPage() {
       ) : (
         <CalendarView tasks={shown} today={today} onOpen={open} showScope={showScope} />
       )}
-      <TaskPanel taskId={openTask ?? null} onClose={close} />
+      <TaskPanel taskId={openTask ?? null} highlightNote={highlightNote} onClose={close} />
       <TaskFormDialog open={creating} onClose={() => setCreating(false)} onSaved={open} />
     </div>
   );

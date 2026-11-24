@@ -26,7 +26,16 @@ import { useWorkScopes } from "@/components/work/use-work-scopes";
 import { formatDay, scopeText, selectClass } from "./task-display";
 
 /** The task detail side panel (full width on phones). `taskId` null closes it. */
-export function TaskPanel({ taskId, onClose }: { taskId: string | null; onClose: () => void }) {
+export function TaskPanel({
+  taskId,
+  highlightNote,
+  onClose,
+}: {
+  taskId: string | null;
+  /** A note to highlight and scroll to (links from note notices). */
+  highlightNote?: string | undefined;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   return (
     <Sheet open={!!taskId} onOpenChange={(v) => !v && onClose()}>
@@ -38,7 +47,7 @@ export function TaskPanel({ taskId, onClose }: { taskId: string | null; onClose:
         className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-lg"
       >
         {taskId ? (
-          <PanelBody key={taskId} taskId={taskId} onClose={onClose} />
+          <PanelBody key={taskId} taskId={taskId} highlightNote={highlightNote} onClose={onClose} />
         ) : (
           <SheetTitle className="sr-only">{t("tasks.panel.title")}</SheetTitle>
         )}
@@ -47,7 +56,15 @@ export function TaskPanel({ taskId, onClose }: { taskId: string | null; onClose:
   );
 }
 
-function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void }) {
+function PanelBody({
+  taskId,
+  highlightNote,
+  onClose,
+}: {
+  taskId: string;
+  highlightNote?: string | undefined;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const fetchTask = useServerFn(getTask);
   const query = useQuery({
@@ -81,7 +98,7 @@ function PanelBody({ taskId, onClose }: { taskId: string; onClose: () => void })
         <p className="text-muted-foreground">{t("tasks.panel.notFoundText")}</p>
       </div>
     );
-  return <PanelDetail task={query.data} onClose={onClose} />;
+  return <PanelDetail task={query.data} highlightNote={highlightNote} onClose={onClose} />;
 }
 
 function Row({ label, children, testId }: { label: string; children: ReactNode; testId?: string }) {
@@ -96,7 +113,15 @@ function Row({ label, children, testId }: { label: string; children: ReactNode; 
   );
 }
 
-function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void }) {
+function PanelDetail({
+  task,
+  highlightNote,
+  onClose,
+}: {
+  task: TaskDetail;
+  highlightNote?: string | undefined;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -324,7 +349,7 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
           )}
         </div>
       )}
-      <TaskNotes taskId={task.id} canWrite={task.can_set_status} />
+      <TaskNotes taskId={task.id} canWrite={task.can_set_status} highlightId={highlightNote} />
       {task.can_edit && (
         <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row">
           <Button

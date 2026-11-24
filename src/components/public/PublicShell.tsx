@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Logo } from "@/components/app/Logo";
+import { LogoLink } from "@/components/app/LogoLink";
 import { useAuth } from "@/lib/auth";
 
 /** Layout of the signed-out public pages (/events, /events/:id): no member navigation, a privacy notice link. */
@@ -12,9 +12,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link to="/events" aria-label={t("publicEvents.title")}>
-            <Logo size="sm" />
-          </Link>
+          <LogoLink size="sm" />
           <nav aria-label={t("publicEvents.navLabel")} className="flex items-center gap-4 text-sm">
             <Link
               to="/events"
