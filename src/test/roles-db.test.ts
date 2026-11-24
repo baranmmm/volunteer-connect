@@ -268,10 +268,19 @@ describe("sign-up and followers", () => {
 });
 
 describe("volunteer applications", () => {
+  const HELP = "I would like to help plan iftar dinners and welcome guests.";
+  const answers = (branch: string, extra: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      branch_id: branch,
+      motivation: HELP,
+      time_commitment: "few_hours_month",
+      commitment: true,
+      ...extra,
+    });
   const submit = async (who: Who, branch = ids.b1) => {
     await as(who);
     return val<string>("SELECT public.submit_volunteer_application($1::jsonb)", [
-      JSON.stringify({ branch_id: branch, motivation: "I want to help", phone: "0123" }),
+      answers(branch, { phone: "0123" }),
     ]);
   };
 
@@ -281,13 +290,13 @@ describe("volunteer applications", () => {
       const app = await submit("f1");
       await fails(
         "SELECT public.submit_volunteer_application($1::jsonb)",
-        [JSON.stringify({ branch_id: ids.b1, motivation: "Again" })],
+        [answers(ids.b1)],
         "You already have an open application",
       );
       await as("vol1");
       await fails(
         "SELECT public.submit_volunteer_application($1::jsonb)",
-        [JSON.stringify({ branch_id: ids.b1, motivation: "x" })],
+        [answers(ids.b1)],
         "Only followers can apply",
       );
       expect((await db.query("SELECT id FROM volunteer_applications")).rows).toEqual([]);
