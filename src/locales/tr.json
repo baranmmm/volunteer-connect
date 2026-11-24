@@ -89,7 +89,7 @@
     "creatingAccount": "Hesap oluşturuluyor…",
     "haveAccount": "Zaten hesabınız var mı? Giriş yapın",
     "checkEmailTitle": "E-postanızı kontrol edin",
-    "checkEmailText": "E-posta adresinizi doğrulamanız için size bir bağlantı gönderdik. Doğrulamanın ardından Şube Yöneticiniz hesabınızı inceleyecektir.",
+    "checkEmailText": "E-posta adresini doğrulaman için sana bir bağlantı gönderdik. Doğruladıktan sonra giriş yapabilirsin.",
     "backToSignIn": "Girişe dönün",
     "resetTitle": "Şifrenizi sıfırlayın",
     "resetIntro": "E-posta adresinizi girin, size bir bağlantı gönderelim.",

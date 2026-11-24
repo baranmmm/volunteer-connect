@@ -89,7 +89,7 @@
     "creatingAccount": "Creating account…",
     "haveAccount": "Already have an account? Sign in",
     "checkEmailTitle": "Check your email",
-    "checkEmailText": "We've sent you a link to confirm your email address. Once confirmed, your Branch Manager will review your account.",
+    "checkEmailText": "We've sent you a link to confirm your email address. Once it is confirmed, you can sign in.",
     "backToSignIn": "Back to sign in",
     "resetTitle": "Reset your password",
     "resetIntro": "Enter your email and we'll send you a link.",
