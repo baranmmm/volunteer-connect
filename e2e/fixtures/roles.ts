@@ -18,7 +18,6 @@ import { FRESH_PREFIX, readSeedState, type BranchName, type RoleKey, type SeedSt
 import { baseUrl, emailDomain, ncTotpSecret, storageFile } from "../setup/env";
 import { PROD_REF } from "../setup/guard";
 import { Sidebar } from "../pages/components/Sidebar";
-import { APP_LOAD_TIMEOUT } from "../pages/app";
 
 export { expect };
 
@@ -77,40 +76,7 @@ function deviceOptions(testInfo: TestInfo) {
 let freshCounter = 0;
 export const runId = (process.env["E2E_RUN_ID"] || process.env["GITHUB_RUN_ID"] || Date.now().toString(36)).toLowerCase();
 
-/**
- * Public pages are server-rendered: they are visible before React hydrates them, and a click or a typed value before
- * that is lost. Every app navigation (goto, reload) therefore also waits for <html data-hydrated> (set by the root
- * layout once hydrated), for every page of the worker, including pages of contexts the tests create themselves.
- */
-function waitForHydrationOnNavigation(page: Page) {
-  const proto = Object.getPrototypeOf(page) as Record<string, unknown>;
-  if (proto["__hydrationWait"]) return;
-  proto["__hydrationWait"] = true;
-  const appOrigin = new URL(baseUrl()).origin;
-  for (const name of ["goto", "reload"]) {
-    const original = proto[name] as (this: Page, ...args: unknown[]) => ReturnType<Page["goto"]>;
-    proto[name] = async function (this: Page, ...args: unknown[]) {
-      const response = await original.apply(this, args);
-      const html = (response?.headers()["content-type"] ?? "").includes("text/html");
-      if (response && html && new URL(response.url()).origin === appOrigin)
-        // A page that never hydrates fails on the test's own next step, with its own message.
-        await this.locator("html[data-hydrated]").waitFor({ state: "attached", timeout: APP_LOAD_TIMEOUT }).catch(() => undefined);
-      return response;
-    };
-  }
-}
-
-export const test = base.extend<Fixtures & { prodHits: string[] }, { hydratedNavigation: void }>({
-  hydratedNavigation: [
-    async ({ browser }, use) => {
-      const page = await browser.newPage();
-      waitForHydrationOnNavigation(page);
-      await page.close();
-      await use();
-    },
-    { scope: "worker", auto: true },
-  ],
-
+export const test = base.extend<Fixtures & { prodHits: string[] }>({
   prodHits: async ({}, use) => {
     const hits: string[] = [];
     await use(hits);

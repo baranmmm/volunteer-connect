@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { loadSupabase } from "@/lib/supabase-lazy";
+import { supabase } from "@/integrations/supabase/client";
 
 // Volunteer applications: every write goes through RPCs (privacy notice checked there); RLS limits reads to the
 // applicant and the branch's Branch Manager / the region's Regional Director. National Coordinators get counts only.
@@ -91,18 +91,14 @@ async function rpc<T>(promise: PromiseLike<{ data: T; error: unknown }>) {
 }
 
 export const fetchMyApplications = async () =>
-  z
-    .array(myApplication)
-    .parse(await rpc((await loadSupabase()).rpc("list_my_volunteer_applications")));
+  z.array(myApplication).parse(await rpc(supabase.rpc("list_my_volunteer_applications")));
 export const fetchApplicationsToReview = async (filter: "open" | "decided") =>
   z
     .array(reviewApplication)
-    .parse(
-      await rpc((await loadSupabase()).rpc("list_volunteer_applications", { p_filter: filter })),
-    );
-export const submitApplication = async (input: ApplicationInput) =>
+    .parse(await rpc(supabase.rpc("list_volunteer_applications", { p_filter: filter })));
+export const submitApplication = (input: ApplicationInput) =>
   rpc(
-    (await loadSupabase()).rpc("submit_volunteer_application", {
+    supabase.rpc("submit_volunteer_application", {
       p: {
         branch_id: input.branch_id,
         motivation: input.help.trim(),
@@ -113,14 +109,14 @@ export const submitApplication = async (input: ApplicationInput) =>
       },
     }),
   );
-export const withdrawApplication = async (id: string) =>
-  rpc((await loadSupabase()).rpc("withdraw_volunteer_application", { p_id: id }));
-export const approveApplication = async (id: string) =>
-  rpc((await loadSupabase()).rpc("approve_volunteer_application", { p_id: id }));
-export const declineApplication = async (id: string, reason: string) =>
-  rpc((await loadSupabase()).rpc("decline_volunteer_application", { p_id: id, p_reason: reason }));
-export const deleteApplication = async (id: string) =>
-  rpc((await loadSupabase()).rpc("delete_volunteer_application", { p_id: id }));
+export const withdrawApplication = (id: string) =>
+  rpc(supabase.rpc("withdraw_volunteer_application", { p_id: id }));
+export const approveApplication = (id: string) =>
+  rpc(supabase.rpc("approve_volunteer_application", { p_id: id }));
+export const declineApplication = (id: string, reason: string) =>
+  rpc(supabase.rpc("decline_volunteer_application", { p_id: id, p_reason: reason }));
+export const deleteApplication = (id: string) =>
+  rpc(supabase.rpc("delete_volunteer_application", { p_id: id }));
 
 export function useMyApplications(userId: string | undefined, enabled = true) {
   return useQuery({

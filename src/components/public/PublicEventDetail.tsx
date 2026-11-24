@@ -1,6 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { getPublicEvent } from "@/lib/public-events.functions";
 import { BranchName } from "@/components/app/BranchName";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, CalendarDays, MapPin, Video, Building2 } from "lucide-react";
@@ -12,29 +10,34 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GuestRegistrationForm } from "./GuestRegistrationForm";
 import { ResponsiveImage } from "./ResponsiveImage";
-import { PublicRegistrationState, publicWhere } from "./PublicEventBits";
 
-type PublicEventData = { event: PublicEvent; image: SignedImage | null; signedAt: number } | null;
+/** "Places available" / "Full" / "Registration closed" (never numbers). */
+export function PublicRegistrationState({ state }: { state: PublicEvent["registration"] }) {
+  const { t } = useTranslation();
+  return (
+    <Badge
+      data-testid="public-event-registration"
+      data-state={state}
+      variant={state === "open" ? "secondary" : "outline"}
+    >
+      {t(`publicEvents.registration.${state}`)}
+    </Badge>
+  );
+}
 
-/** Signed image links last 5 minutes: the page data counts as fresh for 4 and is re-read before the links expire. */
-const SIGNED_FRESH_MS = 4 * 60_000;
+export function publicWhere(event: PublicEvent) {
+  return [event.branch, event.region].filter(Boolean).join(", ");
+}
 
-/**
- * The public page of a public event (signed out). Only the fields the get_public_event function returns. `initial`
- * comes from the route loader (server-rendered on the first visit); it is re-read once its signed links get old.
- */
-export function PublicEventDetail({ id, initial }: { id: string; initial: PublicEventData }) {
-  const { t, i18n } = useTranslation();
-  const query = useQuery({
-    queryKey: ["public-event", id],
-    queryFn: (): Promise<PublicEventData> => getPublicEvent({ data: { id } }),
-    initialData: initial,
-    initialDataUpdatedAt: initial?.signedAt ?? 0,
-    staleTime: SIGNED_FRESH_MS,
-    refetchInterval: SIGNED_FRESH_MS,
-    enabled: !!initial,
-  });
-  const data = query.data;
+/** The public page of a public event (signed out). Only the fields the get_public_event function returns. */
+export function PublicEventDetail({
+  id,
+  data,
+}: {
+  id: string;
+  data: { event: PublicEvent; image: SignedImage | null } | null;
+}) {
+  const { t } = useTranslation();
   if (!data) {
     return (
       <div data-testid="public-event-not-found" className="space-y-4">
@@ -99,9 +102,7 @@ export function PublicEventDetail({ id, initial }: { id: string; initial: Public
             <CalendarDays className="size-4 shrink-0" aria-hidden />
             <span className="sr-only">{t("publicEvents.when")}</span>
           </dt>
-          <dd data-testid="public-event-when">
-            {eventWhen(event, dateLocale(i18n.language))?.text}
-          </dd>
+          <dd data-testid="public-event-when">{eventWhen(event, dateLocale())?.text}</dd>
         </div>
         {publicWhere(event) && (
           <div className="flex gap-2">
@@ -145,15 +146,15 @@ export function PublicEventDetail({ id, initial }: { id: string; initial: Public
           <p className="text-sm text-muted-foreground">{t("guest.memberIntro")}</p>
           <div className="flex flex-wrap gap-2">
             <Button asChild className="h-11">
-              <Link data-testid="public-event-register" to="/sign-in" search={{ redirect: back }}>
+              <Link data-testid="public-event-register" to="/auth" search={{ redirect: back }}>
                 {t("publicEvents.register")}
               </Link>
             </Button>
             <Button asChild variant="outline" className="h-11">
               <Link
                 data-testid="public-event-create-account"
-                to="/join"
-                search={{ redirect: back }}
+                to="/auth"
+                search={{ redirect: back, mode: "signup" }}
               >
                 {t("publicEvents.createAccount")}
               </Link>

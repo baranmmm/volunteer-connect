@@ -99,12 +99,10 @@ test.describe("Landing page (signed out)", () => {
     if ((await page.getByTestId("landing-hero-register").getAttribute("href")) === `/events/${event.id}`) {
       await expect(page.getByTestId("landing-hero-branch")).toHaveText(branchName);
     }
-    // The server-rendered sign-in and join pages (/auth stays for e-mails and old links).
-    await expect(page.getByTestId("landing-sign-in")).toHaveAttribute("href", "/sign-in");
-    await expect(page.getByTestId("landing-join")).toHaveAttribute("href", "/join");
+    await expect(page.getByTestId("landing-sign-in")).toHaveAttribute("href", "/auth");
+    await expect(page.getByTestId("landing-join")).toHaveAttribute("href", "/auth?mode=signup");
     await page.getByTestId("landing-join").click();
-    await expect(page).toHaveURL(/\/join$/);
-    await expect(page.getByTestId("auth-sign-up-form")).toBeVisible();
+    await expect(page).toHaveURL(/\/auth\?mode=signup$/);
   });
 
   test("the branch filter narrows the upcoming cards", async ({ page, freshUser, freshEvent, freshBranch }) => {
@@ -234,14 +232,10 @@ test.describe("Landing page (signed out)", () => {
 test.describe("Landing page (signed in)", () => {
   test("a signed-in member goes to /dashboard without the landing showing", async ({ freshUser, pageAs }) => {
     const page = await pageAs(await freshUser());
-    // "/" is server-rendered: the landing is in the HTML but hidden for a stored session. Check every painted frame.
     await page.addInitScript(() => {
-      const check = () => {
-        const landing = document.querySelector('[data-testid="landing-page"]');
-        if (landing?.checkVisibility()) (window as unknown as { __landing: boolean }).__landing = true;
-        requestAnimationFrame(check);
-      };
-      requestAnimationFrame(check);
+      new MutationObserver(() => {
+        if (document.querySelector('[data-testid="landing-page"]')) (window as unknown as { __landing: boolean }).__landing = true;
+      }).observe(document, { childList: true, subtree: true });
     });
     await page.goto("/");
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: APP_LOAD_TIMEOUT });

@@ -10,7 +10,6 @@ import { LandingFooter } from "./LandingFooter";
 import { LandingHeader } from "./LandingHeader";
 import { useSeen } from "./motion";
 import { Upcoming } from "./Upcoming";
-import type { LandingData } from "@/lib/landing.server";
 
 // The form (and its config/branch reads) stays off the first paint's critical path.
 const LazySubscribeForm = lazy(() =>
@@ -56,13 +55,9 @@ function Updates() {
   );
 }
 
-export function Landing({ initial }: { initial?: LandingData | null }) {
+export function Landing() {
   const { t } = useTranslation();
-  // Server-rendered data first; re-read once its signed links are older than 4 minutes.
-  const query = useQuery({
-    ...landingQuery,
-    ...(initial ? { initialData: initial, initialDataUpdatedAt: initial.signedAt } : {}),
-  });
+  const query = useQuery(landingQuery);
   const [heroDone, setHeroDone] = useState(false);
   const { data, dataUpdatedAt, refetch } = query;
   // Re-sign when the links are older than 4 minutes (lightbox open, or an image failed to load).

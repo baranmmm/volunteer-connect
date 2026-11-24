@@ -47,10 +47,6 @@ export function Hero({
   onImageDone: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  // The server-rendered cover may finish loading before hydration, when React has not attached onLoad yet.
-  const doneIfLoaded = (img: HTMLImageElement | null) => {
-    if (img?.complete) onImageDone();
-  };
   if (!event)
     return (
       <Frame
@@ -65,7 +61,6 @@ export function Hero({
                 height={900}
                 fetchPriority="high"
                 onLoad={onImageDone}
-                ref={doneIfLoaded}
                 onError={onImageDone}
                 className="ds-hero-img absolute inset-0 -z-10 h-full w-full object-cover"
               />
@@ -112,7 +107,6 @@ export function Hero({
               height={900}
               fetchPriority="high"
               onLoad={onImageDone}
-              ref={doneIfLoaded}
               onError={onImageDone}
               loading="eager"
               className="ds-hero-img absolute inset-0 -z-10 h-full w-full object-cover"

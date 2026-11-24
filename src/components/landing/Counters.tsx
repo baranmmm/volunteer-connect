@@ -10,15 +10,13 @@ const DURATION = 1400;
 function Counter({ name, value }: { name: (typeof KEYS)[number]; value: number }) {
   const { t, i18n } = useTranslation();
   const [ref, seen] = useSeen<HTMLLIElement>("0px");
-  // 0 on the server and in the first client render (hydration); the effect counts up or jumps to the figure.
-  const [shown, setShown] = useState(0);
+  const [shown, setShown] = useState(() => (prefersReducedMotion() ? value : 0));
   useEffect(() => {
-    // Reduced motion: the final figure at once (after hydration), seen or not.
+    if (!seen) return;
     if (prefersReducedMotion()) {
       setShown(value);
       return;
     }
-    if (!seen) return;
     let frame = 0;
     const begin = performance.now();
     const tick = (now: number) => {
