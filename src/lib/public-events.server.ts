@@ -81,6 +81,41 @@ export async function fetchPublicEvent(id: string): Promise<PublicEvent | null> 
   return data ? publicEventSchema.parse(data) : null;
 }
 
+/**
+ * The cover of a public event for link previews: the 1280 px copy when it exists, else the original. Null unless
+ * get_public_event_image confirms the event is public. The bytes go out through the server; the path never does.
+ */
+export async function publicEventCover(id: string): Promise<{ body: Blob; type: string } | null> {
+  const { data: path, error } = await anonClient().rpc("get_public_event_image", { p_id: id });
+  if (error) throw new Error("Public events unavailable");
+  if (!path) return null;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { imageVariantPaths } = await import("@/lib/image-variants");
+  const { data: row } = await supabaseAdmin
+    .from("event_media")
+    .select("has_variants")
+    .eq("kind", "image")
+    .eq("storage_path", path)
+    .maybeSingle();
+  const bucket = supabaseAdmin.storage.from("event-media");
+  if (row?.has_variants) {
+    const copy = await bucket.download(imageVariantPaths(path).w1280);
+    if (!copy.error && copy.data) return { body: copy.data, type: "image/webp" };
+  }
+  const original = await bucket.download(path);
+  if (original.error || !original.data) return null;
+  return { body: original.data, type: imageType(path, original.data.type) };
+}
+
+function imageType(path: string, reported: string) {
+  if (/^image\/(jpeg|png|webp|gif)$/.test(reported)) return reported;
+  const ext = path.split(".").pop()?.toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  return "image/jpeg";
+}
+
 /** 5-minute signed links to the public event's first image and its resized copies, or null. */
 export async function signedPublicImage(id: string): Promise<SignedImage | null> {
   const { data: path, error } = await anonClient().rpc("get_public_event_image", { p_id: id });

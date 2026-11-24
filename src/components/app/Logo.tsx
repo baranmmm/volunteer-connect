@@ -22,15 +22,29 @@ export function Logo({
   const auth = variant === "auth";
 
   return (
-    <div className={`${auth ? "flex flex-col items-center gap-4 text-center sm:flex-row sm:gap-3 sm:text-left" : "inline-flex items-center gap-3"} min-w-0 ${className}`}>
+    <div
+      className={`${auth ? "flex flex-col items-center gap-4 text-center sm:flex-row sm:gap-3 sm:text-left" : "inline-flex items-center gap-3"} min-w-0 ${className}`}
+    >
       <img
-        src="/brand/ds-logo-glow.png"
+        src="/brand/ds-logo-glow.svg"
+        width={64}
+        height={64}
         alt="Dialogue Society"
         className={`shrink-0 ${MARK_SIZES[size]}`}
       />
-      <div className={`min-w-0 flex-1 leading-tight ${mobile || auth ? "block" : "hidden lg:block"}`}>
-        <div className={`truncate font-semibold ${mobile ? "text-[15px]" : "text-base"} ${mobile || auth ? "text-foreground" : "text-sidebar-foreground"}`}>Dialogue Society</div>
-        <div className={`truncate text-xs ${mobile ? "mt-0.5" : "mt-1"} ${mobile || auth ? "text-foreground/70" : "text-sidebar-foreground/70"}`}>{t("common.hubName")}</div>
+      <div
+        className={`min-w-0 flex-1 leading-tight ${mobile || auth ? "block" : "hidden lg:block"}`}
+      >
+        <div
+          className={`truncate font-semibold ${mobile ? "text-[15px]" : "text-base"} ${mobile || auth ? "text-foreground" : "text-sidebar-foreground"}`}
+        >
+          Dialogue Society
+        </div>
+        <div
+          className={`truncate text-xs ${mobile ? "mt-0.5" : "mt-1"} ${mobile || auth ? "text-foreground/70" : "text-sidebar-foreground/70"}`}
+        >
+          {t("common.hubName")}
+        </div>
       </div>
     </div>
   );

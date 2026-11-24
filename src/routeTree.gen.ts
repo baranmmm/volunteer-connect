@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as JoinRouteImport } from './routes/join'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 import { Route as AppContactsRouteImport } from './routes/_app/contacts'
@@ -43,6 +45,7 @@ import { Route as ApiPublicCleanupDeletedEventsRouteImport } from './routes/api/
 import { Route as ApiPublicLandingRouteImport } from './routes/api/public/landing'
 import { Route as ApiPublicTaskRemindersRouteImport } from './routes/api/public/task-reminders'
 import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
+import { Route as ApiPublicEventImageIdRouteImport } from './routes/api/public/event-image.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +61,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -66,6 +74,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppApprovalsRoute = AppApprovalsRouteImport.update({
@@ -214,12 +227,19 @@ const ApiPublicUnsubscribeRoute = ApiPublicUnsubscribeRouteImport.update({
   path: '/api/public/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicEventImageIdRoute = ApiPublicEventImageIdRouteImport.update({
+  id: '/api/public/event-image/$id',
+  path: '/api/public/event-image/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/join': typeof JoinRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sign-in': typeof SignInRoute
   '/approvals': typeof AppApprovalsRoute
   '/calendar': typeof AppCalendarRoute
   '/contacts': typeof AppContactsRoute
@@ -249,12 +269,15 @@ export interface FileRoutesByFullPath {
   '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
+  '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/join': typeof JoinRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sign-in': typeof SignInRoute
   '/approvals': typeof AppApprovalsRoute
   '/calendar': typeof AppCalendarRoute
   '/contacts': typeof AppContactsRoute
@@ -284,14 +307,17 @@ export interface FileRoutesByTo {
   '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
+  '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/join': typeof JoinRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sign-in': typeof SignInRoute
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/contacts': typeof AppContactsRoute
@@ -321,14 +347,17 @@ export interface FileRoutesById {
   '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
+  '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/join'
     | '/privacy'
     | '/reset-password'
+    | '/sign-in'
     | '/approvals'
     | '/calendar'
     | '/contacts'
@@ -358,12 +387,15 @@ export interface FileRouteTypes {
     | '/api/public/landing'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
+    | '/api/public/event-image/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/join'
     | '/privacy'
     | '/reset-password'
+    | '/sign-in'
     | '/approvals'
     | '/calendar'
     | '/contacts'
@@ -393,13 +425,16 @@ export interface FileRouteTypes {
     | '/api/public/landing'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
+    | '/api/public/event-image/$id'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/auth'
+    | '/join'
     | '/privacy'
     | '/reset-password'
+    | '/sign-in'
     | '/_app/approvals'
     | '/_app/calendar'
     | '/_app/contacts'
@@ -429,14 +464,17 @@ export interface FileRouteTypes {
     | '/api/public/landing'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
+    | '/api/public/event-image/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  JoinRoute: typeof JoinRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SignInRoute: typeof SignInRoute
   ApiIcsRoute: typeof ApiIcsRoute
   ECancelRoute: typeof ECancelRoute
   EConfirmRoute: typeof EConfirmRoute
@@ -448,6 +486,7 @@ export interface RootRouteChildren {
   ApiPublicLandingRoute: typeof ApiPublicLandingRoute
   ApiPublicTaskRemindersRoute: typeof ApiPublicTaskRemindersRoute
   ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
+  ApiPublicEventImageIdRoute: typeof ApiPublicEventImageIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -473,6 +512,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -485,6 +531,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/approvals': {
@@ -690,6 +743,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/event-image/$id': {
+      id: '/api/public/event-image/$id'
+      path: '/api/public/event-image/$id'
+      fullPath: '/api/public/event-image/$id'
+      preLoaderRoute: typeof ApiPublicEventImageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -743,8 +803,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  JoinRoute: JoinRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SignInRoute: SignInRoute,
   ApiIcsRoute: ApiIcsRoute,
   ECancelRoute: ECancelRoute,
   EConfirmRoute: EConfirmRoute,
@@ -756,6 +818,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicLandingRoute: ApiPublicLandingRoute,
   ApiPublicTaskRemindersRoute: ApiPublicTaskRemindersRoute,
   ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
+  ApiPublicEventImageIdRoute: ApiPublicEventImageIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

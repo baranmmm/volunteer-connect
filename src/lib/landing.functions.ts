@@ -9,28 +9,15 @@ export const getLanding = createServerFn({ method: "POST" }).handler(async () =>
   return fetchLanding();
 });
 
-/** The GET twin of getLanding (src/routes/api/public/landing.ts), fetched early by the HTML shell of "/". */
+/** The GET twin of getLanding (src/routes/api/public/landing.ts): a plain request when the browser refreshes it. */
 export const LANDING_URL = "/api/public/landing";
 
-/** The hero cover is drawn full width (the `sizes` of its image and of the early preload). */
+/** The hero cover is drawn full width (the `sizes` of its image). */
 export const HERO_SIZES = "100vw";
 
-type EarlyWindow = { __dsLanding?: Promise<LandingData | null> };
-
-/**
- * Inline script in the head of "/" (plain ES5, no imports): fetches the landing data at once and, when it arrives,
- * preloads the hero image with high priority (with the same srcset/sizes as the hero, so the browser fetches the copy
- * the hero will use), so both download while the app's JavaScript is still loading.
- * The promise is handed to the first loadLanding() call. Mirrors landingHero below.
- */
-export const LANDING_EARLY_SCRIPT = `(function(){try{var p=fetch(${JSON.stringify(LANDING_URL)},{credentials:"same-origin"}).then(function(r){return r.ok?r.json():null}).catch(function(){return null});window.__dsLanding=p;p.then(function(d){if(!d||!d.upcoming)return;var e=null,i;for(i=0;i<d.upcoming.length;i++){if(d.upcoming[i].image){e=d.upcoming[i];break}}e=e||d.upcoming[0];var g=d.gallery&&d.gallery[0]&&d.gallery[0].photos[0];var s=e?e.image:(g||null);if(!s||!s.src)return;var l=document.createElement("link");l.rel="preload";l.as="image";l.href=s.src;if(s.srcSet){l.setAttribute("imagesrcset",s.srcSet);l.setAttribute("imagesizes",${JSON.stringify(HERO_SIZES)})}l.setAttribute("fetchpriority","high");document.head.appendChild(l)})}catch(x){}})();`;
-
+/** The server renders "/" with this data (route loader); the browser re-reads it when the signed links get old. */
 async function loadLanding(): Promise<LandingData> {
-  const w = typeof window === "undefined" ? null : (window as unknown as EarlyWindow);
-  const early = w?.__dsLanding;
-  if (w) delete w.__dsLanding;
-  const ready = early ? await early : null;
-  if (ready) return ready;
+  if (typeof window === "undefined") return getLanding();
   const res = await fetch(LANDING_URL, { credentials: "same-origin" }).catch(() => null);
   if (res?.ok) return (await res.json()) as LandingData;
   return getLanding();
