@@ -1,6 +1,6 @@
 // Server-only access for the public (signed-out) pages and the ICS feed. Reads go through the anon-executable
-// get_public_* functions with the publishable key; only the first image's storage path is signed with the service
-// role, after get_public_event_image has confirmed the event is public.
+// get_public_* functions with the publishable key; only the first image's storage path (and its resized copies) is
+// signed with the service role, after get_public_event_image has confirmed the event is public.
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import {
@@ -9,6 +9,7 @@ import {
   publicEventsSchema,
   type PublicEvent,
 } from "@/lib/public-events";
+import type { SignedImage } from "@/lib/image-variants";
 
 const isNewKey = (key: string) => key.startsWith("sb_publishable_") || key.startsWith("sb_secret_");
 
@@ -80,15 +81,11 @@ export async function fetchPublicEvent(id: string): Promise<PublicEvent | null> 
   return data ? publicEventSchema.parse(data) : null;
 }
 
-/** A 5-minute signed link to the public event's first image, or null. */
-export async function signedPublicImage(id: string): Promise<string | null> {
+/** 5-minute signed links to the public event's first image and its resized copies, or null. */
+export async function signedPublicImage(id: string): Promise<SignedImage | null> {
   const { data: path, error } = await anonClient().rpc("get_public_event_image", { p_id: id });
   if (error) throw new Error("Public events unavailable");
   if (!path) return null;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const signed = await supabaseAdmin.storage.from("event-media").createSignedUrl(path, 300);
-  if (signed.error) return null;
-  // Keep browser-facing URLs on the browser's Supabase origin.
-  const raw = new URL(signed.data.signedUrl);
-  return `${import.meta.env["VITE_SUPABASE_URL"] ?? process.env["SUPABASE_URL"]}${raw.pathname}${raw.search}`;
+  const { signEventImages } = await import("@/lib/image-variants.server");
+  return (await signEventImages([path])).get(path) ?? null;
 }

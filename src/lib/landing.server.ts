@@ -1,10 +1,9 @@
 // Server-only data for the signed-out landing page (/). public_landing_data() is executable by the service role only;
 // it returns public fields of public published events plus storage paths. Every path is signed here (5-minute links,
-// one batch request) and the paths themselves never leave the server.
+// one batch request, with the resized copies of event images) and the paths themselves never leave the server.
 import { z } from "zod";
+import type { SignedImage } from "@/lib/image-variants";
 import { publicEventSchema } from "@/lib/public-events";
-
-const SIGNED_SECONDS = 300;
 
 const upcomingSchema = publicEventSchema.extend({
   location_tba: z.boolean().default(false),
@@ -51,9 +50,10 @@ const landingSchema = z.object({
 });
 
 export type LandingEvent = Omit<z.infer<typeof upcomingSchema>, "image_path"> & {
-  image: string | null;
+  image: SignedImage | null;
 };
-export type LandingPhoto = { id: string; url: string; width: number | null; height: number | null };
+/** A gallery photo: `small` for the thumbnail, `src`/`srcSet` for the lightbox. */
+export type LandingPhoto = SignedImage & { id: string };
 export type LandingGalleryGroup = {
   event_id: string;
   title: string;
@@ -75,25 +75,6 @@ export type LandingData = {
   signedAt: number;
 };
 
-/** Signs storage paths in one request; the links point at the browser-facing Supabase origin. */
-async function signPaths(paths: string[]): Promise<Map<string, string>> {
-  const unique = [...new Set(paths)];
-  const result = new Map<string, string>();
-  if (!unique.length) return result;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.storage
-    .from("event-media")
-    .createSignedUrls(unique, SIGNED_SECONDS);
-  if (error || !data) return result;
-  const origin = import.meta.env["VITE_SUPABASE_URL"] ?? process.env["SUPABASE_URL"];
-  for (const item of data) {
-    if (item.error || !item.signedUrl || !item.path) continue;
-    const raw = new URL(item.signedUrl);
-    result.set(item.path, `${origin}${raw.pathname}${raw.search}`);
-  }
-  return result;
-}
-
 export async function fetchLanding(): Promise<LandingData> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin.rpc("public_landing_data");
@@ -109,7 +90,9 @@ export async function fetchLanding(): Promise<LandingData> {
     ...parsed.gallery.flatMap((g) => (g.photos ?? []).map((p) => p.path)),
     ...highlights.flatMap((h) => (h.thumb_path ? [h.thumb_path] : [])),
   ];
-  const signed = await signPaths(paths);
+  // Video posters have no media row: they are signed as plain originals.
+  const { signEventImages } = await import("@/lib/image-variants.server");
+  const signed = await signEventImages(paths);
   return {
     upcoming: parsed.upcoming.map(({ image_path, ...event }) => ({
       ...event,
@@ -122,9 +105,18 @@ export async function fetchLanding(): Promise<LandingData> {
         date: g.date,
         // Region records (no branch) are labelled with their region.
         branch: g.branch ?? g.region ?? null,
-        photos: (g.photos ?? []).flatMap((p) => {
-          const url = signed.get(p.path);
-          return url ? [{ id: p.id, url, width: p.width, height: p.height }] : [];
+        photos: (g.photos ?? []).flatMap((p): LandingPhoto[] => {
+          const image = signed.get(p.path);
+          return image
+            ? [
+                {
+                  ...image,
+                  id: p.id,
+                  width: p.width ?? image.width,
+                  height: p.height ?? image.height,
+                },
+              ]
+            : [];
         }),
       }))
       .filter((g) => g.photos.length > 0),
@@ -132,7 +124,7 @@ export async function fetchLanding(): Promise<LandingData> {
       id: h.id,
       youtube_id: h.youtube_id,
       title: h.title,
-      poster: h.thumb_path ? (signed.get(h.thumb_path) ?? null) : null,
+      poster: h.thumb_path ? (signed.get(h.thumb_path)?.src ?? null) : null,
     })),
     stats: parsed.stats,
     signedAt: Date.now(),

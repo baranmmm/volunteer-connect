@@ -37,6 +37,7 @@ vi.mock("@/lib/events.functions", () => ({
   createSeries: vi.fn(),
   updateSeriesEvent: vi.fn(),
   setEventMediaSize: vi.fn(),
+  setEventMediaVariants: vi.fn(),
   setEventMediaGallery: vi.fn(),
 }));
 vi.mock("@/lib/meetings.functions", () => ({

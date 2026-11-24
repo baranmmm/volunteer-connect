@@ -407,6 +407,14 @@ export const setEventMediaSize = createServerFn({ method: "POST" })
     });
     if (result.error) throw new Error(result.error.message);
   });
+/** After both resized copies of an image are stored: set_event_media_variants checks them in Storage and sets has_variants. */
+export const setEventMediaVariants = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_event_media_variants", { p_media: data.id });
+    if (result.error) throw new Error(result.error.message);
+  });
 /** "Show in public gallery" for a photo of a public event. */
 export const setEventMediaGallery = createServerFn({ method: "POST" })
   .middleware([requireMember])

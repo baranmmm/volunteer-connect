@@ -29,9 +29,9 @@ const ROOT = resolve(E2E, "..");
 export const AREAS = {
   requests: ["ui/event-requests", "ui/event-request-types", "ui/my-requests", "api/event-requests", "api/event-request-types", "ui/calendar-smoke"],
   registrations: ["ui/registrations", "api/registrations", "ui/calendar-smoke"],
-  events: ["ui/calendar-smoke", "ui/event-status-dashboard", "ui/event-time-picker", "ui/recurring-events", "api/recurring-events", "ui/registrations"],
+  events: ["ui/calendar-smoke", "ui/event-status-dashboard", "ui/event-time-picker", "ui/recurring-events", "api/recurring-events", "ui/registrations", "api/image-copies"],
   recurring: ["ui/recurring-events", "api/recurring-events"],
-  recycle: ["api/recycle-bin", "ui/deactivate-delete", "ui/calendar-smoke", "api/event-requests"],
+  recycle: ["api/recycle-bin", "ui/deactivate-delete", "ui/calendar-smoke", "api/event-requests", "api/image-copies"],
   users: ["ui/users-isolation", "ui/user-details", "ui/deactivate-delete", "ui/approvals", "ui/pending", "ui/role-branch", "ui/history", "ui/account-deletion", "api/permissions"],
   privacy: ["ui/privacy", "api/privacy", "ui/account-deletion", "ui/auth"],
   auth: ["ui/auth", "ui/onboarding", "ui/pending", "ui/language", "api/bundle-secrets"],
@@ -48,7 +48,7 @@ export const AREAS = {
 const SRC_RULES = [
   [/^src\/test\/|^src\/integrations\/supabase\/types\.ts$|^src\/routeTree\.gen\.ts$/, []],
   [/^src\/integrations\/supabase\/client|^src\/lib\/supabase/, "full"],
-  [/components\/landing\/|lib\/landing|lib\/email\/|public-guest|components\/public\/(Guest|Subscribe|form-protection|GuestLink|SubscriberLink)|past-events|PastEvent|event-videos|EventVideos|youtube|attendee|Attendee|announce|Announce|event-emails|video-posters|routes\/index\.tsx|routes\/(e|updates)\.|routes\/privacy_\.attendees|routes\/api\/public\/unsubscribe|attendee-privacy/i, ["public"]],
+  [/components\/landing\/|lib\/landing|image-variants|ResponsiveImage|lib\/email\/|public-guest|components\/public\/(Guest|Subscribe|form-protection|GuestLink|SubscriberLink)|past-events|PastEvent|event-videos|EventVideos|youtube|attendee|Attendee|announce|Announce|event-emails|video-posters|routes\/index\.tsx|routes\/(e|updates)\.|routes\/privacy_\.attendees|routes\/api\/public\/unsubscribe|attendee-privacy/i, ["public"]],
   [/components\/tasks\/|routes\/_app\/tasks|lib\/tasks|task-reminders|EventLinkedTasks/i, ["tasks"]],
   [/components\/meetings\/|routes\/_app\/meetings|lib\/meetings/i, ["meetings"]],
   [/work-requests|WorkRequest|work-scopes|components\/work\/|notifications|Notifications|TaskReminderPreferences/i, ["tasks", "meetings"]],

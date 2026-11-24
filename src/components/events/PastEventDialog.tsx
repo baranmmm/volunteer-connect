@@ -10,6 +10,7 @@ import {
   preparedImageSize,
   removeStoredEventFile,
   uploadEventFile,
+  uploadImageVariants,
 } from "@/lib/event-files";
 import {
   deleteEventMedia,
@@ -18,6 +19,7 @@ import {
   reserveEventMedia,
   setEventMediaGallery,
   setEventMediaSize,
+  setEventMediaVariants,
 } from "@/lib/events.functions";
 import { createPastEvent, updatePastEvent } from "@/lib/past-events.functions";
 import { addEventVideo } from "@/lib/event-videos.functions";
@@ -78,6 +80,7 @@ export function PastEventDialog({
     removeMedia = useServerFn(deleteEventMedia),
     reorder = useServerFn(reorderEventMedia),
     setSize = useServerFn(setEventMediaSize),
+    setVariants = useServerFn(setEventMediaVariants),
     setGallery = useServerFn(setEventMediaGallery),
     addVideo = useServerFn(addEventVideo);
   const branches = useQuery({
@@ -211,6 +214,10 @@ export function PastEventDialog({
         }
         const size = preparedImageSize(photo.file);
         if (size) await setSize({ data: { id: row.id, ...size } });
+        // Resized copies for the public pages; a failure keeps the original (never fatal).
+        await uploadImageVariants(row.storage_path, photo.file, () =>
+          setVariants({ data: { id: row.id } }),
+        );
         const media: EventMedia = { ...row, url: photo.preview ?? null };
         attached.current.push(media);
         const saved: Photo = {
