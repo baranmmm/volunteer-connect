@@ -90,3 +90,38 @@ export function saveRegionsView(view: RegionsView) {
     /* storage unavailable */
   }
 }
+
+const OSM_ATTRIBUTION =
+  '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>';
+const CARTO_ATTRIBUTION = `${OSM_ATTRIBUTION}, © <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>`;
+
+export type BasemapTiles = {
+  url: string;
+  subdomains: string;
+  attribution: string;
+  provider: "carto" | "osm";
+};
+
+/**
+ * The basemap: CARTO Positron (light, retina tiles) with the public, domain-restricted key from
+ * VITE_CARTO_BASEMAP_KEY; without a key, the OpenStreetMap standard tiles. Dark mode reuses the same tiles with a CSS
+ * filter on the tile layer only (branch-map.css).
+ */
+export function basemapTiles(key: string | undefined): BasemapTiles {
+  const k = key?.trim();
+  if (!k)
+    return {
+      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      subdomains: "abc",
+      attribution: OSM_ATTRIBUTION,
+      provider: "osm",
+    };
+  return {
+    // CARTO's raster endpoint with the key as the `key` query parameter (keyless requests get "API KEY REQUIRED"
+    // tiles); {r} = "@2x" on retina screens.
+    url: `https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(k)}`,
+    subdomains: "",
+    attribution: CARTO_ATTRIBUTION,
+    provider: "carto",
+  };
+}

@@ -1,27 +1,66 @@
-/* Branch markers on the Regions & branches map (loaded with the lazy map chunk only). */
+/* Branch map (loaded with the lazy map chunk only): basemap filter for dark mode, region-coloured dots, name tooltips. */
+
+/* Dark mode: the same Positron tiles, filtered on the tile layer only (markers, tooltips and controls keep their
+   colours). One variable so the look is easy to tune: a soft dark grey-blue, lighter than CARTO Dark Matter, with
+   readable labels. */
+.branch-map {
+  --branch-map-dark-filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.8) saturate(0.55);
+}
+.dark .branch-map .branch-map-tiles {
+  filter: var(--branch-map-dark-filter);
+}
+.dark .branch-map {
+  background: #2b3340;
+}
+
+/* Dots: region colour, white ring and a dark outer ring, so they stand out on the light and the dark map. */
 .branch-map .branch-map-marker {
   background: transparent;
   border: 0;
   border-radius: 9999px;
 }
 .branch-map .branch-map-marker > span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
+  display: block;
+  width: 100%;
+  height: 100%;
   border-radius: 9999px;
   border: 2px solid #ffffff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
-  font: 700 13px/1 system-ui, sans-serif;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.6),
+    0 1px 4px rgb(0 0 0 / 0.45);
+  transition: transform 120ms ease-out;
+}
+.branch-map .branch-map-marker:hover > span,
+.branch-map .branch-map-marker:focus-visible > span {
+  transform: scale(1.2);
 }
 .branch-map .branch-map-marker.is-selected > span {
-  transform: scale(1.25);
+  transform: scale(1.35);
   box-shadow:
     0 0 0 3px #000000,
     0 1px 6px rgb(0 0 0 / 0.5);
 }
+.dark .branch-map .branch-map-marker.is-selected > span {
+  box-shadow:
+    0 0 0 3px #ffffff,
+    0 1px 6px rgb(0 0 0 / 0.6);
+}
 .branch-map .branch-map-marker:focus-visible {
   outline: 3px solid #000000;
-  outline-offset: 3px;
+  outline-offset: 4px;
+}
+.dark .branch-map .branch-map-marker:focus-visible {
+  outline-color: #ffffff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .branch-map .branch-map-marker > span {
+    transition: none;
+  }
+}
+
+/* The branch name tooltip (dark text on white: 15:1). */
+.branch-map .branch-map-tooltip {
+  font: 600 13px/1.3 system-ui, sans-serif;
+  color: #1f2937;
+  border-radius: 6px;
 }

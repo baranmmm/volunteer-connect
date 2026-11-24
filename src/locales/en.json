@@ -1176,8 +1176,7 @@
       "closePanel": "Close the branch details",
       "hint": "Choose a branch on the map to see its Branch Managers and numbers.",
       "openBranch": "Open branch",
-      "markerLabel_one": "{{name}}, {{region}}: {{count}} volunteer",
-      "markerLabel_other": "{{name}}, {{region}}: {{count}} volunteers",
+      "markerLabel": "{{name}}, {{region}}",
       "counts": {
         "volunteers": "Volunteers",
         "followers": "Followers",

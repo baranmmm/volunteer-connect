@@ -6,7 +6,7 @@ import {
   type CachedGeocode,
   type GeocodeCache,
 } from "@/lib/geocode.server";
-import { normalisePostcode, regionColors } from "@/lib/branch-map";
+import { basemapTiles, normalisePostcode, regionColors } from "@/lib/branch-map";
 
 // The branch geocoder: postcodes.io through an injected fetch and an in-memory cache (no network, no database).
 const NOW = new Date("2026-11-24T12:00:00Z");
@@ -150,5 +150,23 @@ describe("branch map helpers", () => {
     ]);
     expect([...colors.values()].map((c) => c.name)).toEqual(["North", "South"]);
     expect(colors.get("a")?.fill).not.toBe(colors.get("b")?.fill);
+  });
+});
+
+describe("basemap tiles", () => {
+  it("CARTO Positron (retina, key in the URL, CARTO + OSM attribution) with a key; OSM tiles without one", () => {
+    const carto = basemapTiles(" pk-123 ");
+    expect(carto.provider).toBe("carto");
+    expect(carto.url).toBe(
+      "https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=pk-123",
+    );
+    expect(carto.attribution).toContain("OpenStreetMap contributors");
+    expect(carto.attribution).toContain("https://carto.com/attributions");
+    for (const key of [undefined, "", "  "]) {
+      const osm = basemapTiles(key);
+      expect(osm.provider).toBe("osm");
+      expect(osm.url).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+      expect(osm.attribution).not.toContain("CARTO");
+    }
   });
 });
