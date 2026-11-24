@@ -80,6 +80,8 @@ async function event(
     online?: boolean;
   },
 ) {
+  // A public event is published only with a cover image: insert as a draft, add the image, then publish.
+  const publicPublished = fields.audience === "public" && (fields.status ?? "published") === "published";
   const start = new Date(Date.now() + 7 * 86400000).toISOString();
   const end = new Date(Date.now() + 7 * 86400000 + 7200000).toISOString();
   const row = await one<{ id: string }>(
@@ -90,7 +92,7 @@ async function event(
       fields.scope,
       fields.branch ?? null,
       fields.region ?? null,
-      fields.status ?? "published",
+      publicPublished ? "draft" : (fields.status ?? "published"),
       start,
       end,
       fields.online ? "online" : "in_person",
@@ -99,6 +101,13 @@ async function event(
       ids.bm1,
     ],
   );
+  if (publicPublished) {
+    await db.query(
+      "INSERT INTO public.event_media (event_id, storage_path, kind, position) VALUES ($1::uuid, $1::text || '/cover.webp', 'image', 0)",
+      [row.id],
+    );
+    await db.query("UPDATE public.events SET status = 'published' WHERE id = $1", [row.id]);
+  }
   ev[key] = row.id;
 }
 
@@ -529,11 +538,15 @@ describe("public functions (anon)", () => {
         "id",
         "is_online",
         "location",
+        "location_tba",
+        "max_places",
         "organizer",
+        "past_record",
         "region",
         "region_id",
         "registration",
         "scope",
+        "spots_left",
         "start_at",
         "start_date",
         "status",
