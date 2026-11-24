@@ -68,13 +68,17 @@ vi.mock("@/lib/work-requests.functions", () => ({
 vi.mock("@/lib/notifications.functions", () => ({
   markNotificationsRead: mocks.markRead,
   getNotificationCounts: mocks.counts,
-  getReviewWaiting: async () => ({
-    work: 0,
-    event_requests: 0,
-    applications: 0,
-    total: 0,
-    branches: [],
-  }),
+  // The same count the server gives: event requests for managers plus task/meeting requests sent to the person.
+  getReviewWaiting: async () => {
+    const events = mocks.role === "national_coordinator" ? 0 : mocks.pending;
+    return {
+      work: mocks.workCount,
+      event_requests: events,
+      applications: 0,
+      total: events + mocks.workCount,
+      branches: [],
+    };
+  },
 }));
 vi.mock("@/components/meetings/MeetingFormDialog", () => ({
   MeetingFormDialog: () => <div data-testid="test-meeting-form" />,
@@ -313,7 +317,11 @@ describe("Requests workspace", () => {
   });
   it("changing tabs navigates to the shared URL with the selected tab", async () => {
     mount();
-    fireEvent.mouseDown(screen.getByTestId("requests-tab-mine"), { button: 0, ctrlKey: false });
+    // The tabs appear once the waiting count is known.
+    fireEvent.mouseDown(await screen.findByTestId("requests-tab-mine"), {
+      button: 0,
+      ctrlKey: false,
+    });
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({
         to: "/requests",

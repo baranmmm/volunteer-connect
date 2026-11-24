@@ -39,8 +39,8 @@ export const AREAS = {
   dashboard: ["ui/dashboard-layout", "ui/event-status-dashboard"],
   i18n: ["ui/language", "ui/accessibility"],
   roles: ["api/roles", "ui/public-events", "ui/followers", "ui/national-coordinator", "api/permissions", "ui/users-isolation", "ui/accessibility"],
-  tasks: ["api/tasks", "ui/tasks", "ui/followers"],
-  meetings: ["api/meetings", "ui/meetings", "ui/followers"],
+  tasks: ["api/tasks", "ui/tasks", "ui/followers", "ui/notifications"],
+  meetings: ["api/meetings", "ui/meetings", "ui/followers", "ui/notifications"],
 };
 
 /** src/ path patterns → areas. Checked in order; the first match wins. */

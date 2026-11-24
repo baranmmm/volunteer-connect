@@ -14,6 +14,7 @@ import {
   REVIEW_WAITING_KEY,
   useMarkNoticesRead,
   useRequestTargets,
+  useReviewWaiting,
   useWorkRequestCount,
 } from "@/lib/use-work-notices";
 import { MeetingRequestForm, TaskRequestForm } from "@/components/requests/WorkRequestForms";
@@ -67,7 +68,10 @@ function RequestsPage() {
   const pending = usePendingRequestCount();
   const workPending = useWorkRequestCount(reviewer);
   const targets = useRequestTargets(!follower && !nc);
-  const reviewTotal = (isManager ? (pending.data?.total ?? 0) : 0) + (workPending.data ?? 0);
+  // One count everywhere: the same get_review_waiting() as the Requests badge, the dashboard card and the grouped
+  // "waiting for you" notice (task/meeting requests, event requests and volunteer applications).
+  const waiting = useReviewWaiting();
+  const reviewTotal = reviewer ? (waiting.data?.total ?? 0) : 0;
   const { tab: requested } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const view = resolveRequestView(requested, reviewer, nc, reviewTotal);
@@ -76,9 +80,10 @@ function RequestsPage() {
   useMarkNoticesRead(REVIEW_NOTICES, "review", reviewer && view === "review");
   // A decision here changes what waits (menu badges, dashboard card).
   const qc = useQueryClient();
+  const listsChanged = `${pending.data?.total ?? 0}:${workPending.data ?? 0}`;
   useEffect(() => {
     void qc.invalidateQueries({ queryKey: [REVIEW_WAITING_KEY] });
-  }, [reviewTotal, qc]);
+  }, [listsChanged, qc]);
   const selectView = (tab: string) => {
     if (tab === "review" || tab === "mine" || tab === "decided")
       void navigate({ to: "/requests", search: { tab }, replace: true, resetScroll: false });
@@ -126,7 +131,12 @@ function RequestsPage() {
           </Button>
         )}
       </header>
-      {reviewer ? (
+      {reviewer && !requested && waiting.data === undefined ? (
+        // The default tab depends on what waits: decide once the count is known (no flash of another tab).
+        <p data-testid="requests-loading" className="text-muted-foreground">
+          {t("common.loading")}
+        </p>
+      ) : reviewer ? (
         <Tabs value={view} onValueChange={selectView} className="min-w-0 space-y-5">
           <TabsList
             aria-label={t("navigation.requests")}

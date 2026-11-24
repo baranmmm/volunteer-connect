@@ -94,6 +94,8 @@ export const notificationSetting = z.object({
   enabled: z.boolean(),
   delivery: z.enum(NOTIFICATION_DELIVERIES),
   locked: z.boolean(),
+  /** Always delivered immediately (locked types and task reminders): only the on/off switch is shown. */
+  delivery_locked: z.boolean().default(false),
 });
 export type NotificationSetting = z.infer<typeof notificationSetting>;
 export const notificationSettings = z.object({

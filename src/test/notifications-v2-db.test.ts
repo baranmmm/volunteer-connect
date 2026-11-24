@@ -198,6 +198,48 @@ describe("settings and the daily summary", () => {
     }));
 });
 
+describe("task reminders are always immediate", () => {
+  it("never held for the summary, even for a Branch Manager who picks digest; only on/off can change", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const before = await one<{
+        types: { type: string; delivery: string; delivery_locked: boolean }[];
+      }>("SELECT public.get_notification_settings() v");
+      expect(before.types.find((x) => x.type === "task_reminder")).toMatchObject({
+        delivery: "immediate",
+        delivery_locked: true,
+      });
+      expect(before.types.find((x) => x.type === "task_status")).toMatchObject({
+        delivery_locked: false,
+      });
+      expect(
+        await one("SELECT public.set_notification_setting('task_reminder', true, 'digest') v"),
+      ).toMatchObject({ enabled: true, delivery: "immediate" });
+      // A reminder for the Branch Manager (assigned to themselves by the Regional Director) goes out at once.
+      await as(ids.rd);
+      const t = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Budget",
+        due_date: "2027-01-18",
+        assignee_ids: [ids.bm1],
+        reminders: { before_days: [3], repeat_kind: "none" },
+      });
+      await as(null);
+      expect(await one("SELECT public.run_task_reminders('2027-01-15 09:30+00') v")).toBe(1);
+      expect((await stored(ids.bm1, "task_reminder")).map((n) => n.held)).toEqual([false]);
+      // Turned off: no reminder notice.
+      await as(ids.bm1);
+      await one("SELECT public.set_notification_setting('task_reminder', false, 'immediate') v");
+      await as(null);
+      await db.exec(
+        `DELETE FROM task_reminder_log WHERE task_id='${t}'; DELETE FROM notifications WHERE kind='task_reminder'`,
+      );
+      await one("SELECT public.run_task_reminders('2027-01-15 09:30+00') v");
+      expect(await stored(ids.bm1, "task_reminder")).toEqual([]);
+    }));
+});
+
 describe("requests waiting for review", () => {
   it("one grouped notice per reviewer, updated in place, gone when nothing waits; counts include applications", () =>
     tx(async () => {
