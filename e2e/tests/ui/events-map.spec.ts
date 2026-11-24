@@ -203,4 +203,19 @@ test.describe("Public events map", () => {
     await expect(page.getByTestId("events-map-legend-past")).toBeVisible();
     expect((await axe('[data-testid="landing-map"]')).violations).toEqual([]);
   });
+
+  test("the static map preview is in the server-rendered HTML of /events and /", async ({ request, isMobile, freshUser, freshEvent }) => {
+    test.skip(isMobile, "the HTML is the same for every device");
+    const manager = await freshUser({ role: "branch_manager" });
+    await freshEvent(manager, { label: "map ssr", status: "published", startInMinutes: 4 * 24 * 60, audience: "public" });
+    const events = await (await request.get("/events")).text();
+    expect(events).toContain('data-testid="events-map-shell"');
+    expect(events).toContain('data-testid="events-map-preview-dot"');
+    expect(events).toContain('data-testid="events-map-timeline-slider"');
+    expect(events).not.toContain("leaflet-container");
+    const landing = await (await request.get("/")).text();
+    expect(landing).toContain('data-testid="landing-map-shell"');
+    expect(landing).toContain('data-testid="events-map-preview"');
+  });
 });
+
