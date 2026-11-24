@@ -8,16 +8,14 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { createIsomorphicFn } from "@tanstack/react-start";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { I18nextProvider, useTranslation } from "react-i18next";
-import i18n, { currentLang, LOCALE_URLS, syncLanguageAfterHydration, type Lang } from "@/lib/i18n";
-import { SESSION_MARK_SCRIPT } from "@/lib/supabase-lazy";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
 
 function NotFoundComponent() {
   const { t } = useTranslation();
@@ -83,16 +81,8 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
-/** The language to render in: on the server from the request (cookie, Accept-Language); in the browser the current one. */
-const renderLanguage = createIsomorphicFn()
-  .server(async (): Promise<Lang> => (await import("@/lib/i18n.server")).requestLanguage())
-  .client(async (): Promise<Lang> => currentLang());
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  loader: async () => ({ lang: await renderLanguage() }),
-  head: ({ loaderData }) => ({
-    // Marks <html data-session> before the first paint when a stored session exists (no user data in it).
-    scripts: [{ children: SESSION_MARK_SCRIPT }],
+  head: () => ({
     // Replace these placeholders with the app's name and description when first building the app.
     // Each content route, / included, must still set its own head(). Never add og:image or
     // twitter:image here: every page without its own would inherit the root's preview image.
@@ -136,13 +126,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       // Inter loads without blocking the first paint (see FONT_LOADER below); system fonts show until then.
       { rel: "preload", as: "style", href: INTER_CSS },
-      // The page's locale file, fetched by the client before it hydrates (src/client.tsx).
-      {
-        rel: "preload",
-        as: "fetch",
-        href: LOCALE_URLS[loaderData?.lang ?? "en"],
-        crossOrigin: "anonymous",
-      },
     ],
   }),
   shellComponent: RootShell,
@@ -157,13 +140,7 @@ const INTER_CSS =
 const FONT_LOADER = `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href=${JSON.stringify(INTER_CSS)};document.head.appendChild(l);})();`;
 
 function RootShell({ children }: { children: ReactNode }) {
-  const lang = Route.useLoaderData({ select: (data) => data?.lang }) ?? currentLang();
-  // Server: one i18n instance per request, so concurrent requests in other languages never mix. Browser: the global
-  // instance, which src/client.tsx started in this same language before hydrating.
-  const instance = useMemo(
-    () => (typeof window === "undefined" ? i18n.cloneInstance({ lng: lang }) : i18n),
-    [lang],
-  );
+  const { i18n } = useTranslation();
 
   useEffect(() => {
     const updateLanguage = (language: string) => {
@@ -171,31 +148,25 @@ function RootShell({ children }: { children: ReactNode }) {
     };
     updateLanguage(i18n.language);
     i18n.on("languageChanged", updateLanguage);
-    // The server chose the language from the cookie or Accept-Language; switch if this browser's choice differs.
-    syncLanguageAfterHydration();
-    // Server-rendered pages are visible before they work: tests wait for this mark before they interact.
-    document.documentElement.setAttribute("data-hydrated", "");
     return () => {
       i18n.off("languageChanged", updateLanguage);
     };
-  }, []);
+  }, [i18n]);
 
   return (
-    <I18nextProvider i18n={instance}>
-      <html lang={lang === "tr" ? "tr" : "en-GB"} data-lang={lang} suppressHydrationWarning>
-        <head>
-          <HeadContent />
-          <script dangerouslySetInnerHTML={{ __html: FONT_LOADER }} />
-          <noscript>
-            <link rel="stylesheet" href={INTER_CSS} />
-          </noscript>
-        </head>
-        <body>
-          {children}
-          <Scripts />
-        </body>
-      </html>
-    </I18nextProvider>
+    <html lang="en-GB" suppressHydrationWarning>
+      <head>
+        <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: FONT_LOADER }} />
+        <noscript>
+          <link rel="stylesheet" href={INTER_CSS} />
+        </noscript>
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
   );
 }
 

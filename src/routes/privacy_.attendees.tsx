@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
-import { pageMeta, siteOrigin } from "@/lib/public-meta";
+import { pageHead } from "@/components/app/head";
 import { LogoLink } from "@/components/app/LogoLink";
 import { PrivacyNotice } from "@/components/app/PrivacyNotice";
 import { parseMarkdown } from "@/lib/markdown";
@@ -11,17 +11,14 @@ import noticeTr from "@/content/attendee-privacy-notice.tr.md?raw";
 // The member notice (/privacy) keeps its own version; this one covers guests and "Get event updates" subscribers.
 const BLOCKS = { en: parseMarkdown(notice), tr: parseMarkdown(noticeTr) };
 
-/** Public: /privacy/attendees, linked from the guest registration and event updates forms. Server-rendered. */
+/** Public: /privacy/attendees, linked from the guest registration and event updates forms. */
 export const Route = createFileRoute("/privacy_/attendees")({
-  loader: async () => ({ origin: await siteOrigin() }),
-  headers: () => ({ "Cache-Control": "private, no-cache" }),
-  head: ({ loaderData }) =>
-    pageMeta({
-      title: "Event attendee privacy notice · Dialogue Society",
-      description:
-        "How the Dialogue Society uses the details of event guests and event update subscribers.",
-      url: `${loaderData?.origin ?? ""}/privacy/attendees`,
-    }),
+  ssr: false,
+  head: () =>
+    pageHead(
+      "Event attendee privacy notice",
+      "How the Dialogue Society uses the details of event guests and event update subscribers.",
+    ),
   component: AttendeePrivacyPage,
 });
 

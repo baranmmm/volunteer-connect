@@ -14,7 +14,7 @@ import { eventWhen } from "@/lib/event-rules";
 import { dateLocale, translateError } from "@/lib/i18n";
 import type { PublicEvent } from "@/lib/public-events";
 import { Button } from "@/components/ui/button";
-import { publicWhere } from "./PublicEventBits";
+import { publicWhere } from "./PublicEventDetail";
 
 export { noReferrer, validateTokenSearch } from "./link-search";
 

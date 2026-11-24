@@ -31,7 +31,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
               </Link>
             ) : (
               <Link
-                to="/sign-in"
+                to="/auth"
                 data-testid="public-nav-sign-in"
                 className="min-h-11 content-center font-medium hover:text-primary"
               >

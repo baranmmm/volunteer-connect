@@ -14,10 +14,11 @@ const mocks = vi.hoisted(() => ({
   linkedTasks: vi.fn(),
 }));
 vi.mock("@tanstack/react-router", () => ({
-  // The member view (its own module since the public page is server-rendered) reads the route through getRouteApi.
-  getRouteApi: () => ({
+  createFileRoute: () => (options: unknown) => ({
+    options,
     useParams: () => ({ id: "event-id" }),
     useSearch: () => ({}),
+    useLoaderData: () => null,
   }),
   Link: ({
     children,
@@ -83,7 +84,10 @@ vi.mock("@/components/events/EventDialog", () => ({
     open ? <section>{children}</section> : null,
 }));
 import "@/lib/i18n";
-import { MemberEventDetail as Component } from "@/components/events/MemberEventDetail";
+import { Route } from "@/routes/_app/events_.$id";
+
+const Component = (Route as unknown as { options: { component: () => ReactNode } }).options
+  .component;
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.remove.mockResolvedValue(undefined);

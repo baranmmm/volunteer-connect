@@ -8,13 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import {
-  loadSupabase,
-  needsAuthClientNow,
-  whenSupabaseRequested,
-  type BrowserSupabase,
-} from "@/lib/supabase-lazy";
 import { isLang, setLanguage } from "@/lib/i18n";
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
@@ -46,54 +41,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Exactly one listener, registered before getSession(). The callback is synchronous:
   // awaiting Supabase calls inside it deadlocks supabase-js.
-  // The client is loaded lazily: with no stored session (a signed-out visitor) the state is "signed out" at once and
-  // the listener is attached only when something loads the client (sign-in, sign-up, a member page).
   useEffect(() => {
     let mounted = true;
-    let unsubscribe = () => {};
-    const attach = (supabase: BrowserSupabase) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mounted) return;
-      const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-        if (!mounted) return;
-        // Only replace state when the signed-in user actually changes, so token refreshes
-        // and focus events don't cause re-renders or refetches.
-        setSession((prev) =>
-          prev?.user.id === s?.user.id && prev?.access_token === s?.access_token ? prev : s,
-        );
-        setSessionReady(true);
-        // Defer reads to the effect; never await Supabase inside its auth callback.
-        if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED")
-          setRefreshVersion((v) => v + 1);
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-      supabase.auth.getSession().then(({ data }) => {
-        if (!mounted) return;
-        setSession((prev) => prev ?? data.session);
-        setSessionReady(true);
-      });
-    };
-    if (needsAuthClientNow()) {
-      void loadSupabase().then(attach);
-    } else {
+      // Only replace state when the signed-in user actually changes, so token refreshes
+      // and focus events don't cause re-renders or refetches.
+      setSession((prev) =>
+        prev?.user.id === s?.user.id && prev?.access_token === s?.access_token ? prev : s,
+      );
       setSessionReady(true);
-      void whenSupabaseRequested().then(attach);
-    }
+      // Defer reads to the effect; never await Supabase inside its auth callback.
+      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") setRefreshVersion((v) => v + 1);
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession((prev) => prev ?? data.session);
+      setSessionReady(true);
+    });
     return () => {
       mounted = false;
-      unsubscribe();
+      sub.subscription.unsubscribe();
     };
   }, []);
-
-  // <html data-session> hides server-rendered signed-out content for members (set early by SESSION_MARK_SCRIPT).
-  useEffect(() => {
-    if (sessionReady) document.documentElement.toggleAttribute("data-session", !!session);
-  }, [sessionReady, session]);
 
   const userId = session?.user.id ?? null;
 
   const loadProfile = useCallback(async (uid: string) => {
     const id = ++requestId.current;
-    const supabase = await loadSupabase();
     const [p, r] = await Promise.all([
       supabase
         .from("profiles")
@@ -128,7 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userId, loadProfile]);
 
   const signOut = useCallback(async () => {
-    const supabase = await loadSupabase();
     try {
       const { error } = await supabase.auth.signOut();
       // If the server call failed, still drop the locally stored session.

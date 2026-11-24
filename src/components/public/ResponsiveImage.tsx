@@ -1,11 +1,10 @@
-import type { ImgHTMLAttributes, Ref } from "react";
+import type { ImgHTMLAttributes } from "react";
 import type { SignedImage } from "@/lib/image-variants";
 
 type Props = Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "srcSet" | "sizes"> & {
   image: SignedImage;
   /** How wide the image is drawn, for choosing between the copies (the `sizes` attribute). */
   sizes: string;
-  ref?: Ref<HTMLImageElement>;
 };
 
 /**
