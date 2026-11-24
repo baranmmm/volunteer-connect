@@ -21,6 +21,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppMediaRouteImport } from './routes/_app/media'
 import { Route as AppMeetingsRouteImport } from './routes/_app/meetings'
 import { Route as AppMyRequestsRouteImport } from './routes/_app/my-requests'
+import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppRecycleBinRouteImport } from './routes/_app/recycle-bin'
 import { Route as AppRegionsRouteImport } from './routes/_app/regions'
@@ -100,6 +101,11 @@ const AppMeetingsRoute = AppMeetingsRouteImport.update({
 const AppMyRequestsRoute = AppMyRequestsRouteImport.update({
   id: '/my-requests',
   path: '/my-requests',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppProfileRoute = AppProfileRouteImport.update({
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/media': typeof AppMediaRoute
   '/meetings': typeof AppMeetingsRoute
   '/my-requests': typeof AppMyRequestsRoute
+  '/notifications': typeof AppNotificationsRoute
   '/profile': typeof AppProfileRoute
   '/recycle-bin': typeof AppRecycleBinRoute
   '/regions': typeof AppRegionsRoute
@@ -255,6 +262,7 @@ export interface FileRoutesByTo {
   '/media': typeof AppMediaRoute
   '/meetings': typeof AppMeetingsRoute
   '/my-requests': typeof AppMyRequestsRoute
+  '/notifications': typeof AppNotificationsRoute
   '/profile': typeof AppProfileRoute
   '/recycle-bin': typeof AppRecycleBinRoute
   '/regions': typeof AppRegionsRoute
@@ -291,6 +299,7 @@ export interface FileRoutesById {
   '/_app/media': typeof AppMediaRoute
   '/_app/meetings': typeof AppMeetingsRoute
   '/_app/my-requests': typeof AppMyRequestsRoute
+  '/_app/notifications': typeof AppNotificationsRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/recycle-bin': typeof AppRecycleBinRoute
   '/_app/regions': typeof AppRegionsRoute
@@ -327,6 +336,7 @@ export interface FileRouteTypes {
     | '/media'
     | '/meetings'
     | '/my-requests'
+    | '/notifications'
     | '/profile'
     | '/recycle-bin'
     | '/regions'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/media'
     | '/meetings'
     | '/my-requests'
+    | '/notifications'
     | '/profile'
     | '/recycle-bin'
     | '/regions'
@@ -396,6 +407,7 @@ export interface FileRouteTypes {
     | '/_app/media'
     | '/_app/meetings'
     | '/_app/my-requests'
+    | '/_app/notifications'
     | '/_app/profile'
     | '/_app/recycle-bin'
     | '/_app/regions'
@@ -522,6 +534,13 @@ declare module '@tanstack/react-router' {
       path: '/my-requests'
       fullPath: '/my-requests'
       preLoaderRoute: typeof AppMyRequestsRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/profile': {
@@ -682,6 +701,7 @@ interface AppRouteRouteChildren {
   AppMediaRoute: typeof AppMediaRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
   AppMyRequestsRoute: typeof AppMyRequestsRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppRecycleBinRoute: typeof AppRecycleBinRoute
   AppRegionsRoute: typeof AppRegionsRoute
@@ -702,6 +722,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppMediaRoute: AppMediaRoute,
   AppMeetingsRoute: AppMeetingsRoute,
   AppMyRequestsRoute: AppMyRequestsRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppProfileRoute: AppProfileRoute,
   AppRecycleBinRoute: AppRecycleBinRoute,
   AppRegionsRoute: AppRegionsRoute,

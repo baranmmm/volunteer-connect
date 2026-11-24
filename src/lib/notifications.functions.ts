@@ -25,6 +25,31 @@ export const listMyNotifications = createServerFn({ method: "GET" })
     return z.array(notification).parse(result.data ?? []);
   });
 
+/** Page size of the Notifications page (each "Load more" fetches one more page). */
+export const NOTIFICATIONS_PAGE_SIZE = 30;
+
+/**
+ * The Notifications page: the caller's own notices, read and unread, newest first, one page at a time. The cursor is
+ * the last row of the previous page (its created_at and id).
+ */
+export const listMyNotificationsPage = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(
+    z.object({
+      before: z.string().datetime({ offset: true }).optional(),
+      beforeId: z.string().uuid().optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("list_my_notifications_page", {
+      ...(data.before ? { p_before: data.before } : {}),
+      ...(data.beforeId ? { p_before_id: data.beforeId } : {}),
+      p_limit: NOTIFICATIONS_PAGE_SIZE,
+    });
+    fail(result.error);
+    return z.array(notification).parse(result.data ?? []);
+  });
+
 export const getNotificationCounts = createServerFn({ method: "GET" })
   .middleware([requireMember])
   .handler(async ({ context }) => {

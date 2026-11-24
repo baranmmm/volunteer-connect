@@ -15,7 +15,6 @@ import { formatDate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { pageHead } from "@/components/app/head";
 import { MyTasksCard } from "@/components/tasks/MyTasksCard";
-import { NotificationsCard } from "@/components/app/NotificationsCard";
 import { UpcomingMeetingsCard } from "@/components/meetings/UpcomingMeetingsCard";
 import { Button } from "@/components/ui/button";
 import { EventForm } from "@/components/events/EventForm";
@@ -90,7 +89,6 @@ function Dashboard() {
           </div>
         )}
         {!follower && !nc && <RequestNotices />}
-        {!follower && <NotificationsCard />}
         <UpcomingEventsCard
           events={upcoming}
           loading={events.isLoading}

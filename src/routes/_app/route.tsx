@@ -27,6 +27,7 @@ import {
   type NavItem,
 } from "@/components/app/nav";
 import { LogoLink } from "@/components/app/LogoLink";
+import { NotificationBell } from "@/components/app/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNotificationCounts, useReviewWaiting } from "@/lib/use-work-notices";
@@ -198,11 +199,21 @@ function AppLayout() {
 
       <header className="sticky top-0 z-30 grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
         <LogoLink size="sm" className="min-w-0 flex-1 text-primary" />
+        <NotificationBell variant="sheet" />
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-10 lg:pt-10">
-        <Outlet />
-      </main>
+      <div className="min-w-0 flex-1">
+        {/* Desktop top bar: the notification bell, top-right above the page. */}
+        <header
+          data-testid="app-top-bar"
+          className="mx-auto hidden w-full max-w-5xl justify-end px-10 pt-4 lg:flex"
+        >
+          <NotificationBell variant="popover" />
+        </header>
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-10 lg:pt-2">
+          <Outlet />
+        </main>
+      </div>
 
       <nav
         data-testid="mobile-bottom-nav"

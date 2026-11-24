@@ -11,6 +11,7 @@ import { TASK_TITLE_PREFIX, createTaskAs, workRpc } from "../../api/work";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { RecycleBinPage } from "../../pages/RecycleBinPage";
 import { pickOption } from "../../pages/components/select";
+import { NotificationBell } from "../../pages/components/NotificationBell";
 
 let n = 0;
 const title = (label: string) => `${TASK_TITLE_PREFIX}${runId} ui-${Date.now().toString(36)}-${++n} ${label}`;
@@ -364,10 +365,13 @@ test.describe("Tasks", () => {
     const creatorKinds = ((await adminClient().from("notifications").select("kind").eq("user_id", manager.id).eq("entity_id", id)).data ?? []).map((n) => n.kind);
     expect(creatorKinds).toContain("task_note_added");
 
-    // The mentioned person sees the notice on the dashboard, and the note count on the card.
+    // The mentioned person sees the notice behind the header bell, and the note count on the card.
     const other = await pageAs(colleague);
     await other.goto("/dashboard");
-    await expect(other.getByTestId("dashboard-notifications").locator('[data-testid="dashboard-notification"][data-kind="task_note_mention"]')).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    const bell = new NotificationBell(other);
+    await bell.open();
+    await expect(bell.notice("task_note_mention")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await bell.close();
     await openTasks(other);
     await expect(card(other, id).getByTestId("task-card-notes")).toHaveAttribute("data-count", "1");
     // Only the author edits or deletes a note.

@@ -1421,6 +1421,11 @@
   },
   "notifications": {
     "title": "Notifications",
+    "bell_one": "Notifications, {{count}} unread",
+    "bell_other": "Notifications, {{count}} unread",
+    "seeAll": "See all",
+    "loadMore": "Load more",
+    "panelDescription": "Your latest notifications",
     "markAll": "Mark all read",
     "allRead": "All notifications marked as read",
     "loadError": "Notifications could not be loaded.",
