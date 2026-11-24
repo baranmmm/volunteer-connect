@@ -45,6 +45,7 @@ vi.mock("@/lib/meetings.functions", () => ({
   listMeetingPeople: vi.fn(),
 }));
 vi.mock("@/lib/work-scopes", () => ({ listMyWorkScopes: vi.fn() }));
+vi.mock("@/lib/event-location.functions", () => ({ saveEventPostcode: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
   useNavigate: () => mocks.navigate,

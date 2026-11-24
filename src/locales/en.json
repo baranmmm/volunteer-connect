@@ -646,7 +646,8 @@
       "registration": "Registration & capacity",
       "audience": "Audience",
       "files": "Files",
-      "repeat": "Repeat"
+      "repeat": "Repeat",
+      "location": "Map location"
     },
     "meetingForm": {
       "hint": "Only the people you invite and the managers of its branch or region see a meeting. Add the agenda and files on the meeting page.",
@@ -674,7 +675,13 @@
     "maxPlacesHint": "How many places one person may book (1–10).",
     "maxPlacesError": "Enter a whole number from 1 to 10.",
     "showInGallery": "Show in public gallery",
-    "publicOnly": "Public events only"
+    "publicOnly": "Public events only",
+    "mapLocation": {
+      "postcode": "Venue postcode (optional)",
+      "postcodeHelp": "A UK postcode places the event on the public map, for example SW1A 1AA. Without one, the branch's location is used.",
+      "postcodeOnlineHint": "Online events are not shown on the map.",
+      "postcodeNotLocated": "The postcode was saved, but it could not be found on the map. The map uses the branch's location instead."
+    }
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
@@ -2072,5 +2079,63 @@
     "follower": "You're now following {{branch}}. You'll hear about its events and can attend them. You can apply to become a volunteer any time.",
     "applied": "Your volunteer application has been sent to the {{branch}} managers. Once approved you'll take part in tasks and meetings. Meanwhile you can attend events.",
     "continue": "Go to dashboard"
+  },
+  "eventsMap": {
+    "title": "Our events across the UK",
+    "intro": "Where and when our public events take place. Move through the months, press Play, or turn on past events.",
+    "label": "Map of public events",
+    "loading": "The interactive map is loading. The list has the same events.",
+    "listLabel": "Events of the map selection",
+    "listToggle_one": "{{count}} event on the map, as a list",
+    "listToggle_other": "{{count}} events on the map, as a list",
+    "placeTba": "Venue to be announced",
+    "branchArea": "{{branch}} area",
+    "markerGroup_one": "{{count}} event in {{place}}: {{titles}}",
+    "markerGroup_other": "{{count}} events in {{place}}: {{titles}}",
+    "legend": {
+      "label": "Map legend",
+      "event": "Event",
+      "tba": "Venue to be announced",
+      "past": "Past event"
+    },
+    "card": {
+      "close": "Close",
+      "register": "Register",
+      "photos": "See the photos",
+      "view": "View the event",
+      "past": "Past event",
+      "eventsHere_one": "{{count}} event in {{place}}",
+      "eventsHere_other": "{{count}} events in {{place}}"
+    },
+    "online": {
+      "title": "Online",
+      "empty": "No online events in this period.",
+      "unplaced_one": "{{count}} event without a map location is in the list.",
+      "unplaced_other": "{{count}} events without a map location are in the list."
+    },
+    "timeline": {
+      "slider": "Month",
+      "range": "{{from}} – {{to}}",
+      "all": "All months",
+      "spanLabel": "Months shown",
+      "span": {
+        "1": "1 month",
+        "3": "3 months",
+        "all": "All"
+      },
+      "play": "Play",
+      "pause": "Pause",
+      "count_one": "{{count}} event",
+      "count_other": "{{count}} events",
+      "past": "Past events",
+      "pastError": "Past events could not be loaded."
+    },
+    "strip": {
+      "open_one": "Open the map ({{count}} event)",
+      "open_other": "Open the map ({{count}} events)",
+      "title": "Events map",
+      "description": "The map of the selected events with the timeline. Escape closes it.",
+      "close": "Close the map"
+    }
   }
 }

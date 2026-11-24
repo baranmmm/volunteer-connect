@@ -4,7 +4,7 @@ import { pickOption } from "./select";
 export type RepeatFreq = "none" | "daily" | "weekly" | "monthly" | "yearly" | "custom";
 export type RepeatEnds = "never" | "on" | "after";
 /** Collapsible sections of the form; all start collapsed every time the form opens. */
-export type EventFormSection = "description" | "registration" | "audience" | "files" | "repeat";
+export type EventFormSection = "description" | "location" | "registration" | "audience" | "files" | "repeat";
 export type MeetingRepeatFreq = "none" | "weekly" | "monthly";
 
 /**

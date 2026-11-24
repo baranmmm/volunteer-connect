@@ -13,7 +13,7 @@ import type { SignedImage } from "@/lib/image-variants";
 
 const isNewKey = (key: string) => key.startsWith("sb_publishable_") || key.startsWith("sb_secret_");
 
-function anonClient() {
+export function anonClient() {
   const url = process.env["SUPABASE_URL"],
     key = process.env["SUPABASE_PUBLISHABLE_KEY"];
   if (!url || !key) throw new Error("Public events unavailable");

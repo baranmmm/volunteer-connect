@@ -1,0 +1,90 @@
+/* Public events map markers (loaded with the lazy map chunk only). Colours pass 3:1 against the light and the
+   filtered dark basemap: coming events in the brand blue, "venue to be announced" as an amber ring with a dashed
+   outline, past events as a smaller grey dot. Shape differs too, so colour is never the only cue. */
+.events-map-frame {
+  --events-map-dark-filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.8)
+    saturate(0.55);
+}
+.dark .events-map-frame .events-map-tiles {
+  filter: var(--events-map-dark-filter);
+}
+
+.events-map-marker {
+  background: transparent;
+  border: 0;
+  border-radius: 9999px;
+}
+.events-map-marker .events-map-dot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background: #006d9c;
+  border: 3px solid #ffffff;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.6),
+    0 1px 4px rgb(0 0 0 / 0.45);
+  transition: transform 120ms ease-out;
+}
+.events-map-marker.is-tba .events-map-dot {
+  background: #ffffff;
+  border: 4px dashed #b45309;
+}
+.events-map-marker.is-past .events-map-dot {
+  background: #6b7280;
+  border-width: 2px;
+}
+.events-map-marker .events-map-count {
+  position: absolute;
+  top: -9px;
+  right: -11px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #1f2937;
+  color: #ffffff;
+  font:
+    700 11px/18px system-ui,
+    sans-serif;
+  text-align: center;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+.events-map-marker:hover .events-map-dot,
+.events-map-marker:focus-visible .events-map-dot,
+.events-map-marker.is-highlighted .events-map-dot {
+  transform: scale(1.3);
+}
+.events-map-marker.is-highlighted .events-map-dot,
+.events-map-marker.is-selected .events-map-dot {
+  box-shadow:
+    0 0 0 3px #000000,
+    0 1px 6px rgb(0 0 0 / 0.5);
+}
+.events-map-marker.is-selected .events-map-dot {
+  transform: scale(1.4);
+}
+.dark .events-map-marker.is-highlighted .events-map-dot,
+.dark .events-map-marker.is-selected .events-map-dot {
+  box-shadow:
+    0 0 0 3px #ffffff,
+    0 1px 6px rgb(0 0 0 / 0.6);
+}
+.events-map-marker:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 4px;
+}
+.dark .events-map-marker:focus-visible {
+  outline-color: #ffffff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .events-map-marker .events-map-dot {
+    transition: none;
+  }
+}
+
+/* The static preview shows through until the tiles have loaded. */
+.events-map-leaflet.leaflet-container {
+  background: transparent;
+  font: inherit;
+}

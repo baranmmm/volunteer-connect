@@ -9,6 +9,7 @@ import { Highlights } from "./Highlights";
 import { LandingFooter } from "./LandingFooter";
 import { LandingHeader } from "./LandingHeader";
 import { useSeen } from "./motion";
+import { LandingMapShell } from "@/components/public/events-map/LandingMapShell";
 import { Upcoming } from "./Upcoming";
 import type { LandingData } from "@/lib/landing.server";
 
@@ -28,6 +29,25 @@ function SubscribeCard() {
   return (
     <div className="rounded-[5px] bg-white p-5 text-[#28303D] shadow-ds-card sm:p-6">
       <SubscribeForm />
+    </div>
+  );
+}
+
+// "Our events across the UK": the server renders its heading and static map preview; the interactive section (its
+// code, then Leaflet) loads only when it nears the screen.
+const LazyEventsMap = lazy(() => import("@/components/public/events-map/LandingEventsMap"));
+function EventsMapSection({ upcoming }: { upcoming: LandingData["upcoming"] }) {
+  const [ref, seen] = useSeen<HTMLDivElement>("600px 0px");
+  const shell = <LandingMapShell upcoming={upcoming} />;
+  return (
+    <div ref={ref} data-testid="landing-map-slot">
+      {seen ? (
+        <Suspense fallback={shell}>
+          <LazyEventsMap upcoming={upcoming} />
+        </Suspense>
+      ) : (
+        shell
+      )}
     </div>
   );
 }
@@ -121,6 +141,7 @@ export function Landing({ initial }: { initial?: LandingData | null }) {
             <Counters stats={data.stats} />
             <Upcoming events={data.upcoming} imagesReady={heroDone} />
             <Highlights videos={data.highlights} />
+            <EventsMapSection upcoming={data.upcoming} />
             <Gallery groups={data.gallery} onStale={refreshIfStale} />
             {next && <Updates />}
           </>

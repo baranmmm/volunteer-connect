@@ -31,6 +31,15 @@ export const publicEventSchema = z.object({
   max_places: z.number().int().min(1).max(10).optional(),
   spots_left: z.number().int().nullable().optional(),
   past_record: z.boolean().optional(),
+  // Where the public map draws the event (venue or branch location); null for online events and events without one.
+  map: z
+    .object({
+      latitude: z.number(),
+      longitude: z.number(),
+      precision: z.enum(["venue", "branch"]),
+    })
+    .nullable()
+    .optional(),
 });
 export type PublicEvent = z.infer<typeof publicEventSchema>;
 export const publicEventsSchema = z.array(publicEventSchema);
