@@ -26,10 +26,12 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
 
 ## Types, settings and defaults (Profile > Notifications)
 
-- **Locked** (always on, immediate): `task_assigned`, `mention`, `review`. Shown with disabled controls and a short
-  explanation.
-- **Changeable**: `task_status`, `task_note`, `task_reminder`, `meeting`, `request_decided`: on/off, and delivery
-  **Immediately** or **Daily summary** (`set_notification_setting`; the database refuses locked types).
+- **Locked** (always on, immediate): `task_assigned`, `mention`, `review`. Shown with a disabled switch, no delivery
+  choice and a short explanation.
+- **Task reminders** (`task_reminder`): always immediate, never in the daily summary
+  (`20261129090000_task_reminders_immediate.sql`); only the on/off switch is shown (`delivery_locked`).
+- **Changeable**: `task_status`, `task_note`, `meeting`, `request_decided`: on/off, and delivery **Immediately** or
+  **Daily summary** (`set_notification_setting`; the database refuses locked types and keeps reminders immediate).
 - **Default delivery**: immediately for volunteers, daily summary for Branch Managers, Regional Directors and
   National Coordinators (`notification_default_delivery`).
 - "Email reminders for tasks" stays in the same section (`set_task_reminder_emails`).
@@ -86,6 +88,14 @@ read (its items stay unread until opened or "Mark all as read"). No email is sen
 - Badges (`data-count`): `nav-requests-badge`, `nav-tasks-badge`, `nav-meetings-badge`, `mobile-nav-<kind>-badge`,
   `mobile-nav-more-badge`.
 - Profile: `profile-notifications`, `profile-notification-type` (`data-type`, `data-locked`, `data-enabled`,
-  `data-delivery`), `profile-notification-enabled`, `profile-notification-delivery` with
+  `data-delivery`, `data-delivery-locked`), `profile-notification-enabled`, `profile-notification-delivery` (absent
+  when the delivery is locked) with
   `profile-notification-delivery-immediate` / `profile-notification-delivery-digest`, `profile-task-reminder-emails`.
 - E2E: `e2e/tests/ui/notifications.spec.ts`.
+
+## One "waiting" count
+
+The Requests badge, the mobile More badge, the dashboard "Waiting for you" card, the grouped `review_waiting` notice
+and the /requests "To review" tab counter all use the same calculation: `review_waiting_for()` in the database
+(`get_review_waiting()` for the signed-in person, `useReviewWaiting()` in the app). It counts task and meeting requests
+sent to the person, event requests and volunteer applications in the scopes they manage.

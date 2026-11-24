@@ -30,7 +30,14 @@ test.describe("Notifications", () => {
     const assigned = typeRow(page, "task_assigned");
     await expect(assigned).toHaveAttribute("data-locked", "true");
     await expect(assigned.getByTestId("profile-notification-enabled")).toBeDisabled();
-    await expect(assigned.getByTestId("profile-notification-delivery-digest")).toBeDisabled();
+    // Always immediate: no delivery choice at all.
+    await expect(assigned.getByTestId("profile-notification-delivery")).toHaveCount(0);
+    // Task reminders: always immediate too, but they can be turned off.
+    const reminders = typeRow(page, "task_reminder");
+    await expect(reminders).toHaveAttribute("data-delivery-locked", "true");
+    await expect(reminders).toHaveAttribute("data-delivery", "immediate");
+    await expect(reminders.getByTestId("profile-notification-delivery")).toHaveCount(0);
+    await expect(reminders.getByTestId("profile-notification-enabled")).toBeEnabled();
     await expect(typeRow(page, "review")).toHaveAttribute("data-locked", "true");
     await expect(typeRow(page, "mention")).toHaveAttribute("data-locked", "true");
 

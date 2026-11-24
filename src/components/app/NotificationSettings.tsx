@@ -152,6 +152,7 @@ function TypeRow({
       data-locked={s.locked ? "true" : "false"}
       data-enabled={s.enabled ? "true" : "false"}
       data-delivery={s.delivery}
+      data-delivery-locked={s.delivery_locked ? "true" : "false"}
       className="space-y-2 py-3"
     >
       <div className="flex min-h-11 items-start gap-3">
@@ -174,27 +175,29 @@ function TypeRow({
           )}
         </div>
       </div>
-      <RadioGroup
-        data-testid="profile-notification-delivery"
-        aria-label={`${label}: ${t("notifications.settings.delivery")}`}
-        value={s.delivery}
-        disabled={s.locked || !s.enabled || busy}
-        onValueChange={(v) => onChange({ delivery: v as NotificationDelivery })}
-        className="ml-12 flex flex-wrap gap-x-5 gap-y-2"
-      >
-        {(["immediate", "digest"] as const).map((d) => (
-          <div key={d} className="flex min-h-11 items-center gap-2">
-            <RadioGroupItem
-              id={`${id}-${d}`}
-              value={d}
-              data-testid={`profile-notification-delivery-${d}`}
-            />
-            <Label htmlFor={`${id}-${d}`} className="font-normal">
-              {t(`notifications.settings.${d}`)}
-            </Label>
-          </div>
-        ))}
-      </RadioGroup>
+      {!s.delivery_locked && (
+        <RadioGroup
+          data-testid="profile-notification-delivery"
+          aria-label={`${label}: ${t("notifications.settings.delivery")}`}
+          value={s.delivery}
+          disabled={s.locked || !s.enabled || busy}
+          onValueChange={(v) => onChange({ delivery: v as NotificationDelivery })}
+          className="ml-12 flex flex-wrap gap-x-5 gap-y-2"
+        >
+          {(["immediate", "digest"] as const).map((d) => (
+            <div key={d} className="flex min-h-11 items-center gap-2">
+              <RadioGroupItem
+                id={`${id}-${d}`}
+                value={d}
+                data-testid={`profile-notification-delivery-${d}`}
+              />
+              <Label htmlFor={`${id}-${d}`} className="font-normal">
+                {t(`notifications.settings.${d}`)}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+      )}
     </li>
   );
 }
