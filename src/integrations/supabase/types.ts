@@ -1747,6 +1747,7 @@ export type Database = {
           phone: string | null
           preferred_language: string
           status: Database["public"]["Enums"]["profile_status"]
+          welcome_seen_at: string | null
         }
         Insert: {
           branch_id?: string | null
@@ -1759,6 +1760,7 @@ export type Database = {
           phone?: string | null
           preferred_language?: string
           status?: Database["public"]["Enums"]["profile_status"]
+          welcome_seen_at?: string | null
         }
         Update: {
           branch_id?: string | null
@@ -1771,6 +1773,7 @@ export type Database = {
           phone?: string | null
           preferred_language?: string
           status?: Database["public"]["Enums"]["profile_status"]
+          welcome_seen_at?: string | null
         }
         Relationships: [
           {
@@ -2432,6 +2435,7 @@ export type Database = {
         Row: {
           availability: string | null
           branch_id: string
+          commitment_accepted_at: string | null
           created_at: string
           decline_reason: string | null
           deleted_at: string | null
@@ -2443,12 +2447,14 @@ export type Database = {
           reviewer_id: string | null
           skills: string | null
           status: string
+          time_commitment: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
           availability?: string | null
           branch_id: string
+          commitment_accepted_at?: string | null
           created_at?: string
           decline_reason?: string | null
           deleted_at?: string | null
@@ -2460,12 +2466,14 @@ export type Database = {
           reviewer_id?: string | null
           skills?: string | null
           status?: string
+          time_commitment?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           availability?: string | null
           branch_id?: string
+          commitment_accepted_at?: string | null
           created_at?: string
           decline_reason?: string | null
           deleted_at?: string | null
@@ -2477,6 +2485,7 @@ export type Database = {
           reviewer_id?: string | null
           skills?: string | null
           status?: string
+          time_commitment?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -2657,6 +2666,10 @@ export type Database = {
       cancel_registration: { Args: { p_event_id: string }; Returns: Json }
       capture_email: {
         Args: { p_id: string; p_rendered: Json }
+        Returns: undefined
+      }
+      check_volunteer_answers: {
+        Args: { _commitment: boolean; _help: string; _time: string }
         Returns: undefined
       }
       claim_email_batch: {
@@ -3207,6 +3220,10 @@ export type Database = {
       mark_notifications_read: {
         Args: { p_entity_id?: string; p_entity_type?: string; p_id?: string }
         Returns: number
+      }
+      mark_welcome_seen: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       meeting_add_agenda: {
         Args: { _meeting: string; _standing: boolean; _titles: string[] }
