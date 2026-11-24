@@ -9,11 +9,12 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import {
   EVENTS_LIST_URL,
-  mapBranch,
+  mapScope,
   parseEventPage,
   parseEventsList,
   selectPhotos,
   type BranchRow,
+  type RegionRow,
   type EventPage,
   type GalleryImage,
 } from "./parse";
@@ -221,6 +222,7 @@ type PlannedEvent = {
   date: string;
   siteBranch: string | null;
   branch: BranchRow | null;
+  region: RegionRow | null;
   description: string;
   photos: GalleryImage[];
 };
@@ -236,7 +238,7 @@ function londonToday(): string {
   }).format(new Date());
 }
 
-async function plan(fetcher: Fetcher, opts: Options, branches: BranchRow[]) {
+async function plan(fetcher: Fetcher, opts: Options, branches: BranchRow[], regions: RegionRow[]) {
   const today = londonToday();
   const picked: PlannedEvent[] = [];
   const skipped: Skip[] = [];
@@ -287,8 +289,8 @@ async function plan(fetcher: Fetcher, opts: Options, branches: BranchRow[]) {
         continue;
       }
       const siteBranches = page.branches.length > 0 ? page.branches : item.branches;
-      const branch = mapBranch(siteBranches, branches);
-      const pageForSummary: EventPage = { ...page, branch: branch?.name ?? null, title };
+      const { branch, region } = mapScope(siteBranches, branches, regions);
+      const pageForSummary: EventPage = { ...page, branch: branch?.name ?? region?.name ?? null, title };
       picked.push({
         url: item.url,
         page,
@@ -296,6 +298,7 @@ async function plan(fetcher: Fetcher, opts: Options, branches: BranchRow[]) {
         date,
         siteBranch: siteBranches[0] ?? null,
         branch,
+        region,
         description: summarize(pageForSummary, date),
         photos,
       });
@@ -331,7 +334,7 @@ function originalName(url: string): string {
 
 type EventResult = {
   planned: PlannedEvent;
-  status: "new" | "existing" | "updated" | "failed" | "planned";
+  status: "new" | "existing" | "updated" | "rescoped" | "failed" | "planned";
   eventId: string | null;
   photosAdded: number;
   photosPresent: number;
@@ -341,7 +344,7 @@ type EventResult = {
 async function findExisting(
   db: SupabaseClient,
   ev: PlannedEvent,
-): Promise<{ id: string; description: string } | null> {
+): Promise<{ id: string; description: string; scope: string } | null> {
   // 1) Marker: an imported photo's source URL. 2) Fallback: the same past record title and date.
   const { data: media, error: mErr } = await db
     .from("event_media")
@@ -355,7 +358,7 @@ async function findExisting(
   const ids = (media ?? []).map((m) => m.event_id as string);
   const query = db
     .from("events")
-    .select("id, description")
+    .select("id, description, scope")
     .eq("past_record", true)
     .is("deleted_at", null);
   const { data, error } = ids[0]
@@ -363,7 +366,9 @@ async function findExisting(
     : await query.eq("title", ev.title).eq("start_date", ev.date).limit(1);
   if (error) throw new Error(error.message);
   const row = data?.[0];
-  return row ? { id: row.id as string, description: (row.description as string) ?? "" } : null;
+  return row
+    ? { id: row.id as string, description: (row.description as string) ?? "", scope: row.scope as string }
+    : null;
 }
 
 async function uploadPhoto(
@@ -416,6 +421,15 @@ async function importEvent(
   let created = false;
   if (existing) {
     result.eventId = existing.id;
+    // Records imported as national before regions were mapped become region records of the matching region.
+    if (existing.scope === "national" && ev.region) {
+      const { error } = await db
+        .from("events")
+        .update({ scope: "region", branch_id: null, region_id: ev.region.id })
+        .eq("id", existing.id);
+      if (error) throw new Error(error.message);
+      result.status = "rescoped";
+    }
     if (opts.updateText && existing.description !== ev.description) {
       const { error } = await db
         .from("events")
@@ -434,9 +448,9 @@ async function importEvent(
         location_type: "in_person",
         organizer: "Dialogue Society",
         category: "other",
-        scope: ev.branch ? "branch" : "national",
+        scope: ev.branch ? "branch" : ev.region ? "region" : "national",
         branch_id: ev.branch?.id ?? null,
-        region_id: ev.branch?.region_id ?? null,
+        region_id: ev.branch?.region_id ?? ev.region?.id ?? null,
         status: "published",
         audience: "public",
         all_day: true,
@@ -581,10 +595,16 @@ async function main() {
     .is("deleted_at", null);
   if (bErr) throw new Error(`branches: ${bErr.message}`);
   const branches = (branchRows ?? []) as BranchRow[];
+  const { data: regionRows, error: rErr } = await db
+    .from("regions")
+    .select("id, name")
+    .is("deleted_at", null);
+  if (rErr) throw new Error(`regions: ${rErr.message}`);
+  const regions = (regionRows ?? []) as RegionRow[];
 
   const fetcher = new Fetcher(opts.cacheDir, opts.refresh);
   const before = await counts(db);
-  const { picked, skipped, videos } = await plan(fetcher, opts, branches);
+  const { picked, skipped, videos } = await plan(fetcher, opts, branches, regions);
 
   const results: EventResult[] = [];
   for (const ev of picked) {
@@ -634,7 +654,7 @@ async function main() {
   const vby = (s: string) => videoResults.filter((r) => r.status === s).length;
   console.log("");
   console.log(
-    `Events: ${results.length} selected — ${by("new")} new, ${by("existing")} existing, ${by("updated")} updated, ` +
+    `Events: ${results.length} selected — ${by("new")} new, ${by("existing")} existing, ${by("updated")} updated, ${by("rescoped")} rescoped, ` +
       `${by("planned")} planned, ${by("failed")} failed`,
   );
   console.log(
@@ -656,11 +676,14 @@ async function main() {
       `highlight videos ${before.highlightVideos} → ${after.highlightVideos}`,
   );
   console.log("");
-  console.log("date | branch | title | photos | source URL | status");
+  console.log("date | scope | title | photos | source URL | status");
+  const regionName = new Map(regions.map((r) => [r.id, r.name]));
   for (const r of results) {
     const branch = r.planned.branch
-      ? r.planned.branch.name
-      : `national${r.planned.siteBranch ? ` (site: ${r.planned.siteBranch})` : ""}`;
+      ? `branch ${r.planned.branch.name} (region ${regionName.get(r.planned.branch.region_id) ?? "?"})`
+      : r.planned.region
+        ? `region ${r.planned.region.name}`
+        : `national${r.planned.siteBranch ? ` (site: ${r.planned.siteBranch})` : ""}`;
     console.log(
       `${r.planned.date} | ${branch} | ${r.planned.title} | ${r.planned.photos.length} | ${r.planned.url} | ` +
         `${r.status}${r.photosAdded ? ` +${r.photosAdded}` : ""}${r.error ? ` (${r.error})` : ""}`,

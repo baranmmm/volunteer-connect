@@ -161,6 +161,21 @@ export function GuestLinkPage({
   return (
     <Frame title={title}>
       {current.event && <GuestEventSummary event={current.event} />}
+      {!result && current.onlineUrl && (
+        <div data-testid="guest-link-online" className="space-y-2 rounded-2xl border bg-card p-5">
+          <p className="font-medium">{t("guest.onlineTitle")}</p>
+          <a
+            data-testid="guest-link-online-url"
+            href={current.onlineUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all text-primary underline underline-offset-4"
+          >
+            {current.onlineUrl}
+          </a>
+          <p className="text-sm text-muted-foreground">{t("guest.onlineNote")}</p>
+        </div>
+      )}
       {actionable ? (
         <div className="space-y-3">
           <p className="text-muted-foreground">

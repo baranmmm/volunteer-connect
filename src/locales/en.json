@@ -1817,6 +1817,8 @@
     }
   },
   "guest": {
+    "onlineTitle": "Join online",
+    "onlineNote": "This joining link is for you. Please do not share it.",
     "title": "Register for this event",
     "intro": "No account needed. We will email you a link to confirm your place.",
     "waitlistTitle": "Join the waitlist",
@@ -1895,6 +1897,7 @@
     "back": "Events"
   },
   "pastEvents": {
+    "wholeRegion": "Whole region",
     "add": "Add past event",
     "addTitle": "Add a past event",
     "editTitle": "Edit past event",

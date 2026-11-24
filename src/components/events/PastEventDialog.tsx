@@ -69,6 +69,8 @@ export function PastEventDialog({
   const qc = useQueryClient();
   const nc = roles.includes("national_coordinator"),
     director = roles.includes("regional_director");
+  // A region-level record (e.g. imported from a DS region page) keeps its region; it has no branch to choose.
+  const regionRecord = event?.scope === "region";
   const branchesFn = useServerFn(eventBranches),
     createFn = useServerFn(createPastEvent),
     updateFn = useServerFn(updatePastEvent),
@@ -163,7 +165,7 @@ export function PastEventDialog({
     if (preparing) return setError(t("events.filePreparing"));
     const found = validatePastEvent(
       { title, date, branchId: branch || null, photos: photos.length },
-      !nc,
+      !nc && !regionRecord,
     );
     setErrors(found);
     if (Object.keys(found).length) return;
@@ -171,7 +173,12 @@ export function PastEventDialog({
     setError("");
     let id = savedId;
     try {
-      const fields = { title: title.trim(), date, branchId: nc ? null : branch, description };
+      const fields = {
+        title: title.trim(),
+        date,
+        branchId: nc || regionRecord ? null : branch,
+        description,
+      };
       if (id) await updateFn({ data: { id, ...fields } });
       else {
         id = await createFn({ data: fields });
@@ -295,9 +302,13 @@ export function PastEventDialog({
           <div className="space-y-1.5">
             <Label>
               {t("events.branch")}
-              {!nc && " *"}
+              {!nc && !regionRecord && " *"}
             </Label>
-            {nc ? (
+            {regionRecord ? (
+              <p data-testid="past-event-region" className="flex min-h-11 items-center text-sm">
+                {t("pastEvents.wholeRegion")}
+              </p>
+            ) : nc ? (
               <p data-testid="past-event-national" className="flex min-h-11 items-center text-sm">
                 {t("events.national")}
               </p>

@@ -354,6 +354,27 @@ export function selectPhotos(page: EventPage, min = 3, max = 6): GalleryImage[] 
 export type BranchRow = { id: string; name: string; region_id: string };
 
 /** Maps the site's branch badges to an app branch by name (case-insensitive); null = a national record. */
+export type RegionRow = { id: string; name: string };
+export type ScopeMatch =
+  | { scope: "branch"; branch: BranchRow; region: null }
+  | { scope: "region"; branch: null; region: RegionRow }
+  | { scope: "national"; branch: null; region: null };
+
+/**
+ * Where an imported event belongs: a branch whose name matches one of the site's badges; otherwise a region whose
+ * name matches (DS region pages such as "Greater London" → a region-scope record of that region); otherwise national.
+ */
+export function mapScope(names: string[], branches: BranchRow[], regions: RegionRow[]): ScopeMatch {
+  const branch = mapBranch(names, branches);
+  if (branch) return { scope: "branch", branch, region: null };
+  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  for (const name of names) {
+    const region = regions.find((r) => norm(r.name) === norm(name));
+    if (region) return { scope: "region", branch: null, region };
+  }
+  return { scope: "national", branch: null, region: null };
+}
+
 export function mapBranch(names: string[], branches: BranchRow[]): BranchRow | null {
   const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
   for (const name of names) {

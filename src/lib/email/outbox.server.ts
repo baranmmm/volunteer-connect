@@ -119,11 +119,24 @@ async function prepare(
         links.guestConfirm = await emailLink("guest-confirm", registration.id, origin);
       links.guestCancel = await emailLink("guest-cancel", registration.id, origin);
     }
+    // The online link: only in confirmations and reminders, only for someone who holds a place on a published
+    // online event (the claim already skipped unconfirmed guests and inactive members).
+    const onlineUrl =
+      (row.template === "registration_confirmed" || row.template === "event_reminder") &&
+      registration.status === "registered" &&
+      ev["location_type"] === "online" &&
+      ev["status"] === "published" &&
+      !ev["deleted_at"] &&
+      typeof ev["online_url"] === "string" &&
+      /^https:\/\//.test(ev["online_url"])
+        ? (ev["online_url"] as string)
+        : null;
     return {
       ok: true,
       ctx: {
         ...base,
         registration,
+        onlineUrl,
         // Per-attendee SEQUENCE: the event's counter plus this registration's cancel/re-register offset.
         event: (() => {
           const event = toEmailEvent(ev, context["branch"], context["region"]);

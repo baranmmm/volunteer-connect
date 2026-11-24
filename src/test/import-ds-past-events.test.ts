@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   imageKey,
   mapBranch,
+  mapScope,
   parseDayText,
   parseEventPage,
   parseEventsList,
@@ -252,5 +253,26 @@ describe("branch mapping", () => {
     expect(mapBranch(["Greater London", "London"], branches)?.id).toBe("b3");
     expect(mapBranch(["Greater London"], branches)).toBeNull();
     expect(mapBranch([], branches)).toBeNull();
+  });
+
+  it("a region badge (e.g. Greater London) becomes a region record; a branch match wins; else national", () => {
+    const regions = [
+      { id: "r1", name: "North of England" },
+      { id: "r2", name: "Greater London" },
+    ];
+    expect(mapScope(["greater  london"], branches, regions)).toEqual({
+      scope: "region",
+      branch: null,
+      region: { id: "r2", name: "Greater London" },
+    });
+    expect(mapScope(["Greater London", "London"], branches, regions)).toMatchObject({
+      scope: "branch",
+      branch: { id: "b3" },
+    });
+    expect(mapScope(["Atlantis"], branches, regions)).toEqual({
+      scope: "national",
+      branch: null,
+      region: null,
+    });
   });
 });

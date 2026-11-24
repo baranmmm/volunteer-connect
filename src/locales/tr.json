@@ -1817,6 +1817,8 @@
     }
   },
   "guest": {
+    "onlineTitle": "Çevrimiçi katılım",
+    "onlineNote": "Bu katılım bağlantısı size özeldir. Lütfen paylaşmayın.",
     "title": "Bu etkinliğe kaydol",
     "intro": "Hesap gerekmez. Yerinizi onaylamanız için size bir bağlantı göndereceğiz.",
     "waitlistTitle": "Bekleme listesine katıl",
@@ -1895,6 +1897,7 @@
     "back": "Etkinlikler"
   },
   "pastEvents": {
+    "wholeRegion": "Tüm bölge",
     "add": "Geçmiş etkinlik ekle",
     "addTitle": "Geçmiş etkinlik ekle",
     "editTitle": "Geçmiş etkinliği düzenle",

@@ -18,6 +18,7 @@ const gallerySchema = z.object({
   title: z.string(),
   date: z.string().nullable(),
   branch: z.string().nullable(),
+  region: z.string().nullable().optional(),
   description: z.string().nullable(),
   past_record: z.boolean().nullable(),
   photos: z
@@ -119,7 +120,8 @@ export async function fetchLanding(): Promise<LandingData> {
         event_id: g.event_id,
         title: g.title,
         date: g.date,
-        branch: g.branch,
+        // Region records (no branch) are labelled with their region.
+        branch: g.branch ?? g.region ?? null,
         photos: (g.photos ?? []).flatMap((p) => {
           const url = signed.get(p.path);
           return url ? [{ id: p.id, url, width: p.width, height: p.height }] : [];

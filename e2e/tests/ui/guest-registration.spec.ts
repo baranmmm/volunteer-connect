@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { test, expect, runId } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
-import { capturedEmails, linkFrom, waitForEmail } from "../../api/outbox";
+import { capturedEmails, icsFrom, linkFrom, waitForEmail } from "../../api/outbox";
 import { emailDomain } from "../../setup/env";
 import { GuestRegistrationForm } from "../../pages/public/GuestRegistrationForm";
 import { GuestLinkPage } from "../../pages/public/GuestLinkPage";
@@ -51,6 +51,35 @@ test.describe("Guest registration (signed out)", () => {
     // The confirmation carries the cancel link.
     const confirmed = await waitForEmail({ template: "registration_confirmed", to: email });
     expect(linkFrom(confirmed, "/e/cancel")).toContain("/e/cancel?t=");
+  });
+
+  test("online event: the joining link reaches the confirmed guest (email + manage page), never the public page or the ICS", async ({ page, freshUser, freshEvent }) => {
+    const secret = `https://meet.example.org/e2e-${runId}-${randomUUID().slice(0, 8)}`;
+    const manager = await freshUser({ role: "branch_manager" });
+    const event = await freshEvent(manager, { label: "guest online", status: "published", startInMinutes: IN_FOUR_DAYS, audience: "public", onlineUrl: secret });
+    await useOwnClientIp(page);
+    const email = guestEmail("online");
+    const form = new GuestRegistrationForm(page);
+    await form.goto(event.id);
+    expect(await page.content()).not.toContain(secret);
+    await form.register({ name: "E2E Guest Online", email });
+    const confirmEmail = await waitForEmail({ template: "guest_confirm", to: email });
+    expect(JSON.stringify(confirmEmail)).not.toContain(secret);
+    const link = new GuestLinkPage(page);
+    await link.open(linkFrom(confirmEmail, "/e/confirm"));
+    await link.confirmButton().click();
+    await link.expectState("registered");
+
+    const confirmed = await waitForEmail({ template: "registration_confirmed", to: email });
+    expect(confirmed.captured.text).toContain(`Join online: ${secret}`);
+    const ics = icsFrom(confirmed);
+    expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics ?? "").not.toContain("meet.example.org");
+    // The manage page (the cancel link) shows the link; the public event page still does not.
+    await link.open(linkFrom(confirmed, "/e/cancel"));
+    await expect(page.getByTestId("guest-link-online-url")).toHaveAttribute("href", secret);
+    await form.goto(event.id);
+    expect(await page.content()).not.toContain(secret);
   });
 
   test("a full event puts the next guest on the waitlist; cancelling by link promotes them", async ({ page, freshUser, freshEvent }) => {

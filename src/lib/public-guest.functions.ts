@@ -80,6 +80,8 @@ export type GuestView = {
   position: number | null;
   places: number;
   event: PublicEvent | null;
+  /** The online joining link: only on the manage (cancel-link) page, only while the guest holds a place. */
+  onlineUrl?: string | null;
 };
 
 const viewSchema = z.object({
@@ -87,9 +89,14 @@ const viewSchema = z.object({
   places: z.number().int(),
   waitlist_position: z.number().int().nullable().optional(),
   event: z.unknown().nullable(),
+  online_url: z.string().url().startsWith("https://").nullable().optional(),
 });
 
-async function loadView(registrationId: string, state?: GuestState): Promise<GuestView> {
+async function loadView(
+  registrationId: string,
+  state?: GuestState,
+  withOnlineLink = false,
+): Promise<GuestView> {
   const db = await admin();
   const { data, error } = await db.rpc("guest_registration_view", {
     p_registration: registrationId,
@@ -103,6 +110,7 @@ async function loadView(registrationId: string, state?: GuestState): Promise<Gue
     position: parsed.data.waitlist_position ?? null,
     places: parsed.data.places,
     event: event.success ? event.data : null,
+    ...(withOnlineLink ? { onlineUrl: parsed.data.online_url ?? null } : {}),
   };
 }
 
@@ -118,7 +126,8 @@ export const getGuestRegistration = createServerFn({ method: "POST" })
       data.token,
     );
     if (!id) return INVALID;
-    return loadView(id);
+    // The manage page (the cancel link from the guest's emails) shows the joining link of an online event.
+    return loadView(id, undefined, data.purpose === "cancel");
   });
 
 /** "Confirm my registration": takes the seat (or a waitlist place). Never on page load (mail scanners open links). */

@@ -2,7 +2,7 @@
 // * UID is per registration (`<registration id>@dialoguesociety-hub`): one attendee's entry for one event. The
 //   registration row is reused when someone registers again, so a later update or cancel replaces the same entry.
 // * SEQUENCE comes from events.ics_sequence, which the database bumps on every time/place change and on cancel.
-// * Online links are never included: guests receive the joining details from the organisers.
+// * Online links are never in calendar files: confirmed registrants get the link in the email body only.
 import { eventEnd, eventStart, londonDate } from "@/lib/event-rules";
 
 export type IcsEvent = {
@@ -23,9 +23,9 @@ export type IcsEvent = {
 
 export const ICS_UID_DOMAIN = "dialoguesociety-hub";
 export const LOCATION_TBA_TEXT = "To be announced";
-export const ONLINE_TEXT = "Online — the organisers will share the joining details";
+export const ONLINE_TEXT = "Online";
 
-/** The place as shown in emails and calendar entries (never an online link). */
+/** The place as shown in emails and calendar entries (never the online link itself). */
 export function eventPlace(
   event: Pick<IcsEvent, "location" | "location_type" | "location_tba">,
 ): string {

@@ -456,6 +456,40 @@ describe("guest registrations", () => {
   );
 });
 
+describe("online joining link", () => {
+  it(
+    "reaches a guest's manage view only with a place (confirmed, registered); never the public JSON",
+    tx(async () => {
+      const link = "https://meet.example.org/room-42";
+      const e = await publicEvent({
+        location_type: "online",
+        location: "",
+        online_url: link,
+        capacity: 1,
+      });
+      const a = await guest(e, "online-a@example.test");
+      const view = (r: string) =>
+        val<Record<string, unknown>>("SELECT public.guest_registration_view($1)", [r]);
+      expect((await view(a))["online_url"]).toBeNull(); // pending
+      await db.query("SELECT public.guest_confirm($1)", [a]);
+      expect((await view(a))["online_url"]).toBe(link);
+      const b = await guest(e, "online-b@example.test");
+      await db.query("SELECT public.guest_confirm($1)", [b]);
+      expect(await val("SELECT status FROM public.event_registrations WHERE id=$1", [b])).toBe(
+        "waitlisted",
+      );
+      expect((await view(b))["online_url"]).toBeNull();
+      expect(JSON.stringify(await view(a))).toContain("meet.example.org"); // only in online_url
+      expect(JSON.stringify((await view(a))["event"])).not.toContain("meet.example.org");
+      expect(JSON.stringify(await val("SELECT public.get_public_event($1)", [e]))).not.toContain(
+        "meet.example.org",
+      );
+      await db.query("SELECT public.guest_cancel($1)", [a]);
+      expect((await view(a))["online_url"]).toBeNull();
+    }),
+  );
+});
+
 describe("calendar sequence per attendee", () => {
   it(
     "cancelling and registering again raise the registration's offset, so the next invitation comes after the cancellation",

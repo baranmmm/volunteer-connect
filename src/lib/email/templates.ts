@@ -48,6 +48,12 @@ export type RenderContext = {
   payload?: Record<string, unknown>;
   event?: EmailEvent | null;
   registration?: EmailRegistration | null;
+  /**
+   * The online meeting link, set by the sender only for confirmation and reminder emails to people who hold a place
+   * (members, and guests who confirmed their email) on a published online event. Never in calendar files or
+   * announcements.
+   */
+  onlineUrl?: string | null;
   /** Signed links, built by the sender. */
   links?: {
     guestConfirm?: string;
@@ -299,6 +305,15 @@ function requireRegistration(ctx: RenderContext): EmailRegistration {
   return ctx.registration;
 }
 
+/** The online joining link (only when the sender provided one for this person). */
+function joinBlocks(ctx: RenderContext): Block[] {
+  if (!ctx.onlineUrl) return [];
+  return [
+    { kind: "button", label: "Join online", url: ctx.onlineUrl },
+    { kind: "note", text: "This joining link is for you. Please do not share it." },
+  ];
+}
+
 /** Guests manage their registration with the signed cancel link (until the start); members in the app. */
 function manageBlocks(
   ctx: RenderContext,
@@ -433,10 +448,16 @@ function registrationConfirmed(ctx: RenderContext, now: Date): RenderedEmail {
     { kind: "p", text: intro },
     { kind: "event", event, places: registration.places },
   ];
-  if (!waitlisted)
+  if (!waitlisted) {
+    blocks.push(...joinBlocks(ctx));
     blocks.push({
       kind: "note",
       text: "The attached calendar invitation adds the event to your calendar.",
+    });
+  } else if (event.location_type === "online")
+    blocks.push({
+      kind: "note",
+      text: "You will receive the joining link when a place becomes available for you.",
     });
   blocks.push(...manageBlocks(ctx, event, registration, now));
   return build(
@@ -465,11 +486,19 @@ function eventUpdate(ctx: RenderContext, now: Date): RenderedEmail {
       kind: "note",
       text: "You are still on the waiting list. We will email you if a place becomes available.",
     });
-  else
+  else {
+    if (event.location_type === "online")
+      blocks.push({
+        kind: "note",
+        text: registration.guest
+          ? "Your joining link is on your registration page (the link below), and we will send it again in your reminder."
+          : "Your joining link is on the event page in the Volunteer Hub.",
+      });
     blocks.push({
       kind: "note",
       text: "The attached calendar invitation updates the entry in your calendar.",
     });
+  }
   blocks.push(...manageBlocks(ctx, event, registration, now));
   return build(
     {
@@ -497,6 +526,7 @@ function eventReminder(ctx: RenderContext, now: Date): RenderedEmail {
       { kind: "p", text: greeting(ctx.toName) },
       { kind: "p", text: intro },
       { kind: "event", event, places: registration.places },
+      ...joinBlocks(ctx),
       ...manageBlocks(ctx, event, registration, now),
     ],
     footer: footerFor(registration),

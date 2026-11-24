@@ -154,7 +154,42 @@ describe("email templates", () => {
       "registration_confirmed",
       guestCtx({ event: { ...event, location_type: "online", location: "" } }),
     );
-    expect(online.text).toContain("Online — the organisers will share the joining details");
+    expect(online.text).toContain("Where: Online");
+    expect(online.text).not.toContain("Join online");
+  });
+
+  it("online events: the joining link only when the sender provides it (confirmed place), never in the .ics", () => {
+    const link = "https://meet.example.org/room-42";
+    const onlineEvent = { ...event, location_type: "online", location: "" };
+    const confirmed = renderEmail(
+      "registration_confirmed",
+      guestCtx({ event: onlineEvent, onlineUrl: link }),
+    );
+    expect(confirmed.text).toContain(`Join online: ${link}`);
+    expect(confirmed.html).toContain(`href="${link}"`);
+    expect(confirmed.attachments[0]!.content).not.toContain("meet.example.org");
+    const reminder = renderEmail(
+      "event_reminder",
+      guestCtx({ event: onlineEvent, onlineUrl: link }),
+    );
+    expect(reminder.text).toContain(`Join online: ${link}`);
+    const waitlisted = renderEmail(
+      "registration_confirmed",
+      guestCtx({
+        event: onlineEvent,
+        registration: {
+          id: REG,
+          status: "waitlisted",
+          places: 1,
+          guest: true,
+          waitlist_position: 2,
+        },
+      }),
+    );
+    expect(waitlisted.text).not.toContain("meet.example.org");
+    expect(waitlisted.text).toContain("joining link when a place becomes available");
+    const update = renderEmail("event_update", guestCtx({ event: onlineEvent, onlineUrl: link }));
+    expect(update.text).not.toContain("meet.example.org");
   });
 
   it("event_update: location announced, same UID, current sequence", () => {
