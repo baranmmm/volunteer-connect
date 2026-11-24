@@ -52,6 +52,8 @@ import { createMeeting, listMeetingPeople } from "@/lib/meetings.functions";
 import { listMyWorkScopes } from "@/lib/work-scopes";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
+import { normalisePostcode } from "@/lib/branch-map";
+import { saveEventPostcode } from "@/lib/event-location.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,7 +82,14 @@ import {
 import { PeopleCombobox } from "@/components/work/PeopleCombobox";
 
 /** Collapsible sections of the form (all collapsed when the form opens). */
-const SECTIONS = ["description", "registration", "audience", "files", "repeat"] as const;
+const SECTIONS = [
+  "description",
+  "location",
+  "registration",
+  "audience",
+  "files",
+  "repeat",
+] as const;
 type Section = (typeof SECTIONS)[number];
 
 type Item = {
@@ -173,6 +182,9 @@ export function EventForm({
   // "To be announced" (in-person, single events): the place is cleared and published later (update emails).
   const [locationTba, setLocationTba] = useState(!!event?.location_tba);
   const [maxPlaces, setMaxPlaces] = useState(String(event?.max_places ?? 1));
+  // Optional venue postcode for the public map (in-person single events); without one the branch location is used.
+  const [postcode, setPostcode] = useState(event?.postcode ?? "");
+  const savePostcode = useServerFn(saveEventPostcode);
   // End follows Start + 2 hours until the user edits End themselves.
   const endTouched = useRef(!!event?.end_at);
   function setStart(day: string, time: string) {
@@ -357,6 +369,7 @@ export function EventForm({
       "repeat-until": "repeat",
       "repeat-count": "repeat",
       "meeting-repeat-count": "repeat",
+      postcode: "location",
       ...(director ? {} : { branch: "audience" as const, scope: "audience" as const }),
     };
     const opened = Object.keys(validation).flatMap((key) => {
@@ -375,6 +388,7 @@ export function EventForm({
       "location-type",
       "location",
       "online-url",
+      "postcode",
       "scope",
       "branch",
       "organizer",
@@ -522,6 +536,9 @@ export function EventForm({
       )
         validation["repeat-count"] = "events.invalid";
     }
+    const withPostcode = singleEvent && locationType === "in_person";
+    const normalisedPostcode = withPostcode ? normalisePostcode(postcode) : "";
+    if (normalisedPostcode === null) validation["postcode"] = "errors.postcodeInvalid";
     if (showErrors(validation)) return;
     if (preparing) {
       setError(t("events.filePreparing"));
@@ -692,6 +709,12 @@ export function EventForm({
             await setGallery({ data: { id: item.media.id, inGallery: !!item.inGallery } });
             item.media.in_gallery = !!item.inGallery;
           }
+      // The map postcode: saved (and geocoded on the server) only when it changed; an online event drops it.
+      const wantedPostcode = normalisedPostcode ?? "";
+      if (wantedPostcode !== (event?.postcode ?? "") && (withPostcode || event?.postcode)) {
+        const placed = await savePostcode({ data: { eventId: id, postcode: wantedPostcode } });
+        if (!placed.located) toast.error(t("events.mapLocation.postcodeNotLocated"));
+      }
       // Capacity or time changes can promote the waitlist or change registration rules: refresh those too.
       await Promise.all(
         ["events", "event", "registration-summary", "registrations", "my-registrations"].map(
@@ -1056,6 +1079,23 @@ export function EventForm({
                 )}
             </>,
           )}
+          {!meetingMode &&
+            singleEvent &&
+            locationType === "in_person" &&
+            section(
+              "location",
+              <div className="space-y-1">
+                {field(
+                  t("events.mapLocation.postcode"),
+                  "event-form-postcode",
+                  postcode,
+                  setPostcode,
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {t("events.mapLocation.postcodeHelp")}
+                </p>
+              </div>,
+            )}
           {!meetingMode &&
             section(
               "registration",

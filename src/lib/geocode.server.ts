@@ -131,3 +131,27 @@ export async function locateBranch(
   });
   return !error;
 }
+
+/**
+ * The same for an event's venue postcode (set_event_coordinates applies only while the event still has that postcode).
+ * False when it could not be located: the public map keeps using the branch location.
+ */
+export async function locateEvent(
+  admin: AdminClient,
+  eventId: string,
+  postcode: string,
+  fetchImpl?: typeof fetch,
+): Promise<boolean> {
+  const c = await geocodePostcode(postcode, {
+    cache: supabaseGeocodeCache(admin),
+    fetch: fetchImpl,
+  });
+  if (!c) return false;
+  const { error } = await admin.rpc("set_event_coordinates", {
+    p_event: eventId,
+    p_postcode: postcode,
+    p_lat: c.latitude,
+    p_lng: c.longitude,
+  });
+  return !error;
+}

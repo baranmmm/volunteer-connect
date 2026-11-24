@@ -5,13 +5,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  addMonths,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
   format,
   isSameMonth,
-  startOfMonth,
   startOfWeek,
 } from "date-fns";
 import {
@@ -32,6 +30,7 @@ import { eventOccursOn, eventWhen } from "@/lib/event-rules";
 import { dateLocale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EventsMapLayout } from "@/components/public/events-map/EventsMapLayout";
 
 type Search = { branch?: string; region?: string; view?: "list" | "month" };
 
@@ -97,7 +96,7 @@ function PublicEventsPage() {
     (b) => !search.region || b.region_id === search.region,
   );
   return (
-    <PublicShell>
+    <PublicShell wide>
       <div data-testid="public-events-page" className="space-y-6">
         <header className="space-y-2">
           <h1 className="text-3xl font-bold">{t("publicEvents.title")}</h1>
@@ -200,17 +199,35 @@ function PublicEventsPage() {
           <p role="alert" className="text-destructive">
             {t("publicEvents.loadError")}
           </p>
-        ) : view === "list" ? (
-          <PublicList events={shown} />
         ) : (
-          <PublicMonth events={shown} />
+          <EventsMapLayout upcoming={shown} branch={search.branch} region={search.region}>
+            {(ctx) =>
+              view === "list" ? (
+                <PublicList
+                  events={ctx.shown}
+                  highlightedId={ctx.highlightedId}
+                  onHover={ctx.onHover}
+                />
+              ) : (
+                <PublicMonth events={ctx.events} month={ctx.month} onMonth={ctx.setMonthOffset} />
+              )
+            }
+          </EventsMapLayout>
         )}
       </div>
     </PublicShell>
   );
 }
 
-function PublicList({ events }: { events: PublicEvent[] }) {
+function PublicList({
+  events,
+  highlightedId,
+  onHover,
+}: {
+  events: PublicEvent[];
+  highlightedId: string | null;
+  onHover: (id: string | null) => void;
+}) {
   const { t } = useTranslation();
   if (!events.length)
     return (
@@ -219,13 +236,21 @@ function PublicList({ events }: { events: PublicEvent[] }) {
       </p>
     );
   return (
-    <ul data-testid="public-events-list" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <ul
+      data-testid="public-events-list"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"
+    >
       {events.map((e) => (
         <li
           key={e.id}
           data-testid="public-event-card"
           data-event-id={e.id}
-          className="rounded-2xl border bg-card p-4"
+          data-highlighted={e.id === highlightedId ? "true" : undefined}
+          onMouseEnter={() => onHover(e.id)}
+          onMouseLeave={() => onHover(null)}
+          onFocus={() => onHover(e.id)}
+          onBlur={() => onHover(null)}
+          className={`scroll-mt-4 rounded-2xl border bg-card p-4 ${e.id === highlightedId ? "ring-2 ring-primary" : ""}`}
         >
           <Link
             to="/events/$id"
@@ -260,9 +285,18 @@ function PublicList({ events }: { events: PublicEvent[] }) {
   );
 }
 
-function PublicMonth({ events }: { events: PublicEvent[] }) {
+function PublicMonth({
+  events,
+  month: monthKey,
+  onMonth,
+}: {
+  events: PublicEvent[];
+  month: string;
+  onMonth: (delta: number) => void;
+}) {
   const { t } = useTranslation();
-  const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  // The month follows the map's timeline (its first selected month); the arrows move the timeline.
+  const month = new Date(`${monthKey}-01T12:00:00`);
   const days = eachDayOfInterval({
     start: startOfWeek(month, { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
@@ -274,7 +308,7 @@ function PublicMonth({ events }: { events: PublicEvent[] }) {
           variant="outline"
           size="icon"
           aria-label={t("publicEvents.previousMonth")}
-          onClick={() => setMonth((m) => addMonths(m, -1))}
+          onClick={() => onMonth(-1)}
         >
           <ChevronLeft />
         </Button>
@@ -285,7 +319,7 @@ function PublicMonth({ events }: { events: PublicEvent[] }) {
           variant="outline"
           size="icon"
           aria-label={t("publicEvents.nextMonth")}
-          onClick={() => setMonth((m) => addMonths(m, 1))}
+          onClick={() => onMonth(1)}
         >
           <ChevronRight />
         </Button>

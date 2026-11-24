@@ -646,7 +646,8 @@
       "registration": "Kayıt ve kontenjan",
       "audience": "Görünürlük",
       "files": "Dosyalar",
-      "repeat": "Tekrar"
+      "repeat": "Tekrar",
+      "location": "Harita konumu"
     },
     "meetingForm": {
       "hint": "Toplantıyı yalnızca davet ettiğiniz kişiler ile şubesinin veya bölgesinin yöneticileri görür. Gündemi ve dosyaları toplantı sayfasında ekleyin.",
@@ -674,7 +675,13 @@
     "maxPlacesHint": "Bir kişinin ayırabileceği yer sayısı (1–10).",
     "maxPlacesError": "1 ile 10 arasında bir tam sayı girin.",
     "showInGallery": "Herkese açık galeride göster",
-    "publicOnly": "Yalnızca herkese açık etkinlikler"
+    "publicOnly": "Yalnızca herkese açık etkinlikler",
+    "mapLocation": {
+      "postcode": "Mekânın posta kodu (isteğe bağlı)",
+      "postcodeHelp": "Birleşik Krallık posta kodu etkinliği herkese açık haritaya yerleştirir, örneğin SW1A 1AA. Posta kodu yoksa şubenin konumu kullanılır.",
+      "postcodeOnlineHint": "Çevrim içi etkinlikler haritada gösterilmez.",
+      "postcodeNotLocated": "Posta kodu kaydedildi ancak haritada bulunamadı. Harita bunun yerine şubenin konumunu kullanıyor."
+    }
   },
   "recycleBin": {
     "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",
@@ -2072,5 +2079,63 @@
     "follower": "Artık {{branch}} şubesini takip ediyorsun. Etkinliklerinden haberdar olacak ve onlara katılabileceksin. İstediğin zaman gönüllü olmak için başvurabilirsin.",
     "applied": "Gönüllülük başvurun {{branch}} şube yöneticilerine gönderildi. Onaylandığında görev ve toplantılarda yer alacaksın. Bu arada etkinliklere katılabilirsin.",
     "continue": "Ana sayfaya git"
+  },
+  "eventsMap": {
+    "title": "Birleşik Krallık genelindeki etkinliklerimiz",
+    "intro": "Herkese açık etkinliklerimizin nerede ve ne zaman yapıldığı. Aylar arasında gezinin, Oynat'a basın veya geçmiş etkinlikleri açın.",
+    "label": "Herkese açık etkinlikler haritası",
+    "loading": "Etkileşimli harita yükleniyor. Listede aynı etkinlikler var.",
+    "listLabel": "Harita seçimindeki etkinlikler",
+    "listToggle_one": "Haritadaki {{count}} etkinlik, liste olarak",
+    "listToggle_other": "Haritadaki {{count}} etkinlik, liste olarak",
+    "placeTba": "Yer daha sonra duyurulacak",
+    "branchArea": "{{branch}} bölgesi",
+    "markerGroup_one": "{{place}} konumunda {{count}} etkinlik: {{titles}}",
+    "markerGroup_other": "{{place}} konumunda {{count}} etkinlik: {{titles}}",
+    "legend": {
+      "label": "Harita açıklaması",
+      "event": "Etkinlik",
+      "tba": "Yer daha sonra duyurulacak",
+      "past": "Geçmiş etkinlik"
+    },
+    "card": {
+      "close": "Kapat",
+      "register": "Kayıt ol",
+      "photos": "Fotoğrafları gör",
+      "view": "Etkinliği görüntüle",
+      "past": "Geçmiş etkinlik",
+      "eventsHere_one": "{{place}} konumunda {{count}} etkinlik",
+      "eventsHere_other": "{{place}} konumunda {{count}} etkinlik"
+    },
+    "online": {
+      "title": "Çevrim içi",
+      "empty": "Bu dönemde çevrim içi etkinlik yok.",
+      "unplaced_one": "Harita konumu olmayan {{count}} etkinlik listede yer alıyor.",
+      "unplaced_other": "Harita konumu olmayan {{count}} etkinlik listede yer alıyor."
+    },
+    "timeline": {
+      "slider": "Ay",
+      "range": "{{from}} – {{to}}",
+      "all": "Tüm aylar",
+      "spanLabel": "Gösterilen aylar",
+      "span": {
+        "1": "1 ay",
+        "3": "3 ay",
+        "all": "Tümü"
+      },
+      "play": "Oynat",
+      "pause": "Duraklat",
+      "count_one": "{{count}} etkinlik",
+      "count_other": "{{count}} etkinlik",
+      "past": "Geçmiş etkinlikler",
+      "pastError": "Geçmiş etkinlikler yüklenemedi."
+    },
+    "strip": {
+      "open_one": "Haritayı aç ({{count}} etkinlik)",
+      "open_other": "Haritayı aç ({{count}} etkinlik)",
+      "title": "Etkinlik haritası",
+      "description": "Seçili etkinliklerin haritası ve zaman çizelgesi. Escape ile kapanır.",
+      "close": "Haritayı kapat"
+    }
   }
 }

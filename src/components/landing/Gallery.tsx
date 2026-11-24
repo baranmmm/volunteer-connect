@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -164,6 +164,28 @@ export function Gallery({
   const [shownGroups, setShownGroups] = useState(GROUPS);
   const visible = useMemo(() => groups.slice(0, shownGroups), [groups, shownGroups]);
   const photos = useFlat(visible);
+  // "/#gallery-<eventId>" (a past event's card on the map): show that group even when it is further down, then scroll.
+  const [target, setTarget] = useState<string | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const m = /^#gallery-([0-9a-f-]{36})$/i.exec(window.location.hash);
+      setTarget(m ? m[1]!.toLowerCase() : null);
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, []);
+  useEffect(() => {
+    if (!target) return;
+    const index = groups.findIndex((g) => g.event_id === target);
+    if (index < 0) return;
+    if (index >= shownGroups) {
+      setShownGroups(Math.ceil((index + 1) / GROUPS) * GROUPS);
+      return;
+    }
+    document.getElementById(`gallery-${target}`)?.scrollIntoView({ block: "start" });
+    setTarget(null);
+  }, [target, groups, shownGroups]);
   if (!groups.length) return null;
   return (
     <Reveal
@@ -177,9 +199,16 @@ export function Gallery({
       <p className="mt-2 max-w-xl text-ds-muted">{t("landing.gallery.intro")}</p>
       <div className="mt-8 space-y-12">
         {visible.map((g) => (
-          <article key={g.event_id} aria-labelledby={`gallery-${g.event_id}`} className="space-y-4">
+          <article
+            key={g.event_id}
+            id={`gallery-${g.event_id}`}
+            data-testid="landing-gallery-group"
+            data-event-id={g.event_id}
+            aria-labelledby={`gallery-${g.event_id}-title`}
+            className="scroll-mt-20 space-y-4"
+          >
             <header className="border-l-4 border-ds-blue pl-3">
-              <h3 id={`gallery-${g.event_id}`} className="text-xl font-semibold break-words">
+              <h3 id={`gallery-${g.event_id}-title`} className="text-xl font-semibold break-words">
                 {g.title}
               </h3>
               <p className="text-sm text-ds-muted">

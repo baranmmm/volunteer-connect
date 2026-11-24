@@ -9,6 +9,7 @@ import { Highlights } from "./Highlights";
 import { LandingFooter } from "./LandingFooter";
 import { LandingHeader } from "./LandingHeader";
 import { useSeen } from "./motion";
+import type { LandingData } from "@/lib/landing.server";
 import { Upcoming } from "./Upcoming";
 
 // The form (and its config/branch reads) stays off the first paint's critical path.
@@ -27,6 +28,21 @@ function SubscribeCard() {
   return (
     <div className="rounded-[5px] bg-white p-5 text-[#28303D] shadow-ds-card sm:p-6">
       <SubscribeForm />
+    </div>
+  );
+}
+
+// "Our events across the UK": its code (and later Leaflet) loads only when the section nears the screen.
+const LazyEventsMap = lazy(() => import("@/components/public/events-map/LandingEventsMap"));
+function EventsMapSection({ upcoming }: { upcoming: LandingData["upcoming"] }) {
+  const [ref, seen] = useSeen<HTMLDivElement>("600px 0px");
+  return (
+    <div ref={ref} data-testid="landing-map-slot" className="min-h-[640px]">
+      {seen && (
+        <Suspense fallback={null}>
+          <LazyEventsMap upcoming={upcoming} />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -116,6 +132,7 @@ export function Landing() {
             <Counters stats={data.stats} />
             <Upcoming events={data.upcoming} imagesReady={heroDone} />
             <Highlights videos={data.highlights} />
+            <EventsMapSection upcoming={data.upcoming} />
             <Gallery groups={data.gallery} onStale={refreshIfStale} />
             {next && <Updates />}
           </>
