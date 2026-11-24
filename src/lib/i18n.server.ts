@@ -1,18 +1,8 @@
-// Server only: both locales for server rendering, and the language of the current request. The browser downloads
-// only its own locale (src/lib/i18n.ts); the server picks the same one from the cookie that mirrors the saved choice,
-// else the Accept-Language header, so the hydrating client renders the same text.
+// Server only: the language of the current request. The server renders the page in the cookie that mirrors the saved
+// choice, else the Accept-Language header, and marks it on <html data-lang> so the hydrating client starts in the
+// same language (src/lib/i18n.ts, which holds both locales everywhere).
 import { getCookie, getRequestHeader } from "@tanstack/react-start/server";
-import en from "@/locales/en.json";
-import tr from "@/locales/tr.json";
-import i18n, { isLang, LANG_COOKIE, type Lang } from "@/lib/i18n";
-
-for (const [lang, bundle] of [
-  ["en", en],
-  ["tr", tr],
-] as const) {
-  if (!i18n.hasResourceBundle(lang, "translation"))
-    i18n.addResourceBundle(lang, "translation", bundle, true, true);
-}
+import { isLang, LANG_COOKIE, type Lang } from "@/lib/i18n";
 
 /** Cookie (the visitor's saved choice), then the first Accept-Language entry (Turkish if it starts with "tr"). */
 export function requestLanguage(): Lang {

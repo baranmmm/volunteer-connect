@@ -43,12 +43,28 @@ export function hasStoredSession(): boolean {
   }
 }
 
+/** True once something has loaded the client (its listener and session are then always used). */
+export function isSupabaseRequested(): boolean {
+  return client !== null;
+}
+
 /**
- * Whether the auth client is needed at once: a stored session, a sign-in or recovery link in the URL, or a Lovable
- * preview frame (whose session lives with the editor, not in localStorage).
+ * The server-rendered public pages, the only ones that may start without the client. Every other page (members,
+ * sign-in, password reset, email links) gets it at once, exactly as when the client was a static import.
+ */
+const PUBLIC_PATH = /^\/(?:events(?:\/[0-9a-f-]{36})?|sign-in|join|privacy\/attendees)?\/?$/i;
+
+export function isLazyAuthPath(pathname: string): boolean {
+  return PUBLIC_PATH.test(pathname);
+}
+
+/**
+ * Whether the auth client is needed at once: any page other than the public ones, a stored session, a sign-in or
+ * recovery link in the URL, or a frame (a Lovable preview, whose storage may be partitioned).
  */
 export function needsAuthClientNow(): boolean {
   if (typeof window === "undefined") return false;
+  if (!isLazyAuthPath(window.location.pathname)) return true;
   if (hasStoredSession()) return true;
   try {
     if (window.parent !== window) return true;

@@ -1,15 +1,17 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-// Each locale is a separate static file: the browser downloads only the language it shows, before hydrating
-// (src/client.tsx; the page head preloads it). The server adds both bundles (i18n.server.ts), tests in setup.ts.
-import enUrl from "@/locales/en.json?url";
-import trUrl from "@/locales/tr.json?url";
+// Both locales are part of the app bundle and are registered synchronously below, when this module is first evaluated:
+// before any route (server-rendered or client-only) can render, on the server, in the browser and in tests. No t()
+// call can ever run before its texts exist, and nothing depends on a download that can fail or arrive late.
+import en from "@/locales/en.json";
+import tr from "@/locales/tr.json";
 
 export type Lang = "en" | "tr";
 export const LANG_STORAGE_KEY = "dsvh-language";
 /** Mirrors the saved choice for the server, which renders the public pages in that language. */
 export const LANG_COOKIE = "dsvh-language";
-export const LOCALE_URLS: Record<Lang, string> = { en: enUrl, tr: trUrl };
+
+export const RESOURCES = { en: { translation: en }, tr: { translation: tr } } as const;
 
 export function isLang(v: unknown): v is Lang {
   return v === "en" || v === "tr";
@@ -39,11 +41,13 @@ function pageLanguage(): Lang | null {
   return isLang(lang) ? lang : null;
 }
 
+// initAsync: false (and inline resources) make init complete synchronously: language and texts are set when the
+// import of this module returns.
 void i18n.use(initReactI18next).init({
-  resources: {},
-  partialBundledLanguages: true,
+  resources: RESOURCES,
   lng: pageLanguage() ?? detectLanguage(),
   fallbackLng: "en",
+  initAsync: false,
   interpolation: { escapeValue: false },
 });
 
@@ -58,60 +62,42 @@ export function currentLang(): Lang {
   return isLang(i18n.language) ? i18n.language : "en";
 }
 
-const loading: Partial<Record<Lang, Promise<void>>> = {};
-/** Downloads one locale once (nothing to do when it is already loaded: on the server and in tests). */
-export function loadLanguage(lang: Lang): Promise<void> {
-  if (i18n.hasResourceBundle(lang, "translation")) return Promise.resolve();
-  loading[lang] ??= fetch(LOCALE_URLS[lang], { credentials: "same-origin" })
-    .then((res) => {
-      if (!res.ok) throw new Error(`locale ${lang}`);
-      return res.json() as Promise<Record<string, unknown>>;
-    })
-    .then((bundle) => {
-      i18n.addResourceBundle(lang, "translation", bundle, true, true);
-    })
-    .catch((error: unknown) => {
-      delete loading[lang];
-      throw error;
-    });
-  return loading[lang];
-}
-
-/** Resolves once the current language's texts are loaded (the client waits for it before hydrating). */
-export function i18nReady(): Promise<void> {
-  return loadLanguage(currentLang()).catch(() =>
-    // Without its own file the page still works in English.
-    loadLanguage("en").then(() => void i18n.changeLanguage("en")),
-  );
-}
+/**
+ * The cookie's attributes (the inline script below repeats them). Over https it is a partitioned SameSite=None cookie,
+ * so it also reaches the server from inside a cross-site frame (the Lovable preview); a language choice is not
+ * sensitive. Plain http (local) cannot set those, so it stays Lax there.
+ */
+const COOKIE_ATTRS = "; path=/; max-age=31536000; ";
+const HTTPS_ATTRS = "samesite=none; secure; partitioned";
+const HTTP_ATTRS = "samesite=lax";
 
 function writeLanguageCookie(lang: Lang) {
   try {
-    document.cookie = `${LANG_COOKIE}=${lang}; path=/; max-age=31536000; samesite=lax`;
+    const secure = window.location.protocol === "https:";
+    document.cookie = `${LANG_COOKIE}=${lang}${COOKIE_ATTRS}${secure ? HTTPS_ATTRS : HTTP_ATTRS}`;
   } catch {
     /* ignore */
   }
 }
 
-function switchLanguage(lang: Lang) {
-  if (i18n.language === lang) return;
-  // Synchronous when the texts are already loaded (always on the server and in tests).
-  if (i18n.hasResourceBundle(lang, "translation")) void i18n.changeLanguage(lang);
-  else
-    void loadLanguage(lang).then(
-      () => i18n.changeLanguage(lang),
-      () => undefined,
-    );
-}
+/**
+ * Inline script for the page head (plain ES5, no user data), run before the app's scripts: when the visitor's saved
+ * choice differs from the language the server rendered (no cookie yet, e.g. a choice saved before the cookie existed),
+ * it writes the cookie and reloads once, so the page is server-rendered and hydrated in the saved language. Switching
+ * after hydration instead changed the text of route content that was still hydrating (a hydration mismatch). The
+ * session flag stops a second reload where the cookie cannot reach the server (blocked cookies, a cross-site frame).
+ */
+export const LANGUAGE_COOKIE_SCRIPT = `(function(){try{var s=window.localStorage.getItem("${LANG_STORAGE_KEY}");var p=document.documentElement.getAttribute("data-lang");if((s!=="en"&&s!=="tr")||!p||s===p)return;document.cookie="${LANG_COOKIE}="+s+"${COOKIE_ATTRS}"+(window.location.protocol==="https:"?"${HTTPS_ATTRS}":"${HTTP_ATTRS}");if(document.cookie.indexOf("${LANG_COOKIE}="+s)<0||window.sessionStorage.getItem("dsvh-language-reload"))return;window.sessionStorage.setItem("dsvh-language-reload","1");window.location.reload()}catch(e){}})();`;
 
 /**
- * After hydration: switch to the visitor's own choice when the server guessed differently (no cookie yet), and keep
- * the cookie in step with a saved choice so the next server render uses it.
+ * After hydration: switch to the visitor's own choice when the server guessed differently (no saved choice, a browser
+ * language other than the request's), and keep the cookie in step with a saved choice for the next server render.
  */
 export function syncLanguageAfterHydration() {
   const saved = savedLanguage();
   if (saved) writeLanguageCookie(saved);
-  switchLanguage(detectLanguage());
+  const lang = detectLanguage();
+  if (i18n.language !== lang) void i18n.changeLanguage(lang);
 }
 
 export function setLanguage(lang: Lang) {
@@ -121,7 +107,7 @@ export function setLanguage(lang: Lang) {
     /* ignore */
   }
   writeLanguageCookie(lang);
-  switchLanguage(lang);
+  if (i18n.language !== lang) void i18n.changeLanguage(lang);
 }
 
 export function dateLocale(lang: string = i18n.language) {

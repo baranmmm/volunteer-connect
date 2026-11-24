@@ -471,7 +471,6 @@ function RegionsPage() {
         ) : (
           <BranchMap
             branches={map.data ?? []}
-            fit={nc ? "uk" : "branches"}
             onOpenBranch={(id) => {
               setFocusBranch(id);
               setView("list");

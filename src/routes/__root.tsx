@@ -16,7 +16,12 @@ import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { I18nextProvider, useTranslation } from "react-i18next";
-import i18n, { currentLang, LOCALE_URLS, syncLanguageAfterHydration, type Lang } from "@/lib/i18n";
+import i18n, {
+  currentLang,
+  LANGUAGE_COOKIE_SCRIPT,
+  syncLanguageAfterHydration,
+  type Lang,
+} from "@/lib/i18n";
 import { SESSION_MARK_SCRIPT } from "@/lib/supabase-lazy";
 
 function NotFoundComponent() {
@@ -90,9 +95,10 @@ const renderLanguage = createIsomorphicFn()
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   loader: async () => ({ lang: await renderLanguage() }),
-  head: ({ loaderData }) => ({
+  head: () => ({
     // Marks <html data-session> before the first paint when a stored session exists (no user data in it).
-    scripts: [{ children: SESSION_MARK_SCRIPT }],
+    // Reloads once in the saved language when the server rendered another one (no cookie yet; no user data in it).
+    scripts: [{ children: LANGUAGE_COOKIE_SCRIPT }, { children: SESSION_MARK_SCRIPT }],
     // Replace these placeholders with the app's name and description when first building the app.
     // Each content route, / included, must still set its own head(). Never add og:image or
     // twitter:image here: every page without its own would inherit the root's preview image.
@@ -136,13 +142,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       // Inter loads without blocking the first paint (see FONT_LOADER below); system fonts show until then.
       { rel: "preload", as: "style", href: INTER_CSS },
-      // The page's locale file, fetched by the client before it hydrates (src/client.tsx).
-      {
-        rel: "preload",
-        as: "fetch",
-        href: LOCALE_URLS[loaderData?.lang ?? "en"],
-        crossOrigin: "anonymous",
-      },
     ],
   }),
   shellComponent: RootShell,
@@ -159,7 +158,7 @@ const FONT_LOADER = `(function(){var l=document.createElement("link");l.rel="sty
 function RootShell({ children }: { children: ReactNode }) {
   const lang = Route.useLoaderData({ select: (data) => data?.lang }) ?? currentLang();
   // Server: one i18n instance per request, so concurrent requests in other languages never mix. Browser: the global
-  // instance, which src/client.tsx started in this same language before hydrating.
+  // instance, which src/lib/i18n.ts started (both locales registered) in the language of <html data-lang>.
   const instance = useMemo(
     () => (typeof window === "undefined" ? i18n.cloneInstance({ lng: lang }) : i18n),
     [lang],
