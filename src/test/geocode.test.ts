@@ -6,7 +6,13 @@ import {
   type CachedGeocode,
   type GeocodeCache,
 } from "@/lib/geocode.server";
-import { basemapTiles, normalisePostcode, regionColors } from "@/lib/branch-map";
+import {
+  CARTO_PUBLIC_KEY,
+  basemapTiles,
+  cartoKey,
+  normalisePostcode,
+  regionColors,
+} from "@/lib/branch-map";
 
 // The branch geocoder: postcodes.io through an injected fetch and an in-memory cache (no network, no database).
 const NOW = new Date("2026-11-24T12:00:00Z");
@@ -168,5 +174,27 @@ describe("basemap tiles", () => {
       expect(osm.url).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
       expect(osm.attribution).not.toContain("CARTO");
     }
+  });
+});
+
+describe("CARTO key by host", () => {
+  it("the public key only on the Lovable domains it is restricted to; the env key wins; elsewhere none (OSM)", () => {
+    for (const host of [
+      "project--abc.lovable.app",
+      "id-preview--abc.lovable.app",
+      "abc.lovableproject.com",
+      "lovable.dev",
+    ])
+      expect(cartoKey(host, undefined)).toBe(CARTO_PUBLIC_KEY);
+    for (const host of [
+      "localhost",
+      "127.0.0.1",
+      "example.org",
+      "lovable.app.evil.com",
+      "notlovable.dev",
+    ])
+      expect(cartoKey(host, undefined)).toBeUndefined();
+    expect(cartoKey("localhost", " own-key ")).toBe("own-key");
+    expect(basemapTiles(cartoKey("localhost", undefined)).provider).toBe("osm");
   });
 });
