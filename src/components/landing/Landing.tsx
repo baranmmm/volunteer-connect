@@ -9,8 +9,9 @@ import { Highlights } from "./Highlights";
 import { LandingFooter } from "./LandingFooter";
 import { LandingHeader } from "./LandingHeader";
 import { useSeen } from "./motion";
-import type { LandingData } from "@/lib/landing.server";
+import { LandingMapShell } from "@/components/public/events-map/LandingMapShell";
 import { Upcoming } from "./Upcoming";
+import type { LandingData } from "@/lib/landing.server";
 
 // The form (and its config/branch reads) stays off the first paint's critical path.
 const LazySubscribeForm = lazy(() =>
@@ -32,16 +33,20 @@ function SubscribeCard() {
   );
 }
 
-// "Our events across the UK": its code (and later Leaflet) loads only when the section nears the screen.
+// "Our events across the UK": the server renders its heading and static map preview; the interactive section (its
+// code, then Leaflet) loads only when it nears the screen.
 const LazyEventsMap = lazy(() => import("@/components/public/events-map/LandingEventsMap"));
 function EventsMapSection({ upcoming }: { upcoming: LandingData["upcoming"] }) {
   const [ref, seen] = useSeen<HTMLDivElement>("600px 0px");
+  const shell = <LandingMapShell upcoming={upcoming} />;
   return (
-    <div ref={ref} data-testid="landing-map-slot" className="min-h-[640px]">
-      {seen && (
-        <Suspense fallback={null}>
+    <div ref={ref} data-testid="landing-map-slot">
+      {seen ? (
+        <Suspense fallback={shell}>
           <LazyEventsMap upcoming={upcoming} />
         </Suspense>
+      ) : (
+        shell
       )}
     </div>
   );
@@ -71,9 +76,13 @@ function Updates() {
   );
 }
 
-export function Landing() {
+export function Landing({ initial }: { initial?: LandingData | null }) {
   const { t } = useTranslation();
-  const query = useQuery(landingQuery);
+  // Server-rendered data first; re-read once its signed links are older than 4 minutes.
+  const query = useQuery({
+    ...landingQuery,
+    ...(initial ? { initialData: initial, initialDataUpdatedAt: initial.signedAt } : {}),
+  });
   const [heroDone, setHeroDone] = useState(false);
   const { data, dataUpdatedAt, refetch } = query;
   // Re-sign when the links are older than 4 minutes (lightbox open, or an image failed to load).

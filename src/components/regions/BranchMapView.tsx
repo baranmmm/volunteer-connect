@@ -14,10 +14,13 @@ import {
   type RegionColor,
 } from "@/lib/branch-map";
 
+/** The first view when no branch has coordinates yet. */
 const UK_BOUNDS: L.LatLngBoundsExpression = [
   [49.9, -8.2],
   [58.7, 1.8],
 ];
+/** Branch view: a margin around the outermost markers, and no closer than town level for one or two branches. */
+const FIT_OPTIONS: L.FitBoundsOptions = { padding: [40, 40], maxZoom: 10 };
 // CARTO Positron on the Lovable domains (the key is restricted to them), OpenStreetMap elsewhere.
 const TILES = basemapTiles(
   cartoKey(
@@ -31,11 +34,9 @@ type Props = {
   colors: Map<string, RegionColor>;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  /** "uk": the whole country (NC); "branches": fit to the given branches (RD's region). */
-  fit: "uk" | "branches";
 };
 
-export default function BranchMapView({ branches, colors, selectedId, onSelect, fit }: Props) {
+export default function BranchMapView({ branches, colors, selectedId, onSelect }: Props) {
   const { t } = useTranslation();
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -43,6 +44,8 @@ export default function BranchMapView({ branches, colors, selectedId, onSelect, 
   const nodes = useRef(new Map<string, HTMLElement>());
   const select = useRef(onSelect);
   select.current = onSelect;
+  /** The branch positions the view was last fitted to: a refetch with the same positions keeps the user's zoom. */
+  const fitted = useRef<string | null>(null);
 
   // The map itself, once.
   useEffect(() => {
@@ -129,13 +132,17 @@ export default function BranchMapView({ branches, colors, selectedId, onSelect, 
         });
       }
     }
-    if (fit === "branches" && shown.length) {
-      m.fitBounds(L.latLngBounds(shown.map((b) => [b.latitude, b.longitude])), {
-        padding: [40, 40],
-        maxZoom: 10,
-      });
+    // Opens fitted to the branches it shows (NC: every located branch; RD: their region's), the UK without any.
+    const points = shown.map((b) => [b.latitude, b.longitude] as L.LatLngTuple);
+    const key = JSON.stringify(points);
+    if (fitted.current !== key) {
+      fitted.current = key;
+      if (points.length) m.fitBounds(L.latLngBounds(points), FIT_OPTIONS);
+      else m.fitBounds(UK_BOUNDS);
+      // For tests: what the view was fitted to.
+      if (el.current) el.current.dataset["fit"] = points.length ? "branches" : "uk";
     }
-  }, [branches, colors, fit, t]);
+  }, [branches, colors, t]);
 
   // The chosen branch (without rebuilding the markers, so keyboard focus stays where it is).
   useEffect(() => {
@@ -143,7 +150,7 @@ export default function BranchMapView({ branches, colors, selectedId, onSelect, 
       node.setAttribute("aria-pressed", String(id === selectedId));
       node.classList.toggle("is-selected", id === selectedId);
     }
-  }, [selectedId, branches, colors, fit, t]);
+  }, [selectedId, branches, colors, t]);
 
   // Phones: the details open as a bottom sheet over the lower part of the map, so bring the map to the top of the
   // screen and the chosen marker into its upper quarter.

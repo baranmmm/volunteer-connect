@@ -3,7 +3,11 @@
 # Dialogue Society Volunteer Hub
 
 Bilingual (EN/TR) volunteer hub for Dialogue Society branches, packaged as a PWA/native app.
-TanStack Start + React 19 + Supabase, client-side SPA only (every route `ssr: false`).
+TanStack Start + React 19 + Supabase. Public signed-out routes server-render for performance and link previews ("/",
+"/events", "/events/$id", "/sign-in", "/join", "/privacy/attendees"); everything signed-in stays client-only
+(`ssr: false`). Approved exception: the server never knows the session (localStorage), so server-rendered pages show
+the signed-out view, `<html data-session>` hides it for members until their client view, and pages with signed image
+links send `Cache-Control: private, no-store`.
 
 ## Working agreement
 Claude Code makes frontend (`src/`) and database (`supabase/migrations/`) changes. Lovable is used only for new
@@ -103,6 +107,8 @@ Ranking: follower < volunteer < branch_manager < regional_director < national_co
 - `anon` reads no table data except branch and region names (sign-up and filters). Public events reach signed-out
   visitors only through `get_public_events`, `get_public_event` and `get_public_event_image` (the one deliberate
   exception to "SECURITY DEFINER → authenticated only"); they return public fields only, never online links or people.
+  The link-preview route `/api/public/event-image/<id>` serves a cover (bytes, never the path) only after
+  `get_public_event_image` confirms the event is public.
 - No direct client writes except the column-granted own-row fields `profiles.full_name`, `phone`, `preferred_language`.
 - Every other change goes through SECURITY DEFINER RPCs: `set_user_status`, `set_user_role`, `set_user_branch`,
   `request_account_deletion`, `cancel_account_deletion`, the volunteer application, followed branch and structure

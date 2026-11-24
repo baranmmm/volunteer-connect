@@ -34,7 +34,7 @@ export function PublicShell({ children, wide }: { children: ReactNode; wide?: bo
               </Link>
             ) : (
               <Link
-                to="/auth"
+                to="/sign-in"
                 data-testid="public-nav-sign-in"
                 className="min-h-11 content-center font-medium hover:text-primary"
               >

@@ -14,7 +14,22 @@ export default defineConfig({
     // Dev server only: scan every route for dependencies at startup. Without it Vite discovers a lazily loaded
     // route's dependencies on its first visit, re-optimises them and force-reloads every open page ("optimized
     // dependencies changed. reloading"), which aborted in-flight requests and broke e2e runs on a cold cache.
-    optimizeDeps: { entries: ["src/router.tsx", "src/routes/**/*.tsx", "src/components/**/*.tsx"] },
+    // `include` lists what hydrating a server-rendered page imports from inside TanStack's own (unscanned) packages.
+    // Discovered only at run time, they caused that same reload; where the reload does not reach the page (Lovable's
+    // preview holds it), the page kept running with two copies of React and i18next: an error page, dead buttons
+    // and raw translation keys. Check the dev log for "new dependencies optimized" after framework upgrades.
+    optimizeDeps: {
+      entries: ["src/router.tsx", "src/routes/**/*.tsx", "src/components/**/*.tsx"],
+      include: [
+        "@tanstack/history",
+        "@tanstack/router-core",
+        "@tanstack/router-core/isServer",
+        "@tanstack/router-core/ssr/client",
+        "@tanstack/router-core/ssr/server",
+        "h3-v2",
+        "seroval",
+      ],
+    },
   },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).

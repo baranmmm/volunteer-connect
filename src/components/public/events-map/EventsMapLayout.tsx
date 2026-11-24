@@ -7,19 +7,22 @@ import { useTranslation } from "react-i18next";
 import { eventStartValue, isPastEvent, type MonthKey } from "@/lib/events-map";
 import type { PublicEvent } from "@/lib/public-events";
 import { useLabelledPlaces } from "./labels";
+import { MapPreview } from "./MapPreview";
+import { Legend, OnlinePanel } from "./parts";
+import { Timeline } from "./Timeline";
 import { useEventsTimeline, type EventsTimeline } from "./use-events-timeline";
 
 const DESKTOP = "(min-width: 1024px)";
 const MapPanels = lazy(() => import("./MapPanels"));
 
+/** Desktop or phone, known only after mounting (null on the server and in the hydration render). */
 function useDesktop() {
-  const [desktop, setDesktop] = useState(
-    () => typeof window !== "undefined" && !!window.matchMedia?.(DESKTOP).matches,
-  );
+  const [desktop, setDesktop] = useState<boolean | null>(null);
   useEffect(() => {
     const mq = window.matchMedia?.(DESKTOP);
-    if (!mq) return;
+    if (!mq) return setDesktop(true);
     const on = () => setDesktop(mq.matches);
+    on();
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
   }, []);
@@ -114,49 +117,48 @@ export function EventsMapLayout({
     timeline,
   });
 
-  const panels = (
-    <Suspense
-      fallback={
-        // Room for the map (and on phones the strip and timeline), so nothing jumps when the panel arrives.
-        <div
-          aria-hidden
-          className={
-            desktop
-              ? "h-[min(440px,55vh)] rounded-2xl border bg-[#dbe8f0] dark:bg-[#2b3340]"
-              : "h-[27rem] rounded-2xl bg-transparent"
-          }
-        />
-      }
+  const [fullscreen, setFullscreen] = useState(false);
+  // The static preview (server-rendered): the phone strip, or the map frame on desktop (same box as the live map).
+  const shell = (
+    <div
+      aria-hidden
+      data-testid="events-map-shell"
+      className="relative h-32 overflow-hidden rounded-2xl border bg-[#dbe8f0] dark:bg-[#2b3340] lg:h-[min(440px,55vh)]"
     >
-      <MapPanels
-        layout={desktop ? "desktop" : "mobile"}
-        timeline={timeline}
-        places={places}
-        highlightIds={highlightIds}
-        selectedKey={selectedKey}
-        onSelect={onSelect}
-      />
-    </Suspense>
+      <MapPreview places={places} />
+    </div>
   );
-  if (!desktop)
-    return (
-      <div className="space-y-4" data-testid="events-map-layout" data-layout="mobile">
-        {panels}
-        <section aria-label={t("eventsMap.listLabel")}>{list}</section>
-      </div>
-    );
   return (
     <div
       data-testid="events-map-layout"
-      data-layout="desktop"
-      className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-6"
+      data-layout={desktop === null ? undefined : desktop ? "desktop" : "mobile"}
+      className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-6"
     >
-      <section aria-label={t("eventsMap.listLabel")} className="min-w-0">
+      <div className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:order-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:p-1">
+        {desktop === null ? (
+          shell
+        ) : (
+          <Suspense fallback={shell}>
+            <MapPanels
+              layout={desktop ? "desktop" : "mobile"}
+              timeline={timeline}
+              places={places}
+              highlightIds={highlightIds}
+              selectedKey={selectedKey}
+              onSelect={onSelect}
+              fullscreen={fullscreen}
+              setFullscreen={setFullscreen}
+            />
+          </Suspense>
+        )}
+        <Legend withPast={timeline.withPast} className="hidden lg:flex" />
+        {/* While the phone's full-screen map is open, its own timeline is the only one. */}
+        {!fullscreen && <Timeline timeline={timeline} idPrefix="events" />}
+        <OnlinePanel shown={timeline.shown} now={timeline.now} />
+      </div>
+      <section aria-label={t("eventsMap.listLabel")} className="min-w-0 lg:order-1">
         {list}
       </section>
-      <div className="sticky top-4 max-h-[calc(100vh-2rem)] min-w-0 space-y-3 overflow-y-auto p-1">
-        {panels}
-      </div>
     </div>
   );
 }

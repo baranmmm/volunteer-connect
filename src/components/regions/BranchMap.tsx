@@ -10,13 +10,12 @@ import { Button } from "@/components/ui/button";
 const BranchMapView = lazy(() => import("./BranchMapView"));
 
 type Props = {
+  /** Every branch the viewer may see (NC: all; RD: their region): the map opens fitted to the located ones. */
   branches: MapBranch[];
-  /** "uk" for National Coordinators, "branches" (their region) for Regional Directors. */
-  fit: "uk" | "branches";
   onOpenBranch: (id: string) => void;
 };
 
-export function BranchMap({ branches, fit, onOpenBranch }: Props) {
+export function BranchMap({ branches, onOpenBranch }: Props) {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const colors = useMemo(() => regionColors(branches), [branches]);
@@ -46,7 +45,6 @@ export function BranchMap({ branches, fit, onOpenBranch }: Props) {
             colors={colors}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            fit={fit}
           />
         </Suspense>
         <ul

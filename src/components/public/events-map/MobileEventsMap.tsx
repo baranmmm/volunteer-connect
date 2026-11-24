@@ -1,8 +1,8 @@
-// Phones (/events): a compact map strip (the static preview, no Leaflet) above the list, with the timeline under it.
+// Phones (/events): a compact map strip (the static preview, no Leaflet) above the timeline and the list.
 // Tapping the strip opens the full-screen interactive map with the timeline; marker cards open as a bottom sheet.
 // Escape closes the card first, then the full-screen map (focus returns to the strip). A small modal of its own
 // (focus kept inside, page scroll locked) rather than Radix Dialog, so this chunk shares no chunks with the landing page.
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { CloseIcon, ExpandIcon } from "./icons";
@@ -22,15 +22,19 @@ export function MobileEventsMap({
   places,
   selectedKey,
   onSelect,
+  open,
+  setOpen,
 }: {
   timeline: EventsTimeline;
   places: LabelledPlace[];
   selectedKey: string | null;
   onSelect: (key: string | null) => void;
+  /** The full-screen map (the page hides its own timeline meanwhile). */
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
   const count = places.reduce((n, p) => n + p.events.length, 0);
-  const [open, setOpen] = useState(false);
   const strip = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -40,7 +44,7 @@ export function MobileEventsMap({
     onSelect(null);
     // Back to the strip once the dialog has gone.
     requestAnimationFrame(() => strip.current?.focus());
-  }, [onSelect]);
+  }, [onSelect, setOpen]);
   const closeCard = useCallback(() => {
     const key = selectedKey;
     onSelect(null);
@@ -87,7 +91,7 @@ export function MobileEventsMap({
   }
 
   return (
-    <div className="space-y-3">
+    <>
       <button
         ref={strip}
         type="button"
@@ -152,7 +156,6 @@ export function MobileEventsMap({
           </div>,
           document.body,
         )}
-      {!open && <Timeline timeline={timeline} idPrefix="events-mobile" />}
-    </div>
+    </>
   );
 }
