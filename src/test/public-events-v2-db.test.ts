@@ -456,6 +456,29 @@ describe("guest registrations", () => {
   );
 });
 
+describe("calendar sequence per attendee", () => {
+  it(
+    "cancelling and registering again raise the registration's offset, so the next invitation comes after the cancellation",
+    tx(async () => {
+      const e = await publicEvent();
+      const a = await guest(e, "seq@example.test");
+      await db.query("SELECT public.guest_confirm($1)", [a]);
+      const offset = () =>
+        val<number>("SELECT ics_offset FROM public.event_registrations WHERE id=$1", [a]);
+      expect(await offset()).toBe(0);
+      await db.query("SELECT public.guest_cancel($1)", [a]);
+      expect(await offset()).toBe(1);
+      await guest(e, "seq@example.test");
+      expect(await offset()).toBe(2);
+      expect(
+        await val("SELECT (public.email_event_context($1)->'registration'->>'ics_offset')::int", [
+          a,
+        ]),
+      ).toBe(2);
+    }),
+  );
+});
+
 describe("event emails", () => {
   it(
     "time/place changes queue one update per reachable attendee (TBA → place), with SEQUENCE+1; cancel queues cancellations",
