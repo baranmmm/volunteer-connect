@@ -32,6 +32,9 @@ test.describe("Branch map", () => {
     await expect(regions.map()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(page.getByTestId("regions-view-switch-map")).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByTestId("regions-map-legend")).toBeVisible();
+    // Opens fitted to every located branch (padding, town-level zoom cap), not the fixed UK view.
+    await expect(regions.marker(branch)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await regions.expectFittedToBranches();
 
     // Keyboard: the marker is focusable and Enter opens the panel.
     const marker = regions.marker(branch);
@@ -73,6 +76,7 @@ test.describe("Branch map", () => {
     await expect(regions.map()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(regions.marker(branch)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(page.getByTestId("region-create")).toHaveCount(0);
+    await regions.expectFittedToBranches();
 
     const ids = await regions.markers().evaluateAll((els) => els.map((el) => el.getAttribute("data-branch-id")));
     const { data } = await adminClient().from("branches").select("id, region_id").in("id", ids as string[]);

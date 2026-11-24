@@ -37,13 +37,13 @@ use the editor.
   user decides). Production migrations run only through `.github/workflows/prod-db-migrate.yml`, migrations before code.
   Details: `CLAUDE.md`.
 - Calendar timing uses shared UTC-instant/London-date helpers and one client clock; Month ignores List time filters, and cached events update at start/end without extra network reads.
-- All routes use `ssr: false` (client-side SPA) because the app will be packaged as a PWA/native app.
+- Public signed-out routes ("/", "/events", "/events/$id", "/sign-in", "/join", "/privacy/attendees") server-render for performance and link previews; everything signed-in stays client-only (`ssr: false`) because the app will be packaged as a PWA/native app. Server-rendered pages never know the session: they render the signed-out view, hidden for members by `<html data-session>` until the client takes over.
 - Roles live only in `user_roles`; profile status changes go through the `set_user_status` RPC, and clients may update only `full_name`/`phone` (column grants), so RLS stays the real enforcement.
 - Role and branch mutations use permission-checked database RPCs with atomic audit inserts; history names come from a scoped RPC so profile access is not widened.
 - Account permissions refresh on page navigation and token refresh outside the synchronous auth listener to avoid Supabase auth deadlocks.
 - User lists and history paginate before filtering or displaying to avoid silently missing members and last-manager warnings.
 - User deletion uses the existing authorization/audit/request RPCs to soft-delete and deny RLS access before server-only Auth banning; durable operation state coordinates unbanning and eventual Auth erasure, so failures reset only that attempt. Self-requested erasure is non-restorable; future user-referencing tables use ON DELETE SET NULL.
-- UI text lives only in src/locales/{en,tr}.json via react-i18next (src/lib/i18n.ts); DB error messages map to keys there and history renders from audit rows, so translations never depend on stored sentences.
+- UI text lives only in src/locales/{en,tr}.json via react-i18next (src/lib/i18n.ts); DB error messages map to keys there and history renders from audit rows, so translations never depend on stored sentences. Both locales stay bundled and registered synchronously when src/lib/i18n.ts loads (no locale downloads, no custom client entry), so no route ever renders raw keys; the dev server pre-bundles the SSR hydration dependencies (`optimizeDeps.include` in vite.config.ts) so a first visit never reloads into duplicate React copies.
 - E2E selectors use stable kebab-case data-testid attributes (never derived from text); toasts must use src/lib/toast.ts so they carry toast-success/toast-error ids.
 - Event reads and mutations use authenticated server functions and user-scoped RPCs; event RLS checks active status and branch/region membership so UI permissions are not authoritative.
 - Event media reserves a slot through an RPC before private Storage upload; event-row locks enforce the five-file cap, Storage deletion precedes record deletion, and signed URLs expire after five minutes.

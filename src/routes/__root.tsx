@@ -8,14 +8,21 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { createIsomorphicFn } from "@tanstack/react-start";
+import { useEffect, useMemo, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { useTranslation } from "react-i18next";
-import "@/lib/i18n";
+import { I18nextProvider, useTranslation } from "react-i18next";
+import i18n, {
+  currentLang,
+  LANGUAGE_COOKIE_SCRIPT,
+  syncLanguageAfterHydration,
+  type Lang,
+} from "@/lib/i18n";
+import { SESSION_MARK_SCRIPT } from "@/lib/supabase-lazy";
 
 function NotFoundComponent() {
   const { t } = useTranslation();
@@ -81,8 +88,17 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
+/** The language to render in: on the server from the request (cookie, Accept-Language); in the browser the current one. */
+const renderLanguage = createIsomorphicFn()
+  .server(async (): Promise<Lang> => (await import("@/lib/i18n.server")).requestLanguage())
+  .client(async (): Promise<Lang> => currentLang());
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  loader: async () => ({ lang: await renderLanguage() }),
   head: () => ({
+    // Marks <html data-session> before the first paint when a stored session exists (no user data in it).
+    // Reloads once in the saved language when the server rendered another one (no cookie yet; no user data in it).
+    scripts: [{ children: LANGUAGE_COOKIE_SCRIPT }, { children: SESSION_MARK_SCRIPT }],
     // Replace these placeholders with the app's name and description when first building the app.
     // Each content route, / included, must still set its own head(). Never add og:image or
     // twitter:image here: every page without its own would inherit the root's preview image.
@@ -140,7 +156,13 @@ const INTER_CSS =
 const FONT_LOADER = `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href=${JSON.stringify(INTER_CSS)};document.head.appendChild(l);})();`;
 
 function RootShell({ children }: { children: ReactNode }) {
-  const { i18n } = useTranslation();
+  const lang = Route.useLoaderData({ select: (data) => data?.lang }) ?? currentLang();
+  // Server: one i18n instance per request, so concurrent requests in other languages never mix. Browser: the global
+  // instance, which src/lib/i18n.ts started (both locales registered) in the language of <html data-lang>.
+  const instance = useMemo(
+    () => (typeof window === "undefined" ? i18n.cloneInstance({ lng: lang }) : i18n),
+    [lang],
+  );
 
   useEffect(() => {
     const updateLanguage = (language: string) => {
@@ -148,25 +170,31 @@ function RootShell({ children }: { children: ReactNode }) {
     };
     updateLanguage(i18n.language);
     i18n.on("languageChanged", updateLanguage);
+    // The server chose the language from the cookie or Accept-Language; switch if this browser's choice differs.
+    syncLanguageAfterHydration();
+    // Server-rendered pages are visible before they work: tests wait for this mark before they interact.
+    document.documentElement.setAttribute("data-hydrated", "");
     return () => {
       i18n.off("languageChanged", updateLanguage);
     };
-  }, [i18n]);
+  }, []);
 
   return (
-    <html lang="en-GB" suppressHydrationWarning>
-      <head>
-        <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: FONT_LOADER }} />
-        <noscript>
-          <link rel="stylesheet" href={INTER_CSS} />
-        </noscript>
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
+    <I18nextProvider i18n={instance}>
+      <html lang={lang === "tr" ? "tr" : "en-GB"} data-lang={lang} suppressHydrationWarning>
+        <head>
+          <HeadContent />
+          <script dangerouslySetInnerHTML={{ __html: FONT_LOADER }} />
+          <noscript>
+            <link rel="stylesheet" href={INTER_CSS} />
+          </noscript>
+        </head>
+        <body>
+          {children}
+          <Scripts />
+        </body>
+      </html>
+    </I18nextProvider>
   );
 }
 

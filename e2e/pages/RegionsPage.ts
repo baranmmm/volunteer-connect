@@ -36,6 +36,26 @@ export class RegionsPage {
     return this.page.getByTestId("regions-map-marker");
   }
 
+  /** The map opened fitted to its branches: fitted to them (not the fixed UK view), with every marker inside it. */
+  async expectFittedToBranches() {
+    await expect(this.map()).toHaveAttribute("data-fit", "branches", { timeout: APP_LOAD_TIMEOUT });
+    await expect
+      .poll(
+        () =>
+          this.map().evaluate((map) => {
+            const box = map.getBoundingClientRect();
+            return Array.from(map.querySelectorAll('[data-testid="regions-map-marker"]')).filter((m) => {
+              const r = m.getBoundingClientRect();
+              const x = r.left + r.width / 2;
+              const y = r.top + r.height / 2;
+              return x < box.left || x > box.right || y < box.top || y > box.bottom;
+            }).length;
+          }),
+        { timeout: APP_LOAD_TIMEOUT, message: "markers outside the fitted view" },
+      )
+      .toBe(0);
+  }
+
   panel() {
     return this.page.getByTestId("regions-map-panel");
   }

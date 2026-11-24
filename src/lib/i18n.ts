@@ -1,31 +1,53 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+// Both locales are part of the app bundle and are registered synchronously below, when this module is first evaluated:
+// before any route (server-rendered or client-only) can render, on the server, in the browser and in tests. No t()
+// call can ever run before its texts exist, and nothing depends on a download that can fail or arrive late.
 import en from "@/locales/en.json";
 import tr from "@/locales/tr.json";
 
 export type Lang = "en" | "tr";
 export const LANG_STORAGE_KEY = "dsvh-language";
+/** Mirrors the saved choice for the server, which renders the public pages in that language. */
+export const LANG_COOKIE = "dsvh-language";
+
+export const RESOURCES = { en: { translation: en }, tr: { translation: tr } } as const;
 
 export function isLang(v: unknown): v is Lang {
   return v === "en" || v === "tr";
 }
 
+function savedLanguage(): Lang | null {
+  try {
+    const saved = window.localStorage.getItem(LANG_STORAGE_KEY);
+    return isLang(saved) ? saved : null;
+  } catch {
+    return null; // storage unavailable
+  }
+}
+
 /** Before sign-in: saved choice, then browser language (Turkish if it starts with "tr"), else English. */
 export function detectLanguage(): Lang {
   if (typeof window === "undefined") return "en";
-  try {
-    const saved = window.localStorage.getItem(LANG_STORAGE_KEY);
-    if (isLang(saved)) return saved;
-  } catch {
-    /* storage unavailable */
-  }
-  return (navigator.language || "").toLowerCase().startsWith("tr") ? "tr" : "en";
+  return (
+    savedLanguage() ?? ((navigator.language || "").toLowerCase().startsWith("tr") ? "tr" : "en")
+  );
 }
 
+/** The language the server rendered this page in (`<html data-lang>`), so hydration renders the same text. */
+function pageLanguage(): Lang | null {
+  if (typeof document === "undefined") return null;
+  const lang = document.documentElement.getAttribute("data-lang");
+  return isLang(lang) ? lang : null;
+}
+
+// initAsync: false (and inline resources) make init complete synchronously: language and texts are set when the
+// import of this module returns.
 void i18n.use(initReactI18next).init({
-  resources: { en: { translation: en }, tr: { translation: tr } },
-  lng: detectLanguage(),
+  resources: RESOURCES,
+  lng: pageLanguage() ?? detectLanguage(),
   fallbackLng: "en",
+  initAsync: false,
   interpolation: { escapeValue: false },
 });
 
@@ -40,14 +62,52 @@ export function currentLang(): Lang {
   return isLang(i18n.language) ? i18n.language : "en";
 }
 
+/**
+ * The cookie's attributes (the inline script below repeats them). Over https it is a partitioned SameSite=None cookie,
+ * so it also reaches the server from inside a cross-site frame (the Lovable preview); a language choice is not
+ * sensitive. Plain http (local) cannot set those, so it stays Lax there.
+ */
+const COOKIE_ATTRS = "; path=/; max-age=31536000; ";
+const HTTPS_ATTRS = "samesite=none; secure; partitioned";
+const HTTP_ATTRS = "samesite=lax";
+
+function writeLanguageCookie(lang: Lang) {
+  try {
+    const secure = window.location.protocol === "https:";
+    document.cookie = `${LANG_COOKIE}=${lang}${COOKIE_ATTRS}${secure ? HTTPS_ATTRS : HTTP_ATTRS}`;
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Inline script for the page head (plain ES5, no user data), run before the app's scripts: when the visitor's saved
+ * choice differs from the language the server rendered (no cookie yet, e.g. a choice saved before the cookie existed),
+ * it writes the cookie and reloads once, so the page is server-rendered and hydrated in the saved language. Switching
+ * after hydration instead changed the text of route content that was still hydrating (a hydration mismatch). The
+ * session flag stops a second reload where the cookie cannot reach the server (blocked cookies, a cross-site frame).
+ */
+export const LANGUAGE_COOKIE_SCRIPT = `(function(){try{var s=window.localStorage.getItem("${LANG_STORAGE_KEY}");var p=document.documentElement.getAttribute("data-lang");if((s!=="en"&&s!=="tr")||!p||s===p)return;document.cookie="${LANG_COOKIE}="+s+"${COOKIE_ATTRS}"+(window.location.protocol==="https:"?"${HTTPS_ATTRS}":"${HTTP_ATTRS}");if(document.cookie.indexOf("${LANG_COOKIE}="+s)<0||window.sessionStorage.getItem("dsvh-language-reload"))return;window.sessionStorage.setItem("dsvh-language-reload","1");window.location.reload()}catch(e){}})();`;
+
+/**
+ * After hydration: switch to the visitor's own choice when the server guessed differently (no saved choice, a browser
+ * language other than the request's), and keep the cookie in step with a saved choice for the next server render.
+ */
+export function syncLanguageAfterHydration() {
+  const saved = savedLanguage();
+  if (saved) writeLanguageCookie(saved);
+  const lang = detectLanguage();
+  if (i18n.language !== lang) void i18n.changeLanguage(lang);
+}
+
 export function setLanguage(lang: Lang) {
   try {
     window.localStorage.setItem(LANG_STORAGE_KEY, lang);
   } catch {
     /* ignore */
   }
+  writeLanguageCookie(lang);
   if (i18n.language !== lang) void i18n.changeLanguage(lang);
-  applyHtmlLang(lang);
 }
 
 export function dateLocale(lang: string = i18n.language) {

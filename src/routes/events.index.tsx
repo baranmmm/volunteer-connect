@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BranchName } from "@/components/app/BranchName";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -23,9 +22,9 @@ import {
   MapPin,
   Video,
 } from "lucide-react";
-import { pageHead } from "@/components/app/head";
+import { pageMeta, siteOrigin } from "@/lib/public-meta";
 import { PublicShell } from "@/components/public/PublicShell";
-import { PublicRegistrationState, publicWhere } from "@/components/public/PublicEventDetail";
+import { PublicRegistrationState, publicWhere } from "@/components/public/PublicEventBits";
 import { getPublicEvents, getPublicStructure } from "@/lib/public-events.functions";
 import { branchSlug, type PublicEvent } from "@/lib/public-events";
 import { eventOccursOn, eventWhen } from "@/lib/event-rules";
@@ -36,8 +35,20 @@ import { Badge } from "@/components/ui/badge";
 type Search = { branch?: string; region?: string; view?: "list" | "month" };
 
 /** Public, signed-out list of upcoming public events of every branch (/events?branch=medway,brighton). */
+const structureQuery = queryOptions({
+  queryKey: ["public-structure"],
+  queryFn: () => getPublicStructure(),
+  staleTime: 600_000,
+});
+const eventsQuery = (branch: string | undefined) =>
+  queryOptions({
+    queryKey: ["public-events", branch ?? ""],
+    queryFn: () => getPublicEvents({ data: branch ? { branch } : {} }),
+    staleTime: 300_000,
+  });
+
+// Server-rendered for signed-out visitors (and link previews). No signed links: the list has no images.
 export const Route = createFileRoute("/events/")({
-  ssr: false,
   validateSearch: (search: Record<string, unknown>): Search => ({
     ...(typeof search["branch"] === "string" && search["branch"].length <= 4000
       ? { branch: search["branch"] }
@@ -47,26 +58,42 @@ export const Route = createFileRoute("/events/")({
       : {}),
     ...(search["view"] === "month" ? { view: "month" as const } : {}),
   }),
-  head: () =>
-    pageHead("Events", "Upcoming public events of the Dialogue Society, by branch and region."),
+  loaderDeps: ({ search }) => ({ branch: search.branch }),
+  // Server: the list and filters go into the HTML. Browser: the page shows at once and the queries load as before.
+  loader: async ({ context, deps }) => {
+    const origin = await siteOrigin();
+    if (typeof window !== "undefined")
+      return { origin, branch: deps.branch, events: null, structure: null };
+    const [events, structure] = await Promise.all([
+      context.queryClient.ensureQueryData(eventsQuery(deps.branch)).catch(() => null),
+      context.queryClient.ensureQueryData(structureQuery).catch(() => null),
+    ]);
+    return { origin, branch: deps.branch, events, structure };
+  },
+  headers: () => ({ "Cache-Control": "private, no-cache" }),
+  head: ({ loaderData }) =>
+    pageMeta({
+      title: "Events · Dialogue Society",
+      description: "Upcoming public events of the Dialogue Society, by branch and region.",
+      url: `${loaderData?.origin ?? ""}/events`,
+      image: `${loaderData?.origin ?? ""}/auth/join-1600.webp`,
+      imageAlt: "Dialogue Society volunteers at an event",
+    }),
   component: PublicEventsPage,
 });
 
 function PublicEventsPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
+  const loaded = Route.useLoaderData();
   const navigate = useNavigate({ from: "/events/" });
-  const fetchEvents = useServerFn(getPublicEvents),
-    fetchStructure = useServerFn(getPublicStructure);
   const structure = useQuery({
-    queryKey: ["public-structure"],
-    queryFn: () => fetchStructure(),
-    staleTime: 600_000,
+    ...structureQuery,
+    ...(loaded.structure ? { initialData: loaded.structure } : {}),
   });
   const events = useQuery({
-    queryKey: ["public-events", search.branch ?? ""],
-    queryFn: () => fetchEvents({ data: search.branch ? { branch: search.branch } : {} }),
-    staleTime: 300_000,
+    ...eventsQuery(search.branch),
+    ...(loaded.events && loaded.branch === search.branch ? { initialData: loaded.events } : {}),
   });
   const selected = new Set((search.branch ?? "").split(",").filter(Boolean));
   const view = search.view ?? "list";
@@ -211,7 +238,7 @@ function PublicEventsPage() {
 }
 
 function PublicList({ events }: { events: PublicEvent[] }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   if (!events.length)
     return (
       <p data-testid="public-events-empty" className="text-muted-foreground">
@@ -237,7 +264,7 @@ function PublicList({ events }: { events: PublicEvent[] }) {
               <PublicRegistrationState state={e.registration} />
             </div>
             <h2 className="text-lg font-semibold">{e.title}</h2>
-            <p className="text-sm">{eventWhen(e, dateLocale())?.text}</p>
+            <p className="text-sm">{eventWhen(e, dateLocale(i18n.language))?.text}</p>
             <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               {publicWhere(e) && <BranchName name={publicWhere(e)} />}
               {(e.location || e.location_tba) && (
@@ -261,7 +288,7 @@ function PublicList({ events }: { events: PublicEvent[] }) {
 }
 
 function PublicMonth({ events }: { events: PublicEvent[] }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const days = eachDayOfInterval({
     start: startOfWeek(month, { weekStartsOn: 1 }),
@@ -279,7 +306,10 @@ function PublicMonth({ events }: { events: PublicEvent[] }) {
           <ChevronLeft />
         </Button>
         <h2 className="text-lg font-semibold">
-          {new Intl.DateTimeFormat(dateLocale(), { month: "long", year: "numeric" }).format(month)}
+          {new Intl.DateTimeFormat(dateLocale(i18n.language), {
+            month: "long",
+            year: "numeric",
+          }).format(month)}
         </h2>
         <Button
           variant="outline"
@@ -302,9 +332,10 @@ function PublicMonth({ events }: { events: PublicEvent[] }) {
               className={`min-h-20 rounded-xl border p-2 text-xs ${isSameMonth(day, month) ? "bg-card" : "bg-muted/50"} ${on.length ? "" : "hidden sm:block"}`}
             >
               <span className="font-semibold">
-                {new Intl.DateTimeFormat(dateLocale(), { weekday: "short", day: "numeric" }).format(
-                  day,
-                )}
+                {new Intl.DateTimeFormat(dateLocale(i18n.language), {
+                  weekday: "short",
+                  day: "numeric",
+                }).format(day)}
               </span>
               <ul className="mt-1 space-y-1">
                 {on.map((e) => (
@@ -352,7 +383,8 @@ function Subscribe({ branch }: { branch?: string | undefined }) {
     };
   }, [open]);
   const path = `/api/ics${branch ? `?branch=${encodeURIComponent(branch)}` : ""}`;
-  const https = `${window.location.origin}${path}`;
+  // Only read in the open panel (never on the server, which has no window).
+  const https = open ? `${window.location.origin}${path}` : path;
   const webcal = https.replace(/^https?:/, "webcal:");
   return (
     <div className="relative" ref={box}>
