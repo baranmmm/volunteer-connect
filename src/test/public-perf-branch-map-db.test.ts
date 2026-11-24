@@ -218,3 +218,65 @@ describe("branch locations and the map", () => {
     }),
   );
 });
+
+describe("event locations for the public map", () => {
+  it(
+    "managers set a postcode; coordinates only from the server; the map point is the venue, else the branch, never for online events",
+    tx(async () => {
+      await as(null);
+      await db.query("UPDATE branches SET latitude = 51.38, longitude = 0.52 WHERE id = $1", [
+        ids.b1,
+      ]);
+      const ev = await val<string>(
+        `INSERT INTO events (title, organizer, category, scope, branch_id, region_id, status, start_at, end_at, location, audience, created_by)
+         VALUES ('Map event', 'DS', 'dialogue', 'branch', $1, $2, 'draft', now() + interval '5 days', now() + interval '5 days 2 hours', 'Hall', 'public', $3) RETURNING id`,
+        [ids.b1, ids.r1, ids.bm1],
+      );
+      const point = () =>
+        val<Record<string, unknown> | null>(
+          "SELECT public.event_map_point(e) FROM events e WHERE id = $1",
+          [ev],
+        );
+      expect(await point()).toEqual({ latitude: 51.38, longitude: 0.52, precision: "branch" });
+      await as("vol1");
+      await fails("SELECT public.set_event_postcode($1, 'ME4 4TB')", [ev], "Not allowed");
+      await as("bm1");
+      await fails(
+        "SELECT public.set_event_postcode($1, 'nope')",
+        [ev],
+        "Enter a valid UK postcode",
+      );
+      expect(await val("SELECT public.set_event_postcode($1, 'me44tb')", [ev])).toBe("ME4 4TB");
+      await fails(
+        "SELECT public.set_event_coordinates($1, 'ME4 4TB', 51.4, 0.5)",
+        [ev],
+        "permission denied",
+      );
+      await as(null);
+      await db.query("SELECT public.set_event_coordinates($1, 'OTHER 1AA', 52, 0)", [ev]);
+      expect(await point()).toMatchObject({ precision: "branch" });
+      await db.query("SELECT public.set_event_coordinates($1, 'ME4 4TB', 51.4, 0.5)", [ev]);
+      expect(await point()).toEqual({ latitude: 51.4, longitude: 0.5, precision: "venue" });
+      // "To be announced" falls back to the branch; a new postcode drops the old point; online events have no point.
+      await db.query("UPDATE events SET location_tba = true WHERE id = $1", [ev]);
+      expect(await point()).toMatchObject({ precision: "branch" });
+      await db.query("UPDATE events SET location_tba = false WHERE id = $1", [ev]);
+      await as("bm1");
+      await db.query("SELECT public.set_event_postcode($1, 'BN1 1AA')", [ev]);
+      expect(await val("SELECT latitude FROM events WHERE id = $1", [ev])).toBeNull();
+      await as(null);
+      await db.query(
+        "UPDATE events SET location_type = 'online', online_url = 'https://meet.example.org/x' WHERE id = $1",
+        [ev],
+      );
+      expect(await point()).toBeNull();
+      // Internal helper: no client may call it.
+      await as("bm1");
+      await fails(
+        "SELECT public.event_map_point(e) FROM events e WHERE id = $1",
+        [ev],
+        "permission denied",
+      );
+    }),
+  );
+});

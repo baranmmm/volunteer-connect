@@ -549,6 +549,7 @@ describe("public functions (anon)", () => {
         "is_online",
         "location",
         "location_tba",
+        "map",
         "max_places",
         "organizer",
         "past_record",

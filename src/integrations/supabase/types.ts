@@ -1037,13 +1037,17 @@ export type Database = {
           ics_sequence: number
           id: string
           is_external: boolean
+          latitude: number | null
+          located_at: string | null
           location: string
           location_tba: boolean
           location_type: string
+          longitude: number | null
           max_places: number
           online_url: string | null
           organizer: string
           past_record: boolean
+          postcode: string | null
           recurrence_key: string | null
           region_id: string | null
           registration_enabled: boolean
@@ -1074,13 +1078,17 @@ export type Database = {
           ics_sequence?: number
           id?: string
           is_external?: boolean
+          latitude?: number | null
+          located_at?: string | null
           location?: string
           location_tba?: boolean
           location_type?: string
+          longitude?: number | null
           max_places?: number
           online_url?: string | null
           organizer: string
           past_record?: boolean
+          postcode?: string | null
           recurrence_key?: string | null
           region_id?: string | null
           registration_enabled?: boolean
@@ -1111,13 +1119,17 @@ export type Database = {
           ics_sequence?: number
           id?: string
           is_external?: boolean
+          latitude?: number | null
+          located_at?: string | null
           location?: string
           location_tba?: boolean
           location_type?: string
+          longitude?: number | null
           max_places?: number
           online_url?: string | null
           organizer?: string
           past_record?: boolean
+          postcode?: string | null
           recurrence_key?: string | null
           region_id?: string | null
           registration_enabled?: boolean
@@ -2825,6 +2837,12 @@ export type Database = {
         Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
         Returns: boolean
       }
+      event_map_point: {
+        Args: {
+          _e: Database["public"]["Tables"]["events"]["Row"]
+        }
+        Returns: Json
+      }
       event_media_has_variants: { Args: { _path: string }; Returns: boolean }
       event_media_variant_paths: { Args: { _path: string }; Returns: string[] }
       event_request_actor: { Args: never; Returns: string }
@@ -3637,6 +3655,15 @@ export type Database = {
         Args: { p_photo_consent: boolean; p_updates_email_consent: boolean }
         Returns: Json
       }
+      set_event_coordinates: {
+        Args: {
+          p_event: string
+          p_lat: number
+          p_lng: number
+          p_postcode: string
+        }
+        Returns: undefined
+      }
       set_event_media_gallery: {
         Args: { p_in_gallery: boolean; p_media: string }
         Returns: undefined
@@ -3648,6 +3675,10 @@ export type Database = {
       set_event_media_variants: {
         Args: { p_media: string }
         Returns: undefined
+      }
+      set_event_postcode: {
+        Args: { p_event: string; p_postcode: string }
+        Returns: string
       }
       set_event_video_thumb: {
         Args: { p_id: string; p_path: string }
