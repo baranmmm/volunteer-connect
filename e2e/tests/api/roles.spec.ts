@@ -6,7 +6,7 @@ import { createNationalEventAdmin, deleteEvents } from "../../api/events";
 import { requestInput, rpcAs } from "../../api/eventRequests";
 
 const PUBLIC_FIELDS = ["all_day", "branch", "branch_id", "category", "description", "end_at", "end_date", "has_image", "id", "is_online",
-  "location", "location_tba", "max_places", "organizer", "past_record", "region", "region_id", "registration", "scope", "spots_left",
+  "location", "location_tba", "map", "max_places", "organizer", "past_record", "region", "region_id", "registration", "scope", "spots_left",
   "start_at", "start_date", "status", "title"];
 
 test.describe("Followers", () => {
