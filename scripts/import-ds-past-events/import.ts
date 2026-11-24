@@ -10,6 +10,7 @@ import sharp from "sharp";
 import {
   EVENTS_LIST_URL,
   cleanTitle,
+  isChildrenEvent,
   mapScope,
   parseEventPage,
   parseEventsList,
@@ -390,6 +391,7 @@ async function uploadPhoto(
   eventId: string,
   photo: GalleryImage,
   position: number,
+  inGallery: boolean,
 ): Promise<void> {
   const webp = await toWebp(await fetcher.get(photo.downloadUrl, "binary"));
   const mediaId = randomUUID();
@@ -406,7 +408,7 @@ async function uploadPhoto(
     position,
     uploaded_by: null,
     original_name: originalName(photo.originalUrl),
-    in_gallery: true,
+    in_gallery: inGallery,
     source_url: photo.originalUrl,
     width: webp.width,
     height: webp.height,
@@ -496,12 +498,22 @@ async function importEvent(
   const present = new Set((rows ?? []).map((r) => r.source_url as string | null).filter(Boolean));
   let position = Math.max(-1, ...(rows ?? []).map((r) => r.position as number)) + 1;
   result.photosPresent = ev.photos.filter((p) => present.has(p.originalUrl)).length;
+  // Children/youth events: imported photos stay out of the public gallery (also on re-runs; never switched back on).
+  if (isChildrenEvent(ev.title)) {
+    const { error: hideErr } = await db
+      .from("event_media")
+      .update({ in_gallery: false })
+      .eq("event_id", eventId)
+      .not("source_url", "is", null)
+      .eq("in_gallery", true);
+    if (hideErr) throw new Error(hideErr.message);
+  }
   const room = Math.max(0, MAX_PHOTOS - (rows ?? []).length);
   const missing = ev.photos.filter((p) => !present.has(p.originalUrl)).slice(0, room);
   const errors: string[] = [];
   for (const photo of missing) {
     try {
-      await uploadPhoto(db, fetcher, eventId, photo, position);
+      await uploadPhoto(db, fetcher, eventId, photo, position, !isChildrenEvent(ev.title));
       position++;
       result.photosAdded++;
     } catch (e) {
@@ -695,7 +707,7 @@ async function main() {
       `highlight videos ${before.highlightVideos} → ${after.highlightVideos}`,
   );
   console.log("");
-  console.log("date | scope | title | photos | source URL | status");
+  console.log("date | scope | title | photos | gallery | source URL | status");
   const regionName = new Map(regions.map((r) => [r.id, r.name]));
   for (const r of results) {
     const branch = r.planned.branch
@@ -704,7 +716,8 @@ async function main() {
         ? `region ${r.planned.region.name}`
         : `national${r.planned.siteBranch ? ` (site: ${r.planned.siteBranch})` : ""}`;
     console.log(
-      `${r.planned.date} | ${branch} | ${r.planned.title} | ${r.planned.photos.length} | ${r.planned.url} | ` +
+      `${r.planned.date} | ${branch} | ${r.planned.title} | ${r.planned.photos.length} | ` +
+        `${isChildrenEvent(r.planned.title) ? "OFF (children/youth)" : "on"} | ${r.planned.url} | ` +
         `${r.status}${r.photosAdded ? ` +${r.photosAdded}` : ""}${r.error ? ` (${r.error})` : ""}`,
     );
   }
