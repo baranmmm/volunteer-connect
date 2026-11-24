@@ -5,9 +5,11 @@ import { ArrowLeft, CalendarDays, MapPin, Video, Building2 } from "lucide-react"
 import { eventWhen } from "@/lib/event-rules";
 import { dateLocale } from "@/lib/i18n";
 import type { PublicEvent } from "@/lib/public-events";
+import type { SignedImage } from "@/lib/image-variants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GuestRegistrationForm } from "./GuestRegistrationForm";
+import { ResponsiveImage } from "./ResponsiveImage";
 
 /** "Places available" / "Full" / "Registration closed" (never numbers). */
 export function PublicRegistrationState({ state }: { state: PublicEvent["registration"] }) {
@@ -33,7 +35,7 @@ export function PublicEventDetail({
   data,
 }: {
   id: string;
-  data: { event: PublicEvent; image: string | null } | null;
+  data: { event: PublicEvent; image: SignedImage | null } | null;
 }) {
   const { t } = useTranslation();
   if (!data) {
@@ -87,11 +89,11 @@ export function PublicEventDetail({
         )}
       </header>
       {image && (
-        <img
+        <ResponsiveImage
           data-testid="public-event-image"
-          src={image}
-          alt=""
-          className="max-h-96 w-full rounded-2xl object-cover"
+          image={image}
+          sizes="(min-width: 1024px) 944px, 100vw"
+          className="h-auto max-h-96 w-full rounded-2xl object-cover"
         />
       )}
       <dl className="grid grid-cols-1 gap-3 rounded-2xl border bg-card p-5 text-sm sm:grid-cols-2">

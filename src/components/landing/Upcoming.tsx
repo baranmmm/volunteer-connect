@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { MapPin, Users, Video } from "lucide-react";
+import { ResponsiveImage } from "@/components/public/ResponsiveImage";
 import type { LandingEvent } from "@/lib/landing.server";
 import { badgeParts, isoOf, startOf, whenText } from "./format";
 import { Reveal } from "./Reveal";
@@ -44,9 +45,9 @@ function Card({
       >
         <div className="relative aspect-video overflow-hidden bg-ds-alt">
           {event.image && showImage ? (
-            <img
-              src={event.image}
-              alt=""
+            <ResponsiveImage
+              image={event.image}
+              sizes="(min-width: 1024px) 352px, (min-width: 640px) 50vw, 100vw"
               width={640}
               height={360}
               loading="lazy"

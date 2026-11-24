@@ -3,6 +3,7 @@
 import { test, expect, runId } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import { EVENT_TITLE_PREFIX, TINY_PNG, deleteEvents } from "../../api/events";
+import { copyNames, storedEventObjects } from "../../api/images";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { EventPage } from "../../pages/EventPage";
 import { PastEventDialog } from "../../pages/components/PastEventDialog";
@@ -62,6 +63,22 @@ test.describe("Past events", () => {
       const gallery = (landing.data as { gallery: { event_id: string; photos: { id: string }[] }[] }).gallery;
       const entry = gallery.find((g) => g.event_id === id);
       expect(entry?.photos.map((p) => p.id)).toEqual([media.data![0]!.id]);
+
+      // Each photo has its two resized copies next to it, and the rows are flagged.
+      const rows = await adminClient().from("event_media").select("id, storage_path, has_variants").eq("event_id", id).order("position");
+      expect(rows.data!.map((m) => m.has_variants)).toEqual([true, true]);
+      const names = rows.data!.map((m) => m.storage_path.split("/").pop()!);
+      expect(await storedEventObjects(id)).toEqual(names.flatMap((n) => [n, ...copyNames(n)]).sort());
+      // Removing a photo removes the original and both copies from Storage, then the row.
+      await event.editButton().click();
+      await expect(dialog.photos()).toHaveCount(2, { timeout: APP_LOAD_TIMEOUT });
+      await dialog.photos().nth(1).getByTestId("past-event-photo-remove").click();
+      await expect(dialog.photos()).toHaveCount(1);
+      await dialog.save();
+      await expect(page.getByTestId("event-detail-image")).toHaveCount(1, { timeout: APP_LOAD_TIMEOUT });
+      expect(await storedEventObjects(id)).toEqual([names[0]!, ...copyNames(names[0]!)].sort());
+      const left = await adminClient().from("event_media").select("id").eq("event_id", id);
+      expect(left.data!.map((m) => m.id)).toEqual([rows.data![0]!.id]);
     } finally {
       await deleteEvents([id]);
     }

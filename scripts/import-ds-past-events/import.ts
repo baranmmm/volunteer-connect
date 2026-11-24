@@ -21,6 +21,7 @@ import {
   type GalleryImage,
 } from "./parse";
 import { summarize } from "./summarize";
+import { imageVariantPaths, makeImageCopies } from "../backfill-image-copies/copies";
 import { CHANNEL_FEED_URL, parseChannelFeed, posterUrl, type FeedVideo } from "./youtube";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -400,6 +401,25 @@ async function uploadPhoto(
     .from(BUCKET)
     .upload(path, webp.data, { contentType: "image/webp", upsert: false });
   if (up.error) throw new Error(`upload: ${up.error.message}`);
+  // The 640/1280 px copies for the public pages; without them the row keeps has_variants = false (see the backfill).
+  const copies = imageVariantPaths(path);
+  let hasVariants = false;
+  try {
+    const made = await makeImageCopies(webp.data);
+    for (const [target, body] of [
+      [copies.w640, made.w640],
+      [copies.w1280, made.w1280],
+    ] as const) {
+      const stored = await db.storage
+        .from(BUCKET)
+        .upload(target, body, { contentType: "image/webp", upsert: false });
+      if (stored.error) throw new Error(`copy upload: ${stored.error.message}`);
+    }
+    hasVariants = true;
+  } catch (e) {
+    console.warn(`  photo copies skipped: ${e instanceof Error ? e.message : String(e)}`);
+    await db.storage.from(BUCKET).remove([copies.w640, copies.w1280]);
+  }
   const { error } = await db.from("event_media").insert({
     id: mediaId,
     event_id: eventId,
@@ -412,9 +432,10 @@ async function uploadPhoto(
     source_url: photo.originalUrl,
     width: webp.width,
     height: webp.height,
+    has_variants: hasVariants,
   });
   if (error) {
-    await db.storage.from(BUCKET).remove([path]);
+    await db.storage.from(BUCKET).remove([path, copies.w640, copies.w1280]);
     throw new Error(`media row: ${error.message}`);
   }
 }
@@ -526,7 +547,11 @@ async function importEvent(
       .from("event_media")
       .select("storage_path")
       .eq("event_id", eventId);
-    const paths = (left ?? []).map((r) => r.storage_path as string);
+    // Every photo with its resized copies (removing a copy that was never stored is harmless).
+    const paths = (left ?? []).flatMap((r) => {
+      const copies = imageVariantPaths(r.storage_path as string);
+      return [r.storage_path as string, copies.w640, copies.w1280];
+    });
     if (paths.length > 0) await db.storage.from(BUCKET).remove(paths);
     await db.from("event_media").delete().eq("event_id", eventId);
     await db.from("events").delete().eq("id", eventId);

@@ -23,6 +23,7 @@ import {
   prepareEventFile,
   preparedImageSize,
   uploadEventFile,
+  uploadImageVariants,
   removeStoredEventFile,
 } from "@/lib/event-files";
 import {
@@ -34,6 +35,7 @@ import {
   createSeries,
   updateSeriesEvent,
   setEventMediaSize,
+  setEventMediaVariants,
   setEventMediaGallery,
 } from "@/lib/events.functions";
 import {
@@ -124,6 +126,7 @@ export function EventForm({
     remove = useServerFn(deleteEventMedia),
     reorder = useServerFn(reorderEventMedia),
     setSize = useServerFn(setEventMediaSize),
+    setVariants = useServerFn(setEventMediaVariants),
     setGallery = useServerFn(setEventMediaGallery);
   const branches = useQuery({
     queryKey: ["event-branches", session?.user.id],
@@ -621,6 +624,13 @@ export function EventForm({
             await uploadEventFile(row.storage_path, item.file);
             const size = item.kind === "image" ? preparedImageSize(item.file) : null;
             if (size) await setSize({ data: { id: row.id, ...size } });
+            // Resized copies for the public pages; a failure keeps the original (never fatal).
+            if (item.kind === "image") {
+              const rowId = row.id;
+              await uploadImageVariants(row.storage_path, item.file, () =>
+                setVariants({ data: { id: rowId } }),
+              );
+            }
           } catch (e) {
             setFileErrors([
               t("events.fileRejected", { name: item.name, reason: translateError(e) }),

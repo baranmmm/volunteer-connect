@@ -2,20 +2,14 @@ import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import type { LandingGalleryGroup } from "@/lib/landing.server";
+import { ResponsiveImage } from "@/components/public/ResponsiveImage";
+import type { LandingGalleryGroup, LandingPhoto } from "@/lib/landing.server";
 import { isoOf, longDate } from "./format";
 import { Reveal } from "./Reveal";
 
 const GROUPS = 4;
 
-type Flat = {
-  id: string;
-  url: string;
-  width: number | null;
-  height: number | null;
-  alt: string;
-  title: string;
-};
+type Flat = LandingPhoto & { alt: string; title: string };
 
 /** Every photo in display order, with alt text from its event title and position. */
 function useFlat(groups: LandingGalleryGroup[]) {
@@ -116,12 +110,11 @@ function Lightbox({
             }}
           >
             {photo && (
-              <img
+              <ResponsiveImage
                 key={photo.id}
-                src={photo.url}
+                image={photo}
+                sizes="100vw"
                 alt={photo.alt}
-                width={photo.width ?? undefined}
-                height={photo.height ?? undefined}
                 draggable={false}
                 className="max-h-full max-w-full object-contain"
               />
@@ -210,8 +203,9 @@ export function Gallery({
                       }}
                       className="block w-full overflow-hidden rounded-[5px] bg-ds-alt"
                     >
+                      {/* Thumbnails use the 640 px copy (the original when there are no copies). */}
                       <img
-                        src={p.url}
+                        src={p.small}
                         alt={flat.alt}
                         width={p.width ?? 800}
                         height={p.height ?? 600}
