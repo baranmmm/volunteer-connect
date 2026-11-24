@@ -468,6 +468,11 @@ describe("calendar sequence per attendee", () => {
       expect(await offset()).toBe(0);
       await db.query("SELECT public.guest_cancel($1)", [a]);
       expect(await offset()).toBe(1);
+      // (Three emails within the hour throttle the address; move them back.)
+      await db.query(
+        "UPDATE public.email_outbox SET created_at = now() - interval '2 hours' WHERE registration_id=$1",
+        [a],
+      );
       await guest(e, "seq@example.test");
       expect(await offset()).toBe(2);
       expect(
