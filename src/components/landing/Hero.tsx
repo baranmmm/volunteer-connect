@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { CalendarDays, MapPin, Video } from "lucide-react";
+import { Building2, CalendarDays, MapPin, Video } from "lucide-react";
 import type { LandingEvent } from "@/lib/landing.server";
 import { isoOf, startOf, whenText } from "./format";
 
@@ -12,8 +12,7 @@ const BRAND = "absolute inset-0 bg-[linear-gradient(135deg,#006D9C_0%,#28303D_70
 function where(event: LandingEvent, t: (k: string) => string) {
   if (event.is_online) return { icon: Video, text: t("landing.place.online") };
   if (event.location_tba) return { icon: MapPin, text: t("landing.place.tba") };
-  const text = event.location ?? event.branch ?? event.region;
-  return text ? { icon: MapPin, text } : null;
+  return event.location ? { icon: MapPin, text: event.location } : null;
 }
 
 function Frame({ children, image }: { children: ReactNode; image: ReactNode }) {
@@ -90,6 +89,8 @@ export function Hero({
   const start = startOf(event);
   const when = whenText(event, i18n.language, true);
   const place = where(event, t);
+  // The hosting branch, or the region for region-wide events; national events need no host line.
+  const host = event.branch ?? event.region;
   return (
     <Frame
       image={
@@ -134,6 +135,12 @@ export function Hero({
             <li className="flex min-w-0 items-start gap-2">
               <place.icon aria-hidden className="mt-1 h-5 w-5 shrink-0" />
               <span className="min-w-0 break-words">{place.text}</span>
+            </li>
+          )}
+          {host && (
+            <li data-testid="landing-hero-branch" className="flex min-w-0 items-start gap-2">
+              <Building2 aria-hidden className="mt-1 h-5 w-5 shrink-0" />
+              <span className="min-w-0 break-words">{t("landing.hostedBy", { name: host })}</span>
             </li>
           )}
         </ul>
