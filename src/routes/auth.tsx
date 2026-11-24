@@ -87,8 +87,9 @@ function AuthPage() {
 
 /** Optimised copies of two Dialogue Society event photos (public/auth): sign-in and join. */
 const HERO_IMAGES = {
-  signin: { alt: "auth.heroAltSignIn", large: 1500, width: 1500, height: 1000 },
-  join: { alt: "auth.heroAltJoin", large: 1600, width: 1600, height: 1067 },
+  signin: { alt: "auth.heroAltSignIn", large: 1500, width: 1500, height: 1000, focus: "50% 50%" },
+  // The group sits in the lower part of the photo: keep it in the crop (desktop column and mobile banner).
+  join: { alt: "auth.heroAltJoin", large: 1600, width: 1600, height: 1200, focus: "50% 72%" },
 } as const;
 
 /** Desktop: the photo fills the left column with the hub's message; mobile: a short banner above the form. */
@@ -112,6 +113,7 @@ function AuthHero({ join }: { join: boolean }) {
         loading="eager"
         fetchPriority="high"
         decoding="async"
+        style={{ objectPosition: image.focus }}
         className="absolute inset-0 h-full w-full object-cover"
       />
       <div
