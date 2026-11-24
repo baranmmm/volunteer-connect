@@ -2652,6 +2652,10 @@ export type Database = {
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       cancel_registration: { Args: { p_event_id: string }; Returns: Json }
+      capture_email: {
+        Args: { p_id: string; p_rendered: Json }
+        Returns: undefined
+      }
       claim_email_batch: {
         Args: { p_max?: number; p_max_priority?: number }
         Returns: {
