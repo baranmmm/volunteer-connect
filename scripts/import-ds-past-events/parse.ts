@@ -354,6 +354,18 @@ export function selectPhotos(page: EventPage, min = 3, max = 6): GalleryImage[] 
 export type BranchRow = { id: string; name: string; region_id: string };
 
 /** Maps the site's branch badges to an app branch by name (case-insensitive); null = a national record. */
+/** Known typos in source titles (as published on dialoguesociety.org) → the title we import. */
+export const TITLE_FIXES: ReadonlyArray<readonly [string, string]> = [
+  ["A Case Studdy of Iran", "A Case Study of Iran"],
+];
+
+/** The import title: the source title with known typos fixed, at most 200 characters. */
+export function cleanTitle(title: string): string {
+  let out = title;
+  for (const [wrong, right] of TITLE_FIXES) out = out.split(wrong).join(right);
+  return out.slice(0, 200);
+}
+
 export type RegionRow = { id: string; name: string };
 export type ScopeMatch =
   | { scope: "branch"; branch: BranchRow; region: null }

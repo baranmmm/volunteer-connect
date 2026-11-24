@@ -9,6 +9,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import {
   EVENTS_LIST_URL,
+  cleanTitle,
   mapScope,
   parseEventPage,
   parseEventsList,
@@ -272,7 +273,7 @@ async function plan(fetcher: Fetcher, opts: Options, branches: BranchRow[], regi
         continue;
       }
       const date = page.date ?? item.date;
-      const title = (page.title || item.title).slice(0, 200);
+      const title = cleanTitle(page.title || item.title);
       const dupKey = `${title.toLowerCase()}|${date}`;
       if (seen.has(dupKey)) {
         skipped.push({ url: item.url, title, date, reason: "duplicate" });
@@ -290,7 +291,11 @@ async function plan(fetcher: Fetcher, opts: Options, branches: BranchRow[], regi
       }
       const siteBranches = page.branches.length > 0 ? page.branches : item.branches;
       const { branch, region } = mapScope(siteBranches, branches, regions);
-      const pageForSummary: EventPage = { ...page, branch: branch?.name ?? region?.name ?? null, title };
+      const pageForSummary: EventPage = {
+        ...page,
+        branch: branch?.name ?? region?.name ?? null,
+        title,
+      };
       picked.push({
         url: item.url,
         page,
@@ -344,7 +349,7 @@ type EventResult = {
 async function findExisting(
   db: SupabaseClient,
   ev: PlannedEvent,
-): Promise<{ id: string; description: string; scope: string } | null> {
+): Promise<{ id: string; description: string; scope: string; title: string } | null> {
   // 1) Marker: an imported photo's source URL. 2) Fallback: the same past record title and date.
   const { data: media, error: mErr } = await db
     .from("event_media")
@@ -358,16 +363,24 @@ async function findExisting(
   const ids = (media ?? []).map((m) => m.event_id as string);
   const query = db
     .from("events")
-    .select("id, description, scope")
+    .select("id, description, scope, title")
     .eq("past_record", true)
     .is("deleted_at", null);
   const { data, error } = ids[0]
     ? await query.eq("id", ids[0]).limit(1)
-    : await query.eq("title", ev.title).eq("start_date", ev.date).limit(1);
+    : await query
+        .in("title", [ev.title, ev.page.title || ev.title])
+        .eq("start_date", ev.date)
+        .limit(1);
   if (error) throw new Error(error.message);
   const row = data?.[0];
   return row
-    ? { id: row.id as string, description: (row.description as string) ?? "", scope: row.scope as string }
+    ? {
+        id: row.id as string,
+        description: (row.description as string) ?? "",
+        scope: row.scope as string,
+        title: (row.title as string) ?? "",
+      }
     : null;
 }
 
@@ -429,6 +442,12 @@ async function importEvent(
         .eq("id", existing.id);
       if (error) throw new Error(error.message);
       result.status = "rescoped";
+    }
+    // A record imported before a title fix (TITLE_FIXES) gets the fixed title; other titles are left as edited.
+    if (existing.title !== ev.title && cleanTitle(existing.title) === ev.title) {
+      const { error } = await db.from("events").update({ title: ev.title }).eq("id", existing.id);
+      if (error) throw new Error(error.message);
+      result.status = "updated";
     }
     if (opts.updateText && existing.description !== ev.description) {
       const { error } = await db

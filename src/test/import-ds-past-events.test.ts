@@ -5,6 +5,7 @@ import {
   imageKey,
   mapBranch,
   mapScope,
+  cleanTitle,
   parseDayText,
   parseEventPage,
   parseEventsList,
@@ -274,5 +275,15 @@ describe("branch mapping", () => {
       branch: null,
       region: null,
     });
+  });
+});
+
+describe("title fixes", () => {
+  it("fixes known source typos and leaves other titles alone", () => {
+    expect(
+      cleanTitle("The Role of Religion in National Government: A Case Studdy of Iran as a Starter"),
+    ).toBe("The Role of Religion in National Government: A Case Study of Iran as a Starter");
+    expect(cleanTitle("Life of a Chickpea")).toBe("Life of a Chickpea");
+    expect(cleanTitle("x".repeat(250))).toHaveLength(200);
   });
 });
