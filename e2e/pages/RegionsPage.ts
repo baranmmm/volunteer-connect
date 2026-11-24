@@ -13,9 +13,9 @@ export class RegionsPage {
 
   /** Serves every OpenStreetMap tile as an empty image. Call before the map is shown. */
   static async blockMapTiles(page: Page) {
-    await page.route("https://tile.openstreetmap.org/**", (route) =>
-      route.fulfill({ status: 200, contentType: "image/png", body: EMPTY_PNG }),
-    );
+    // OpenStreetMap (no CARTO key) and CARTO Positron tiles: never loaded in tests.
+    for (const pattern of ["https://tile.openstreetmap.org/**", "https://basemaps.cartocdn.com/**"])
+      await page.route(pattern, (route) => route.fulfill({ status: 200, contentType: "image/png", body: EMPTY_PNG }));
   }
 
   async goto() {

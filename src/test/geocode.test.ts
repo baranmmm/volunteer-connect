@@ -6,7 +6,13 @@ import {
   type CachedGeocode,
   type GeocodeCache,
 } from "@/lib/geocode.server";
-import { normalisePostcode, regionColors } from "@/lib/branch-map";
+import {
+  CARTO_PUBLIC_KEY,
+  basemapTiles,
+  cartoKey,
+  normalisePostcode,
+  regionColors,
+} from "@/lib/branch-map";
 
 // The branch geocoder: postcodes.io through an injected fetch and an in-memory cache (no network, no database).
 const NOW = new Date("2026-11-24T12:00:00Z");
@@ -150,5 +156,45 @@ describe("branch map helpers", () => {
     ]);
     expect([...colors.values()].map((c) => c.name)).toEqual(["North", "South"]);
     expect(colors.get("a")?.fill).not.toBe(colors.get("b")?.fill);
+  });
+});
+
+describe("basemap tiles", () => {
+  it("CARTO Positron (retina, key in the URL, CARTO + OSM attribution) with a key; OSM tiles without one", () => {
+    const carto = basemapTiles(" pk-123 ");
+    expect(carto.provider).toBe("carto");
+    expect(carto.url).toBe(
+      "https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=pk-123",
+    );
+    expect(carto.attribution).toContain("OpenStreetMap contributors");
+    expect(carto.attribution).toContain("https://carto.com/attributions");
+    for (const key of [undefined, "", "  "]) {
+      const osm = basemapTiles(key);
+      expect(osm.provider).toBe("osm");
+      expect(osm.url).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+      expect(osm.attribution).not.toContain("CARTO");
+    }
+  });
+});
+
+describe("CARTO key by host", () => {
+  it("the public key only on the Lovable domains it is restricted to; the env key wins; elsewhere none (OSM)", () => {
+    for (const host of [
+      "project--abc.lovable.app",
+      "id-preview--abc.lovable.app",
+      "abc.lovableproject.com",
+      "lovable.dev",
+    ])
+      expect(cartoKey(host, undefined)).toBe(CARTO_PUBLIC_KEY);
+    for (const host of [
+      "localhost",
+      "127.0.0.1",
+      "example.org",
+      "lovable.app.evil.com",
+      "notlovable.dev",
+    ])
+      expect(cartoKey(host, undefined)).toBeUndefined();
+    expect(cartoKey("localhost", " own-key ")).toBe("own-key");
+    expect(basemapTiles(cartoKey("localhost", undefined)).provider).toBe("osm");
   });
 });

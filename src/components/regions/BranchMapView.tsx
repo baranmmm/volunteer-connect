@@ -1,18 +1,30 @@
-// The Leaflet map (loaded lazily, only on Regions & branches): OpenStreetMap tiles, one keyboard-focusable marker per
-// branch coloured by region, with the active volunteer count as its badge.
+// The Leaflet map (loaded lazily, only on Regions & branches): CARTO Positron tiles (OpenStreetMap without a key), one
+// keyboard-focusable dot per branch coloured by region (larger when the branch has volunteers); hover, focus or tap
+// shows the branch name. Counts appear only in the side panel.
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./branch-map.css";
-import { located, type MapBranch, type RegionColor } from "@/lib/branch-map";
+import {
+  basemapTiles,
+  cartoKey,
+  located,
+  type MapBranch,
+  type RegionColor,
+} from "@/lib/branch-map";
 
 const UK_BOUNDS: L.LatLngBoundsExpression = [
   [49.9, -8.2],
   [58.7, 1.8],
 ];
-const ATTRIBUTION =
-  '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>';
+// CARTO Positron on the Lovable domains (the key is restricted to them), OpenStreetMap elsewhere.
+const TILES = basemapTiles(
+  cartoKey(
+    typeof window === "undefined" ? "" : window.location.hostname,
+    import.meta.env["VITE_CARTO_BASEMAP_KEY"] as string | undefined,
+  ),
+);
 
 type Props = {
   branches: MapBranch[];
@@ -39,10 +51,15 @@ export default function BranchMapView({ branches, colors, selectedId, onSelect, 
     m.attributionControl.setPrefix(
       '<a href="https://leafletjs.com" target="_blank" rel="noopener noreferrer">Leaflet</a>',
     );
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer(TILES.url, {
       maxZoom: 18,
-      attribution: ATTRIBUTION,
+      subdomains: TILES.subdomains,
+      attribution: TILES.attribution,
+      // Dark mode filters this layer only (not markers, tooltips or controls): branch-map.css.
+      className: "branch-map-tiles",
+      detectRetina: false,
     }).addTo(m);
+    el.current.dataset["basemap"] = TILES.provider;
     m.fitBounds(UK_BOUNDS);
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
@@ -67,16 +84,14 @@ export default function BranchMapView({ branches, colors, selectedId, onSelect, 
     const shown = branches.filter(located);
     for (const b of shown) {
       const color = colors.get(b.region_id);
-      const label = t("regions.map.markerLabel", {
-        name: b.name,
-        region: b.region,
-        count: b.volunteers,
-      });
+      const label = t("regions.map.markerLabel", { name: b.name, region: b.region });
+      // A plain dot; branches with volunteers get a slightly larger one.
+      const size = b.volunteers > 0 ? 20 : 14;
       const icon = L.divIcon({
-        className: "branch-map-marker",
-        html: `<span style="background:${color?.fill ?? "#0072B2"};color:${color?.ink ?? "#ffffff"}">${b.volunteers}</span>`,
-        iconSize: [34, 34],
-        iconAnchor: [17, 17],
+        className: `branch-map-marker${b.volunteers > 0 ? " has-volunteers" : ""}`,
+        html: `<span style="background:${color?.fill ?? "#0072B2"}"></span>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
       });
       const marker = L.marker([b.latitude, b.longitude], {
         icon,
@@ -85,7 +100,16 @@ export default function BranchMapView({ branches, colors, selectedId, onSelect, 
         alt: label,
         riseOnHover: true,
       });
-      marker.on("click", () => select.current(b.id));
+      // The name on hover, keyboard focus and tap (the tooltip is not interactive; the list is the full alternative).
+      marker.bindTooltip(b.name, {
+        direction: "top",
+        offset: [0, -size / 2 - 2],
+        className: "branch-map-tooltip",
+      });
+      marker.on("click", () => {
+        marker.openTooltip();
+        select.current(b.id);
+      });
       marker.addTo(group);
       const node = marker.getElement();
       if (node) {
@@ -93,6 +117,8 @@ export default function BranchMapView({ branches, colors, selectedId, onSelect, 
         node.dataset["branchId"] = b.id;
         node.setAttribute("aria-label", label);
         nodes.current.set(b.id, node);
+        node.addEventListener("focus", () => marker.openTooltip());
+        node.addEventListener("blur", () => marker.closeTooltip());
         // role="button": Enter and Space choose the branch like a click.
         node.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
