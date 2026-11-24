@@ -366,6 +366,16 @@ export function cleanTitle(title: string): string {
   return out.slice(0, 200);
 }
 
+/**
+ * Events with children or young people (schools, youth sessions) are imported with their photos hidden from the
+ * public gallery (in_gallery false): safeguarding — a manager can still show individual photos in the app after
+ * checking consent. Decided from the title only, so the result is predictable.
+ */
+const CHILDREN_EVENT = /\b(schools?|primary|academy|pupils?|students?|youth|children|kids)\b/i;
+export function isChildrenEvent(title: string): boolean {
+  return CHILDREN_EVENT.test(title);
+}
+
 export type RegionRow = { id: string; name: string };
 export type ScopeMatch =
   | { scope: "branch"; branch: BranchRow; region: null }
