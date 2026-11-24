@@ -35,15 +35,14 @@ export function LandingHeader() {
             {t("landing.nav.events")}
           </Link>
           <Link
-            to="/auth"
+            to="/sign-in"
             data-testid="landing-sign-in"
             className="inline-flex min-h-11 items-center rounded-md px-3 hover:text-ds-link"
           >
             {t("landing.nav.signIn")}
           </Link>
           <Link
-            to="/auth"
-            search={{ mode: "signup" }}
+            to="/join"
             data-testid="landing-join"
             className="inline-flex min-h-11 items-center rounded-[3px] bg-ds-slate px-4 text-ds-slate-fg transition-colors hover:bg-ds-action hover:text-ds-action-fg"
           >

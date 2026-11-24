@@ -21,7 +21,12 @@ export const getPublicEvent = createServerFn({ method: "POST" })
     const { fetchPublicEvent, signedPublicImage } = await import("@/lib/public-events.server");
     const event = await fetchPublicEvent(data.id);
     if (!event) return null;
-    return { event, image: event.has_image ? await signedPublicImage(event.id) : null };
+    // signedAt: the image links expire 5 minutes later (the page refreshes them before that).
+    return {
+      event,
+      image: event.has_image ? await signedPublicImage(event.id) : null,
+      signedAt: Date.now(),
+    };
   });
 
 export const getPublicStructure = createServerFn({ method: "POST" }).handler(async () => {

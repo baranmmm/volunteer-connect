@@ -25,7 +25,8 @@ test("no app-served script or document contains the service_role key", async ({ 
     );
   });
 
-  for (const path of ["/auth", "/dashboard", "/users", "/approvals", "/profile"]) {
+  // Server-rendered public pages too (their HTML and data come from the server).
+  for (const path of ["/auth", "/dashboard", "/users", "/approvals", "/profile", "/", "/events", "/sign-in", "/join"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
   }

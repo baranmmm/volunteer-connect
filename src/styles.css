@@ -253,3 +253,9 @@
 }
 @keyframes ds-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @keyframes ds-zoom { from { transform: scale(1.06); } to { transform: scale(1); } }
+
+/* Server-rendered public pages do not know the session (it lives in localStorage). <html data-session> is set before the
+   first paint when a stored session exists (SESSION_MARK_SCRIPT) and kept in step by the AuthProvider: members never
+   see the signed-out content flash before their redirect or member view; visitors never see the members' placeholder. */
+html[data-session] [data-signed-out-only] { display: none !important; }
+html:not([data-session]) [data-session-only] { display: none !important; }

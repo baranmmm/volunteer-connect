@@ -45,11 +45,48 @@ test.describe("Public events (signed out)", () => {
     await expect(page.getByTestId("public-event-online")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("e2e-public-room");
     await page.getByTestId("public-event-register").click();
-    await expect(page).toHaveURL(new RegExp(`/auth\\?redirect=%2Fevents%2F${online.id}`));
+    await expect(page).toHaveURL(new RegExp(`/sign-in\\?redirect=%2Fevents%2F${online.id}`));
     await new AuthPage(page).signIn(seed.users.volunteerMedway.email, userPassword());
     await expect(page).toHaveURL(new RegExp(`/events/${online.id}$`), { timeout: APP_LOAD_TIMEOUT });
     await expect(page.getByTestId("event-public-badge")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await context.close();
+  });
+
+  test("server-rendered HTML (no JavaScript) has the content and link previews, never the online link", async ({ request, freshUser, freshEvent }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const link = `https://meet.example.org/e2e-ssr-room-${runId}`;
+    const event = await freshEvent(manager, { label: "ssr preview", status: "published", startInMinutes: 5 * 24 * 60, audience: "public", onlineUrl: link });
+    const members = await freshEvent(manager, { label: "ssr members", status: "published", startInMinutes: 5 * 24 * 60 });
+    const meta = (html: string, key: string) => new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)"`).exec(html)?.[1];
+
+    const res = await request.get(`/events/${event.id}`);
+    expect(res.status()).toBe(200);
+    // Signed image links in the page: never stored by a cache.
+    expect(res.headers()["cache-control"]).toMatch(/no-store/);
+    const html = await res.text();
+    expect(html).toContain(`data-event-id="${event.id}"`);
+    expect(meta(html, "og:title")).toContain("ssr preview");
+    expect(meta(html, "og:description")).toBeTruthy();
+    expect(meta(html, "twitter:card")).toBe("summary_large_image");
+    const image = meta(html, "og:image");
+    expect(image).toMatch(new RegExp(`^https?://[^/]+/api/public/event-image/${event.id}$`));
+    expect(html).toMatch(/<link rel="canonical" href="[^"]+\/events\//);
+    expect(html).toMatch(/<script type="application\/ld\+json">\{[^<]*"@type":"Event"/);
+    expect(html, "the online link never reaches the HTML").not.toContain("e2e-ssr-room");
+
+    // The preview image is served through the app (stable URL), only for a public event.
+    const cover = await request.get(new URL(image!).pathname);
+    expect(cover.status()).toBe(200);
+    expect(cover.headers()["content-type"]).toMatch(/^image\//);
+    expect(cover.headers()["cache-control"]).toMatch(/public, max-age=\d+/);
+    expect((await request.get(`/api/public/event-image/${members.id}`)).status()).toBe(404);
+
+    // The landing page: its own title and a preview image.
+    const home = await (await request.get("/")).text();
+    expect(meta(home, "og:title")).toBeTruthy();
+    expect(meta(home, "og:image")).toMatch(/^https?:\/\//);
+    expect(home).toContain('data-testid="landing-page"');
+    expect(home).not.toContain("e2e-ssr-room");
   });
 
   test("a very long branch name does not make the page scroll sideways (phones: taps would miss)", async ({ browser, seed }) => {
