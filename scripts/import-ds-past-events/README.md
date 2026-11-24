@@ -88,3 +88,40 @@ already have the public events v2 migrations (`20261130090000`, `20261130090100`
 To undo an import, delete the imported past events in the app (they go through the Recycle Bin, which removes their
 files). For the channel highlights (`event_videos` with `event_id IS NULL`), remove the poster object through the
 Storage API first and then the row. Never delete Storage objects with SQL.
+
+## Production run log
+
+### 2026-11-24 (main `ed5acb4`, run by the user from a clean worktree; temporary secret key, deleted afterwards)
+
+| Run | Events | Photos | Videos | Totals in prod (past events / imported photos / highlight videos) |
+|---|---|---|---|---|
+| `--dry-run` | 15 planned | 79 selected | 6 planned | 0 / 0 / 0 (no writes) |
+| apply | **15 new** | **79 uploaded** | **6 new** | 0 → 15 / 0 → 79 / 0 → 6 |
+| apply again | 0 new, 15 existing | 0 uploaded, 79 present | 0 new, 6 existing | unchanged (idempotent) |
+
+Public gallery: **58 photos shown** in 11 events; **21 hidden** — the 4 children/youth events (gallery OFF, see
+`isChildrenEvent`). 6 pages were skipped (fewer than 3 photos).
+
+| Date | Scope | Title | Photos | Gallery |
+|---|---|---|---|---|
+| 2026-11-15 | branch Manchester (North of England) | Bolton Celebrates Diversity and Togetherness at Interfaith Reception | 6 | on |
+| 2026-11-12 | branch Sheffield (North of England) | Multi-Faith Celebration: The Life of a Chickpea | 6 | on |
+| 2026-11-12 | region Greater London | Community Trust Co-Building with Migrants and Refugees: Part II | 6 | on |
+| 2026-11-10 | branch Birmingham (Midlands) | United In Hope – United For Humanity | 6 | on |
+| 2026-10-23 | branch Sheffield (North of England) | "See It, Own It, Change It" by Chris Hewer – Dialogue Society Sheffield Youth Session | 3 | OFF |
+| 2026-10-18 | branch Sheffield (North of England) | The Role of Religion in National Government: A Case Study of Iran as a Starter: Sunday Afternoon Series | 4 | on |
+| 2026-09-24 | branch London (Greater London) | Community Trust Co-building with Migrants and Refugees – Building Community Trust Panel Series | 3 | on |
+| 2026-09-17 | branch Manchester (North of England) | Bolton Hosts Its First Scriptural Reasoning Session | 6 | on |
+| 2026-09-11 | branch Sheffield (North of England) | Interfaith Dialogue at Elsecar Holy Trinity CofE Primary Academy | 6 | OFF |
+| 2026-08-14 | branch Cardiff (Wales) | Emergency Services & Family Fun Day in Cardiff | 6 | on |
+| 2026-07-27 | branch North East (North of England) | Dialogue Society Hosts Community Safety & Cohesion Roundtable with Northumbria Police and Crime Commissioner | 6 | on |
+| 2026-07-11 | branch Oxford (South of England) | Dialogue Society Took Part in the 1st Didcot Festival of Cultures | 6 | on |
+| 2026-07-11 | branch Worksop (North of England) | Dialogue Society Worksop at Bassetlaw Multicultural Festival | 3 | on |
+| 2026-07-10 | branch North East (North of England) | Life of a Chickpea at Wellfield Middle School | 6 | OFF |
+| 2026-07-08 | branch North East (North of England) | Life of a Chickpea Inspires 80 Students at St. Oswald's Catholic Primary School | 6 | OFF |
+
+Highlights (channel videos, links only; posters stored by the import): EPVbQMKQ2vs (The King's Award for Voluntary
+Service, North East), Zz9SmKKNJ-4 (Community Trust Co-Building with Migrants and Refugees: Part II), HgbvEc9v4jM
+(Connect Local Communities, Build Mutual Trust…), P9tlV1rarc0 (Building Community Trust: Migrants and Refugee
+Experiences – Panel 2), ir-AiR5jyko (In the Same Frame – A Short Film), l9SKOqX5fY4 (Sense of Belonging in a Divided
+Britain – Panel Discussion).
