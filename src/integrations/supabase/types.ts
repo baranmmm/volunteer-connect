@@ -72,7 +72,11 @@ export type Database = {
           deleted_by: string | null
           deleted_with_region: boolean
           id: string
+          latitude: number | null
+          located_at: string | null
+          longitude: number | null
           name: string
+          postcode: string | null
           region_id: string
         }
         Insert: {
@@ -80,7 +84,11 @@ export type Database = {
           deleted_by?: string | null
           deleted_with_region?: boolean
           id?: string
+          latitude?: number | null
+          located_at?: string | null
+          longitude?: number | null
           name: string
+          postcode?: string | null
           region_id: string
         }
         Update: {
@@ -88,7 +96,11 @@ export type Database = {
           deleted_by?: string | null
           deleted_with_region?: boolean
           id?: string
+          latitude?: number | null
+          located_at?: string | null
+          longitude?: number | null
           name?: string
+          postcode?: string | null
           region_id?: string
         }
         Relationships: [
@@ -462,6 +474,7 @@ export type Database = {
         Row: {
           created_at: string
           event_id: string
+          has_variants: boolean
           height: number | null
           id: string
           in_gallery: boolean
@@ -477,6 +490,7 @@ export type Database = {
         Insert: {
           created_at?: string
           event_id: string
+          has_variants?: boolean
           height?: number | null
           id?: string
           in_gallery?: boolean
@@ -492,6 +506,7 @@ export type Database = {
         Update: {
           created_at?: string
           event_id?: string
+          has_variants?: boolean
           height?: number | null
           id?: string
           in_gallery?: boolean
@@ -1706,6 +1721,27 @@ export type Database = {
           },
         ]
       }
+      postcode_geocodes: {
+        Row: {
+          fetched_at: string
+          latitude: number
+          longitude: number
+          postcode: string
+        }
+        Insert: {
+          fetched_at?: string
+          latitude: number
+          longitude: number
+          postcode: string
+        }
+        Update: {
+          fetched_at?: string
+          latitude?: number
+          longitude?: number
+          postcode?: string
+        }
+        Relationships: []
+      }
       privacy_notice_acceptances: {
         Row: {
           accepted_at: string
@@ -2789,6 +2825,8 @@ export type Database = {
         Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
         Returns: boolean
       }
+      event_media_has_variants: { Args: { _path: string }; Returns: boolean }
+      event_media_variant_paths: { Args: { _path: string }; Returns: string[] }
       event_request_actor: { Args: never; Returns: string }
       event_request_apply: {
         Args: {
@@ -2935,6 +2973,7 @@ export type Database = {
         Returns: undefined
       }
       follow_branch: { Args: { p_branch_id: string }; Returns: undefined }
+      get_branch_map: { Args: Record<PropertyKey, never>; Returns: Json }
       get_event_announcements: {
         Args: { p_event: string }
         Returns: {
@@ -3581,6 +3620,19 @@ export type Database = {
         Args: { p_id: string; p_resolved: boolean }
         Returns: boolean
       }
+      set_branch_coordinates: {
+        Args: {
+          p_branch: string
+          p_lat: number
+          p_lng: number
+          p_postcode: string
+        }
+        Returns: undefined
+      }
+      set_branch_postcode: {
+        Args: { p_branch: string; p_postcode: string }
+        Returns: string
+      }
       set_consent_preferences: {
         Args: { p_photo_consent: boolean; p_updates_email_consent: boolean }
         Returns: Json
@@ -3591,6 +3643,10 @@ export type Database = {
       }
       set_event_media_size: {
         Args: { p_height: number; p_media: string; p_width: number }
+        Returns: undefined
+      }
+      set_event_media_variants: {
+        Args: { p_media: string }
         Returns: undefined
       }
       set_event_video_thumb: {
