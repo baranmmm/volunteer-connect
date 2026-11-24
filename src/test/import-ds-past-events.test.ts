@@ -6,6 +6,7 @@ import {
   mapBranch,
   mapScope,
   cleanTitle,
+  isChildrenEvent,
   parseDayText,
   parseEventPage,
   parseEventsList,
@@ -285,5 +286,24 @@ describe("title fixes", () => {
     ).toBe("The Role of Religion in National Government: A Case Study of Iran as a Starter");
     expect(cleanTitle("Life of a Chickpea")).toBe("Life of a Chickpea");
     expect(cleanTitle("x".repeat(250))).toHaveLength(200);
+  });
+});
+
+describe("children and youth events", () => {
+  it("school and youth events are recognised from the title (their photos stay out of the gallery)", () => {
+    for (const title of [
+      "“See It, Own It, Change It” by Chris Hewer – Dialogue Society Sheffield Youth Session",
+      "Interfaith Dialogue at Elsecar Holy Trinity CofE Primary Academy",
+      "Life of a Chickpea at Wellfield Middle School",
+      "Life of a Chickpea Inspires 80 Students at St. Oswald’s Catholic Primary School",
+    ])
+      expect(isChildrenEvent(title)).toBe(true);
+    for (const title of [
+      "Bolton Celebrates Diversity and Togetherness at Interfaith Reception",
+      "Multi-Faith Celebration: The Life of a Chickpea",
+      "Emergency Services & Family Fun Day in Cardiff",
+      "Dialogue Society Took Part in the 1st Didcot Festival of Cultures",
+    ])
+      expect(isChildrenEvent(title)).toBe(false);
   });
 });
