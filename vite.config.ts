@@ -10,6 +10,12 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  vite: {
+    // Dev server only: scan every route for dependencies at startup. Without it Vite discovers a lazily loaded
+    // route's dependencies on its first visit, re-optimises them and force-reloads every open page ("optimized
+    // dependencies changed. reloading"), which aborted in-flight requests and broke e2e runs on a cold cache.
+    optimizeDeps: { entries: ["src/router.tsx", "src/routes/**/*.tsx", "src/components/**/*.tsx"] },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
