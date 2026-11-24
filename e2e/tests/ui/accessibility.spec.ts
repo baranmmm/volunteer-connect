@@ -8,7 +8,20 @@ import { MEETING_TITLE_PREFIX, TASK_TITLE_PREFIX, createMeetingAs, createTaskAs,
 import { RequestsPage } from "../../pages/RequestsPage";
 import { EventRequestFormDialog } from "../../pages/components/EventRequestFormDialog";
 
+/** Loading indicators: the app shell, page/list loading states, busy regions and skeletons. */
+const LOADING = '[data-testid="app-loading"], [data-testid$="-loading"], [aria-busy="true"], .animate-pulse';
+
+/**
+ * Scan only a settled page: no request in flight and no loading indicator left. Scanning while a list or a lazy
+ * panel is still rendering checked a half-built page (and a dev-server reload made it fail outright).
+ */
+async function waitForSettled(page: Page) {
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator(LOADING)).toHaveCount(0, { timeout: 30_000 });
+}
+
 async function expectNoSeriousViolations(page: Page, label: string, include?: string) {
+  await waitForSettled(page);
   let builder = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]);
   if (include) builder = builder.include(include);
   const { violations } = await builder.analyze();
@@ -50,7 +63,9 @@ test.describe("Accessibility (axe)", () => {
     await expectNoSeriousViolations(page, "proposal request form", '[role="dialog"]');
 
     const managerPage = await pageAs(await freshUser({ role: "branch_manager" }));
-    await new RequestsPage(managerPage).goto();
+    const reviewers = new RequestsPage(managerPage);
+    await reviewers.goto();
+    await expect(reviewers.managerPage()).toBeVisible();
     await expectNoSeriousViolations(managerPage, "requests (reviewers)");
   });
 
@@ -90,6 +105,7 @@ test.describe("Accessibility (axe)", () => {
     await expectNoSeriousViolations(page, "tasks kanban");
     for (const view of ["list", "calendar"] as const) {
       await page.getByTestId(`tasks-view-${view}`).click();
+      await expect(page.getByTestId(view === "list" ? "tasks-list" : "tasks-calendar")).toBeVisible();
       await expectNoSeriousViolations(page, `tasks ${view}`);
     }
     await page.goto(`/tasks?task=${task}`);

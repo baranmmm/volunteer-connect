@@ -36,8 +36,11 @@ export default defineConfig({
   },
   projects: [
     { name: "setup", testDir: "./setup", testMatch: /auth\.setup\.ts/ },
-    { name: "desktop-chromium", testMatch: /ui\/.*\.spec\.ts/, use: { ...devices["Desktop Chrome"] }, dependencies: ["setup"] },
-    { name: "mobile-pixel7", testMatch: /ui\/.*\.spec\.ts/, use: { ...devices["Pixel 7"] }, dependencies: ["setup"] },
+    // Warms the dev server up (signed-out and signed-in pages) so dependency re-optimisation reloads happen before the
+    // UI tests (setup/warmup.setup.ts).
+    { name: "warmup", testDir: "./setup", testMatch: /warmup\.setup\.ts/, dependencies: ["setup"] },
+    { name: "desktop-chromium", testMatch: /ui\/.*\.spec\.ts/, use: { ...devices["Desktop Chrome"] }, dependencies: ["warmup"] },
+    { name: "mobile-pixel7", testMatch: /ui\/.*\.spec\.ts/, use: { ...devices["Pixel 7"] }, dependencies: ["warmup"] },
     // Browser-independent permission checks run once.
     { name: "api", testMatch: /api\/.*\.spec\.ts/, use: { ...devices["Desktop Chrome"] }, dependencies: ["setup"] },
   ],
