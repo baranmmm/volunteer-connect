@@ -5,12 +5,40 @@ import { supabase } from "@/integrations/supabase/client";
 // Volunteer applications: every write goes through RPCs (privacy notice checked there); RLS limits reads to the
 // applicant and the branch's Branch Manager / the region's Regional Director. National Coordinators get counts only.
 export const APPLICATION_LIMITS = {
-  motivation: 1000,
-  availability: 500,
+  helpMin: 30,
+  helpMax: 500,
   skills: 500,
   phone: 40,
   declineMin: 10,
 } as const;
+
+/** "How much time can you give?" (the database accepts exactly these). */
+export const TIME_COMMITMENTS = ["few_hours_month", "few_hours_week", "more"] as const;
+export type TimeCommitment = (typeof TIME_COMMITMENTS)[number];
+
+/** The answers every new application gives, at sign-up or later (check_volunteer_answers in the database). */
+export type VolunteerAnswers = { help: string; time: TimeCommitment | ""; commitment: boolean };
+export type VolunteerAnswerErrors = Partial<Record<keyof VolunteerAnswers, string>>;
+export const EMPTY_ANSWERS: VolunteerAnswers = { help: "", time: "", commitment: false };
+
+/** Field errors (i18n keys) before submitting; the database checks the same rules. */
+export function validateVolunteerAnswers(a: VolunteerAnswers): VolunteerAnswerErrors {
+  const errors: VolunteerAnswerErrors = {};
+  const help = a.help.trim().length;
+  if (help < APPLICATION_LIMITS.helpMin || help > APPLICATION_LIMITS.helpMax)
+    errors.help = "applications.errors.help";
+  if (!(TIME_COMMITMENTS as readonly string[]).includes(a.time))
+    errors.time = "applications.errors.time";
+  if (!a.commitment) errors.commitment = "applications.errors.commitment";
+  return errors;
+}
+
+/** The sign-up metadata for the volunteer choice (handle_new_user creates the application). */
+export const signUpApplication = (a: VolunteerAnswers) => ({
+  help: a.help.trim(),
+  time: a.time,
+  commitment: true,
+});
 
 export const applicationStatus = z.enum(["submitted", "approved", "declined", "withdrawn"]);
 export type ApplicationStatus = z.infer<typeof applicationStatus>;
@@ -21,6 +49,8 @@ const base = {
   status: applicationStatus,
   motivation: z.string(),
   availability: z.string().nullable(),
+  time_commitment: z.string().nullable().optional(),
+  commitment_accepted_at: z.string().nullable().optional(),
   skills: z.string().nullable(),
   phone: z.string().nullable(),
   decline_reason: z.string().nullable(),
@@ -38,23 +68,16 @@ export const reviewApplication = z.object({
 });
 export type ReviewApplication = z.infer<typeof reviewApplication>;
 
-export type ApplicationInput = {
+export type ApplicationInput = VolunteerAnswers & {
   branch_id: string;
-  motivation: string;
-  availability: string;
   skills: string;
   phone: string;
 };
 
-/** Field errors (i18n keys) before submitting; the database checks the same limits. */
+/** Field errors (i18n keys) of the "Become a Dialogue Society volunteer" form. */
 export function validateApplication(input: ApplicationInput) {
-  const errors: Partial<Record<keyof ApplicationInput, string>> = {};
+  const errors: Partial<Record<keyof ApplicationInput, string>> = validateVolunteerAnswers(input);
   if (!input.branch_id) errors.branch_id = "applications.errors.branch";
-  if (!input.motivation.trim()) errors.motivation = "applications.errors.motivation";
-  if (input.motivation.length > APPLICATION_LIMITS.motivation)
-    errors.motivation = "applications.errors.tooLong";
-  if (input.availability.length > APPLICATION_LIMITS.availability)
-    errors.availability = "applications.errors.tooLong";
   if (input.skills.length > APPLICATION_LIMITS.skills)
     errors.skills = "applications.errors.tooLong";
   if (input.phone.length > APPLICATION_LIMITS.phone) errors.phone = "applications.errors.tooLong";
@@ -74,7 +97,18 @@ export const fetchApplicationsToReview = async (filter: "open" | "decided") =>
     .array(reviewApplication)
     .parse(await rpc(supabase.rpc("list_volunteer_applications", { p_filter: filter })));
 export const submitApplication = (input: ApplicationInput) =>
-  rpc(supabase.rpc("submit_volunteer_application", { p: input }));
+  rpc(
+    supabase.rpc("submit_volunteer_application", {
+      p: {
+        branch_id: input.branch_id,
+        motivation: input.help.trim(),
+        time_commitment: input.time,
+        commitment: input.commitment,
+        skills: input.skills,
+        phone: input.phone,
+      },
+    }),
+  );
 export const withdrawApplication = (id: string) =>
   rpc(supabase.rpc("withdraw_volunteer_application", { p_id: id }));
 export const approveApplication = (id: string) =>

@@ -4,8 +4,10 @@ import { useTranslation } from "react-i18next";
 import { Ban, CircleCheck, HandHeart, Trash2, Undo2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useFollowedBranches } from "@/lib/followed-branches";
+import { VolunteerAnswerFields } from "@/components/requests/VolunteerAnswerFields";
 import {
   APPLICATION_LIMITS,
+  EMPTY_ANSWERS,
   approveApplication,
   declineApplication,
   deleteApplication,
@@ -62,16 +64,15 @@ export function VolunteerApplicationForm({
   const followed = useFollowedBranches(session?.user.id);
   const invalidate = useInvalidate();
   const [input, setInput] = useState<ApplicationInput>({
+    ...EMPTY_ANSWERS,
     branch_id: "",
-    motivation: "",
-    availability: "",
     skills: "",
     phone: profile?.phone ?? "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof ApplicationInput, string>>>({});
   const [busy, setBusy] = useState(false);
   const branchId = input.branch_id || followed.data?.[0]?.branch_id || "";
-  const set = (key: keyof ApplicationInput) => (value: string) =>
+  const set = (key: "branch_id" | "skills" | "phone") => (value: string) =>
     setInput((v) => ({ ...v, [key]: value }));
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -91,36 +92,12 @@ export function VolunteerApplicationForm({
       setBusy(false);
     }
   }
-  const area = (key: "motivation" | "availability" | "skills", required = false) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={`volunteer-application-${key}`}>
-        {t(`applications.fields.${key}`)}
-        {required && " *"}
-      </Label>
-      <Textarea
-        id={`volunteer-application-${key}`}
-        data-testid={`volunteer-application-${key}`}
-        value={input[key]}
-        maxLength={APPLICATION_LIMITS[key]}
-        aria-invalid={!!errors[key]}
-        onChange={(e) => set(key)(e.target.value)}
-        rows={key === "motivation" ? 5 : 3}
-      />
-      <p className="text-xs text-muted-foreground">
-        {input[key].length}/{APPLICATION_LIMITS[key]}
-      </p>
-      {errors[key] && (
-        <p role="alert" className="text-sm text-destructive">
-          {t(errors[key]!)}
-        </p>
-      )}
-    </div>
-  );
   return (
     <EventDialog open onClose={onClose} title={t("applications.title")}>
       <form
         data-testid="volunteer-application-form"
         onSubmit={(e) => void submit(e)}
+        noValidate
         className="space-y-4"
       >
         <p className="text-sm text-muted-foreground">{t("applications.intro")}</p>
@@ -130,6 +107,7 @@ export function VolunteerApplicationForm({
             id="volunteer-application-branch"
             data-testid="volunteer-application-branch"
             value={branchId}
+            aria-describedby="volunteer-application-branch-hint"
             onChange={(e) => set("branch_id")(e.target.value)}
             className="h-11 w-full rounded-xl border border-input bg-card px-3 text-base"
           >
@@ -139,16 +117,38 @@ export function VolunteerApplicationForm({
               </option>
             ))}
           </select>
-          <p className="text-xs text-muted-foreground">{t("applications.branchHint")}</p>
+          <p id="volunteer-application-branch-hint" className="text-xs text-muted-foreground">
+            {t("applications.branchHint")}
+          </p>
           {errors.branch_id && (
             <p role="alert" className="text-sm text-destructive">
               {t(errors.branch_id)}
             </p>
           )}
         </div>
-        {area("motivation", true)}
-        {area("availability")}
-        {area("skills")}
+        <VolunteerAnswerFields
+          prefix="volunteer-form"
+          value={input}
+          errors={errors}
+          onChange={(answers) => setInput((v) => ({ ...v, ...answers }))}
+        />
+        <div className="space-y-1.5">
+          <Label htmlFor="volunteer-application-skills">{t("applications.fields.skills")}</Label>
+          <Textarea
+            id="volunteer-application-skills"
+            data-testid="volunteer-application-skills"
+            value={input.skills}
+            maxLength={APPLICATION_LIMITS.skills}
+            aria-invalid={!!errors.skills}
+            onChange={(e) => set("skills")(e.target.value)}
+            rows={3}
+          />
+          {errors.skills && (
+            <p role="alert" className="text-sm text-destructive">
+              {t(errors.skills)}
+            </p>
+          )}
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="volunteer-application-phone">{t("applications.fields.phone")}</Label>
           <Input
@@ -314,9 +314,28 @@ function ReviewRow({ application: a }: { application: ReviewApplication }) {
       </p>
       <dl className="grid gap-2 text-sm">
         <div>
-          <dt className="text-muted-foreground">{t("applications.fields.motivation")}</dt>
-          <dd className="whitespace-pre-line">{a.motivation}</dd>
+          <dt className="text-muted-foreground">{t("applications.review.help")}</dt>
+          <dd data-testid="volunteer-application-help" className="whitespace-pre-line">
+            {a.motivation}
+          </dd>
         </div>
+        {a.time_commitment && (
+          <div>
+            <dt className="text-muted-foreground">{t("applications.fields.time")}</dt>
+            <dd data-testid="volunteer-application-time" data-time={a.time_commitment}>
+              {t(`applications.time.${a.time_commitment}`, { defaultValue: a.time_commitment })}
+            </dd>
+          </div>
+        )}
+        {a.commitment_accepted_at && (
+          <div data-testid="volunteer-application-commitment">
+            <dt className="sr-only">{t("applications.review.commitmentLabel")}</dt>
+            <dd className="flex items-center gap-1.5">
+              <CircleCheck className="size-4 text-primary" aria-hidden />
+              {t("applications.review.commitment")}
+            </dd>
+          </div>
+        )}
         {field("availability")}
         {field("skills")}
         {field("phone")}

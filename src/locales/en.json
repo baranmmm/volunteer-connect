@@ -89,7 +89,7 @@
     "creatingAccount": "Creating account…",
     "haveAccount": "Already have an account? Sign in",
     "checkEmailTitle": "Check your email",
-    "checkEmailText": "We've sent you a link to confirm your email address. Once confirmed, your Branch Manager will review your account.",
+    "checkEmailText": "We've sent you a link to confirm your email address. Once it is confirmed, you can sign in.",
     "backToSignIn": "Back to sign in",
     "resetTitle": "Reset your password",
     "resetIntro": "Enter your email and we'll send you a link.",
@@ -99,7 +99,34 @@
     "updatePassword": "Update password",
     "passwordUpdated": "Password updated",
     "followBranch": "Branch to follow",
-    "followBranchHelp": "You will see this branch's public events. You can follow more branches in your profile."
+    "followBranchHelp": "You will see this branch's public events. You can follow more branches in your profile.",
+    "signInWelcome": "Welcome back. Sign in to see what's happening in your branch.",
+    "createAccountTitle": "Create your account",
+    "heroAltSignIn": "Dialogue Society members talking around a table at a community roundtable",
+    "heroAltJoin": "A Dialogue Society volunteer writing visitors' names in calligraphy at an interfaith week event",
+    "joinCopy": {
+      "title": "Want to help bring your community together?",
+      "text": "Dialogue Society volunteers organise iftar dinners, interfaith gatherings, school visits and community events across the UK. Whether you have an hour a month or more, there is a place for you.",
+      "point1": "Meet people from every background and build real friendships",
+      "point2": "Help plan and run events in your own area",
+      "point3": "Gain experience, confidence and new skills",
+      "choose": "Choose how you'd like to join below. You can start by following events and become a volunteer any time."
+    },
+    "choice": {
+      "legend": "How would you like to join?",
+      "required": "Choose how you'd like to join.",
+      "follower": {
+        "title": "I want to hear about and attend events",
+        "text": "Follow your branch to hear about its events and come along to them.",
+        "note": "Your account starts as a follower."
+      },
+      "volunteer": {
+        "title": "I want to be a Dialogue Society volunteer",
+        "text": "Volunteers give their own time and energy to make things happen: they take on tasks, join planning meetings and help organise and run events in their branch.",
+        "note": "Your account starts as a follower and your volunteer application goes to the branch's managers."
+      }
+    },
+    "volunteerAnswersTitle": "Your volunteer application"
   },
   "dashboard": {
     "welcomeBack": "Welcome back",
@@ -280,6 +307,10 @@
         "currentRequired": "Enter your current password.",
         "currentWrong": "Your current password is not correct."
       }
+    },
+    "roleExplanation": {
+      "follower": "You follow {{branch}}: you hear about its events and can attend them.",
+      "volunteer": "You give your time to {{branch}}: you take on tasks, join meetings and help run events."
     }
   },
   "history": {
@@ -394,7 +425,11 @@
     "taskChooseAssignee": "Choose at least one person.",
     "notificationLocked": "Assignments, mentions and requests waiting for you are always sent at once.",
     "passwordSame": "Choose a new password that is different from your current one.",
-    "passwordReauth": "For your security, sign out and sign in again, then change your password."
+    "passwordReauth": "For your security, sign out and sign in again, then change your password.",
+    "volunteerHelp": "Tell us how you would like to help in 30 to 500 characters.",
+    "volunteerTime": "Choose how much time you can give.",
+    "volunteerCommitment": "Please confirm the volunteering commitment.",
+    "volunteerInvalid": "The volunteer application is not valid. Please check your answers."
   },
   "events": {
     "title": "Calendar & Events",
@@ -1015,8 +1050,8 @@
     "subscribeOutlook": "Outlook: Add calendar → Subscribe from web, then paste the link."
   },
   "applications": {
-    "title": "Become a volunteer",
-    "intro": "Tell the branch why you would like to volunteer. Its Branch Manager will reply here.",
+    "title": "Become a Dialogue Society volunteer",
+    "intro": "Tell the branch how you would like to help. Its managers will review your application.",
     "branchHint": "You can apply to a branch you follow.",
     "submit": "Send application",
     "submitted": "Application sent.",
@@ -1025,12 +1060,18 @@
       "motivation": "Why would you like to volunteer?",
       "availability": "When are you available?",
       "skills": "Skills and experience",
-      "phone": "Phone (optional)"
+      "phone": "Phone (optional)",
+      "help": "How would you like to help?",
+      "time": "How much time can you give?",
+      "commitment": "I understand that volunteering means giving my time regularly and taking responsibility for tasks I agree to."
     },
     "errors": {
       "branch": "Choose a branch.",
       "motivation": "Please tell us why you would like to volunteer.",
-      "tooLong": "This is too long."
+      "tooLong": "This is too long.",
+      "help": "Tell us how you would like to help in 30 to 500 characters.",
+      "time": "Choose how much time you can give.",
+      "commitment": "Please confirm the volunteering commitment."
     },
     "status": {
       "submitted": "Open",
@@ -1056,10 +1097,25 @@
     "alreadyOpen": "You already have an open application.",
     "onlyFollowers": "For followers who want to become volunteers.",
     "followersApply": "Followers can apply to become a volunteer first.",
-    "becomeVolunteer": "Become a volunteer",
+    "becomeVolunteer": "Become a Dialogue Society volunteer",
     "becomeVolunteerText": "Volunteer with a branch you follow: help organise events and join members-only activities.",
     "apply": "Apply",
-    "openFor": "Your application to {{branch}} is being reviewed."
+    "openFor": "Your application to {{branch}} is being reviewed.",
+    "helpHint": "{{length}}/{{max}} characters (at least {{min}}).",
+    "time": {
+      "few_hours_month": "A few hours a month",
+      "few_hours_week": "A few hours a week",
+      "more": "More than that"
+    },
+    "review": {
+      "help": "How they would like to help",
+      "commitmentLabel": "Commitment",
+      "commitment": "Commitment confirmed"
+    },
+    "stripLabel": "Your volunteer status",
+    "stripFollowing": "You're following {{branch}}",
+    "stripPending": "Your volunteer application is waiting for approval",
+    "stripDeclined": "Your volunteer application to {{branch}} was not approved."
   },
   "donate": {
     "title": "Support our work",
@@ -1457,7 +1513,9 @@
       "review_waiting_branches_other": "{{count}} requests from {{branches}} are waiting for you",
       "daily_digest_one": "Your daily summary: {{count}} update",
       "daily_digest_other": "Your daily summary: {{count}} updates",
-      "task_note_added_many": "{{count}} new notes on: “{{title}}”"
+      "task_note_added_many": "{{count}} new notes on: “{{title}}”",
+      "volunteer_application_approved": "You're now a Dialogue Society volunteer at {{branch}}!",
+      "volunteer_application_declined": "Your volunteer application to {{branch}} was not approved. Note: {{reason}}"
     },
     "taskStatus": {
       "todo": "To do",
@@ -1974,5 +2032,11 @@
     "historyItem": "{{date}} · {{target}} · {{count}}",
     "noHistory": "Not announced yet.",
     "onlyUpcoming": "Only upcoming public events can be announced."
+  },
+  "welcome": {
+    "title": "Welcome to the Dialogue Society Volunteer Hub",
+    "follower": "You're now following {{branch}}. You'll hear about its events and can attend them. You can apply to become a volunteer any time.",
+    "applied": "Your volunteer application has been sent to the {{branch}} managers. Once approved you'll take part in tasks and meetings. Meanwhile you can attend events.",
+    "continue": "Go to dashboard"
   }
 }

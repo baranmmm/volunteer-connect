@@ -14,6 +14,18 @@ import { PasswordInput, MIN_PASSWORD_LENGTH } from "@/components/app/PasswordInp
 import { LanguageToggle } from "@/components/app/LanguageToggle";
 import { useTranslation } from "react-i18next";
 import { currentLang, translateError } from "@/lib/i18n";
+import { CircleCheck } from "lucide-react";
+import { VolunteerAnswerFields } from "@/components/requests/VolunteerAnswerFields";
+import {
+  EMPTY_ANSWERS,
+  signUpApplication,
+  validateVolunteerAnswers,
+  type VolunteerAnswerErrors,
+  type VolunteerAnswers,
+} from "@/lib/volunteer-applications";
+
+const JOIN_CHOICES = ["follower", "volunteer"] as const;
+type JoinChoice = (typeof JOIN_CHOICES)[number];
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -58,23 +70,58 @@ function AuthPage() {
   if (!loading && session) return null;
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="hidden flex-col justify-between bg-hero p-12 text-primary-foreground lg:flex">
-        <Logo />
-        <div>
-          <h1 className="text-4xl font-bold leading-tight">{t("auth.heroTitle")}</h1>
-          <p className="mt-4 max-w-md text-lg opacity-90">{t("auth.heroText")}</p>
-        </div>
-        <p className="text-sm opacity-75">{t("auth.charity")}</p>
-      </div>
-      <div className="relative flex items-center justify-center px-5 py-16">
+    <div className="min-h-screen lg:grid lg:grid-cols-[11fr_9fr]">
+      <AuthHero join={mode === "signup"} />
+      <main className="relative flex justify-center px-5 pb-16 pt-8 lg:items-center lg:py-16">
         <LanguageToggle className="absolute right-4 top-4" />
         <div className="w-full max-w-md">
-          <Logo variant="auth" className="mb-8 lg:hidden" />
+          <Logo variant="auth" className="mb-6 mt-8 lg:mt-0" />
           {mode === "signin" && <SignIn setMode={setMode} />}
           {mode === "signup" && <SignUp setMode={setMode} />}
           {mode === "forgot" && <Forgot setMode={setMode} />}
         </div>
+      </main>
+    </div>
+  );
+}
+
+/** Optimised copies of two Dialogue Society event photos (public/auth): sign-in and join. */
+const HERO_IMAGES = {
+  signin: { alt: "auth.heroAltSignIn", large: 1500, width: 1500, height: 1000 },
+  join: { alt: "auth.heroAltJoin", large: 1600, width: 1600, height: 1067 },
+} as const;
+
+/** Desktop: the photo fills the left column with the hub's message; mobile: a short banner above the form. */
+function AuthHero({ join }: { join: boolean }) {
+  const { t } = useTranslation();
+  const name = join ? "join" : "signin";
+  const image = HERO_IMAGES[name];
+  return (
+    <div className="relative h-40 overflow-hidden bg-sidebar sm:h-56 lg:sticky lg:top-0 lg:h-screen">
+      {/* Only the photo of the current mode is in the page, so it alone loads eagerly with high priority. */}
+      <img
+        key={name}
+        data-testid="auth-hero-image"
+        data-image={name}
+        src={`/auth/${name}-800.webp`}
+        srcSet={`/auth/${name}-800.webp 800w, /auth/${name}-1600.webp ${image.large}w`}
+        sizes="(min-width: 1024px) 55vw, 100vw"
+        width={image.width}
+        height={image.height}
+        alt={t(image.alt)}
+        loading="eager"
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-t from-sidebar/90 via-sidebar/35 to-sidebar/10"
+      />
+      <div className="relative hidden h-full flex-col justify-end gap-4 p-12 text-white lg:flex">
+        <p className="max-w-xl text-4xl font-bold leading-tight">{t("auth.heroTitle")}</p>
+        <p className="max-w-md text-lg">{t("auth.heroText")}</p>
+        <p className="text-sm">{t("auth.charity")}</p>
       </div>
     </div>
   );
@@ -110,8 +157,10 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
   return (
     <form data-testid="auth-sign-in-form" onSubmit={submit} className="space-y-5">
       <div>
-        <h2 className="text-3xl font-semibold">{t("auth.welcomeBack")}</h2>
-        <p className="mt-1 text-muted-foreground">{t("auth.signInIntro")}</p>
+        <p data-testid="auth-signin-welcome" className="text-lg text-muted-foreground">
+          {t("auth.signInWelcome")}
+        </p>
+        <h1 className="mt-4 text-3xl font-semibold">{t("auth.signIn")}</h1>
       </div>
       <Field
         id="email"
@@ -177,6 +226,12 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
     [privacyError, setPrivacyError] = useState(false);
   const [photoConsent, setPhotoConsent] = useState(false),
     [updatesConsent, setUpdatesConsent] = useState(false);
+  // Follower or volunteer: no default, the form is not sent until one is chosen. The volunteer choice adds the
+  // application answers (the database checks the same rules and creates the application with the account).
+  const [choice, setChoice] = useState<JoinChoice | null>(null),
+    [choiceError, setChoiceError] = useState(false);
+  const [answers, setAnswers] = useState<VolunteerAnswers>(EMPTY_ANSWERS),
+    [answerErrors, setAnswerErrors] = useState<VolunteerAnswerErrors>({});
   useEffect(() => {
     fetchRegionGroups()
       .then(setGroups)
@@ -188,6 +243,24 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
     const f = new FormData(e.currentTarget);
     const branch_id = String(f.get("branch") || "");
     if (password !== confirm) return;
+    if (!choice) {
+      setChoiceError(true);
+      document.getElementById("signup-choice-follower")?.focus();
+      return;
+    }
+    if (choice === "volunteer") {
+      const found = validateVolunteerAnswers(answers);
+      setAnswerErrors(found);
+      const first = (["help", "time", "commitment"] as const).find((k) => found[k]);
+      if (first) {
+        const target =
+          first === "time"
+            ? document.querySelector<HTMLInputElement>('input[name="signup-volunteer-time"]')
+            : document.getElementById(`signup-volunteer-${first}`);
+        target?.focus();
+        return;
+      }
+    }
     if (!branch_id) {
       toast.error(t("errors.chooseBranch"));
       return;
@@ -217,6 +290,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
           privacy_notice_version: version.data,
           photo_consent: photoConsent,
           updates_email_consent: updatesConsent,
+          ...(choice === "volunteer" ? { volunteer_application: signUpApplication(answers) } : {}),
         },
       },
     });
@@ -231,7 +305,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
   if (done) {
     return (
       <div data-testid="auth-check-email-screen" className="space-y-4">
-        <h2 className="text-3xl font-semibold">{t("auth.checkEmailTitle")}</h2>
+        <h1 className="text-3xl font-semibold">{t("auth.checkEmailTitle")}</h1>
         <p className="text-muted-foreground">{t("auth.checkEmailText")}</p>
         <Button
           data-testid="auth-back-to-sign-in-button"
@@ -247,10 +321,93 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
 
   return (
     <form data-testid="auth-sign-up-form" onSubmit={submit} className="space-y-4">
-      <div>
-        <h2 className="text-3xl font-semibold">{t("auth.joinTitle")}</h2>
-        <p className="mt-1 text-muted-foreground">{t("auth.joinIntro")}</p>
-      </div>
+      <section
+        data-testid="auth-join-intro"
+        aria-labelledby="auth-join-title"
+        className="space-y-3"
+      >
+        <h1 id="auth-join-title" className="text-3xl font-semibold leading-tight">
+          {t("auth.joinCopy.title")}
+        </h1>
+        <p className="text-muted-foreground">{t("auth.joinCopy.text")}</p>
+        <ul className="space-y-2">
+          {(["point1", "point2", "point3"] as const).map((key) => (
+            <li key={key} className="flex items-start gap-2">
+              <CircleCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+              <span>{t(`auth.joinCopy.${key}`)}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-muted-foreground">{t("auth.joinCopy.choose")}</p>
+      </section>
+      <fieldset
+        aria-describedby={choiceError ? "signup-choice-error" : undefined}
+        className="space-y-3"
+      >
+        <legend className="mb-3 text-lg font-semibold">{t("auth.choice.legend")}</legend>
+        {JOIN_CHOICES.map((option) => (
+          <label
+            key={option}
+            data-testid={`signup-choice-${option}`}
+            data-state={choice === option ? "checked" : "unchecked"}
+            className="flex cursor-pointer gap-3 rounded-2xl border-2 bg-card p-4 transition-colors hover:border-primary/60 has-[:checked]:border-primary has-[:checked]:bg-secondary has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring"
+          >
+            <input
+              id={`signup-choice-${option}`}
+              type="radio"
+              name="join_choice"
+              value={option}
+              checked={choice === option}
+              onChange={() => {
+                setChoice(option);
+                setChoiceError(false);
+              }}
+              aria-describedby={`signup-choice-${option}-text`}
+              className="mt-1 size-4 shrink-0 accent-[var(--primary)]"
+            />
+            <span className="space-y-1">
+              <span className="block font-semibold">{t(`auth.choice.${option}.title`)}</span>
+              <span
+                id={`signup-choice-${option}-text`}
+                className="block text-sm text-muted-foreground"
+              >
+                {t(`auth.choice.${option}.text`)} {t(`auth.choice.${option}.note`)}
+              </span>
+            </span>
+          </label>
+        ))}
+        {choiceError && (
+          <p
+            id="signup-choice-error"
+            data-testid="signup-choice-error"
+            role="alert"
+            className="text-sm font-medium text-destructive"
+          >
+            {t("auth.choice.required")}
+          </p>
+        )}
+      </fieldset>
+      {choice === "volunteer" && (
+        <section
+          data-testid="signup-volunteer-answers"
+          aria-labelledby="signup-volunteer-title"
+          className="space-y-3 rounded-2xl border p-4"
+        >
+          <h2 id="signup-volunteer-title" className="text-lg font-semibold">
+            {t("auth.volunteerAnswersTitle")}
+          </h2>
+          <VolunteerAnswerFields
+            prefix="signup-volunteer"
+            value={answers}
+            errors={answerErrors}
+            onChange={(next) => {
+              setAnswers(next);
+              if (Object.keys(answerErrors).length) setAnswerErrors(validateVolunteerAnswers(next));
+            }}
+          />
+        </section>
+      )}
+      <h2 className="pt-2 text-lg font-semibold">{t("auth.createAccountTitle")}</h2>
       <Field
         id="full_name"
         name="full_name"
@@ -444,7 +601,7 @@ function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
   return (
     <form data-testid="auth-forgot-form" onSubmit={submit} className="space-y-5">
       <div>
-        <h2 className="text-3xl font-semibold">{t("auth.resetTitle")}</h2>
+        <h1 className="text-3xl font-semibold">{t("auth.resetTitle")}</h1>
         <p
           data-testid={sent ? "auth-reset-sent-message" : undefined}
           className="mt-1 text-muted-foreground"

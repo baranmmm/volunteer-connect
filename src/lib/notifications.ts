@@ -19,12 +19,22 @@ export const NOTIFICATION_KINDS = [
   "meeting_request_declined",
   "review_waiting",
   "daily_digest",
+  "volunteer_application_approved",
+  "volunteer_application_declined",
 ] as const;
 
 export const notification = z.object({
   id: z.string().uuid(),
   kind: z.string(),
-  entity_type: z.enum(["task", "meeting", "task_request", "meeting_request", "review", "digest"]),
+  entity_type: z.enum([
+    "task",
+    "meeting",
+    "task_request",
+    "meeting_request",
+    "review",
+    "digest",
+    "volunteer_application",
+  ]),
   entity_id: z.string().uuid(),
   title: z.string(),
   link: z.string().startsWith("/"),
