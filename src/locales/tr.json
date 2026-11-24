@@ -99,7 +99,34 @@
     "updatePassword": "Şifreyi güncelle",
     "passwordUpdated": "Şifreniz güncellendi",
     "followBranch": "Takip edilecek şube",
-    "followBranchHelp": "Bu şubenin herkese açık etkinliklerini görürsünüz. Profilinizden başka şubeleri de takip edebilirsiniz."
+    "followBranchHelp": "Bu şubenin herkese açık etkinliklerini görürsünüz. Profilinizden başka şubeleri de takip edebilirsiniz.",
+    "signInWelcome": "Tekrar hoş geldin. Şubende neler olduğunu görmek için giriş yap.",
+    "createAccountTitle": "Hesabını oluştur",
+    "heroAltSignIn": "Bir toplum yuvarlak masa toplantısında masa etrafında sohbet eden Dialogue Society üyeleri",
+    "heroAltJoin": "Dinlerarası hafta etkinliğinde ziyaretçilerin isimlerini hat sanatıyla yazan bir Dialogue Society gönüllüsü",
+    "joinCopy": {
+      "title": "Toplumunu bir araya getirmeye yardım etmek ister misin?",
+      "text": "Dialogue Society gönüllüleri İngiltere genelinde iftar yemekleri, dinlerarası buluşmalar, okul ziyaretleri ve toplumsal etkinlikler düzenliyor. Ayda bir saatin de olsa daha fazlası da, burada sana bir yer var.",
+      "point1": "Her kesimden insanla tanış, gerçek dostluklar kur",
+      "point2": "Kendi bölgende etkinliklerin planlanmasına ve yürütülmesine katkı ver",
+      "point3": "Deneyim, özgüven ve yeni beceriler kazan",
+      "choose": "Nasıl katılmak istediğini aşağıdan seç. Etkinlikleri takip ederek başlayabilir, istediğin zaman gönüllü olabilirsin."
+    },
+    "choice": {
+      "legend": "Nasıl katılmak istersin?",
+      "required": "Nasıl katılmak istediğini seç.",
+      "follower": {
+        "title": "Etkinliklerden haberdar olmak ve etkinliklere katılmak istiyorum",
+        "text": "Şubeni takip et, etkinliklerinden haberdar ol ve onlara katıl.",
+        "note": "Hesabın takipçi olarak başlar."
+      },
+      "volunteer": {
+        "title": "Dialogue Society gönüllüsü olmak istiyorum",
+        "text": "Gönüllüler bir şeylerin gerçekleşmesi için kendi zamanlarını ve enerjilerini verir: görev alır, planlama toplantılarına katılır, şubelerindeki etkinliklerin düzenlenmesine ve yürütülmesine yardım eder.",
+        "note": "Hesabın takipçi olarak başlar ve gönüllülük başvurun şube yöneticilerine gönderilir."
+      }
+    },
+    "volunteerAnswersTitle": "Gönüllülük başvurun"
   },
   "dashboard": {
     "welcomeBack": "Hoş geldiniz",
@@ -280,6 +307,10 @@
         "currentRequired": "Mevcut şifrenizi girin.",
         "currentWrong": "Mevcut şifreniz doğru değil."
       }
+    },
+    "roleExplanation": {
+      "follower": "{{branch}} şubesini takip ediyorsun: etkinliklerinden haberdar olur, onlara katılabilirsin.",
+      "volunteer": "{{branch}} şubesi için zamanını veriyorsun: görev alıyor, toplantılara katılıyor, etkinliklerin yürütülmesine yardım ediyorsun."
     }
   },
   "history": {
@@ -394,7 +425,11 @@
     "taskChooseAssignee": "En az bir kişi seçin.",
     "notificationLocked": "Atamalar, bahsedilmeler ve sizi bekleyen istekler her zaman hemen gönderilir.",
     "passwordSame": "Mevcut şifrenizden farklı yeni bir şifre seçin.",
-    "passwordReauth": "Güvenliğiniz için çıkış yapıp tekrar giriş yapın, sonra şifrenizi değiştirin."
+    "passwordReauth": "Güvenliğiniz için çıkış yapıp tekrar giriş yapın, sonra şifrenizi değiştirin.",
+    "volunteerHelp": "Nasıl yardımcı olmak istediğini 30 ile 500 karakter arasında yaz.",
+    "volunteerTime": "Ne kadar zaman ayırabileceğini seç.",
+    "volunteerCommitment": "Lütfen gönüllülük taahhüdünü onayla.",
+    "volunteerInvalid": "Gönüllülük başvurusu geçerli değil. Lütfen yanıtlarını kontrol et."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -1015,8 +1050,8 @@
     "subscribeOutlook": "Outlook: Takvim ekle → Web'den abone ol, sonra bağlantıyı yapıştırın."
   },
   "applications": {
-    "title": "Gönüllü ol",
-    "intro": "Şubeye neden gönüllü olmak istediğinizi anlatın. Şube Yöneticisi burada yanıt verir.",
+    "title": "Dialogue Society gönüllüsü ol",
+    "intro": "Şubeye nasıl yardımcı olmak istediğini anlat. Şube yöneticileri başvurunu değerlendirecek.",
     "branchHint": "Takip ettiğiniz bir şubeye başvurabilirsiniz.",
     "submit": "Başvuruyu gönder",
     "submitted": "Başvuru gönderildi.",
@@ -1025,12 +1060,18 @@
       "motivation": "Neden gönüllü olmak istiyorsunuz?",
       "availability": "Ne zaman müsaitsiniz?",
       "skills": "Beceri ve deneyim",
-      "phone": "Telefon (isteğe bağlı)"
+      "phone": "Telefon (isteğe bağlı)",
+      "help": "Nasıl yardımcı olmak istersin?",
+      "time": "Ne kadar zaman ayırabilirsin?",
+      "commitment": "Gönüllülüğün düzenli olarak zaman ayırmak ve üstlendiğim görevlerin sorumluluğunu almak anlamına geldiğini anlıyorum."
     },
     "errors": {
       "branch": "Bir şube seçin.",
       "motivation": "Lütfen neden gönüllü olmak istediğinizi yazın.",
-      "tooLong": "Bu metin çok uzun."
+      "tooLong": "Bu metin çok uzun.",
+      "help": "Nasıl yardımcı olmak istediğini 30 ile 500 karakter arasında yaz.",
+      "time": "Ne kadar zaman ayırabileceğini seç.",
+      "commitment": "Lütfen gönüllülük taahhüdünü onayla."
     },
     "status": {
       "submitted": "Açık",
@@ -1056,10 +1097,25 @@
     "alreadyOpen": "Zaten açık bir başvurunuz var.",
     "onlyFollowers": "Gönüllü olmak isteyen takipçiler için.",
     "followersApply": "Takipçiler önce gönüllü olmak için başvurabilir.",
-    "becomeVolunteer": "Gönüllü ol",
+    "becomeVolunteer": "Dialogue Society gönüllüsü ol",
     "becomeVolunteerText": "Takip ettiğiniz bir şubede gönüllü olun: etkinlik düzenlemeye yardım edin ve üyelere özel etkinliklere katılın.",
     "apply": "Başvur",
-    "openFor": "{{branch}} şubesine başvurunuz inceleniyor."
+    "openFor": "{{branch}} şubesine başvurunuz inceleniyor.",
+    "helpHint": "{{length}}/{{max}} karakter (en az {{min}}).",
+    "time": {
+      "few_hours_month": "Ayda birkaç saat",
+      "few_hours_week": "Haftada birkaç saat",
+      "more": "Daha fazla"
+    },
+    "review": {
+      "help": "Nasıl yardımcı olmak istiyor",
+      "commitmentLabel": "Taahhüt",
+      "commitment": "Taahhüt onaylandı"
+    },
+    "stripLabel": "Gönüllülük durumun",
+    "stripFollowing": "{{branch}} şubesini takip ediyorsun",
+    "stripPending": "Gönüllülük başvurun onay bekliyor",
+    "stripDeclined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı."
   },
   "donate": {
     "title": "Çalışmalarımızı destekleyin",
@@ -1457,7 +1513,9 @@
       "review_waiting_branches_other": "{{branches}} şubelerinden {{count}} talep sizi bekliyor",
       "daily_digest_one": "Günlük özetiniz: {{count}} güncelleme",
       "daily_digest_other": "Günlük özetiniz: {{count}} güncelleme",
-      "task_note_added_many": "“{{title}}” görevinde {{count}} yeni not"
+      "task_note_added_many": "“{{title}}” görevinde {{count}} yeni not",
+      "volunteer_application_approved": "Artık {{branch}} şubesinde Dialogue Society gönüllüsüsün!",
+      "volunteer_application_declined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı. Not: {{reason}}"
     },
     "taskStatus": {
       "todo": "Yapılacak",
@@ -1974,5 +2032,11 @@
     "historyItem": "{{date}} · {{target}} · {{count}}",
     "noHistory": "Henüz duyurulmadı.",
     "onlyUpcoming": "Yalnızca yaklaşan herkese açık etkinlikler duyurulabilir."
+  },
+  "welcome": {
+    "title": "Dialogue Society Gönüllü Platformu'na hoş geldin",
+    "follower": "Artık {{branch}} şubesini takip ediyorsun. Etkinliklerinden haberdar olacak ve onlara katılabileceksin. İstediğin zaman gönüllü olmak için başvurabilirsin.",
+    "applied": "Gönüllülük başvurun {{branch}} şube yöneticilerine gönderildi. Onaylandığında görev ve toplantılarda yer alacaksın. Bu arada etkinliklere katılabilirsin.",
+    "continue": "Ana sayfaya git"
   }
 }

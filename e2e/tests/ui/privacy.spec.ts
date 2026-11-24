@@ -35,6 +35,7 @@ test.describe("Privacy notice", () => {
       await page.getByTestId("auth-password-input").fill(userPassword());
       await page.getByTestId("auth-confirm-password-input").fill(userPassword());
       await page.getByTestId("signup-branch-select").selectOption(readSeedState().branches.Medway);
+      await page.getByTestId("signup-choice-follower").click();
       await expect(page.getByTestId("signup-photo-consent")).not.toBeChecked();
       await expect(page.getByTestId("signup-updates-consent")).not.toBeChecked();
       await auth.submit().click();

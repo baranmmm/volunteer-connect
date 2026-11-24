@@ -6,6 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
 import { FollowedBranches } from "@/components/app/FollowedBranches";
+import { useFollowedBranches } from "@/lib/followed-branches";
+import { branchList } from "@/lib/notification-text";
+import { useMyApplications } from "@/lib/volunteer-applications";
+import { VolunteerApplicationForm } from "@/components/requests/VolunteerApplications";
 import { MfaSetup, useMfaStatus } from "@/components/app/MfaGate";
 import { useTranslation } from "react-i18next";
 import { formatDate, isLang, setLanguage, translateError, type Lang } from "@/lib/i18n";
@@ -47,7 +51,17 @@ function ProfilePage() {
   const mfa = useMfaStatus(nc, session?.user.id);
   const deletion = useAccountDeletion(profile?.id, !isDirector && !follower);
   const { myRequest, setConfirmOpen, busy: deleteBusy, run: runDeletion } = deletion;
+  const followed = useFollowedBranches(session?.user.id);
   if (!profile) return null;
+  // What the role means, for followers (the branches they follow) and volunteers (their branch).
+  const role = primaryRole(roles);
+  const followedNames = followed.data?.length ? branchList(followed.data.map((b) => b.name)) : "";
+  const roleExplanation =
+    role === "follower" && followedNames
+      ? t("profile.roleExplanation.follower", { branch: followedNames })
+      : role === "volunteer" && profile.branches?.name
+        ? t("profile.roleExplanation.volunteer", { branch: profile.branches.name })
+        : null;
 
   async function changeLanguage(value: string) {
     if (!isLang(value)) return;
@@ -155,6 +169,11 @@ function ProfilePage() {
             </dd>
           </div>
         </dl>
+        {roleExplanation && (
+          <p data-testid="profile-role-explanation" className="text-sm [overflow-wrap:anywhere]">
+            {roleExplanation}
+          </p>
+        )}
         {!isDirector && (
           <p className="text-xs text-muted-foreground">
             {t(
@@ -173,6 +192,7 @@ function ProfilePage() {
           {busy ? t("common.saving") : t("common.save")}
         </Button>
       </form>
+      {follower && <ProfileVolunteerApplication />}
       <ChangePassword />
       <FollowedBranches />
       {nc && (
@@ -252,5 +272,48 @@ function ProfilePage() {
       <AccountDeletionDialog deletion={deletion} />
       <FollowerDeleteDialog open={followerDeleting} onClose={() => setFollowerDeleting(false)} />
     </div>
+  );
+}
+
+/** Followers: "Become a Dialogue Society volunteer" (the same form as the dashboard), or the open application. */
+function ProfileVolunteerApplication() {
+  const { t } = useTranslation();
+  const { session } = useAuth();
+  const applications = useMyApplications(session?.user.id);
+  const [applying, setApplying] = useState(false);
+  if (applications.isLoading) return null;
+  const open = applications.data?.some((a) => a.status === "submitted");
+  return (
+    <section
+      data-testid="profile-volunteer-application"
+      aria-labelledby="profile-volunteer-h"
+      className="max-w-xl space-y-3 rounded-2xl border bg-card p-6 shadow-soft"
+    >
+      <h2 id="profile-volunteer-h" className="text-xl font-semibold">
+        {t("applications.becomeVolunteer")}
+      </h2>
+      {open ? (
+        <p data-testid="profile-volunteer-application-pending" className="text-sm">
+          {t("applications.stripPending")}
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">{t("applications.becomeVolunteerText")}</p>
+          <Button
+            data-testid="profile-become-volunteer"
+            className="h-11 rounded-xl"
+            onClick={() => setApplying(true)}
+          >
+            {t("applications.becomeVolunteer")}
+          </Button>
+        </>
+      )}
+      {applying && (
+        <VolunteerApplicationForm
+          onClose={() => setApplying(false)}
+          onSaved={() => setApplying(false)}
+        />
+      )}
+    </section>
   );
 }

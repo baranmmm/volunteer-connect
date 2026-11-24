@@ -5,7 +5,12 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarDays, MapPin, Pencil, PencilLine, Plus, Repeat, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
-import { FollowerCards, NcDashboard } from "@/components/app/RoleDashboards";
+import {
+  FollowerCards,
+  FollowerStrip,
+  NcDashboard,
+  WelcomeScreen,
+} from "@/components/app/RoleDashboards";
 import { inFollowedBranches, useFollowedBranches } from "@/lib/followed-branches";
 import { useTranslation } from "react-i18next";
 import { listEvents } from "@/lib/events.functions";
@@ -59,27 +64,34 @@ function Dashboard() {
       : (events.data ?? []).filter((e) => inFollowedBranches(e, followed.data ?? []))
   ).filter((e) => !isMeetingEvent(e));
   const drafts = isManager || nc ? ownDrafts(events.data ?? [], session?.user.id) : [];
+  // Followers see the welcome screen once (after sign-up / the first sign-in), then the status strip.
+  const welcome = follower && !!profile && !profile.welcome_seen_at;
   return (
     <div className="space-y-8">
-      <section className="rounded-3xl bg-hero p-7 text-primary-foreground shadow-soft sm:p-10">
-        <p className="text-sm font-medium opacity-90">{t("dashboard.welcomeBack")}</p>
-        <h1 data-testid="dashboard-welcome" className="mt-1 text-3xl font-bold sm:text-4xl">
-          {first ? t("dashboard.hello", { name: first }) : t("dashboard.helloNoName")}
-        </h1>
-        <p className="mt-3 opacity-90 [overflow-wrap:anywhere]">
-          <span data-testid="dashboard-user-role">{t(`common.roles.${primaryRole(roles)}`)}</span>
-          {profile?.branches && (
-            <>
-              {" "}
-              ·{" "}
-              <span data-testid="dashboard-user-branch">
-                {t("dashboard.branchLine", { branch: profile.branches.name })}
-              </span>
-              {profile.branches.regions && <>, {profile.branches.regions.name}</>}
-            </>
-          )}
-        </p>
-      </section>
+      {welcome ? (
+        <WelcomeScreen />
+      ) : (
+        <section className="rounded-3xl bg-hero p-7 text-primary-foreground shadow-soft sm:p-10">
+          <p className="text-sm font-medium opacity-90">{t("dashboard.welcomeBack")}</p>
+          <h1 data-testid="dashboard-welcome" className="mt-1 text-3xl font-bold sm:text-4xl">
+            {first ? t("dashboard.hello", { name: first }) : t("dashboard.helloNoName")}
+          </h1>
+          <p className="mt-3 opacity-90 [overflow-wrap:anywhere]">
+            <span data-testid="dashboard-user-role">{t(`common.roles.${primaryRole(roles)}`)}</span>
+            {profile?.branches && (
+              <>
+                {" "}
+                ·{" "}
+                <span data-testid="dashboard-user-branch">
+                  {t("dashboard.branchLine", { branch: profile.branches.name })}
+                </span>
+                {profile.branches.regions && <>, {profile.branches.regions.name}</>}
+              </>
+            )}
+          </p>
+        </section>
+      )}
+      {follower && !welcome && <FollowerStrip />}
       <div data-testid="dashboard-grid" className="grid gap-5 lg:grid-cols-2">
         {!follower && <WaitingForYouCard />}
         {nc && <NcDashboard />}

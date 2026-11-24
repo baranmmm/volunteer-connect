@@ -37,6 +37,7 @@ export function notificationText(n: Notification, t: TFunction, lang: Lang = cur
     actor: n.actor_name || t("notifications.someone"),
     title: n.title,
     reason: p.reason ?? "",
+    branch: p.branch ?? n.title,
     status: p.status ? t(`notifications.taskStatus.${p.status}`, { defaultValue: p.status }) : "",
     due: p.due_date ? formatDate(`${p.due_date}T12:00:00Z`, { dateStyle: "medium" }) : "",
     when: p.starts_at ? formatDate(p.starts_at, { dateStyle: "medium", timeStyle: "short" }) : "",

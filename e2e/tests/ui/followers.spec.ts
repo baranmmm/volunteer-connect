@@ -30,14 +30,17 @@ test.describe("Followers", () => {
     const follower = await freshUser({ role: "follower", branch });
     const page = await pageAs(follower);
     await page.goto("/dashboard");
-    await page.getByTestId("follower-apply").click({ timeout: APP_LOAD_TIMEOUT });
+    // A new follower sees the welcome screen once; the status strip follows.
+    await page.getByTestId("welcome-continue").click({ timeout: APP_LOAD_TIMEOUT });
+    await page.getByTestId("dashboard-follower-strip-apply").click({ timeout: APP_LOAD_TIMEOUT });
     const form = page.getByTestId("volunteer-application-form");
     await expect(form).toBeVisible();
-    await form.getByTestId("volunteer-application-motivation").fill("I want to help organise dialogue dinners.");
-    await form.getByTestId("volunteer-application-availability").fill("Weekday evenings");
+    await form.getByTestId("volunteer-form-help").fill("I want to help organise dialogue dinners in my area.");
+    await form.getByTestId("volunteer-form-time-few_hours_week").check();
+    await form.getByTestId("volunteer-form-commitment").click();
     await form.getByTestId("volunteer-application-submit").click();
     await expect(page.getByTestId("toast-success").last()).toBeVisible();
-    await expect(page.getByTestId("follower-become-volunteer").getByTestId("volunteer-application-status")).toHaveAttribute("data-status", "submitted");
+    await expect(page.getByTestId("dashboard-follower-strip-pending")).toBeVisible();
     // The Requests "New request" card for volunteer applications is not offered again while one is open.
     await page.goto("/requests");
     await page.getByTestId("my-requests-new").click({ timeout: APP_LOAD_TIMEOUT });
@@ -51,6 +54,14 @@ test.describe("Followers", () => {
     await row.getByTestId("volunteer-application-approve").click();
     await expect(reviewer.getByTestId("toast-success").last()).toBeVisible();
     await expect.poll(() => getRoles(follower.id)).toEqual(["volunteer"]);
+    // Now a volunteer: the approval notice names the branch; the follower strip is gone.
+    const { data: branchRow } = await adminClient().from("branches").select("name").eq("id", branch).single();
+    await page.goto("/notifications");
+    const notice = page.locator('[data-testid="dashboard-notification"][data-kind="volunteer_application_approved"]');
+    await expect(notice).toContainText(`You're now a Dialogue Society volunteer at ${(branchRow as { name: string }).name}!`, { timeout: APP_LOAD_TIMEOUT });
+    await page.goto("/dashboard");
+    await expect(page.getByTestId("dashboard-welcome")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page.getByTestId("dashboard-follower-strip")).toHaveCount(0);
   });
 
   test("followed branches in the profile: add one, remove one, the last one stays", async ({ freshUser, pageAs, seed }) => {
