@@ -1421,6 +1421,11 @@
   },
   "notifications": {
     "title": "Bildirimler",
+    "bell_one": "Bildirimler, {{count}} okunmamış",
+    "bell_other": "Bildirimler, {{count}} okunmamış",
+    "seeAll": "Tümünü gör",
+    "loadMore": "Daha fazla yükle",
+    "panelDescription": "Son bildirimleriniz",
     "markAll": "Tümünü okundu say",
     "allRead": "Tüm bildirimler okundu olarak işaretlendi",
     "loadError": "Bildirimler yüklenemedi.",

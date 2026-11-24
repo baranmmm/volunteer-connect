@@ -3155,6 +3155,10 @@ export type Database = {
         Returns: Json
       }
       list_my_notifications: { Args: { p_limit?: number }; Returns: Json }
+      list_my_notifications_page: {
+        Args: { p_before?: string; p_before_id?: string; p_limit?: number }
+        Returns: Json
+      }
       list_my_task_requests: { Args: never; Returns: Json }
       list_my_volunteer_applications: { Args: never; Returns: Json }
       list_my_work_scopes: { Args: never; Returns: Json }

@@ -8,8 +8,8 @@ import { useWorkMember } from "@/lib/use-work-notices";
 export const DASHBOARD_WORK_KEY = "dashboard-work";
 
 /**
- * Shared by the My tasks, Upcoming meetings and Notifications cards: one request for all three. It refetches each
- * time the dashboard mounts (no staleTime), so changes made on other pages show when the user comes back.
+ * Shared by the My tasks and Upcoming meetings cards and the header notification bell: one request for all three. It
+ * refetches on each mount (no staleTime), so changes made on other pages show when the user comes back.
  */
 export function useDashboardWork() {
   const { session } = useAuth();
