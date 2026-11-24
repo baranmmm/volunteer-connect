@@ -34,7 +34,12 @@ test.describe("Followers", () => {
     const manager = await freshUser({ role: "branch_manager", branch });
     const other = await freshUser({ role: "branch_manager", branch: seed.branches.Brighton });
     const follower = await freshUser({ role: "follower", branch });
-    const input = { branch_id: branch, motivation: "I would like to help with events.", availability: "Weekends" };
+    const input = {
+      branch_id: branch,
+      motivation: "I would like to help organise dialogue dinners and welcome guests.",
+      time_commitment: "few_hours_month",
+      commitment: true,
+    };
     const { data: appId, error } = await rpcAs<string>(follower.email, "submit_volunteer_application", { p: input });
     expect(error).toBeNull();
     expect((await rpcAs(follower.email, "submit_volunteer_application", { p: input })).error).toBe("You already have an open application");
