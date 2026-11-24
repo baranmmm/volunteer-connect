@@ -6,13 +6,25 @@ import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./branch-map.css";
-import { basemapTiles, located, type MapBranch, type RegionColor } from "@/lib/branch-map";
+import {
+  basemapTiles,
+  cartoKey,
+  located,
+  type MapBranch,
+  type RegionColor,
+} from "@/lib/branch-map";
 
 const UK_BOUNDS: L.LatLngBoundsExpression = [
   [49.9, -8.2],
   [58.7, 1.8],
 ];
-const TILES = basemapTiles(import.meta.env["VITE_CARTO_BASEMAP_KEY"] as string | undefined);
+// CARTO Positron on the Lovable domains (the key is restricted to them), OpenStreetMap elsewhere.
+const TILES = basemapTiles(
+  cartoKey(
+    typeof window === "undefined" ? "" : window.location.hostname,
+    import.meta.env["VITE_CARTO_BASEMAP_KEY"] as string | undefined,
+  ),
+);
 
 type Props = {
   branches: MapBranch[];

@@ -95,6 +95,21 @@ const OSM_ATTRIBUTION =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>';
 const CARTO_ATTRIBUTION = `${OSM_ATTRIBUTION}, © <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>`;
 
+/**
+ * The CARTO basemap key: public and referer-restricted to Lovable's domains (*.lovable.app, *.lovableproject.com,
+ * lovable.dev), so it is not a secret. It is used only when the page is served from one of those domains — elsewhere
+ * (local dev, e2e) CARTO refuses it and the map uses the OpenStreetMap tiles. VITE_CARTO_BASEMAP_KEY overrides it.
+ */
+export const CARTO_PUBLIC_KEY = "cb1_5f7m_1_d38212198bd936a3d7e4b91c";
+const CARTO_HOSTS = [/\.lovable\.app$/, /\.lovableproject\.com$/, /(^|\.)lovable\.dev$/];
+
+/** The CARTO key for this page: the env override, else the public key on an allowed host, else none (OSM). */
+export function cartoKey(hostname: string, envKey: string | undefined): string | undefined {
+  const own = envKey?.trim();
+  if (own) return own;
+  return CARTO_HOSTS.some((h) => h.test(hostname.toLowerCase())) ? CARTO_PUBLIC_KEY : undefined;
+}
+
 export type BasemapTiles = {
   url: string;
   subdomains: string;
