@@ -29,12 +29,19 @@ import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTrainingRouteImport } from './routes/_app/training'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
 import { Route as ApiIcsRouteImport } from './routes/api/ics'
+import { Route as ECancelRouteImport } from './routes/e.cancel'
+import { Route as EConfirmRouteImport } from './routes/e.confirm'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
+import { Route as PrivacyAttendeesRouteImport } from './routes/privacy_.attendees'
+import { Route as UpdatesConfirmRouteImport } from './routes/updates.confirm'
+import { Route as UpdatesUnsubscribeRouteImport } from './routes/updates.unsubscribe'
 import { Route as AppEventsIdRouteImport } from './routes/_app/events_.$id'
 import { Route as AppMeetingsIdRouteImport } from './routes/_app/meetings_.$id'
 import { Route as AppUsersIdRouteImport } from './routes/_app/users_.$id'
 import { Route as ApiPublicCleanupDeletedEventsRouteImport } from './routes/api/public/cleanup-deleted-events'
+import { Route as ApiPublicLandingRouteImport } from './routes/api/public/landing'
 import { Route as ApiPublicTaskRemindersRouteImport } from './routes/api/public/task-reminders'
+import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -135,9 +142,34 @@ const ApiIcsRoute = ApiIcsRouteImport.update({
   path: '/api/ics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ECancelRoute = ECancelRouteImport.update({
+  id: '/e/cancel',
+  path: '/e/cancel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EConfirmRoute = EConfirmRouteImport.update({
+  id: '/e/confirm',
+  path: '/e/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsIndexRoute = EventsIndexRouteImport.update({
   id: '/events/',
   path: '/events/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyAttendeesRoute = PrivacyAttendeesRouteImport.update({
+  id: '/privacy_/attendees',
+  path: '/privacy/attendees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpdatesConfirmRoute = UpdatesConfirmRouteImport.update({
+  id: '/updates/confirm',
+  path: '/updates/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpdatesUnsubscribeRoute = UpdatesUnsubscribeRouteImport.update({
+  id: '/updates/unsubscribe',
+  path: '/updates/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppEventsIdRoute = AppEventsIdRouteImport.update({
@@ -161,9 +193,19 @@ const ApiPublicCleanupDeletedEventsRoute =
     path: '/api/public/cleanup-deleted-events',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicLandingRoute = ApiPublicLandingRouteImport.update({
+  id: '/api/public/landing',
+  path: '/api/public/landing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTaskRemindersRoute = ApiPublicTaskRemindersRouteImport.update({
   id: '/api/public/task-reminders',
   path: '/api/public/task-reminders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicUnsubscribeRoute = ApiPublicUnsubscribeRouteImport.update({
+  id: '/api/public/unsubscribe',
+  path: '/api/public/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -187,12 +229,19 @@ export interface FileRoutesByFullPath {
   '/training': typeof AppTrainingRoute
   '/users': typeof AppUsersRoute
   '/api/ics': typeof ApiIcsRoute
+  '/e/cancel': typeof ECancelRoute
+  '/e/confirm': typeof EConfirmRoute
+  '/privacy/attendees': typeof PrivacyAttendeesRoute
+  '/updates/confirm': typeof UpdatesConfirmRoute
+  '/updates/unsubscribe': typeof UpdatesUnsubscribeRoute
   '/events/': typeof EventsIndexRoute
   '/events/$id': typeof AppEventsIdRoute
   '/meetings/$id': typeof AppMeetingsIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
+  '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -214,12 +263,19 @@ export interface FileRoutesByTo {
   '/training': typeof AppTrainingRoute
   '/users': typeof AppUsersRoute
   '/api/ics': typeof ApiIcsRoute
+  '/e/cancel': typeof ECancelRoute
+  '/e/confirm': typeof EConfirmRoute
+  '/privacy/attendees': typeof PrivacyAttendeesRoute
+  '/updates/confirm': typeof UpdatesConfirmRoute
+  '/updates/unsubscribe': typeof UpdatesUnsubscribeRoute
   '/events': typeof EventsIndexRoute
   '/events/$id': typeof AppEventsIdRoute
   '/meetings/$id': typeof AppMeetingsIdRoute
   '/users/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
+  '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -243,12 +299,19 @@ export interface FileRoutesById {
   '/_app/training': typeof AppTrainingRoute
   '/_app/users': typeof AppUsersRoute
   '/api/ics': typeof ApiIcsRoute
+  '/e/cancel': typeof ECancelRoute
+  '/e/confirm': typeof EConfirmRoute
+  '/privacy_/attendees': typeof PrivacyAttendeesRoute
+  '/updates/confirm': typeof UpdatesConfirmRoute
+  '/updates/unsubscribe': typeof UpdatesUnsubscribeRoute
   '/events/': typeof EventsIndexRoute
   '/_app/events_/$id': typeof AppEventsIdRoute
   '/_app/meetings_/$id': typeof AppMeetingsIdRoute
   '/_app/users_/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
+  '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
+  '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -272,12 +335,19 @@ export interface FileRouteTypes {
     | '/training'
     | '/users'
     | '/api/ics'
+    | '/e/cancel'
+    | '/e/confirm'
+    | '/privacy/attendees'
+    | '/updates/confirm'
+    | '/updates/unsubscribe'
     | '/events/'
     | '/events/$id'
     | '/meetings/$id'
     | '/users/$id'
     | '/api/public/cleanup-deleted-events'
+    | '/api/public/landing'
     | '/api/public/task-reminders'
+    | '/api/public/unsubscribe'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -299,12 +369,19 @@ export interface FileRouteTypes {
     | '/training'
     | '/users'
     | '/api/ics'
+    | '/e/cancel'
+    | '/e/confirm'
+    | '/privacy/attendees'
+    | '/updates/confirm'
+    | '/updates/unsubscribe'
     | '/events'
     | '/events/$id'
     | '/meetings/$id'
     | '/users/$id'
     | '/api/public/cleanup-deleted-events'
+    | '/api/public/landing'
     | '/api/public/task-reminders'
+    | '/api/public/unsubscribe'
   id:
     | '__root__'
     | '/'
@@ -327,12 +404,19 @@ export interface FileRouteTypes {
     | '/_app/training'
     | '/_app/users'
     | '/api/ics'
+    | '/e/cancel'
+    | '/e/confirm'
+    | '/privacy_/attendees'
+    | '/updates/confirm'
+    | '/updates/unsubscribe'
     | '/events/'
     | '/_app/events_/$id'
     | '/_app/meetings_/$id'
     | '/_app/users_/$id'
     | '/api/public/cleanup-deleted-events'
+    | '/api/public/landing'
     | '/api/public/task-reminders'
+    | '/api/public/unsubscribe'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -342,9 +426,16 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiIcsRoute: typeof ApiIcsRoute
+  ECancelRoute: typeof ECancelRoute
+  EConfirmRoute: typeof EConfirmRoute
+  PrivacyAttendeesRoute: typeof PrivacyAttendeesRoute
+  UpdatesConfirmRoute: typeof UpdatesConfirmRoute
+  UpdatesUnsubscribeRoute: typeof UpdatesUnsubscribeRoute
   EventsIndexRoute: typeof EventsIndexRoute
   ApiPublicCleanupDeletedEventsRoute: typeof ApiPublicCleanupDeletedEventsRoute
+  ApiPublicLandingRoute: typeof ApiPublicLandingRoute
   ApiPublicTaskRemindersRoute: typeof ApiPublicTaskRemindersRoute
+  ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -489,11 +580,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIcsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/e/cancel': {
+      id: '/e/cancel'
+      path: '/e/cancel'
+      fullPath: '/e/cancel'
+      preLoaderRoute: typeof ECancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/e/confirm': {
+      id: '/e/confirm'
+      path: '/e/confirm'
+      fullPath: '/e/confirm'
+      preLoaderRoute: typeof EConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/events/': {
       id: '/events/'
       path: '/events'
       fullPath: '/events/'
       preLoaderRoute: typeof EventsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy_/attendees': {
+      id: '/privacy_/attendees'
+      path: '/privacy/attendees'
+      fullPath: '/privacy/attendees'
+      preLoaderRoute: typeof PrivacyAttendeesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/updates/confirm': {
+      id: '/updates/confirm'
+      path: '/updates/confirm'
+      fullPath: '/updates/confirm'
+      preLoaderRoute: typeof UpdatesConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/updates/unsubscribe': {
+      id: '/updates/unsubscribe'
+      path: '/updates/unsubscribe'
+      fullPath: '/updates/unsubscribe'
+      preLoaderRoute: typeof UpdatesUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/events_/$id': {
@@ -524,11 +650,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCleanupDeletedEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/landing': {
+      id: '/api/public/landing'
+      path: '/api/public/landing'
+      fullPath: '/api/public/landing'
+      preLoaderRoute: typeof ApiPublicLandingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/task-reminders': {
       id: '/api/public/task-reminders'
       path: '/api/public/task-reminders'
       fullPath: '/api/public/task-reminders'
       preLoaderRoute: typeof ApiPublicTaskRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/unsubscribe': {
+      id: '/api/public/unsubscribe'
+      path: '/api/public/unsubscribe'
+      fullPath: '/api/public/unsubscribe'
+      preLoaderRoute: typeof ApiPublicUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -585,9 +725,16 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiIcsRoute: ApiIcsRoute,
+  ECancelRoute: ECancelRoute,
+  EConfirmRoute: EConfirmRoute,
+  PrivacyAttendeesRoute: PrivacyAttendeesRoute,
+  UpdatesConfirmRoute: UpdatesConfirmRoute,
+  UpdatesUnsubscribeRoute: UpdatesUnsubscribeRoute,
   EventsIndexRoute: EventsIndexRoute,
   ApiPublicCleanupDeletedEventsRoute: ApiPublicCleanupDeletedEventsRoute,
+  ApiPublicLandingRoute: ApiPublicLandingRoute,
   ApiPublicTaskRemindersRoute: ApiPublicTaskRemindersRoute,
+  ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

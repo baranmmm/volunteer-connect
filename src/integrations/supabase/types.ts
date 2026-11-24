@@ -139,41 +139,86 @@ export type Database = {
       email_outbox: {
         Row: {
           attempts: number
+          claimed_at: string | null
           created_at: string
+          dedupe_key: string | null
+          event_id: string | null
           id: string
           last_error: string | null
+          not_before: string | null
           notification_id: string | null
           payload: NonNullable<Json>
+          priority: number
+          registration_id: string | null
           sent_at: string | null
           status: string
+          subscriber_id: string | null
           template: string
-          user_id: string
+          to_email: string | null
+          user_id: string | null
         }
         Insert: {
           attempts?: number
+          claimed_at?: string | null
           created_at?: string
+          dedupe_key?: string | null
+          event_id?: string | null
           id?: string
           last_error?: string | null
+          not_before?: string | null
           notification_id?: string | null
           payload?: NonNullable<Json>
+          priority?: number
+          registration_id?: string | null
           sent_at?: string | null
           status?: string
+          subscriber_id?: string | null
           template: string
-          user_id: string
+          to_email?: string | null
+          user_id: string | null
         }
         Update: {
           attempts?: number
+          claimed_at?: string | null
           created_at?: string
+          dedupe_key?: string | null
+          event_id?: string | null
           id?: string
           last_error?: string | null
+          not_before?: string | null
           notification_id?: string | null
           payload?: NonNullable<Json>
+          priority?: number
+          registration_id?: string | null
           sent_at?: string | null
           status?: string
+          subscriber_id?: string | null
           template?: string
-          user_id?: string
+          to_email?: string | null
+          user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "email_outbox_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "event_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_outbox_notification_id_fkey"
             columns: ["notification_id"]
@@ -186,6 +231,68 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_announcements: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          event_id: string
+          id: string
+          recipients: number
+          region_id: string | null
+          target: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          id?: string
+          recipients?: number
+          region_id?: string | null
+          target: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          recipients?: number
+          region_id?: string | null
+          target?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_announcements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_announcements_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_announcements_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
             referencedColumns: ["id"]
           },
         ]
@@ -300,39 +407,102 @@ export type Database = {
           },
         ]
       }
+      event_guests: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          email: string
+          event_id: string
+          full_name: string
+          keep_informed: boolean
+          phone: string | null
+          registration_id: string
+          updated_at: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          email: string
+          event_id: string
+          full_name: string
+          keep_informed?: boolean
+          phone?: string | null
+          registration_id: string
+          updated_at?: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          email?: string
+          event_id?: string
+          full_name?: string
+          keep_informed?: boolean
+          phone?: string | null
+          registration_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_guests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_guests_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: true
+            referencedRelation: "event_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_media: {
         Row: {
           created_at: string
           event_id: string
+          height: number | null
           id: string
+          in_gallery: boolean
           kind: string
           original_name: string | null
           position: number
+          source_url: string | null
           storage_path: string
           updated_at: string
           uploaded_by: string | null
+          width: number | null
         }
         Insert: {
           created_at?: string
           event_id: string
+          height?: number | null
           id?: string
+          in_gallery?: boolean
           kind: string
           original_name?: string | null
           position: number
+          source_url?: string | null
           storage_path: string
           updated_at?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Update: {
           created_at?: string
           event_id?: string
+          height?: number | null
           id?: string
+          in_gallery?: boolean
           kind?: string
           original_name?: string | null
           position?: number
+          source_url?: string | null
           storage_path?: string
           updated_at?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Relationships: [
           {
@@ -358,9 +528,12 @@ export type Database = {
           cancelled_at: string | null
           created_at: string
           event_id: string
+          guest: boolean
+          ics_offset: number
           id: string
           notice: string | null
           notice_seen_at: string | null
+          places: number
           registered_at: string
           show_name: boolean
           status: string
@@ -373,9 +546,12 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           event_id: string
+          guest?: boolean
+          ics_offset?: number
           id?: string
           notice?: string | null
           notice_seen_at?: string | null
+          places?: number
           registered_at?: string
           show_name?: boolean
           status: string
@@ -388,9 +564,12 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           event_id?: string
+          guest?: boolean
+          ics_offset?: number
           id?: string
           notice?: string | null
           notice_seen_at?: string | null
+          places?: number
           registered_at?: string
           show_name?: boolean
           status?: string
@@ -777,6 +956,54 @@ export type Database = {
           },
         ]
       }
+      event_videos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_id: string | null
+          id: string
+          position: number
+          thumb_path: string | null
+          title: string
+          youtube_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          id?: string
+          position?: number
+          thumb_path?: string | null
+          title?: string
+          youtube_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          id?: string
+          position?: number
+          thumb_path?: string | null
+          title?: string
+          youtube_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_videos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_videos_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           all_day: boolean
@@ -792,12 +1019,16 @@ export type Database = {
           description: string
           end_at: string | null
           end_date: string | null
+          ics_sequence: number
           id: string
           is_external: boolean
           location: string
+          location_tba: boolean
           location_type: string
+          max_places: number
           online_url: string | null
           organizer: string
+          past_record: boolean
           recurrence_key: string | null
           region_id: string | null
           registration_enabled: boolean
@@ -825,12 +1056,16 @@ export type Database = {
           description?: string
           end_at?: string | null
           end_date?: string | null
+          ics_sequence?: number
           id?: string
           is_external?: boolean
           location?: string
+          location_tba?: boolean
           location_type?: string
+          max_places?: number
           online_url?: string | null
           organizer: string
+          past_record?: boolean
           recurrence_key?: string | null
           region_id?: string | null
           registration_enabled?: boolean
@@ -858,12 +1093,16 @@ export type Database = {
           description?: string
           end_at?: string | null
           end_date?: string | null
+          ics_sequence?: number
           id?: string
           is_external?: boolean
           location?: string
+          location_tba?: boolean
           location_type?: string
+          max_places?: number
           online_url?: string | null
           organizer?: string
+          past_record?: boolean
           recurrence_key?: string | null
           region_id?: string | null
           registration_enabled?: boolean
@@ -1550,6 +1789,24 @@ export type Database = {
           },
         ]
       }
+      public_rate_limits: {
+        Row: {
+          bucket: string
+          hits: number
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          hits?: number
+          window_start: string
+        }
+        Update: {
+          bucket?: string
+          hits?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       recycle_bin_audit_log: {
         Row: {
           action: string
@@ -1611,6 +1868,56 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      subscribers: {
+        Row: {
+          branch_id: string | null
+          confirm_sent_at: string | null
+          confirmed_at: string | null
+          consent_at: string
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          source: string
+          unsubscribed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          confirm_sent_at?: string | null
+          confirmed_at?: string | null
+          consent_at?: string
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          source: string
+          unsubscribed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          confirm_sent_at?: string | null
+          confirmed_at?: string | null
+          consent_at?: string
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          source?: string
+          unsubscribed_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscribers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_assignees: {
         Row: {
@@ -2237,6 +2544,10 @@ export type Database = {
         }
         Returns: Json
       }
+      add_event_video: {
+        Args: { p_event: string; p_title: string; p_youtube_id: string }
+        Returns: string
+      }
       add_meeting_decision: {
         Args: { p_item: string; p_text: string }
         Returns: string
@@ -2254,6 +2565,16 @@ export type Database = {
         Returns: string
       }
       agenda_titles: { Args: { p: Json }; Returns: string[] }
+      announce_event: {
+        Args: {
+          p_branch?: string
+          p_dry_run?: boolean
+          p_event: string
+          p_region?: string
+          p_target: string
+        }
+        Returns: number
+      }
       approve_event_request: {
         Args: { p_audience?: string; p_id: string }
         Returns: Json
@@ -2334,6 +2655,28 @@ export type Database = {
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       cancel_registration: { Args: { p_event_id: string }; Returns: Json }
+      capture_email: {
+        Args: { p_id: string; p_rendered: Json }
+        Returns: undefined
+      }
+      claim_email_batch: {
+        Args: { p_max?: number; p_max_priority?: number }
+        Returns: {
+          attempts: number
+          event_id: string
+          id: string
+          notification_id: string
+          payload: Json
+          priority: number
+          registration_id: string
+          skip_reason: string
+          subscriber_id: string
+          template: string
+          to_email: string
+          to_name: string
+          user_id: string
+        }[]
+      }
       clean_reminders: { Args: { p: Json }; Returns: Json }
       clean_structure_name: { Args: { _name: string }; Returns: string }
       create_branch: {
@@ -2342,6 +2685,15 @@ export type Database = {
       }
       create_event: { Args: { _data: Json }; Returns: string }
       create_meeting: { Args: { p: Json }; Returns: string }
+      create_past_event: {
+        Args: {
+          p_branch: string
+          p_date: string
+          p_description: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_region: { Args: { p_name: string }; Returns: string }
       create_series: { Args: { _data: Json; _rule: string }; Returns: Json }
       create_task: { Args: { p: Json }; Returns: string }
@@ -2373,6 +2725,7 @@ export type Database = {
         Args: { p_media_id: string }
         Returns: undefined
       }
+      delete_event_video: { Args: { p_id: string }; Returns: undefined }
       delete_meeting: { Args: { p_id: string }; Returns: undefined }
       delete_meeting_decision: { Args: { p_id: string }; Returns: undefined }
       delete_meeting_file: { Args: { p_id: string }; Returns: undefined }
@@ -2395,6 +2748,24 @@ export type Database = {
       dismiss_registration_notice: {
         Args: { p_registration_id: string }
         Returns: undefined
+      }
+      email_daily_limit: { Args: Record<PropertyKey, never>; Returns: number }
+      email_event_context: { Args: { p_registration: string }; Returns: Json }
+      email_priority: { Args: { _template: string }; Returns: number }
+      enqueue_email: {
+        Args: {
+          _dedupe?: string
+          _event: string
+          _payload?: Json
+          _registration: string
+          _subscriber: string
+          _template: string
+        }
+        Returns: string
+      }
+      enqueue_event_reminders: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       event_ends: {
         Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
@@ -2529,11 +2900,21 @@ export type Database = {
         Args: { _r: Database["public"]["Tables"]["event_requests"]["Row"] }
         Returns: undefined
       }
+      event_sends_emails: {
+        Args: {
+          _e: Database["public"]["Tables"]["events"]["Row"]
+        }
+        Returns: boolean
+      }
       event_starts: {
         Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
         Returns: string
       }
       extend_all_series: { Args: never; Returns: number }
+      finish_email: {
+        Args: { p_error?: string; p_id: string; p_result: string }
+        Returns: undefined
+      }
       finish_series_deletion: { Args: { _series: string }; Returns: Json }
       finish_series_purge: { Args: { _series: string }; Returns: undefined }
       finish_user_recycle_operation: {
@@ -2541,6 +2922,35 @@ export type Database = {
         Returns: undefined
       }
       follow_branch: { Args: { p_branch_id: string }; Returns: undefined }
+      get_event_announcements: {
+        Args: { p_event: string }
+        Returns: {
+          branch: string
+          created_at: string
+          id: string
+          recipients: number
+          region: string
+          target: string
+        }[]
+      }
+      get_event_attendees: {
+        Args: { p_event_id: string }
+        Returns: {
+          cancelled_at: string
+          checked_in_at: string
+          checked_in_by_name: string
+          email: string
+          full_name: string
+          kind: string
+          phone: string
+          places: number
+          registered_at: string
+          registration_id: string
+          status: string
+          user_id: string
+          waitlist_position: number
+        }[]
+      }
       get_event_deletion_state: { Args: { _event: string }; Returns: Json }
       get_event_registration_summary: {
         Args: { p_event_id: string }
@@ -2565,6 +2975,7 @@ export type Database = {
       get_event_request: { Args: { p_id: string }; Returns: Json }
       get_event_request_duplicates: { Args: { p_id: string }; Returns: Json }
       get_event_tasks: { Args: { p_event: string }; Returns: Json }
+      get_event_video_for_removal: { Args: { p_id: string }; Returns: string }
       get_followed_branches: { Args: never; Returns: Json }
       get_meeting: { Args: { p_id: string }; Returns: Json }
       get_meeting_series_tasks: { Args: { p_id: string }; Returns: Json }
@@ -2635,6 +3046,29 @@ export type Database = {
         Args: never
         Returns: number
       }
+      guest_cancel: { Args: { p_registration: string }; Returns: Json }
+      guest_confirm: { Args: { p_registration: string }; Returns: Json }
+      guest_event_open: {
+        Args: {
+          _e: Database["public"]["Tables"]["events"]["Row"]
+        }
+        Returns: boolean
+      }
+      guest_register: {
+        Args: {
+          p_email: string
+          p_event: string
+          p_keep_informed: boolean
+          p_name: string
+          p_phone: string
+          p_places: number
+        }
+        Returns: Json
+      }
+      guest_registration_view: {
+        Args: { p_registration: string }
+        Returns: Json
+      }
       has_accepted_privacy_notice: { Args: never; Returns: boolean }
       has_any_role: {
         Args: {
@@ -2688,6 +3122,16 @@ export type Database = {
       list_event_request_media: {
         Args: { p_request_id: string }
         Returns: Json
+      }
+      list_event_videos: {
+        Args: { p_event: string }
+        Returns: {
+          has_thumb: boolean
+          id: string
+          position: number
+          title: string
+          youtube_id: string
+        }[]
       }
       list_managed_event_requests: {
         Args: { p_offset?: number; p_status?: string }
@@ -2918,6 +3362,10 @@ export type Database = {
         Args: { _user: string }
         Returns: string
       }
+      notification_delivery_locked: {
+        Args: { _type: string }
+        Returns: boolean
+      }
       notification_setting: {
         Args: { _type: string; _user: string }
         Returns: Json
@@ -2956,6 +3404,11 @@ export type Database = {
         Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
         Returns: Json
       }
+      public_landing_data: { Args: Record<PropertyKey, never>; Returns: Json }
+      public_rate_hit: {
+        Args: { p_bucket: string; p_max: number; p_window_seconds: number }
+        Returns: boolean
+      }
       public_registration_state: {
         Args: { _e: Database["public"]["Tables"]["events"]["Row"] }
         Returns: string
@@ -2976,6 +3429,7 @@ export type Database = {
         Args: never
         Returns: number
       }
+      purge_guest_data: { Args: Record<PropertyKey, never>; Returns: Json }
       purge_meeting: {
         Args: { _finalize?: boolean; _id: string }
         Returns: Json
@@ -3018,6 +3472,12 @@ export type Database = {
         Returns: number
       }
       registration_public_names: { Args: { _event: string }; Returns: Json }
+      registration_reachable: {
+        Args: {
+          _r: Database["public"]["Tables"]["event_registrations"]["Row"]
+        }
+        Returns: boolean
+      }
       registration_result: {
         Args: { _r: Database["public"]["Tables"]["event_registrations"]["Row"] }
         Returns: Json
@@ -3104,6 +3564,18 @@ export type Database = {
         Args: { p_photo_consent: boolean; p_updates_email_consent: boolean }
         Returns: Json
       }
+      set_event_media_gallery: {
+        Args: { p_in_gallery: boolean; p_media: string }
+        Returns: undefined
+      }
+      set_event_media_size: {
+        Args: { p_height: number; p_media: string; p_width: number }
+        Returns: undefined
+      }
+      set_event_video_thumb: {
+        Args: { p_id: string; p_path: string }
+        Returns: undefined
+      }
       set_meeting_invitees: {
         Args: { p_id: string; p_invitee_ids: Json }
         Returns: number
@@ -3165,6 +3637,17 @@ export type Database = {
       submit_meeting_request: { Args: { p: Json }; Returns: string }
       submit_task_request: { Args: { p: Json }; Returns: string }
       submit_volunteer_application: { Args: { p: Json }; Returns: string }
+      subscriber_confirm: { Args: { p_id: string }; Returns: Json }
+      subscriber_signup: {
+        Args: {
+          p_branch: string
+          p_email: string
+          p_name: string
+          p_source: string
+        }
+        Returns: Json
+      }
+      subscriber_unsubscribe: { Args: { p_id: string }; Returns: Json }
       task_assignee_ok: {
         Args: {
           _branch: string
@@ -3269,6 +3752,14 @@ export type Database = {
       task_note_mentions: {
         Args: { _task: string; p: Json }
         Returns: string[]
+      }
+      task_note_notice: {
+        Args: {
+          _note: string
+          _t: Database["public"]["Tables"]["tasks"]["Row"]
+          _user: string
+        }
+        Returns: undefined
       }
       task_note_notices: {
         Args: {
@@ -3400,6 +3891,16 @@ export type Database = {
       update_meeting_series: {
         Args: { p: Json; p_id: string; p_mode: string }
         Returns: number
+      }
+      update_past_event: {
+        Args: {
+          p_branch: string
+          p_date: string
+          p_description: string
+          p_id: string
+          p_title: string
+        }
+        Returns: undefined
       }
       update_series_event: {
         Args: { _data: Json; _event: string; _mode: string; _rule?: string }

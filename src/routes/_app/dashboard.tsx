@@ -249,10 +249,12 @@ function UpcomingEventsCard({
                       {t("events.online")}
                     </span>
                   ) : (
-                    event.location && (
+                    (event.location || event.location_tba) && (
                       <span className="inline-flex min-w-0 items-center gap-1">
                         <MapPin className="size-4 shrink-0" aria-hidden />
-                        <span className="break-words">{event.location}</span>
+                        <span className="break-words">
+                          {event.location_tba ? t("events.locationTba") : event.location}
+                        </span>
                       </span>
                     )
                   )}

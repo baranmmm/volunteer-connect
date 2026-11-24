@@ -4,6 +4,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { E2E_EMAIL_LINK_SECRET, e2eCronSecret } from "./email-capture";
 import { REPO_ROOT, baseUrl, isLocalTarget, requireEnv } from "./env";
 import { QA_REF, assertQaEnvironment } from "./guard";
 
@@ -19,6 +20,13 @@ const env: NodeJS.ProcessEnv = {
   VITE_SUPABASE_URL: requireEnv("SUPABASE_URL"),
   VITE_SUPABASE_PUBLISHABLE_KEY: requireEnv("SUPABASE_PUBLISHABLE_KEY"),
   VITE_SUPABASE_PROJECT_ID: projectId,
+  // Emails are rendered and stored on the outbox row instead of being sent (no Brevo key needed, nothing leaves).
+  EMAIL_TRANSPORT: "capture",
+  EMAIL_LINK_SECRET: process.env["EMAIL_LINK_SECRET"]?.trim() || E2E_EMAIL_LINK_SECRET,
+  // The scheduled routes (task reminders, cleanup) for tests that trigger them.
+  CLEANUP_CRON_SECRET: e2eCronSecret(),
+  // Links in emails point at this app server.
+  APP_URL: url.origin,
 };
 
 try {

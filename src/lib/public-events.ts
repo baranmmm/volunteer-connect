@@ -26,6 +26,11 @@ export const publicEventSchema = z.object({
   organizer: z.string().nullable(),
   registration: z.enum(["open", "full", "closed"]),
   has_image: z.boolean(),
+  // Public events v2 (optional so older rows and fixtures still parse).
+  location_tba: z.boolean().optional(),
+  max_places: z.number().int().min(1).max(10).optional(),
+  spots_left: z.number().int().nullable().optional(),
+  past_record: z.boolean().optional(),
 });
 export type PublicEvent = z.infer<typeof publicEventSchema>;
 export const publicEventsSchema = z.array(publicEventSchema);

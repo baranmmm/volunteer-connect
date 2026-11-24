@@ -240,10 +240,10 @@ function PublicList({ events }: { events: PublicEvent[] }) {
             <p className="text-sm">{eventWhen(e, dateLocale())?.text}</p>
             <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               {publicWhere(e) && <BranchName name={publicWhere(e)} />}
-              {e.location && (
+              {(e.location || e.location_tba) && (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="size-3.5" aria-hidden />
-                  {e.location}
+                  {e.location_tba ? t("events.locationTba") : e.location}
                 </span>
               )}
               {e.is_online && (

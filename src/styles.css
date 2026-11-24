@@ -166,3 +166,90 @@
 }
 
 @utility bg-hero { background-image: var(--gradient-hero); }
+
+/*
+ * Landing page (/) tokens: the dialoguesociety.org palette, scoped to .landing so no app token changes.
+ * Light: off-white #FFFEFC page, slate #28303D text, #39414D buttons, logo blue #008AC4 accents, #006D9C for
+ * text-size actions (5.7:1 on white; #008AC4 is only 3.8:1). Dark follows the OS (no app-wide dark switch yet) or a
+ * .dark ancestor. Text pairs checked for WCAG AA (>= 4.5:1).
+ */
+@theme inline {
+  --color-ds-bg: var(--ds-bg);
+  --color-ds-surface: var(--ds-surface);
+  --color-ds-alt: var(--ds-alt);
+  --color-ds-fg: var(--ds-fg);
+  --color-ds-muted: var(--ds-muted);
+  --color-ds-border: var(--ds-border);
+  --color-ds-blue: var(--ds-blue);
+  --color-ds-link: var(--ds-link);
+  --color-ds-action: var(--ds-action);
+  --color-ds-action-fg: var(--ds-action-fg);
+  --color-ds-slate: var(--ds-slate);
+  --color-ds-slate-fg: var(--ds-slate-fg);
+  --color-ds-logo: var(--ds-logo);
+  --shadow-ds-card: var(--ds-card-shadow);
+}
+
+.landing {
+  --ds-bg: oklch(0.9972 0.0028 84.56); /* #FFFEFC */
+  --ds-surface: oklch(1 0 0); /* #FFFFFF */
+  --ds-alt: oklch(0.9551 0 0); /* #F0F0F0 */
+  --ds-fg: oklch(0.3073 0.026 260.05); /* #28303D */
+  --ds-muted: oklch(0.4506 0.0186 257.25); /* #4F5660 */
+  --ds-border: oklch(0.8665 0.0261 285.84); /* #D1D1E4 lavender */
+  --ds-blue: oklch(0.6002 0.1311 237); /* #008AC4 logo blue */
+  --ds-link: oklch(0.4765 0.1036 236.69); /* #00648F */
+  --ds-action: oklch(0.5067 0.1107 237.04); /* #006D9C */
+  --ds-action-fg: oklch(1 0 0);
+  --ds-slate: oklch(0.3728 0.0232 258.37); /* #39414D */
+  --ds-slate-fg: oklch(1 0 0);
+  --ds-logo: oklch(0.3791 0 0); /* #424242 logo grey */
+  --ds-card-shadow: 0 2px 20px oklch(0.2 0 0 / 0.07);
+  background-color: var(--ds-bg);
+  color: var(--ds-fg);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  .landing {
+    --ds-bg: oklch(0.2207 0.0132 258.37); /* #171B21 */
+    --ds-surface: oklch(0.263 0.0167 259.78); /* #20252D */
+    --ds-alt: oklch(0.1950 0.0120 258.37);
+    --ds-fg: oklch(0.9551 0 0); /* #F0F0F0 */
+    --ds-muted: oklch(0.7872 0.0157 260.73); /* #B4BAC4 */
+    --ds-border: oklch(0.3775 0.0263 261.62); /* #3A4250 */
+    --ds-link: oklch(0.7652 0.1123 229.55); /* #5CC0EC */
+    --ds-action: oklch(0.7652 0.1123 229.55); /* #5CC0EC */
+    --ds-action-fg: oklch(0.2106 0.0233 238.54); /* #0E1A22 */
+    --ds-slate: oklch(0.3107 0.0205 257.27); /* #2A313B */
+    --ds-logo: oklch(0.9551 0 0);
+    --ds-card-shadow: 0 2px 20px oklch(0 0 0 / 0.35);
+    color-scheme: dark;
+  }
+}
+.dark .landing {
+  --ds-bg: oklch(0.2207 0.0132 258.37);
+  --ds-surface: oklch(0.263 0.0167 259.78);
+  --ds-alt: oklch(0.1950 0.0120 258.37);
+  --ds-fg: oklch(0.9551 0 0);
+  --ds-muted: oklch(0.7872 0.0157 260.73);
+  --ds-border: oklch(0.3775 0.0263 261.62);
+  --ds-link: oklch(0.7652 0.1123 229.55);
+  --ds-action: oklch(0.7652 0.1123 229.55);
+  --ds-action-fg: oklch(0.2106 0.0233 238.54);
+  --ds-slate: oklch(0.3107 0.0205 257.27);
+  --ds-logo: oklch(0.9551 0 0);
+  --ds-card-shadow: 0 2px 20px oklch(0 0 0 / 0.35);
+  color-scheme: dark;
+}
+.landing :focus-visible { outline-color: var(--ds-blue); }
+
+/* Reveal on scroll and the hero entrance: motion only when the visitor has not asked for less. */
+@media (prefers-reduced-motion: no-preference) {
+  .ds-reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
+  .ds-reveal[data-visible="true"] { opacity: 1; transform: none; }
+  .ds-enter { animation: ds-enter 0.7s ease-out both; }
+  .ds-enter-delay { animation-delay: 0.15s; }
+  .ds-hero-img { animation: ds-zoom 12s ease-out both; }
+}
+@keyframes ds-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes ds-zoom { from { transform: scale(1.06); } to { transform: scale(1); } }

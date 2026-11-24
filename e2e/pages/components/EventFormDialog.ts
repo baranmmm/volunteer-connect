@@ -40,6 +40,22 @@ export class EventFormDialog {
   readonly category = () => this.root.getByTestId("event-form-category");
   readonly invitees = () => this.root.getByTestId("event-form-invitees");
   readonly meetingRepeatCount = () => this.root.getByTestId("event-form-meeting-repeat-count");
+  /** Files section (open it first): the file input, the listed files and each image's "Show in public gallery". */
+  readonly fileInput = () => this.root.getByTestId("event-form-file-input");
+  readonly fileItems = () => this.root.getByTestId("event-form-file-item");
+  readonly filesError = () => this.root.locator("#event-form-files-error");
+  readonly galleryTick = (index: number) => this.fileItems().nth(index).getByTestId("event-form-file-gallery");
+  /** "Location to be announced" (single in-person events). */
+  readonly locationTba = () => this.root.getByTestId("event-form-location-tba");
+  /** Places per registration (registration section, single events with registration on). */
+  readonly maxPlaces = () => this.root.getByTestId("event-form-max-places");
+  /** Attaches an image through the files section and waits until it is listed. */
+  async attachImage(name: string, buffer: Buffer, mimeType = "image/png") {
+    await this.openSection("files");
+    const before = await this.fileItems().count();
+    await this.fileInput().setInputFiles({ name, mimeType, buffer });
+    await expect(this.fileItems()).toHaveCount(before + 1);
+  }
   section(name: EventFormSection) {
     return this.root.getByTestId(`event-form-section-${name}`);
   }

@@ -103,11 +103,12 @@ test.describe("Logo link", () => {
     await member.keyboard.press("Enter");
     await expect(member).toHaveURL(/\/dashboard$/);
 
-    // Signed out (public privacy page): / (which then sends visitors to sign in).
+    // Signed out (public privacy page): / (the public landing page).
     await page.goto("/privacy");
     const out = page.getByTestId("logo-home-link").filter({ visible: true });
     await expect(out).toHaveAttribute("data-target", "/", { timeout: APP_LOAD_TIMEOUT });
     await out.click();
-    await expect(page).toHaveURL(/\/auth$/, { timeout: APP_LOAD_TIMEOUT });
+    await expect(page.getByTestId("landing-page")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page).toHaveURL(/\/$/);
   });
 });

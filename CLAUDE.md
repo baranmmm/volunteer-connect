@@ -102,6 +102,9 @@ Ranking: follower < volunteer < branch_manager < regional_director < national_co
   `request_account_deletion`, `cancel_account_deletion`, the volunteer application, followed branch and structure
   RPCs. Every client write RPC starts with `PERFORM public.require_privacy_accepted();` (Vitest guard in
   `src/test/privacy-db.test.ts`). History is read through `get_user_audit_history`.
+- Guests (no account) and event-update subscribers: only through server functions using service-role-only RPCs
+  (`guest_*`, `subscriber_*`), never anon grants. Their emails go through `email_outbox` and the Brevo sender
+  (`docs/email.md`); attendee privacy notice: `src/content/attendee-privacy-notice.md`.
 - User deletion only through the `deleteUser` server function (`src/lib/delete-user.functions.ts`); followers delete
   their own account with `deleteMyFollowerAccount` (typed full name, non-restorable).
 - The service_role key lives only in server code, e2e seed/teardown/API tests and GitHub secrets. Never in

@@ -36,6 +36,8 @@ vi.mock("@/lib/events.functions", () => ({
   reorderEventMedia: mocks.reorder,
   createSeries: vi.fn(),
   updateSeriesEvent: vi.fn(),
+  setEventMediaSize: vi.fn(),
+  setEventMediaGallery: vi.fn(),
 }));
 vi.mock("@/lib/meetings.functions", () => ({
   createMeeting: mocks.createMeeting,

@@ -1,6 +1,10 @@
 // Event test data. Events are created and cancelled as the (fresh) user through the app's own RPCs, so
 // RLS, validate_event and created_by behave exactly as in the app. Only cleanup uses the service role.
 import { adminClient, clientAs } from "./SupabaseClient";
+import { TINY_PNG } from "./eventRequests";
+
+/** A valid 1x1 PNG for test uploads (the cover a published public event needs). */
+export { TINY_PNG };
 
 /** Every test event title starts with this, so teardown can find leftovers. */
 export const EVENT_TITLE_PREFIX = "E2E Event ";
@@ -22,6 +26,10 @@ export type EventSpec = {
   audience?: "public" | "members";
   /** An online event with this https link (the link must never reach anonymous visitors). */
   onlineUrl?: string;
+  /** In-person place "To be announced" (no location yet). */
+  locationTba?: boolean;
+  /** Places one registration may book (1-10, default 1). */
+  maxPlaces?: number;
 };
 
 function payload(spec: EventSpec) {
@@ -30,7 +38,9 @@ function payload(spec: EventSpec) {
   return {
     title: spec.title,
     description: "",
-    location: "E2E Community Hall",
+    location: spec.locationTba ? "" : "E2E Community Hall",
+    location_tba: !!spec.locationTba,
+    max_places: spec.maxPlaces ?? 1,
     location_type: spec.onlineUrl ? "online" : "in_person",
     online_url: spec.onlineUrl ?? null,
     organizer: "E2E",
@@ -55,10 +65,33 @@ export function eventPayload(spec: EventSpec) {
   return payload(spec);
 }
 
+/** Reserves an image slot on `eventId` as `email` and uploads a tiny PNG there (the app's own reserve → upload flow). */
+export async function addCoverImageAs(email: string, eventId: string): Promise<{ mediaId: string; path: string }> {
+  const db = await clientAs(email);
+  const { data: mediaId, error } = await db.rpc("add_event_media", { _event: eventId, _kind: "image", _extension: "png", _original_name: "cover.png" });
+  if (error || !mediaId) throw new Error(`add_event_media ${eventId}: ${error?.message ?? "no id"}`);
+  const path = `${eventId}/${String(mediaId)}.png`;
+  const up = await db.storage.from("event-media").upload(path, TINY_PNG, { contentType: "image/png" });
+  if (up.error) throw new Error(`upload cover ${path}: ${up.error.message}`);
+  return { mediaId: String(mediaId), path };
+}
+
+/**
+ * create_event as `email`. A published public event needs a cover image, so it is created as a draft, given a tiny
+ * image and then published with update_event, exactly like the app's form does.
+ */
 export async function createEventAs(email: string, spec: EventSpec): Promise<string> {
-  const { data, error } = await (await clientAs(email)).rpc("create_event", { _data: payload(spec) });
-  if (error || !data) throw new Error(`create_event "${spec.title}": ${error?.message ?? "no id"}`);
-  return String(data);
+  const db = await clientAs(email);
+  const needsCover = spec.status === "published" && spec.audience === "public";
+  const data = payload(needsCover ? { ...spec, status: "draft" } : spec);
+  const { data: id, error } = await db.rpc("create_event", { _data: data });
+  if (error || !id) throw new Error(`create_event "${spec.title}": ${error?.message ?? "no id"}`);
+  if (needsCover) {
+    await addCoverImageAs(email, String(id));
+    const up = await db.rpc("update_event", { _event: String(id), _data: { ...data, status: "published" } });
+    if (up.error) throw new Error(`publish "${spec.title}": ${up.error.message}`);
+  }
+  return String(id);
 }
 
 /** A national event, created directly with the service role (owner: a National Coordinator). Remove with deleteEvents. */
@@ -142,9 +175,24 @@ export async function deleteSeriesData(mediaEventIds: string[]): Promise<void> {
   if (holders.error) throw new Error(`delete media holders: ${holders.error.message}`);
 }
 
-/** Service-role cleanup. Media and deletion jobs cascade. */
+/** Removes the stored event-media files of these events, video posters included (Storage first, never with SQL). */
+export async function deleteEventFiles(ids: string[]): Promise<void> {
+  for (let i = 0; i < ids.length; i += 100) {
+    const videos = await adminClient().from("event_videos").select("thumb_path").in("event_id", ids.slice(i, i + 100)).not("thumb_path", "is", null);
+    const posters = (videos.data ?? []).map((v: { thumb_path: string | null }) => v.thumb_path!).filter(Boolean);
+    if (posters.length) await adminClient().storage.from("event-media").remove(posters);
+  }
+  for (const id of ids) {
+    const listed = await adminClient().storage.from("event-media").list(id);
+    const paths = (listed.data ?? []).map((o) => `${id}/${o.name}`);
+    if (paths.length) await adminClient().storage.from("event-media").remove(paths);
+  }
+}
+
+/** Service-role cleanup: stored files first, then the rows (media and deletion jobs cascade). */
 export async function deleteEvents(ids: string[]): Promise<void> {
   if (!ids.length) return;
+  await deleteEventFiles(ids);
   const { error } = await adminClient().from("events").delete().in("id", ids);
   if (error) throw new Error(`delete events: ${error.message}`);
 }
@@ -166,10 +214,16 @@ export async function deleteLeftoverTestEvents(freshUserIds: string[]): Promise<
   }
   for (let i = 0; i < freshUserIds.length; i += 100) {
     // Meetings' calendar entries go with their meetings (deleteWorkOfUsers), never on their own.
+    const own = await adminClient().from("events").select("id").in("created_by", freshUserIds.slice(i, i + 100)).neq("category", "meeting");
+    if (own.error) throw new Error(`find fresh users' events: ${own.error.message}`);
+    await deleteEventFiles(own.data.map((e: { id: string }) => e.id));
     const { data, error } = await adminClient().from("events").delete().in("created_by", freshUserIds.slice(i, i + 100)).neq("category", "meeting").select("id");
     if (error) throw new Error(`delete fresh users' events: ${error.message}`);
     deleted += data?.length ?? 0;
   }
+  const orphaned = await adminClient().from("events").select("id").like("title", `${EVENT_TITLE_PREFIX}%`).is("created_by", null).neq("category", "meeting");
+  if (orphaned.error) throw new Error(`find orphaned test events: ${orphaned.error.message}`);
+  await deleteEventFiles(orphaned.data.map((e: { id: string }) => e.id));
   const { data, error } = await adminClient().from("events").delete().like("title", `${EVENT_TITLE_PREFIX}%`).is("created_by", null).neq("category", "meeting").select("id");
   if (error) throw new Error(`delete orphaned test events: ${error.message}`);
   // Series rows of the same users / orphaned test series (their events are gone by now).
@@ -180,4 +234,29 @@ export async function deleteLeftoverTestEvents(freshUserIds: string[]): Promise<
   const orphans = await adminClient().from("event_series").delete().like("title", `${EVENT_TITLE_PREFIX}%`).is("created_by", null);
   if (orphans.error) throw new Error(`delete orphaned test series: ${orphans.error.message}`);
   return deleted + (data?.length ?? 0);
+}
+
+/**
+ * A guest registration confirmed by email, created like the public form does (service role: guest_register, then
+ * guest_confirm as the email link would). Removed with its event (CASCADE).
+ */
+export async function addConfirmedGuest(eventId: string, guest: { name: string; email: string; phone?: string; places?: number }) {
+  const reg = await adminClient().rpc("guest_register", {
+    p_event: eventId, p_name: guest.name, p_email: guest.email, p_phone: guest.phone ?? "", p_places: guest.places ?? 1, p_keep_informed: false,
+  });
+  if (reg.error) throw new Error(`guest_register: ${reg.error.message}`);
+  const id = (reg.data as { registration_id: string | null }).registration_id;
+  if (!id) throw new Error(`guest_register gave no registration (${JSON.stringify(reg.data)})`);
+  const confirmed = await adminClient().rpc("guest_confirm", { p_registration: id });
+  if (confirmed.error) throw new Error(`guest_confirm: ${confirmed.error.message}`);
+  return { registrationId: id, status: (confirmed.data as { status: string }).status };
+}
+
+/** Moves a timed event so it started `minutesAgo` minutes ago and lasts `durationMinutes` (service role). */
+export async function startEventMinutesAgo(eventId: string, minutesAgo: number, durationMinutes = 120) {
+  const start = new Date(Date.now() - minutesAgo * 60_000);
+  const { error } = await adminClient().from("events").update({
+    start_at: start.toISOString(), end_at: new Date(start.getTime() + durationMinutes * 60_000).toISOString(),
+  }).eq("id", eventId);
+  if (error) throw new Error(`move event ${eventId}: ${error.message}`);
 }

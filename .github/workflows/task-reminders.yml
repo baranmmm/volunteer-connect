@@ -3,9 +3,12 @@ name: Task reminders
 # Daily notification summary at 08:00 and task reminders at 09:00 Europe/London. GitHub cron is UTC: 07:05, 08:05 and
 # 09:05 UTC cover winter and summer; the database skips runs before those London times and never sends twice a day
 # (idempotent). pg_cron, when the project has it, runs the same functions; this workflow is the fallback.
+# Every run also queues event reminders (2 days before) and sends queued emails within the daily limit of 300
+# (transactional first, then reminders, then announcements). The later runs (13:05, 18:05 UTC) drain the outbox;
+# announcements over the daily limit continue the next day.
 on:
   schedule:
-    - cron: '5 7,8,9 * * *'
+    - cron: '5 7,8,9,13,18 * * *'
   workflow_dispatch:
 
 permissions: {}
@@ -19,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Create due task reminders
+      - name: Create due reminders and send queued emails
         env:
           CLEANUP_CRON_SECRET: ${{ secrets.CLEANUP_CRON_SECRET }}
           REMINDERS_URL: https://project--d60ecf19-db1a-4e44-b08c-c48c46fd1eaa.lovable.app/api/public/task-reminders

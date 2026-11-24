@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, List, Plus } from "lucide-react";
+import { CalendarDays, History, List, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
@@ -21,8 +21,21 @@ import {
 import { EventCard } from "@/components/events/EventCard";
 import { MonthEvents } from "@/components/events/MonthEvents";
 import { EventForm } from "@/components/events/EventForm";
+import { PastEventDialog } from "@/components/events/PastEventDialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { CalendarLegend } from "@/components/events/EventStatus";
 import { RequestEventButton } from "@/components/requests/RequestEventButton";
+
+/** "Public events only" (managers): remembered on this device. */
+const PUBLIC_ONLY_KEY = "calendar.publicOnly";
+function readPublicOnly() {
+  try {
+    return window.localStorage.getItem(PUBLIC_ONLY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export const Route = createFileRoute("/_app/calendar")({
   ssr: false,
@@ -58,7 +71,17 @@ function CalendarPage() {
   const [month, setMonth] = useState(
     () => new Date(`${londonInput(new Date()).slice(0, 7)}-01T12:00:00`),
   );
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(false),
+    [addingPast, setAddingPast] = useState(false);
+  const [publicOnly, setPublicOnlyState] = useState(readPublicOnly);
+  function setPublicOnly(value: boolean) {
+    setPublicOnlyState(value);
+    try {
+      window.localStorage.setItem(PUBLIC_ONLY_KEY, value ? "1" : "0");
+    } catch {
+      /* per-device convenience only */
+    }
+  }
   // The open form is not re-rendered by the clock tick (`now`), so its lists and pickers stay still while in use.
   const createForm = useMemo(
     () =>
@@ -87,7 +110,9 @@ function CalendarPage() {
     refetchInterval: 240000,
   });
   const inScope = (events.data ?? []).filter(
-    (e) => branchScope === "all" || inFollowedBranches(e, followed.data ?? []),
+    (e) =>
+      (branchScope === "all" || inFollowedBranches(e, followed.data ?? [])) &&
+      (!canCreate || !publicOnly || e.audience === "public"),
   );
   const filtered = filterEvents(inScope, view === "month" ? null : past, category, organizer, now);
   const organizers = [...new Set((events.data ?? []).map((e) => e.organizer))].sort();
@@ -109,6 +134,17 @@ function CalendarPage() {
               </Button>
               <RequestEventButton variant={isManager ? "outline" : "default"} />
             </>
+          )}
+          {canCreate && (
+            <Button
+              data-testid="calendar-add-past-event-button"
+              variant="outline"
+              className="h-11"
+              onClick={() => setAddingPast(true)}
+            >
+              <History />
+              {t("pastEvents.add")}
+            </Button>
           )}
           {canCreate && (
             <Button
@@ -146,6 +182,17 @@ function CalendarPage() {
             {t("events.list")}
           </Button>
         </div>
+        {canCreate && (
+          <div className="flex min-h-11 items-center gap-2">
+            <Switch
+              id="calendar-filter-public-only"
+              data-testid="calendar-filter-public-only"
+              checked={publicOnly}
+              onCheckedChange={setPublicOnly}
+            />
+            <Label htmlFor="calendar-filter-public-only">{t("events.publicOnly")}</Label>
+          </div>
+        )}
         {view === "list" && (
           <div className="flex flex-wrap gap-2">
             <Button
@@ -244,6 +291,15 @@ function CalendarPage() {
         </section>
       )}
       {createForm}
+      {addingPast && (
+        <PastEventDialog
+          onClose={() => setAddingPast(false)}
+          onSaved={(id) => {
+            setAddingPast(false);
+            void navigate({ to: "/events/$id", params: { id } });
+          }}
+        />
+      )}
       {view === "month" && filtered.some((e) => !isScheduled(e)) && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">{t("events.unscheduled")}</h2>

@@ -19,7 +19,12 @@ import {
   type HubEvent,
   type EventMedia,
 } from "@/lib/event-rules";
-import { prepareEventFile, uploadEventFile, removeStoredEventFile } from "@/lib/event-files";
+import {
+  prepareEventFile,
+  preparedImageSize,
+  uploadEventFile,
+  removeStoredEventFile,
+} from "@/lib/event-files";
 import {
   saveEvent,
   eventBranches,
@@ -28,6 +33,8 @@ import {
   reorderEventMedia,
   createSeries,
   updateSeriesEvent,
+  setEventMediaSize,
+  setEventMediaGallery,
 } from "@/lib/events.functions";
 import {
   buildRule,
@@ -48,6 +55,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectTrigger,
@@ -80,6 +88,8 @@ type Item = {
   file?: File;
   media?: EventMedia;
   preview?: string;
+  /** "Show in public gallery" (images of public, non-recurring events). */
+  inGallery?: boolean;
 };
 /**
  * Create or edit an event. Title, category, date/time and place are always visible; the rest sits in collapsed sections
@@ -112,7 +122,9 @@ export function EventForm({
     branchesFn = useServerFn(eventBranches),
     reserve = useServerFn(reserveEventMedia),
     remove = useServerFn(deleteEventMedia),
-    reorder = useServerFn(reorderEventMedia);
+    reorder = useServerFn(reorderEventMedia),
+    setSize = useServerFn(setEventMediaSize),
+    setGallery = useServerFn(setEventMediaGallery);
   const branches = useQuery({
     queryKey: ["event-branches", session?.user.id],
     queryFn: () => branchesFn(),
@@ -155,6 +167,9 @@ export function EventForm({
     event?.location_type === "online" ? "online" : "in_person",
   );
   const [onlineUrl, setOnlineUrl] = useState(event?.online_url ?? "");
+  // "To be announced" (in-person, single events): the place is cleared and published later (update emails).
+  const [locationTba, setLocationTba] = useState(!!event?.location_tba);
+  const [maxPlaces, setMaxPlaces] = useState(String(event?.max_places ?? 1));
   // End follows Start + 2 hours until the user edits End themselves.
   const endTouched = useRef(!!event?.end_at);
   function setStart(day: string, time: string) {
@@ -200,6 +215,7 @@ export function EventForm({
       name: m.original_name || (m.storage_path.split("/").pop() ?? m.id),
       kind: m.kind === "pdf" ? "pdf" : m.kind === "document" ? "document" : "image",
       media: m,
+      inGallery: !!m.in_gallery,
     })),
   );
   const attached = useRef<EventMedia[]>(event?.media ?? []);
@@ -249,6 +265,9 @@ export function EventForm({
     series && repeatEditable ? parseRule(series.rule) : defaultRepeat(),
   );
   const repeatTouched = useRef(false);
+  // "To be announced", places per registration and the gallery tick apply to single events only.
+  const singleEvent = !event?.series_id && !(repeatEditable && repeat.freq !== "none");
+  const hasImage = items.some((x) => x.kind === "image");
   function setRepeat(next: RepeatState) {
     repeatTouched.current = true;
     setRepeatState(next);
@@ -330,6 +349,8 @@ export function EventForm({
     const sectionOf: Record<string, Section> = {
       organizer: "description",
       capacity: "registration",
+      "max-places": "registration",
+      files: "files",
       "repeat-until": "repeat",
       "repeat-count": "repeat",
       "meeting-repeat-count": "repeat",
@@ -355,6 +376,8 @@ export function EventForm({
       "branch",
       "organizer",
       "capacity",
+      "max-places",
+      "files",
       "repeat-until",
       "repeat-count",
       "meeting-repeat-count",
@@ -364,7 +387,9 @@ export function EventForm({
     const target =
       !allDay && (first === "start" || first === "end")
         ? `${first}-${(first === "start" ? startDay : endDay) ? "time" : "date"}`
-        : first;
+        : first === "files"
+          ? "file-input"
+          : first;
     // Two frames: a section opened above renders before the field is focused.
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
@@ -467,6 +492,10 @@ export function EventForm({
         branch,
         capacity,
         organizer,
+        locationTba: singleEvent && locationType === "in_person" && locationTba,
+        audience,
+        hasImage,
+        ...(singleEvent && registrationEnabled ? { maxPlaces } : {}),
       },
       status,
       { checkPast: timesChanged },
@@ -502,10 +531,11 @@ export function EventForm({
     try {
       const startIso = !allDay && start ? londonToIso(start) : null,
         endIso = !allDay && end ? londonToIso(end) : null;
+      const tba = singleEvent && locationType === "in_person" && locationTba;
       const data = {
         title,
         description,
-        location: locationType === "online" ? location.trim() : location,
+        location: tba ? "" : locationType === "online" ? location.trim() : location,
         location_type: locationType,
         online_url: locationType === "online" && onlineUrl.trim() ? onlineUrl.trim() : null,
         organizer: organizer.trim() || "Dialogue Society",
@@ -517,6 +547,8 @@ export function EventForm({
         end_at: endIso,
         capacity: capacity ? Number(capacity) : null,
         registration_enabled: registrationEnabled,
+        location_tba: tba,
+        max_places: singleEvent && registrationEnabled ? Number(maxPlaces) : 1,
         audience,
         scope:
           scope === "national"
@@ -531,11 +563,20 @@ export function EventForm({
       let createdSeries = false;
       if (!id) {
         if (rule) {
-          // A series is created with its final status; its files then go to the series' media holder.
-          const created = await createSeriesFn({ data: { event: data, rule } });
+          // A series is created with its final status, except a public one, which needs its cover first: it starts
+          // as a draft, its files go to the series' media holder, then the whole series is published.
+          const created = await createSeriesFn({
+            data: {
+              event:
+                audience === "public" && status === "published"
+                  ? { ...data, status: "draft" }
+                  : data,
+              rule,
+            },
+          });
           id = created.eventId;
           mediaTarget.current = created.mediaEventId ?? id;
-          createdSeries = true;
+          createdSeries = !(audience === "public" && status === "published");
         } else {
           // Create a recoverable draft before uploading; publish only after all file operations succeed.
           id = await save({ data: { id: null, event: { ...data, status: "draft" } } });
@@ -578,6 +619,8 @@ export function EventForm({
               url: null,
             };
             await uploadEventFile(row.storage_path, item.file);
+            const size = item.kind === "image" ? preparedImageSize(item.file) : null;
+            if (size) await setSize({ data: { id: row.id, ...size } });
           } catch (e) {
             setFileErrors([
               t("events.fileRejected", { name: item.name, reason: translateError(e) }),
@@ -596,6 +639,7 @@ export function EventForm({
             kind: item.kind,
             media,
             ...(item.preview ? { preview: item.preview } : {}),
+            ...(item.inGallery !== undefined ? { inGallery: item.inGallery } : {}),
           };
           completed.push(updated);
           setItems((current) => current.map((x) => (x.key === item.key ? updated : x)));
@@ -611,6 +655,12 @@ export function EventForm({
       });
       if (createdSeries) {
         /* already saved with its final status */
+      } else if (!event && rule) {
+        // A new public series: publish every occurrence now that the cover is uploaded.
+        const updated = await updateSeriesFn({
+          data: { id, mode: "all", event: data, rule: null },
+        });
+        id = updated.eventId;
       } else if (event?.series_id && seriesMode) {
         const updated = await updateSeriesFn({
           data: {
@@ -625,6 +675,13 @@ export function EventForm({
         if (updated.keptOffRule.length)
           toast.error(t("registrations.keptOffRule", { count: updated.keptOffRule.length }));
       } else await save({ data: { id, event: data } });
+      // Gallery ticks once the event is saved as public (the database allows them for public events only).
+      if (singleEvent && audience === "public")
+        for (const item of ordered)
+          if (item.kind === "image" && item.media && !!item.inGallery !== !!item.media.in_gallery) {
+            await setGallery({ data: { id: item.media.id, inGallery: !!item.inGallery } });
+            item.media.in_gallery = !!item.inGallery;
+          }
       // Capacity or time changes can promote the waitlist or change registration rules: refresh those too.
       await Promise.all(
         ["events", "event", "registration-summary", "registrations", "my-registrations"].map(
@@ -844,7 +901,42 @@ export function EventForm({
             <p className="text-xs text-muted-foreground">{t("events.onlineUrlHint")}</p>
           </div>
         ) : (
-          field(t("events.location"), "event-form-location", location, setLocation, "text", true)
+          <div className="space-y-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="event-form-location">
+                {t("events.location")}
+                {!(singleEvent && locationTba) && " *"}
+              </Label>
+              <Input
+                id="event-form-location"
+                data-testid="event-form-location"
+                value={singleEvent && locationTba ? "" : location}
+                onChange={(e) => setLocation(e.target.value)}
+                aria-required={!(singleEvent && locationTba)}
+                aria-invalid={!!fieldErrors["location"]}
+                aria-describedby={fieldErrors["location"] ? "event-form-location-error" : undefined}
+                disabled={busy || (singleEvent && locationTba)}
+                placeholder={singleEvent && locationTba ? t("events.locationTba") : undefined}
+                className="h-11 min-w-0"
+              />
+              {fieldError("location")}
+            </div>
+            {singleEvent && !meetingMode && (
+              <div className="flex min-h-11 items-center gap-3">
+                <Checkbox
+                  id="event-form-location-tba"
+                  data-testid="event-form-location-tba"
+                  checked={locationTba}
+                  disabled={busy}
+                  onCheckedChange={(v) => {
+                    setLocationTba(v === true);
+                    if (v === true) setLocation("");
+                  }}
+                />
+                <Label htmlFor="event-form-location-tba">{t("events.locationTbaOption")}</Label>
+              </div>
+            )}
+          </div>
         )}
         {director && (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -978,6 +1070,29 @@ export function EventForm({
                   />
                   <Label htmlFor="event-form-registration-enabled">{t("registrations.open")}</Label>
                 </div>
+                {singleEvent && registrationEnabled && (
+                  <div className="space-y-1">
+                    <Label htmlFor="event-form-max-places">{t("events.maxPlaces")}</Label>
+                    <Input
+                      id="event-form-max-places"
+                      data-testid="event-form-max-places"
+                      type="number"
+                      min={1}
+                      max={10}
+                      step={1}
+                      value={maxPlaces}
+                      onChange={(e) => setMaxPlaces(e.target.value)}
+                      aria-invalid={!!fieldErrors["max-places"]}
+                      aria-describedby={
+                        fieldErrors["max-places"] ? "event-form-max-places-error" : undefined
+                      }
+                      disabled={busy}
+                      className="h-11 min-w-0"
+                    />
+                    <p className="text-xs text-muted-foreground">{t("events.maxPlacesHint")}</p>
+                    {fieldError("max-places")}
+                  </div>
+                )}
               </div>,
             )}
           {!meetingMode &&
@@ -1046,6 +1161,9 @@ export function EventForm({
               "files",
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground">{t("events.fileLimits")}</p>
+                {audience === "public" && (
+                  <p className="text-xs text-muted-foreground">{t("events.coverHint")}</p>
+                )}
                 <Label
                   htmlFor="event-form-file-input"
                   className="flex min-h-11 items-center gap-2 text-primary"
@@ -1065,6 +1183,7 @@ export function EventForm({
                     e.target.value = "";
                   }}
                 />
+                {fieldError("files")}
                 {preparing && (
                   <p role="status" className="text-sm text-muted-foreground">
                     {t("events.filePreparing")}
@@ -1097,6 +1216,29 @@ export function EventForm({
                           </span>
                         )}
                       </span>
+                      {singleEvent && audience === "public" && item.kind === "image" && (
+                        <div className="flex min-h-11 items-center gap-2">
+                          <Checkbox
+                            id={`event-form-file-gallery-${item.key}`}
+                            data-testid="event-form-file-gallery"
+                            checked={!!item.inGallery}
+                            disabled={busy || preparing}
+                            onCheckedChange={(v) =>
+                              setItems((current) =>
+                                current.map((x) =>
+                                  x.key === item.key ? { ...x, inGallery: v === true } : x,
+                                ),
+                              )
+                            }
+                          />
+                          <Label
+                            htmlFor={`event-form-file-gallery-${item.key}`}
+                            className="text-xs"
+                          >
+                            {t("events.showInGallery")}
+                          </Label>
+                        </div>
+                      )}
                       <div className="flex shrink-0 gap-1">
                         <Button
                           type="button"

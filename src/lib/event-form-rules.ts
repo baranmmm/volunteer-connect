@@ -15,7 +15,21 @@ export type EventFormFields = {
   branch: string;
   capacity: string;
   organizer: string;
+  /** "To be announced": an in-person event published without its place yet (date and time stay required). */
+  locationTba?: boolean;
+  audience?: "members" | "public";
+  /** Whether the event (or its series) has at least one image: the cover a public event needs to be published. */
+  hasImage?: boolean;
+  /** Places one registration may book (1-10). */
+  maxPlaces?: string;
 };
+/** A public event needs a cover image to be published (the database trigger enforces the same rule). */
+export function publicNeedsImage(
+  fields: Pick<EventFormFields, "audience" | "hasImage">,
+  status: string,
+): boolean {
+  return status === "published" && fields.audience === "public" && !fields.hasImage;
+}
 export const ONLINE_URL = /^https:\/\/[^\s/?#]+\.[^\s]*$/;
 /** Shared publish rules; the database trigger enforces the same rules for direct API calls. */
 export function validateEventForm(
@@ -50,7 +64,9 @@ export function validateEventForm(
         if (!fields[key].trim() && !errors[key]) errors[key] = "events.fieldRequired";
     if (online) {
       if (!onlineUrl) errors["online-url"] = "events.fieldRequired";
-    } else if (!fields.location.trim()) errors["location"] = "events.fieldRequired";
+    } else if (!fields.location.trim() && !fields.locationTba)
+      errors["location"] = "events.fieldRequired";
+    if (publicNeedsImage(fields, status)) errors["files"] = "events.coverRequired";
     if (!EVENT_CATEGORIES.some((c) => c === fields.category))
       errors["category"] = "events.fieldRequired";
     if (!["branch", "region", "national"].includes(fields.scope))
@@ -85,5 +101,14 @@ export function validateEventForm(
   )
     errors["capacity"] = "events.invalid";
   if (fields.organizer.length > 200) errors["organizer"] = "events.invalid";
+  if (
+    fields.maxPlaces !== undefined &&
+    !(
+      /^\d+$/.test(fields.maxPlaces) &&
+      Number(fields.maxPlaces) >= 1 &&
+      Number(fields.maxPlaces) <= 10
+    )
+  )
+    errors["max-places"] = "events.maxPlacesError";
   return errors;
 }

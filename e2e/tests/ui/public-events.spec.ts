@@ -1,6 +1,6 @@
 // Public events without signing in (/events, /events/:id) and the event audience in the form.
 import { test, expect, runId } from "../../fixtures/roles";
-import { createTempBranch, deleteTempBranch } from "../../api/eventRequests";
+import { TINY_PNG, createTempBranch, deleteTempBranch } from "../../api/eventRequests";
 import { AuthPage } from "../../pages/AuthPage";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { userPassword } from "../../setup/env";
@@ -112,6 +112,8 @@ test.describe("Event audience", () => {
     await form.openSection("audience");
     await page.getByTestId("event-form-audience").click();
     await page.getByTestId("event-form-audience-option-public").click();
+    // A public event needs a cover image to be published.
+    await form.attachImage("cover.png", TINY_PNG);
     await form.publish();
     await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/);
     const id = new URL(page.url()).pathname.split("/").pop()!;

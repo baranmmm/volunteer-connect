@@ -39,6 +39,18 @@ export class EventPage {
   readonly registrationsFilter = (filter: "registered" | "waitlisted" | "cancelled") => this.page.getByTestId(`event-registrations-filter-${filter}`);
   readonly exportCsvButton = () => this.page.getByTestId("event-registrations-export-csv");
   readonly capacityWarning = () => this.page.getByTestId("event-capacity-warning");
+  // Public events: attendee list (members and guests), announcements, videos, past-event records
+  readonly attendees = () => this.page.getByTestId("attendees");
+  readonly attendeesTable = () => this.page.getByTestId("attendees-table");
+  readonly attendeeRow = (registrationId: string) =>
+    this.page.locator(`[data-testid="attendees-row"][data-registration-id="${registrationId}"]`);
+  readonly attendeeCheckIn = (registrationId: string) => this.attendeeRow(registrationId).getByTestId("attendees-row-check-in");
+  readonly attendeesExportCsv = () => this.page.getByTestId("attendees-export-csv");
+  readonly announceButton = () => this.page.getByTestId("announce-open");
+  readonly videos = () => this.page.getByTestId("event-video");
+  readonly pastRecordBadge = () => this.page.getByTestId("event-past-record-badge");
+  readonly locationTba = () => this.page.getByTestId("event-detail-location-tba");
+  readonly locationLink = () => this.page.getByTestId("event-detail-location-link");
 
   async goto(eventId: string) {
     await this.page.goto(`/events/${eventId}`);
