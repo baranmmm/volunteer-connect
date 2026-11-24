@@ -77,6 +77,8 @@ export function remindersOn(r: ReminderSettings) {
 export const taskDetail = task.extend({
   reminders: reminderSettings,
   my_reminders_muted: z.boolean().nullable(),
+  /** The caller's own reminders on a task assigned to them (only for them); null when none are on. */
+  my_reminders: reminderSettings.nullable().optional(),
   event_title: z.string().nullable(),
   meeting_title: z.string().nullable(),
   decision_text: z.string().nullable(),
@@ -269,8 +271,8 @@ export function visibleEventTasks<T extends { archived_at?: string | null | unde
 }
 
 /**
- * Whether "My tasks" starts on: when the caller has at least one (not archived) task assigned. Someone with none
- * (e.g. a manager who only hands out tasks) starts with every task they can see.
+ * Whether the caller has at least one (not archived) task assigned. /tasks no longer uses it for its default: every
+ * task is shown and "My tasks" starts off, with the caller's own tasks marked.
  */
 export function defaultMineFilter(tasks: Task[]) {
   return tasks.some((t) => t.mine && !t.archived_at);
@@ -323,6 +325,72 @@ export function validateReminders(r: ReminderSettings): ReminderErrors {
   )
     errors.overdue_every_days = "tasks.errors.overdueEvery";
   return errors;
+}
+
+/** The reminder inputs as typed (strings for the number fields), shared by the task form and "My reminders". */
+export type ReminderDraft = {
+  before: number[];
+  custom: string;
+  kind: RepeatKind;
+  every: string;
+  start: string;
+  overdueOn: boolean;
+  overdueEvery: string;
+};
+const BEFORE_PRESETS: readonly number[] = BEFORE_DAY_OPTIONS;
+/** The inputs for existing settings (the first non-preset day goes into the custom field). */
+export function reminderDraft(r: ReminderSettings, today: string = londonDay()): ReminderDraft {
+  const extra = r.before_days.find((d) => !BEFORE_PRESETS.includes(d));
+  return {
+    before: r.before_days.filter((d) => BEFORE_PRESETS.includes(d)),
+    custom: extra === undefined ? "" : String(extra),
+    kind: r.repeat_kind,
+    every: r.repeat_every_days === null ? "" : String(r.repeat_every_days),
+    start: r.repeat_start ?? today,
+    overdueOn: r.overdue_every_days !== null,
+    overdueEvery: String(r.overdue_every_days ?? 1),
+  };
+}
+/** Turns the inputs into the settings sent to the database (invalid numbers stay invalid for validation). */
+export function buildReminders(d: ReminderDraft, today: string = londonDay()): ReminderSettings {
+  const before = [...d.before];
+  if (d.custom.trim() !== "") before.push(Number(d.custom));
+  return {
+    before_days: [...new Set(before)].sort((a, b) => a - b),
+    repeat_kind: d.kind,
+    repeat_every_days:
+      d.kind === "every_n" ? (d.every.trim() === "" ? null : Number(d.every)) : null,
+    repeat_start: d.kind === "none" ? null : d.start || today,
+    overdue_every_days: d.overdueOn ? Number(d.overdueEvery) : null,
+  };
+}
+
+/**
+ * A readable summary of reminder settings as i18n keys with parameters (the panel turns them into lines). `date` is a
+ * London day the caller formats.
+ */
+export function reminderSummary(
+  r: ReminderSettings,
+): { key: string; params?: Record<string, string | number>; date?: string }[] {
+  const lines: { key: string; params?: Record<string, string | number>; date?: string }[] = [];
+  lines.push(
+    r.before_days.length
+      ? { key: "tasks.reminders.before", params: { days: r.before_days.join(", ") } }
+      : { key: "tasks.reminders.noBefore" },
+  );
+  if (r.repeat_kind === "every_n")
+    lines.push({ key: "tasks.reminders.everyN", params: { count: r.repeat_every_days ?? 0 } });
+  else if (r.repeat_kind !== "none") lines.push({ key: `tasks.reminders.${r.repeat_kind}` });
+  if (r.repeat_kind !== "none" && r.repeat_start)
+    lines.push({ key: "tasks.reminders.startingOn", date: r.repeat_start });
+  if (r.overdue_every_days)
+    lines.push({ key: "tasks.reminders.overdue", params: { count: r.overdue_every_days } });
+  return lines;
+}
+
+/** True when the caller can create in exactly one place (list_my_work_scopes): scope labels and pickers are hidden. */
+export function isSingleScope(scopes: readonly unknown[] | undefined | null) {
+  return (scopes?.length ?? 0) === 1;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

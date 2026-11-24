@@ -1,7 +1,8 @@
 // Tasks in the UI: the short form (title, assignees, due date; the rest under "More options"), the Kanban (drag and
-// drop on desktop, the status select on phones), "My tasks" by default and the marking of my tasks, the list and
-// calendar views, reminder settings (off by default), volunteer assignment, notes with @mentions, archiving, tasks
-// from an event page, upward task requests, the Recycle Bin and long titles at 390 px. Every item is created by fresh users in a temporary branch (cleaned up by the fixtures) and every check
+// drop on desktop, the status select on phones), every task by default with my tasks marked ("My tasks" off), scope
+// labels only for people with more than one scope, the list and calendar views, reminder settings (off by default),
+// an assignee's own reminders, volunteer assignment, notes with @mentions, archiving, tasks from an event page, upward
+// task requests, the Recycle Bin and long titles at 390 px. Every item is created by fresh users in a temporary branch (cleaned up by the fixtures) and every check
 // looks at this test's own ids only.
 import type { Page } from "@playwright/test";
 import { test, expect, runId, type TestUser } from "../../fixtures/roles";
@@ -52,7 +53,7 @@ async function branchTeam(freshBranch: (label: string) => Promise<string>, fresh
 }
 
 test.describe("Tasks", () => {
-  test("a branch manager creates and assigns a task; the assignee moves it on the Kanban; the manager is told", { tag: "@smoke" }, async ({ freshUser, freshBranch, pageAs, isMobile }) => {
+  test("a branch manager creates and assigns a task; the assignee moves it on the Kanban; the manager is told of Done", { tag: "@smoke" }, async ({ freshUser, freshBranch, pageAs, isMobile }) => {
     const { manager, volunteer } = await branchTeam(freshBranch, freshUser, "tasks-kanban");
     const name = title("kanban");
     const due = londonDay(7);
@@ -70,7 +71,7 @@ test.describe("Tasks", () => {
     await form.getByTestId("task-form-submit").click();
     await expect(managerPage.getByTestId("toast-success").first()).toBeVisible();
     const id = await openedTaskId(managerPage);
-    // A manager with no task of their own sees every task (My tasks is off).
+    // Every task is shown by default (My tasks is off).
     await expect(managerPage.getByTestId("tasks-filter-mine")).toHaveAttribute("aria-pressed", "false");
     await expect(column(managerPage, "todo").locator(`[data-task-id="${id}"]`)).toHaveCount(1);
     const created = (await workRpc(manager, "get_task", { p_id: id })).data as { priority: string; due_date: string; assignees: { id: string }[]; reminders: { before_days: number[]; repeat_kind: string } };
@@ -96,14 +97,15 @@ test.describe("Tasks", () => {
     await expect(panel.getByTestId("task-panel-edit")).toHaveCount(0);
     await expect(panel.getByTestId("task-panel-delete")).toHaveCount(0);
 
-    // The manager gets a status notice on the dashboard.
-    await managerPage.goto("/dashboard");
-    await expect(managerPage.getByTestId("dashboard-notifications").locator('[data-testid="dashboard-notification"][data-kind="task_status_changed"]')).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    const notices = await adminClient().from("notifications").select("kind").eq("user_id", manager.id).eq("entity_id", id);
-    expect((notices.data ?? []).map((x) => x.kind)).toContain("task_status_changed");
+    // The creator hears only when the task moves to Blocked or Done (a manager gets it in the daily summary by default).
+    const statusNotices = async () =>
+      ((await adminClient().from("notifications").select("kind").eq("user_id", manager.id).eq("entity_id", id)).data ?? []).map((x) => x.kind);
+    expect(await statusNotices()).not.toContain("task_status_changed");
+    await panel.getByTestId("task-panel-status").selectOption("done");
+    await expect.poll(statusNotices).toContain("task_status_changed");
   });
 
-  test("views: My tasks is on by default; with all tasks shown mine are marked and come first; list view is remembered; calendar shows the due day", async ({ freshUser, freshBranch, pageAs }) => {
+  test("views: every task by default (My tasks off) with mine marked and first; one scope means no scope labels; list view is remembered; calendar marks mine", async ({ freshUser, freshBranch, pageAs }) => {
     const { branch, manager, volunteer } = await branchTeam(freshBranch, freshUser, "tasks-views");
     const today = londonDay(0);
     const other = await createTaskAs(manager, { scope: "branch", branch_id: branch, title: title("a other"), due_date: today });
@@ -112,45 +114,121 @@ test.describe("Tasks", () => {
     const page = await pageAs(volunteer);
     await openTasks(page);
     const mineFilter = page.getByTestId("tasks-filter-mine");
-    await expect(mineFilter).toHaveAttribute("aria-pressed", "true", { timeout: APP_LOAD_TIMEOUT });
-    await expect(card(page, mine)).toBeVisible();
-    await expect(card(page, other)).toHaveCount(0);
-
     // All tasks: mine is marked and first in its column, the other is not marked.
-    await mineFilter.click();
+    await expect(card(page, other)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(mineFilter).toHaveAttribute("aria-pressed", "false");
-    await expect(card(page, other)).toBeVisible();
     await expect(card(page, mine)).toHaveAttribute("data-mine", "true");
     await expect(card(page, mine).getByTestId("task-card-mine")).toBeVisible();
     await expect(card(page, other)).toHaveAttribute("data-mine", "false");
     await expect(card(page, other).getByTestId("task-card-mine")).toHaveCount(0);
     await expect(column(page, "todo").getByTestId("task-card").first()).toHaveAttribute("data-task-id", mine);
+    // A volunteer works in one branch only: no scope labels on cards.
+    await expect(card(page, mine).getByTestId("task-card-scope")).toHaveCount(0);
 
-    // List: the same marking; "Mine first" grouping.
+    // "My tasks" narrows to mine.
+    await mineFilter.click();
+    await expect(mineFilter).toHaveAttribute("aria-pressed", "true");
+    await expect(card(page, mine)).toBeVisible();
+    await expect(card(page, other)).toHaveCount(0);
+
+    // List: the same marking; "Mine first" grouping; no scope label.
+    await mineFilter.click();
     await page.getByTestId("tasks-view-list").click();
     await expect(listRow(page, mine)).toHaveAttribute("data-mine", "true");
     await expect(listRow(page, mine).getByTestId("tasks-list-row-mine")).toBeVisible();
     await expect(listRow(page, other).getByTestId("tasks-list-row-mine")).toHaveCount(0);
+    await expect(listRow(page, other).getByTestId("tasks-list-row-scope")).toHaveCount(0);
     await page.getByTestId("tasks-group").selectOption("mine");
     await expect(page.locator('[data-testid="tasks-list-group"][data-group="mine"]').locator(`[data-task-id="${mine}"]`)).toBeVisible();
     await expect(page.locator('[data-testid="tasks-list-group"][data-group="others"]').locator(`[data-task-id="${other}"]`)).toBeVisible();
 
-    // The view is remembered; My tasks starts on again.
+    // The view is remembered; My tasks starts off again.
     await page.reload();
     await expect(page.getByTestId("tasks-view-list")).toHaveAttribute("aria-pressed", "true", { timeout: APP_LOAD_TIMEOUT });
     await expect(page.getByTestId("tasks-view-kanban")).toHaveAttribute("aria-pressed", "false");
     await expect(listRow(page, mine)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    await expect(listRow(page, other)).toHaveCount(0);
+    await expect(listRow(page, other)).toBeVisible();
+    await expect(mineFilter).toHaveAttribute("aria-pressed", "false");
 
-    // Calendar: both on today's date with all tasks shown (the agenda list on phones, the month grid on desktop).
-    await mineFilter.click();
+    // Calendar: both on today's date (the agenda list on phones, the month grid on desktop), mine marked.
     await page.getByTestId("tasks-view-calendar").click();
     const day = page.locator(`[data-testid="tasks-calendar-day"][data-day="${today}"]`);
-    await expect(day.locator(`[data-testid="tasks-calendar-item"][data-task-id="${mine}"]`)).toBeVisible();
-    await expect(day.locator(`[data-testid="tasks-calendar-item"][data-task-id="${other}"]`)).toBeVisible();
+    await expect(day.locator(`[data-testid="tasks-calendar-item"][data-task-id="${mine}"]`)).toHaveAttribute("data-mine", "true");
+    await expect(day.locator(`[data-testid="tasks-calendar-item"][data-task-id="${other}"]`)).toHaveAttribute("data-mine", "false");
+    await expect(calendarItem(page, other).getByTestId("tasks-calendar-item-scope")).toHaveCount(0);
     await mineFilter.click();
     await expect(calendarItem(page, other)).toHaveCount(0);
     await expect(calendarItem(page, mine)).toBeVisible();
+
+    // The panel and the form show no scope either.
+    await calendarItem(page, mine).click();
+    await expect(page.getByTestId("task-panel-title")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page.getByTestId("task-panel-creator")).toBeVisible();
+    await expect(page.getByTestId("task-panel-scope")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("task-panel")).toBeHidden();
+    await page.getByTestId("tasks-new").click();
+    const form = page.getByTestId("task-form");
+    await form.getByTestId("task-form-more").click();
+    await expect(form.getByTestId("task-form-more-section")).toBeVisible();
+    await expect(form.getByTestId("task-form-scope")).toHaveCount(0);
+    await expect(form.getByTestId("task-form-scope-fixed")).toHaveCount(0);
+
+    // A Regional Director (region and branch scopes) sees the scope labels.
+    const director = await freshUser({ role: "regional_director" });
+    const rdPage = await pageAs(director);
+    await openTasks(rdPage);
+    await expect(card(rdPage, other).getByTestId("task-card-scope")).toHaveAttribute("data-scope", "branch", { timeout: APP_LOAD_TIMEOUT });
+  });
+
+  test("a volunteer adds, edits and removes their own reminders on a task assigned to them", { tag: "@smoke" }, async ({ freshUser, freshBranch, pageAs }) => {
+    const { branch, manager, volunteer } = await branchTeam(freshBranch, freshUser, "tasks-my-reminders");
+    const id = await createTaskAs(manager, { scope: "branch", branch_id: branch, title: title("my reminders"), due_date: londonDay(10), assignee_ids: [volunteer.id] });
+    const undated = await createTaskAs(manager, { scope: "branch", branch_id: branch, title: title("no due"), assignee_ids: [volunteer.id] });
+    const stored = async () => (await adminClient().from("task_assignees").select("my_reminders").eq("task_id", id).eq("user_id", volunteer.id).single()).data?.my_reminders ?? null;
+
+    const page = await pageAs(volunteer);
+    await openTasks(page, id);
+    const section = page.getByTestId("task-panel-my-reminders");
+    // Off by default.
+    await expect(section).toHaveAttribute("data-on", "false");
+    await expect(section.getByTestId("task-panel-my-reminders-form")).toHaveCount(0);
+    await section.getByTestId("task-panel-my-reminders-add").click();
+    const form = section.getByTestId("task-panel-my-reminders-form");
+    // The same options as the task form, starting from 3 days before.
+    await expect(form.getByTestId("task-panel-my-reminders-remind-before-3")).toBeChecked();
+    await form.getByTestId("task-panel-my-reminders-remind-before-1").check();
+    await form.getByTestId("task-panel-my-reminders-overdue-toggle").check();
+    await form.getByTestId("task-panel-my-reminders-overdue-every").fill("0");
+    await form.getByTestId("task-panel-my-reminders-save").click();
+    await expect(form.getByTestId("task-panel-my-reminders-overdue_every_days-error")).toBeVisible();
+    await form.getByTestId("task-panel-my-reminders-overdue-every").fill("2");
+    await form.getByTestId("task-panel-my-reminders-save").click();
+    await expect(page.getByTestId("toast-success").first()).toBeVisible();
+    await expect(section).toHaveAttribute("data-on", "true");
+    await expect(section.getByTestId("task-panel-my-reminders-summary")).toBeVisible();
+    await expect.poll(stored).toMatchObject({ before_days: [1, 3], repeat_kind: "none", overdue_every_days: 2 });
+    // Only for them: the task's own reminders stay off.
+    const detail = (await workRpc(volunteer, "get_task", { p_id: id })).data as { reminders: { before_days: number[] }; my_reminders: { before_days: number[] } };
+    expect([detail.reminders.before_days, detail.my_reminders.before_days]).toEqual([[], [1, 3]]);
+
+    // Edit: weekly repeat.
+    await section.getByTestId("task-panel-my-reminders-edit").click();
+    await expect(form.getByTestId("task-panel-my-reminders-remind-before-1")).toBeChecked();
+    await form.getByTestId("task-panel-my-reminders-repeat-kind").selectOption("weekly");
+    await form.getByTestId("task-panel-my-reminders-save").click();
+    await expect.poll(async () => ((await stored()) as { repeat_kind?: string } | null)?.repeat_kind).toBe("weekly");
+
+    // Remove.
+    await section.getByTestId("task-panel-my-reminders-remove").click();
+    await expect(section).toHaveAttribute("data-on", "false");
+    await expect(section.getByTestId("task-panel-my-reminders-add")).toBeVisible();
+    await expect.poll(stored).toBeNull();
+
+    // Reminders need a due date.
+    await openTasks(page, undated);
+    await expect(page.getByTestId("task-panel-my-reminders-need-due")).toBeVisible();
+    await expect(page.getByTestId("task-panel-my-reminders-add")).toHaveCount(0);
   });
 
   test("reminder settings: the manager sets them in the form; the assignee sees them read-only and mutes them", async ({ freshUser, freshBranch, pageAs }) => {
@@ -249,7 +327,6 @@ test.describe("Tasks", () => {
     await other.goto("/dashboard");
     await expect(other.getByTestId("dashboard-notifications").locator('[data-testid="dashboard-notification"][data-kind="task_note_mention"]')).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await openTasks(other);
-    if ((await other.getByTestId("tasks-filter-mine").getAttribute("aria-pressed")) === "true") await other.getByTestId("tasks-filter-mine").click();
     await expect(card(other, id).getByTestId("task-card-notes")).toHaveAttribute("data-count", "1");
     // Only the author edits or deletes a note.
     await card(other, id).getByTestId("task-card-open").click();

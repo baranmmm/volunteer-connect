@@ -1,11 +1,11 @@
 name: Task reminders
 
-# Daily task reminders at 09:00 Europe/London. GitHub cron is UTC: 08:05 and 09:05 UTC cover winter and summer; the
-# database skips runs before 09:00 London time and never sends twice a day (idempotent). pg_cron, when the project
-# has it, runs the same function; this workflow is the fallback.
+# Daily notification summary at 08:00 and task reminders at 09:00 Europe/London. GitHub cron is UTC: 07:05, 08:05 and
+# 09:05 UTC cover winter and summer; the database skips runs before those London times and never sends twice a day
+# (idempotent). pg_cron, when the project has it, runs the same functions; this workflow is the fallback.
 on:
   schedule:
-    - cron: '5 8,9 * * *'
+    - cron: '5 7,8,9 * * *'
   workflow_dispatch:
 
 permissions: {}

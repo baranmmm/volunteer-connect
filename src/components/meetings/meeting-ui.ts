@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { formatInTimeZone } from "date-fns-tz";
 import { imageDimensions, LONDON } from "@/lib/event-rules";
 import { dateLocale } from "@/lib/i18n";
@@ -124,4 +125,33 @@ export function parseStandingAgenda(text: string) {
     titles.push(title);
   }
   return titles;
+}
+
+/** The collapsed invitees header: the count, the first `shown` names and how many more ("+N"). */
+export function inviteesSummary(names: string[], shown = 3) {
+  return {
+    total: names.length,
+    names: names.slice(0, shown),
+    more: Math.max(0, names.length - shown),
+  };
+}
+
+/** "Invitees (8): Ali, Ayse, John +5" (i18n), or "Invitees (0)". */
+export function inviteesHeader(t: TFunction, label: string, names: string[]) {
+  const s = inviteesSummary(names);
+  if (s.total === 0) return t("meetings.inviteesToggle.summaryNone", { label });
+  return t(s.more ? "meetings.inviteesToggle.summaryMore" : "meetings.inviteesToggle.summary", {
+    label,
+    total: s.total,
+    names: s.names.join(", "),
+    more: s.more,
+  });
+}
+
+/** Decisions on an agenda item and the tasks created from them (the collapsed row's counts). */
+export function agendaCounts(item: { decisions: { tasks: unknown[] }[] }) {
+  return {
+    decisions: item.decisions.length,
+    tasks: item.decisions.reduce((sum, d) => sum + d.tasks.length, 0),
+  };
 }

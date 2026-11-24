@@ -68,6 +68,13 @@ vi.mock("@/lib/work-requests.functions", () => ({
 vi.mock("@/lib/notifications.functions", () => ({
   markNotificationsRead: mocks.markRead,
   getNotificationCounts: mocks.counts,
+  getReviewWaiting: async () => ({
+    work: 0,
+    event_requests: 0,
+    applications: 0,
+    total: 0,
+    branches: [],
+  }),
 }));
 vi.mock("@/components/meetings/MeetingFormDialog", () => ({
   MeetingFormDialog: () => <div data-testid="test-meeting-form" />,

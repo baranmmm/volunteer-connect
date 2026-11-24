@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Plus, Inbox } from "lucide-react";
 import { pageHead } from "@/components/app/head";
@@ -9,7 +10,12 @@ import { EventDialog } from "@/components/events/EventDialog";
 import { EventRequestForm } from "@/components/requests/EventRequestForm";
 import { useAuth } from "@/lib/auth";
 import { isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
-import { useMarkNoticesRead, useRequestTargets, useWorkRequestCount } from "@/lib/use-work-notices";
+import {
+  REVIEW_WAITING_KEY,
+  useMarkNoticesRead,
+  useRequestTargets,
+  useWorkRequestCount,
+} from "@/lib/use-work-notices";
 import { MeetingRequestForm, TaskRequestForm } from "@/components/requests/WorkRequestForms";
 import { MyWorkRequests, ReviewWorkRequests } from "@/components/requests/WorkRequestLists";
 import {
@@ -34,6 +40,8 @@ const REQUEST_NOTICES: { entityType: "task_request" | "meeting_request" }[] = [
   { entityType: "task_request" },
   { entityType: "meeting_request" },
 ];
+// The grouped "N requests are waiting for you" notice; opening To review marks it read.
+const REVIEW_NOTICES: { entityType: "review" }[] = [{ entityType: "review" }];
 
 export const Route = createFileRoute("/_app/requests")({
   ssr: false,
@@ -65,6 +73,12 @@ function RequestsPage() {
   const view = resolveRequestView(requested, reviewer, nc, reviewTotal);
   // Opening Requests marks the task and meeting request notices read (the menu badge).
   useMarkNoticesRead(REQUEST_NOTICES, "requests", !follower);
+  useMarkNoticesRead(REVIEW_NOTICES, "review", reviewer && view === "review");
+  // A decision here changes what waits (menu badges, dashboard card).
+  const qc = useQueryClient();
+  useEffect(() => {
+    void qc.invalidateQueries({ queryKey: [REVIEW_WAITING_KEY] });
+  }, [reviewTotal, qc]);
   const selectView = (tab: string) => {
     if (tab === "review" || tab === "mine" || tab === "decided")
       void navigate({ to: "/requests", search: { tab }, replace: true, resetScroll: false });

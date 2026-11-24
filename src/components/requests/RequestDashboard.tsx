@@ -6,56 +6,65 @@ import { useTranslation } from "react-i18next";
 import { Bell, Inbox, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { dismissEventRequestNotice, myEventRequests } from "@/lib/event-requests.functions";
-import { usePendingRequestCount } from "@/lib/use-event-requests";
+import { useReviewWaiting } from "@/lib/use-work-notices";
+import { branchList } from "@/lib/notification-text";
 import { translateError } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
-export function PendingRequestsCard() {
+/**
+ * Dashboard, at the top: what waits for my decision (task/meeting requests, event requests, volunteer applications),
+ * with a link to Requests > To review. Hidden when nothing waits. Replaces the former "Pending requests" card.
+ */
+export function WaitingForYouCard() {
   const { t } = useTranslation();
-  const count = usePendingRequestCount();
-  const total = count.data?.total ?? 0;
+  const waiting = useReviewWaiting();
+  const w = waiting.data;
+  if (!w || w.total === 0) return null;
+  const parts = [
+    { key: "work", count: w.work },
+    { key: "eventRequests", count: w.event_requests },
+    { key: "applications", count: w.applications },
+  ].filter((p) => p.count > 0);
   return (
     <section
-      data-testid="dashboard-pending-requests"
-      data-count={count.data ? total : undefined}
-      aria-labelledby="dashboard-pending-requests-title"
-      className="rounded-2xl border bg-card p-6 shadow-soft"
+      data-testid="dashboard-waiting"
+      aria-labelledby="dashboard-waiting-title"
+      className="rounded-2xl border border-primary/40 bg-primary/5 p-6 shadow-soft lg:col-span-2"
     >
-      <div className="flex items-center gap-3">
-        <span className="rounded-xl bg-secondary p-2.5 text-primary">
-          <Inbox className="h-5 w-5" aria-hidden />
-        </span>
-        <h2 id="dashboard-pending-requests-title" className="text-xl font-semibold">
-          {t("requests.pendingTitle", { count: total })}
-        </h2>
-      </div>
-      {count.isLoading ? (
-        <p className="mt-6 text-muted-foreground">{t("common.loading")}</p>
-      ) : count.isError ? (
-        <p role="alert" className="mt-6 text-destructive">
-          {t("requests.loadError")}
-        </p>
-      ) : (
-        <>
-          <p className="mt-5 text-muted-foreground">
-            {total
-              ? t("requests.pendingText", {
-                  submitted: count.data?.submitted ?? 0,
-                  review: count.data?.under_review ?? 0,
-                })
-              : t("requests.pendingNone")}
-          </p>
-          <Button asChild variant="outline" className="mt-4">
-            <Link
-              to="/requests"
-              search={{ tab: "review" }}
-              data-testid="dashboard-pending-requests-link"
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="rounded-xl bg-secondary p-2.5 text-primary">
+            <Inbox className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h2 id="dashboard-waiting-title" className="text-xl font-semibold">
+              {t("dashboard.waiting.title")}
+            </h2>
+            <p
+              data-testid="dashboard-waiting-count"
+              data-count={w.total}
+              className="font-medium [overflow-wrap:anywhere]"
             >
-              {t("requests.review")}
-            </Link>
-          </Button>
-        </>
-      )}
+              {t("dashboard.waiting.total", { count: w.total })}
+            </p>
+            {parts.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {parts.map((p) => t(`dashboard.waiting.${p.key}`, { count: p.count })).join(" · ")}
+              </p>
+            )}
+            {w.branches.length > 0 && (
+              <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                {t("dashboard.waiting.branches", { branches: branchList(w.branches) })}
+              </p>
+            )}
+          </div>
+        </div>
+        <Button asChild className="h-11">
+          <Link to="/requests" search={{ tab: "review" }} data-testid="dashboard-waiting-link">
+            {t("dashboard.waiting.link")}
+          </Link>
+        </Button>
+      </div>
     </section>
   );
 }

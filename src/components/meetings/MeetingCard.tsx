@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { BranchName } from "@/components/app/BranchName";
 import { Badge } from "@/components/ui/badge";
 import { cancelledTitle } from "@/components/events/event-status-styles";
+import { useWorkScopes } from "@/components/work/use-work-scopes";
 import { cn } from "@/lib/utils";
 import type { Meeting } from "@/lib/meetings";
 import { MeetingStatusBadge } from "./MeetingStatusBadge";
@@ -18,7 +19,10 @@ export function MeetingScope({ meeting, className }: { meeting: Meeting; classNa
   return <BranchName name={name} {...(className ? { className } : {})} />;
 }
 
-/** One meeting in a list. Online meetings only say "Online": the link is shown on the detail page only. */
+/**
+ * One meeting in a list. Online meetings only say "Online": the link is shown on the detail page only. The scope is
+ * shown only to users with more than one possible scope (useWorkScopes().single hides it).
+ */
 export function MeetingCard({
   meeting,
   testId = "meeting-card",
@@ -29,6 +33,7 @@ export function MeetingCard({
   compact?: boolean;
 }) {
   const { t } = useTranslation();
+  const { single } = useWorkScopes();
   return (
     <Link
       to="/meetings/$id"
@@ -96,7 +101,7 @@ export function MeetingCard({
             {t("meetings.invited")}
           </Badge>
         )}
-        {!compact && (
+        {!compact && !single && (
           <span className="flex min-w-0 max-w-full" data-testid={`${testId}-scope`}>
             <MeetingScope meeting={meeting} />
           </span>

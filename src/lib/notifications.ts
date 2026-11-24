@@ -17,12 +17,14 @@ export const NOTIFICATION_KINDS = [
   "meeting_request_received",
   "meeting_request_approved",
   "meeting_request_declined",
+  "review_waiting",
+  "daily_digest",
 ] as const;
 
 export const notification = z.object({
   id: z.string().uuid(),
   kind: z.string(),
-  entity_type: z.enum(["task", "meeting", "task_request", "meeting_request"]),
+  entity_type: z.enum(["task", "meeting", "task_request", "meeting_request", "review", "digest"]),
   entity_id: z.string().uuid(),
   title: z.string(),
   link: z.string().startsWith("/"),
@@ -33,10 +35,25 @@ export const notification = z.object({
     reminder: z.string().optional(),
     due_date: z.string().nullable().optional(),
     starts_at: z.string().optional(),
+    /** Branch of the task or meeting (grouping: "4 tasks in Medway were completed"). */
+    branch: z.string().optional(),
+    note_id: z.string().optional(),
+    /** review_waiting: what waits for the reviewer (updated in place). */
+    total: z.number().optional(),
+    work: z.number().optional(),
+    event_requests: z.number().optional(),
+    applications: z.number().optional(),
+    branches: z.array(z.string()).optional(),
+    /** daily_digest: how many notices of each kind it holds. */
+    count: z.number().optional(),
+    kinds: z.record(z.string(), z.number()).optional(),
+    day: z.string().optional(),
   }),
   created_at: z.string(),
   read_at: z.string().nullable(),
   actor_name: z.string().nullable(),
+  /** Set on notices that came with a daily summary: the summary notice they belong to. */
+  digest_id: z.string().uuid().nullable().optional(),
 });
 export type Notification = z.infer<typeof notification>;
 
@@ -54,3 +71,44 @@ export function notificationKey(kind: string) {
     ? `notifications.kinds.${kind}`
     : "notifications.kinds.other";
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Settings (Profile > Notifications). Direct assignments, mentions and requests waiting for review are always on and
+// immediate ("locked"); the others can be turned off or delivered in the daily summary (08:00 London).
+
+export const NOTIFICATION_TYPES = [
+  "task_assigned",
+  "mention",
+  "review",
+  "task_status",
+  "task_note",
+  "task_reminder",
+  "meeting",
+  "request_decided",
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+export const NOTIFICATION_DELIVERIES = ["immediate", "digest"] as const;
+export type NotificationDelivery = (typeof NOTIFICATION_DELIVERIES)[number];
+export const notificationSetting = z.object({
+  type: z.enum(NOTIFICATION_TYPES),
+  enabled: z.boolean(),
+  delivery: z.enum(NOTIFICATION_DELIVERIES),
+  locked: z.boolean(),
+});
+export type NotificationSetting = z.infer<typeof notificationSetting>;
+export const notificationSettings = z.object({
+  default_delivery: z.enum(NOTIFICATION_DELIVERIES),
+  task_reminder_emails: z.boolean(),
+  types: z.array(notificationSetting),
+});
+export type NotificationSettings = z.infer<typeof notificationSettings>;
+
+/** What waits for the caller's decision (Requests badge, mobile More badge, dashboard "Waiting for you"). */
+export const reviewWaiting = z.object({
+  work: z.number(),
+  event_requests: z.number(),
+  applications: z.number(),
+  total: z.number(),
+  branches: z.array(z.string()),
+});
+export type ReviewWaiting = z.infer<typeof reviewWaiting>;

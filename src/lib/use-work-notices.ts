@@ -4,7 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/lib/auth";
 import { isFollowerRoles } from "@/lib/roles";
 import type { NotificationCounts } from "@/lib/notifications";
-import { getNotificationCounts, markNotificationsRead } from "@/lib/notifications.functions";
+import {
+  getNotificationCounts,
+  getReviewWaiting,
+  markNotificationsRead,
+} from "@/lib/notifications.functions";
 import { listRequestTargets, workRequestCount } from "@/lib/work-requests.functions";
 
 /** Active members and National Coordinators (followers have no tasks, meetings or their requests). */
@@ -23,6 +27,26 @@ export function useNotificationCounts() {
     queryFn: () => fetch(),
     enabled: member,
     staleTime: 30000,
+    refetchInterval: 120000,
+  });
+}
+
+/** Query key of the "waiting for your review" counts (Requests badge, mobile More badge, dashboard card). */
+export const REVIEW_WAITING_KEY = "review-waiting";
+
+/**
+ * What waits for the signed-in person's decision: task/meeting requests, event requests and volunteer applications
+ * (the database decides what each person reviews).
+ */
+export function useReviewWaiting() {
+  const { session } = useAuth();
+  const member = useWorkMember();
+  const fetch = useServerFn(getReviewWaiting);
+  return useQuery({
+    queryKey: [REVIEW_WAITING_KEY, session?.user.id],
+    queryFn: () => fetch(),
+    enabled: member,
+    staleTime: 15000,
     refetchInterval: 120000,
   });
 }
@@ -55,7 +79,7 @@ export function useRequestTargets(enabled = true) {
 }
 
 type NoticeTarget = {
-  entityType: "task" | "meeting" | "task_request" | "meeting_request";
+  entityType: "task" | "meeting" | "task_request" | "meeting_request" | "review";
   entityId?: string;
 };
 
@@ -66,13 +90,16 @@ type NoticeTarget = {
  */
 export function useMarkNoticesRead(
   targets: NoticeTarget[],
-  area: keyof NotificationCounts,
+  area: keyof NotificationCounts | "review",
   enabled = true,
 ) {
   const counts = useNotificationCounts();
+  const waiting = useReviewWaiting();
   const qc = useQueryClient();
   const markRead = useServerFn(markNotificationsRead);
-  const pending = enabled && (counts.data?.[area] ?? 0) > 0;
+  // The grouped "waiting for you" notice is not in the area counts: it exists while something waits.
+  const pending =
+    enabled && (area === "review" ? (waiting.data?.total ?? 0) : (counts.data?.[area] ?? 0)) > 0;
   const key = JSON.stringify(targets);
   useEffect(() => {
     if (!pending) return;
@@ -80,7 +107,11 @@ export function useMarkNoticesRead(
     void Promise.all(list.map((target) => markRead({ data: target })))
       .then((results) =>
         results.some((r) => r.marked > 0)
-          ? qc.invalidateQueries({ queryKey: ["notification-counts"] })
+          ? Promise.all(
+              ["notification-counts", "dashboard-work"].map((k) =>
+                qc.invalidateQueries({ queryKey: [k] }),
+              ),
+            )
           : undefined,
       )
       .catch(() => undefined);
@@ -93,5 +124,6 @@ export const WORK_REQUEST_KEYS = [
   "work-requests-review",
   "work-request-count",
   "notification-counts",
+  REVIEW_WAITING_KEY,
   "dashboard-work",
 ] as const;

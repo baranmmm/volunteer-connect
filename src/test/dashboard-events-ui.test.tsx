@@ -40,7 +40,7 @@ vi.mock("@/components/tasks/MyTasksCard", () => ({ MyTasksCard: () => null }));
 vi.mock("@/components/meetings/UpcomingMeetingsCard", () => ({ UpcomingMeetingsCard: () => null }));
 vi.mock("@/components/app/NotificationsCard", () => ({ NotificationsCard: () => null }));
 vi.mock("@/components/requests/RequestDashboard", () => ({
-  PendingRequestsCard: () => null,
+  WaitingForYouCard: () => null,
   RequestNotices: () => null,
 }));
 import { setLanguage } from "@/lib/i18n";

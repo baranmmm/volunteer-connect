@@ -105,3 +105,23 @@ export const TASK_STATUS_CARD: Record<TaskStatus, string> = {
   blocked: "bg-[#FFF7F6] dark:bg-[#361A1A] dark:text-[#FBD9D7]",
   done: "bg-[#F5FCF7] dark:bg-[#152F21] dark:text-[#CDF2DA]",
 };
+
+// ---------------------------------------------------------------------------------------------------------------
+// Mine and other people's tasks (Kanban cards, list rows, calendar items). With every task shown, the caller's own
+// tasks stand out with an accent left border, a light primary tint layered over the status tint (a background image,
+// so the status colour stays) and the "Assigned to you" badge. Other people's tasks are quieter: muted title text and
+// no shadow, back to full strength on hover and keyboard focus (focus-within). No opacity is used: at 0.75 opacity the
+// muted and destructive text fell below 4.5:1, so the quiet look comes from the muted-foreground token, which
+// src/test/task-status-colors.test.ts checks on every surface (card tints, list rows, calendar items, their hover and
+// the mine tint).
+
+/** The primary tint over mine (light: brand #006D9C at 6 %, dark: a lighter blue at 12 %). */
+export const MINE_TINT = { light: "#006D9C0F", dark: "#5BB8E61F" } as const;
+/** Mine: accent border plus tint. */
+export const TASK_MINE =
+  "border-l-4 border-l-primary bg-[linear-gradient(#006D9C0F,#006D9C0F)] dark:bg-[linear-gradient(#5BB8E61F,#5BB8E61F)]";
+/** Other people's card or row (needs `group` on the same element). */
+export const TASK_OTHER = "group shadow-none hover:shadow-sm focus-within:shadow-sm";
+/** Text inside an other people's card or row: muted until hover or focus. Dark mode keeps the tint's own text. */
+export const TASK_OTHER_TEXT =
+  "text-muted-foreground group-hover:text-foreground group-focus-within:text-foreground dark:text-inherit dark:group-hover:text-inherit dark:group-focus-within:text-inherit";

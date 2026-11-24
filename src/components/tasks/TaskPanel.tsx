@@ -20,6 +20,9 @@ import { TaskFormDialog } from "./TaskFormDialog";
 import { TaskNotes } from "./TaskNotes";
 import { useSetTaskStatus } from "./use-task-status";
 import { useTaskArchive } from "./use-task-archive";
+import { ReminderLines } from "./ReminderFields";
+import { TaskMyReminders } from "./TaskMyReminders";
+import { useWorkScopes } from "@/components/work/use-work-scopes";
 import { formatDay, scopeText, selectClass } from "./task-display";
 
 /** The task detail side panel (full width on phones). `taskId` null closes it. */
@@ -109,6 +112,7 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
   const today = londonDay();
   const overdue = isOverdue(task, today);
   const assigned = task.assignees.some((a) => a.id === session?.user.id);
+  const work = useWorkScopes();
 
   async function toggleMute(muted: boolean) {
     try {
@@ -138,22 +142,6 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
       setBusy(false);
     }
   }
-
-  const r = task.reminders;
-  const reminderLines = [
-    r.before_days.length
-      ? t("tasks.reminders.before", { days: r.before_days.join(", ") })
-      : t("tasks.reminders.noBefore"),
-    r.repeat_kind === "none"
-      ? null
-      : r.repeat_kind === "every_n"
-        ? t("tasks.reminders.everyN", { count: r.repeat_every_days ?? 0 })
-        : t(`tasks.reminders.${r.repeat_kind}`),
-    r.repeat_kind !== "none" && r.repeat_start
-      ? t("tasks.reminders.startingOn", { date: formatDay(r.repeat_start) })
-      : null,
-    r.overdue_every_days ? t("tasks.reminders.overdue", { count: r.overdue_every_days }) : null,
-  ].filter((x): x is string => !!x);
 
   async function toggleArchive(archived: boolean) {
     setArchiving(true);
@@ -230,9 +218,11 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
             <span className="text-muted-foreground">{t("tasks.noDueDate")}</span>
           )}
         </Row>
-        <Row label={t("work.scope.label")} testId="task-panel-scope">
-          {scopeText(t, task)}
-        </Row>
+        {!work.loading && !work.single && (
+          <Row label={t("work.scope.label")} testId="task-panel-scope">
+            {scopeText(t, task)}
+          </Row>
+        )}
         <Row label={t("tasks.panel.createdBy")} testId="task-panel-creator">
           {task.created_by_name ?? t("common.formerMember")}
         </Row>
@@ -280,22 +270,25 @@ function PanelDetail({ task, onClose }: { task: TaskDetail; onClose: () => void 
         )}
         {task.due_date && (
           <Row label={t("tasks.form.reminders")} testId="task-panel-reminders">
-            <ul className="space-y-1 text-sm">
-              {reminderLines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
+            <ReminderLines reminders={task.reminders} />
           </Row>
         )}
       </dl>
+      {assigned && <TaskMyReminders task={task} />}
       {assigned && (
         <div className="flex min-h-11 items-center justify-between gap-3 rounded-xl border p-3">
-          <label htmlFor="task-panel-mute-reminders" className="text-sm font-medium">
-            {t("tasks.panel.muteReminders")}
-          </label>
+          <div className="min-w-0 space-y-0.5">
+            <label htmlFor="task-panel-mute-reminders" className="text-sm font-medium">
+              {t("tasks.panel.muteTaskReminders")}
+            </label>
+            <p id="task-panel-mute-reminders-hint" className="text-xs text-muted-foreground">
+              {t("tasks.panel.muteTaskRemindersHint")}
+            </p>
+          </div>
           <Switch
             id="task-panel-mute-reminders"
             data-testid="task-panel-mute-reminders"
+            aria-describedby="task-panel-mute-reminders-hint"
             checked={!!task.my_reminders_muted}
             onCheckedChange={(v) => void toggleMute(v)}
           />

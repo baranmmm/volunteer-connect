@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { FileText, Globe2, Lightbulb, Plus, Trash2, Upload, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useWorkScopes } from "@/components/work/use-work-scopes";
 import { EVENT_CATEGORIES, londonInput, londonToIso } from "@/lib/event-rules";
 import {
   emptyRequestForm,
@@ -127,6 +128,10 @@ export function EventRequestForm({
   const set = <K extends keyof RequestFormFields>(key: K, value: RequestFormFields[K]) =>
     setF((cur) => ({ ...cur, [key]: value }));
   const regionRequest = request ? request.scope === "region" : roles.includes("branch_manager");
+  // A requester with one possible scope asking for their own branch: the branch name is not shown (it is the only
+  // place they work in). Region requests and reviewers still see where the request goes.
+  const { single } = useWorkScopes();
+  const showWhere = manager || regionRequest || !single;
   const external = type === "external";
   const showAttachments = external || manager;
 
@@ -470,14 +475,19 @@ export function EventRequestForm({
           data-scope={regionRequest ? "region" : "branch"}
           className="text-sm font-medium"
         >
-          {t(`requests.types.${type}`)} ·{" "}
-          {regionRequest
-            ? t("requests.scopeRegion", {
-                region: request?.region_name ?? profile?.branches?.regions?.name ?? "",
-              })
-            : t("requests.scopeBranch", {
-                branch: request?.branch_name ?? profile?.branches?.name ?? "",
-              })}
+          {t(`requests.types.${type}`)}
+          {showWhere && (
+            <span data-testid={`${P}-scope-name`}>
+              {" · "}
+              {regionRequest
+                ? t("requests.scopeRegion", {
+                    region: request?.region_name ?? profile?.branches?.regions?.name ?? "",
+                  })
+                : t("requests.scopeBranch", {
+                    branch: request?.branch_name ?? profile?.branches?.name ?? "",
+                  })}
+            </span>
+          )}
         </p>
         <p className="text-sm text-muted-foreground">{t("requests.requiredNote")}</p>
         {text("title", t("requests.titleLabel"), f.title, (v) => set("title", v), {

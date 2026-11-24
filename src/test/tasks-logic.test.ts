@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_FILTERS,
   DEFAULT_REMINDERS,
+  NO_REMINDERS,
   archivableDoneIds,
+  buildReminders,
+  isSingleScope,
+  reminderDraft,
+  reminderSummary,
   defaultMineFilter,
   filterTasks,
   groupTasks,
@@ -299,5 +304,71 @@ describe("readTaskView / saveTaskView", () => {
     });
     expect(() => saveTaskView("u1", "list")).not.toThrow();
     expect(readTaskView("u1")).toBe("kanban");
+  });
+});
+
+describe("reminder drafts (task form and My reminders)", () => {
+  it("round-trips settings through the inputs, with a custom day", () => {
+    const settings = {
+      before_days: [3, 10],
+      repeat_kind: "every_n" as const,
+      repeat_every_days: 4,
+      repeat_start: "2026-11-25",
+      overdue_every_days: 2,
+    };
+    const draft = reminderDraft(settings, TODAY);
+    expect(draft).toEqual({
+      before: [3],
+      custom: "10",
+      kind: "every_n",
+      every: "4",
+      start: "2026-11-25",
+      overdueOn: true,
+      overdueEvery: "2",
+    });
+    expect(buildReminders(draft, TODAY)).toEqual(settings);
+  });
+  it("starts My reminders from 3 days before, and drops repeat fields when repeat is off", () => {
+    const draft = reminderDraft(DEFAULT_REMINDERS, TODAY);
+    expect(buildReminders(draft, TODAY)).toEqual(DEFAULT_REMINDERS);
+    expect(buildReminders({ ...draft, kind: "daily", every: "9" }, TODAY)).toMatchObject({
+      repeat_kind: "daily",
+      repeat_every_days: null,
+      repeat_start: TODAY,
+    });
+    expect(buildReminders({ ...draft, before: [] }, TODAY)).toEqual(NO_REMINDERS);
+  });
+  it("keeps invalid numbers for validation", () => {
+    const r = buildReminders(
+      { ...reminderDraft(DEFAULT_REMINDERS, TODAY), kind: "every_n", every: "1" },
+      TODAY,
+    );
+    expect(validateReminders(r).repeat_every_days).toBe("tasks.errors.repeatEvery");
+  });
+  it("summarises settings as i18n keys", () => {
+    expect(reminderSummary(NO_REMINDERS)).toEqual([{ key: "tasks.reminders.noBefore" }]);
+    expect(
+      reminderSummary({
+        before_days: [1, 7],
+        repeat_kind: "weekly",
+        repeat_every_days: null,
+        repeat_start: "2026-11-25",
+        overdue_every_days: 3,
+      }),
+    ).toEqual([
+      { key: "tasks.reminders.before", params: { days: "1, 7" } },
+      { key: "tasks.reminders.weekly" },
+      { key: "tasks.reminders.startingOn", date: "2026-11-25" },
+      { key: "tasks.reminders.overdue", params: { count: 3 } },
+    ]);
+  });
+});
+
+describe("isSingleScope", () => {
+  it("is true only for exactly one place to work in", () => {
+    expect(isSingleScope([{ scope: "branch" }])).toBe(true);
+    expect(isSingleScope([])).toBe(false);
+    expect(isSingleScope(undefined)).toBe(false);
+    expect(isSingleScope([{ scope: "region" }, { scope: "branch" }])).toBe(false);
   });
 });
