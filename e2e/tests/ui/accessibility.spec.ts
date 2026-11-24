@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
 import { test, expect, runId } from "../../fixtures/roles";
 import { MEETING_TITLE_PREFIX, TASK_TITLE_PREFIX, createMeetingAs, createTaskAs, inDays } from "../../api/work";
 import { RequestsPage } from "../../pages/RequestsPage";
+import { RegionsPage } from "../../pages/RegionsPage";
 import { EventRequestFormDialog } from "../../pages/components/EventRequestFormDialog";
 
 /** Loading indicators: the app shell, page/list loading states, busy regions and skeletons. */
@@ -88,9 +89,13 @@ test.describe("Accessibility (axe)", () => {
     await expect(follower.getByTestId("follower-dashboard")).toBeVisible({ timeout: 30_000 });
     await expectNoSeriousViolations(follower, "follower dashboard");
     const nc = await pageAs(await freshUser({ role: "national_coordinator" }));
-    await nc.goto("/regions");
-    await expect(nc.getByTestId("regions-tree")).toBeVisible({ timeout: 30_000 });
-    await expectNoSeriousViolations(nc, "regions and branches");
+    const regions = new RegionsPage(nc);
+    await regions.goto();
+    await expect(regions.map()).toBeVisible({ timeout: 30_000 });
+    await expect(regions.markers().first()).toBeVisible({ timeout: 30_000 });
+    await expectNoSeriousViolations(nc, "regions and branches (map)");
+    await regions.showList();
+    await expectNoSeriousViolations(nc, "regions and branches (list)");
   });
 
   test("tasks (Kanban, list, calendar, panel) and meetings (list, detail)", async ({ freshUser, freshBranch, pageAs }) => {

@@ -5,6 +5,7 @@ import { deleteTestRegion, TEMP_REGION_PREFIX } from "../../api/eventRequests";
 import { adminClient, storageStateFor, signIn } from "../../api/SupabaseClient";
 import { totp } from "../../api/totp";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
+import { RegionsPage } from "../../pages/RegionsPage";
 import { baseUrl } from "../../setup/env";
 
 test.describe("National Coordinators", () => {
@@ -35,7 +36,10 @@ test.describe("National Coordinators", () => {
     const name = `${TEMP_REGION_PREFIX}${runId}-${Date.now()}`;
     let regionId: string | undefined;
     try {
-      await page.goto("/regions");
+      // The map is the default view; the tree (create, rename, delete) is the List view.
+      const regions = new RegionsPage(page);
+      await regions.goto();
+      await regions.showList();
       await page.getByTestId("region-create").click({ timeout: APP_LOAD_TIMEOUT });
       await page.getByTestId("regions-name-input").fill(name);
       await page.getByTestId("regions-save").click();

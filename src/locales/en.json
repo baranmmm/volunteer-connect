@@ -429,7 +429,8 @@
     "volunteerHelp": "Tell us how you would like to help in 30 to 500 characters.",
     "volunteerTime": "Choose how much time you can give.",
     "volunteerCommitment": "Please confirm the volunteering commitment.",
-    "volunteerInvalid": "The volunteer application is not valid. Please check your answers."
+    "volunteerInvalid": "The volunteer application is not valid. Please check your answers.",
+    "postcodeInvalid": "Enter a valid UK postcode."
   },
   "events": {
     "title": "Calendar & Events",
@@ -1153,7 +1154,41 @@
     "regionEvents": "{{count}} upcoming region-wide events",
     "branchCounts": "{{volunteers}} volunteers · {{followers}} followers · {{events}} upcoming events",
     "confirmDeleteRegion": "Delete {{name}} and its branches? It can be restored from the Recycle Bin for 30 days.",
-    "confirmDeleteBranch": "Delete {{name}}? It can be restored from the Recycle Bin for 30 days."
+    "confirmDeleteBranch": "Delete {{name}}? It can be restored from the Recycle Bin for 30 days.",
+    "viewLabel": "View",
+    "views": {
+      "map": "Map",
+      "list": "List"
+    },
+    "editBranch": "Edit branch",
+    "editLocation": "Set the location of {{name}}",
+    "editLocationTitle": "Branch location",
+    "postcode": "Postcode (optional)",
+    "postcodeHelp": "A UK postcode places the branch on the map, for example SW1A 1AA.",
+    "postcodeValue": "Postcode: {{postcode}}",
+    "postcodeNotLocated": "The postcode was saved, but it could not be found on the map. The branch keeps its previous position.",
+    "map": {
+      "label": "Map of branches",
+      "legend": "Regions",
+      "badgeHint": "The number on each marker is the branch's active volunteers. The List view shows the same branches.",
+      "unlocated": "Not on the map yet (no location): {{names}}",
+      "panelLabel": "Chosen branch",
+      "closePanel": "Close the branch details",
+      "hint": "Choose a branch on the map to see its Branch Managers and numbers.",
+      "openBranch": "Open branch",
+      "markerLabel_one": "{{name}}, {{region}}: {{count}} volunteer",
+      "markerLabel_other": "{{name}}, {{region}}: {{count}} volunteers",
+      "counts": {
+        "volunteers": "Volunteers",
+        "followers": "Followers",
+        "events": "Upcoming events",
+        "tasks": "Open tasks"
+      },
+      "dashboardTitle": "Branch map",
+      "dashboardText_one": "{{count}} branch across {{regions}} regions",
+      "dashboardText_other": "{{count}} branches across {{regions}} regions",
+      "dashboardOpen": "Open the map"
+    }
   },
   "work": {
     "scope": {

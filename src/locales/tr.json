@@ -429,7 +429,8 @@
     "volunteerHelp": "Nasıl yardımcı olmak istediğini 30 ile 500 karakter arasında yaz.",
     "volunteerTime": "Ne kadar zaman ayırabileceğini seç.",
     "volunteerCommitment": "Lütfen gönüllülük taahhüdünü onayla.",
-    "volunteerInvalid": "Gönüllülük başvurusu geçerli değil. Lütfen yanıtlarını kontrol et."
+    "volunteerInvalid": "Gönüllülük başvurusu geçerli değil. Lütfen yanıtlarını kontrol et.",
+    "postcodeInvalid": "Geçerli bir Birleşik Krallık posta kodu girin."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -1153,7 +1154,41 @@
     "regionEvents": "Bölge genelinde {{count}} yaklaşan etkinlik",
     "branchCounts": "{{volunteers}} gönüllü · {{followers}} takipçi · {{events}} yaklaşan etkinlik",
     "confirmDeleteRegion": "{{name}} ve şubeleri silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir.",
-    "confirmDeleteBranch": "{{name}} silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir."
+    "confirmDeleteBranch": "{{name}} silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir.",
+    "viewLabel": "Görünüm",
+    "views": {
+      "map": "Harita",
+      "list": "Liste"
+    },
+    "editBranch": "Şubeyi düzenle",
+    "editLocation": "{{name}} konumunu ayarla",
+    "editLocationTitle": "Şube konumu",
+    "postcode": "Posta kodu (isteğe bağlı)",
+    "postcodeHelp": "Birleşik Krallık posta kodu şubeyi haritaya yerleştirir, örneğin SW1A 1AA.",
+    "postcodeValue": "Posta kodu: {{postcode}}",
+    "postcodeNotLocated": "Posta kodu kaydedildi ancak haritada bulunamadı. Şube önceki konumunda kalıyor.",
+    "map": {
+      "label": "Şubeler haritası",
+      "legend": "Bölgeler",
+      "badgeHint": "Her işaretçideki sayı, şubenin aktif gönüllü sayısıdır. Liste görünümü aynı şubeleri gösterir.",
+      "unlocated": "Henüz haritada değil (konum yok): {{names}}",
+      "panelLabel": "Seçilen şube",
+      "closePanel": "Şube ayrıntılarını kapat",
+      "hint": "Şube Yöneticilerini ve sayıları görmek için haritadan bir şube seçin.",
+      "openBranch": "Şubeyi aç",
+      "markerLabel_one": "{{name}}, {{region}}: {{count}} gönüllü",
+      "markerLabel_other": "{{name}}, {{region}}: {{count}} gönüllü",
+      "counts": {
+        "volunteers": "Gönüllüler",
+        "followers": "Takipçiler",
+        "events": "Yaklaşan etkinlikler",
+        "tasks": "Açık görevler"
+      },
+      "dashboardTitle": "Şube haritası",
+      "dashboardText_one": "{{regions}} bölgede {{count}} şube",
+      "dashboardText_other": "{{regions}} bölgede {{count}} şube",
+      "dashboardOpen": "Haritayı aç"
+    }
   },
   "work": {
     "scope": {

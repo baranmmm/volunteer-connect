@@ -121,7 +121,9 @@ describe("roles and menus", () => {
     expect(
       navItemsFor("follower").find((i) => i.badge === "tasks" || i.badge === "meetings"),
     ).toBeUndefined();
-    expect(forbiddenItem("regional_director", "/regions")).toBeTruthy();
+    // Regional Directors see their own region on Regions & branches (the map); Branch Managers do not.
+    expect(forbiddenItem("regional_director", "/regions")).toBeFalsy();
+    expect(forbiddenItem("branch_manager", "/regions")).toBeTruthy();
     expect(navItemsFor("volunteer").find((i) => i.testId === "nav-donate")?.href).toBe(
       "https://www.dialoguesociety.org/donation/",
     );

@@ -13,6 +13,7 @@ import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { VolunteerApplicationForm } from "@/components/requests/VolunteerApplications";
+import { BranchMapCard } from "@/components/regions/BranchMapCard";
 
 /** National Coordinator overview: numbers only for volunteers and followers. */
 export function NcDashboard() {
@@ -78,6 +79,7 @@ export function NcDashboard() {
           ))}
         </dl>
       )}
+      <BranchMapCard />
     </section>
   );
 }
