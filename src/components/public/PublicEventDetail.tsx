@@ -7,6 +7,7 @@ import { dateLocale } from "@/lib/i18n";
 import type { PublicEvent } from "@/lib/public-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { GuestRegistrationForm } from "./GuestRegistrationForm";
 
 /** "Places available" / "Full" / "Registration closed" (never numbers). */
 export function PublicRegistrationState({ state }: { state: PublicEvent["registration"] }) {
@@ -112,13 +113,18 @@ export function PublicEventDetail({
             </dd>
           </div>
         )}
-        {event.location && (
+        {(event.location || event.location_tba) && (
           <div className="flex gap-2">
             <dt>
               <MapPin className="size-4 shrink-0" aria-hidden />
               <span className="sr-only">{t("publicEvents.location")}</span>
             </dt>
-            <dd data-testid="public-event-location">{event.location}</dd>
+            <dd
+              data-testid="public-event-location"
+              data-tba={event.location_tba ? "true" : undefined}
+            >
+              {event.location_tba ? t("events.locationTba") : event.location}
+            </dd>
           </div>
         )}
         {event.is_online && (
@@ -132,9 +138,10 @@ export function PublicEventDetail({
         )}
       </dl>
       {event.description && <p className="whitespace-pre-line">{event.description}</p>}
-      {!cancelled && event.registration === "open" && (
+      {!cancelled && event.registration !== "closed" && <GuestRegistrationForm event={event} />}
+      {!cancelled && event.registration !== "closed" && (
         <section className="space-y-3 rounded-2xl border bg-card p-5">
-          <p className="text-sm text-muted-foreground">{t("publicEvents.registerIntro")}</p>
+          <p className="text-sm text-muted-foreground">{t("guest.memberIntro")}</p>
           <div className="flex flex-wrap gap-2">
             <Button asChild className="h-11">
               <Link data-testid="public-event-register" to="/auth" search={{ redirect: back }}>

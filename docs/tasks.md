@@ -154,8 +154,8 @@ edit keeps the existing settings unless "Remind me" is turned off. The options c
 - **What a reminder creates.**
   - An in-app notice (`task_reminder`).
   - An `email_outbox` row (template `task_reminder`, payload with the title, due date and link, status `pending`),
-    unless the person turned off "Email reminders for tasks" in Profile. **No email is sent yet**: a sender (SMTP
-    through Brevo or Resend) will process the outbox later.
+    unless the person turned off "Email reminders for tasks" in Profile. The email sender (Brevo, see `docs/email.md`)
+    sends it in the same scheduled run, as a reminder (priority 2) within the daily email limit.
 
 ## Notifications
 

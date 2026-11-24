@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { parseMarkdown } from "@/lib/markdown";
+import { parseMarkdown, type MdBlock } from "@/lib/markdown";
 import notice from "@/content/privacy-notice.md?raw";
 import noticeTr from "@/content/privacy-notice.tr.md?raw";
 
@@ -9,17 +9,26 @@ const BLOCKS = { en: parseMarkdown(notice), tr: parseMarkdown(noticeTr) };
  * The approved privacy notice, rendered for /privacy and the confirmation screen: src/content/privacy-notice.md, or
  * its Turkish translation (privacy-notice.tr.md, same version) when the app is in Turkish.
  */
-export function PrivacyNotice({ headingLevel = 1 }: { headingLevel?: 1 | 2 }) {
+export function PrivacyNotice({
+  headingLevel = 1,
+  blocks = BLOCKS,
+  testId = "privacy-notice",
+}: {
+  headingLevel?: 1 | 2;
+  /** Another notice in the same Markdown subset (e.g. the event attendee notice). */
+  blocks?: { en: MdBlock[]; tr: MdBlock[] };
+  testId?: string;
+}) {
   const { i18n } = useTranslation();
   const lang = i18n.language?.startsWith("tr") ? "tr" : "en";
   return (
     <div
-      data-testid="privacy-notice"
+      data-testid={testId}
       data-lang={lang}
       lang={lang}
       className="space-y-4 text-sm leading-relaxed sm:text-base"
     >
-      {BLOCKS[lang].map((b, i) => {
+      {blocks[lang].map((b, i) => {
         if (b.kind === "h1")
           return headingLevel === 1 ? (
             <h1 key={i} className="text-2xl font-bold sm:text-3xl">

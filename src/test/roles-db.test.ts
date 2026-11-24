@@ -81,7 +81,8 @@ async function event(
   },
 ) {
   // A public event is published only with a cover image: insert as a draft, add the image, then publish.
-  const publicPublished = fields.audience === "public" && (fields.status ?? "published") === "published";
+  const publicPublished =
+    fields.audience === "public" && (fields.status ?? "published") === "published";
   const start = new Date(Date.now() + 7 * 86400000).toISOString();
   const end = new Date(Date.now() + 7 * 86400000 + 7200000).toISOString();
   const row = await one<{ id: string }>(

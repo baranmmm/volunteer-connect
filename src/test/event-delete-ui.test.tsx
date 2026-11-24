@@ -43,7 +43,11 @@ vi.mock("@tanstack/react-query", () => ({
   }),
 }));
 vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({ session: { user: { id: "user-id" } }, profile: { status: "active" } }),
+  useAuth: () => ({
+    session: { user: { id: "user-id" } },
+    profile: { status: "active" },
+    roles: [],
+  }),
 }));
 vi.mock("@/lib/events.functions", () => ({ getEvent: vi.fn(), cancelEvent: vi.fn() }));
 vi.mock("@/lib/public-events.functions", () => ({ getPublicEvent: vi.fn() }));
@@ -53,6 +57,11 @@ vi.mock("@/lib/delete-event.functions", () => ({
 }));
 vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn() } }));
 vi.mock("@/components/events/EventForm", () => ({ EventForm: () => null }));
+vi.mock("@/components/events/PastEventDialog", () => ({ PastEventDialog: () => null }));
+vi.mock("@/components/events/AttendeeList", () => ({ AttendeeList: () => null }));
+vi.mock("@/components/events/AnnounceDialog", () => ({ AnnounceButton: () => null }));
+vi.mock("@/components/events/EventVideos", () => ({ EventVideos: () => null }));
+vi.mock("@/components/public/PublicEventDetail", () => ({ PublicEventDetail: () => null }));
 vi.mock("@/components/tasks/EventLinkedTasks", () => ({
   EventLinkedTasks: (props: unknown) => {
     mocks.linkedTasks(props);

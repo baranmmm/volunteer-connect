@@ -4,10 +4,7 @@
 // invalidates links already sent).
 
 export type LinkPurpose =
-  | "guest-confirm"
-  | "guest-cancel"
-  | "subscriber-confirm"
-  | "subscriber-unsubscribe";
+  "guest-confirm" | "guest-cancel" | "subscriber-confirm" | "subscriber-unsubscribe";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -44,7 +41,10 @@ export async function signLinkToken(purpose: LinkPurpose, id: string): Promise<s
 }
 
 /** The id inside a valid token for this purpose, or null (constant-time comparison). */
-export async function verifyLinkToken(purpose: LinkPurpose, token: string | null | undefined): Promise<string | null> {
+export async function verifyLinkToken(
+  purpose: LinkPurpose,
+  token: string | null | undefined,
+): Promise<string | null> {
   if (!token || token.length > 100) return null;
   const [id, sig, extra] = token.split(".");
   if (!id || !sig || extra !== undefined || !UUID.test(id)) return null;

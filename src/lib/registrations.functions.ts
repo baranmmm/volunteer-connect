@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireMember } from '@/lib/require-member';
+import { requireMember } from "@/lib/require-member";
 import {
   registrationResult,
   registrationSummary,
@@ -13,6 +13,15 @@ const eventId = z.object({ eventId: z.string().uuid() });
 const fail = (error: { message: string } | null) => {
   if (error) throw new Error(error.message);
 };
+/** Sends the confirmation / cancellation email the RPC queued (public events). Never fails the user's action. */
+async function sendQueuedEmails() {
+  try {
+    const { flushOutbox, requestOrigin } = await import("@/lib/email/outbox.server");
+    await flushOutbox({ maxPriority: 1, origin: await requestOrigin() });
+  } catch {
+    /* rows stay queued for the scheduled sender */
+  }
+}
 
 export const getRegistrationSummary = createServerFn({ method: "POST" })
   .middleware([requireMember])
@@ -34,6 +43,7 @@ export const registerForEvent = createServerFn({ method: "POST" })
       ...(data.showName === undefined ? {} : { p_show_name: data.showName }),
     });
     fail(result.error);
+    await sendQueuedEmails();
     return registrationResult.parse(result.data);
   });
 export const cancelRegistration = createServerFn({ method: "POST" })
@@ -42,6 +52,8 @@ export const cancelRegistration = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("cancel_registration", { p_event_id: data.eventId });
     fail(result.error);
+    // Also a promoted waitlisted attendee's email.
+    await sendQueuedEmails();
     return registrationResult.parse(result.data);
   });
 export const setRegistrationShowName = createServerFn({ method: "POST" })

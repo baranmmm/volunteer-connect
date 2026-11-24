@@ -9,6 +9,12 @@ import { eventDeletionState } from "./event-deletion";
 import type { SeriesInfo } from "./recurrence";
 import type { RegistrationStatus } from "./registrations";
 
+/** Sends the update / cancellation emails the change queued (non-fatal; server only). */
+async function flushEmails() {
+  const { flushEventEmails } = await import("./event-emails.server");
+  await flushEventEmails(1);
+}
+
 async function active(client: SupabaseClient<Database>, uid: string) {
   const { data, error } = await client.from("profiles").select("status").eq("id", uid).single();
   if (error || data.status !== "active") throw new Error("Not allowed");
@@ -229,6 +235,9 @@ const input = z
     end_at: z.string().datetime().nullable(),
     capacity: z.number().int().positive().nullable(),
     registration_enabled: z.boolean(),
+    // An in-person place may be "To be announced" (date and time stay required); places one registration may book.
+    location_tba: z.boolean().default(false),
+    max_places: z.number().int().min(1).max(10).default(1),
     audience: z.enum(["public", "members"]).default("members"),
     scope: z.enum(["branch", "region", "national"]),
     branch_id: z.string().uuid().nullable(),
@@ -251,7 +260,11 @@ const input = z
     if (event.status !== "draft") {
       if (event.all_day ? !event.start_date : !event.start_at || !event.end_at)
         issue("start_at", "Required publish fields missing");
-      if (event.location_type === "in_person" ? !event.location.trim() : !event.online_url)
+      if (
+        event.location_type === "in_person"
+          ? !event.location.trim() && !event.location_tba
+          : !event.online_url
+      )
         issue("location", "Required publish fields missing");
       if (event.scope === "branch" && !event.branch_id)
         issue("branch_id", "Required publish fields missing");
@@ -265,6 +278,7 @@ export const saveEvent = createServerFn({ method: "POST" })
       ? await context.supabase.rpc("update_event", { _event: data.id, _data: data.event })
       : await context.supabase.rpc("create_event", { _data: data.event });
     if (result.error) throw new Error(result.error.message);
+    if (data.id) await flushEmails();
     return data.id ?? String(result.data);
   });
 const rrule = z
@@ -316,6 +330,7 @@ export const updateSeriesEvent = createServerFn({ method: "POST" })
     });
     if (result.error) throw new Error(result.error.message);
     const parsed = seriesResult.parse(result.data);
+    await flushEmails();
     // Registered occurrences the new rule no longer produces are kept as exceptions; the form warns about them.
     return {
       seriesId: parsed.series_id,
@@ -329,6 +344,7 @@ export const cancelEvent = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("cancel_event", { _event: data.id });
     if (result.error) throw new Error(result.error.message);
+    await flushEmails();
   });
 export const reserveEventMedia = createServerFn({ method: "POST" })
   .middleware([requireMember])
@@ -358,7 +374,7 @@ export const reserveEventMedia = createServerFn({ method: "POST" })
   });
 export const reorderEventMedia = createServerFn({ method: "POST" })
   .middleware([requireMember])
-  .inputValidator(z.object({ eventId: z.string().uuid(), ids: z.array(z.string().uuid()).max(5) }))
+  .inputValidator(z.object({ eventId: z.string().uuid(), ids: z.array(z.string().uuid()).max(12) }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("reorder_event_media", {
       _event: data.eventId,
@@ -371,5 +387,34 @@ export const deleteEventMedia = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("delete_event_media", { _media: data.id });
+    if (result.error) throw new Error(result.error.message);
+  });
+/** The re-encoded size of an uploaded image (the landing gallery lays photos out without loading them). */
+export const setEventMediaSize = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(
+    z.object({
+      id: z.string().uuid(),
+      width: z.number().int().min(1).max(10000),
+      height: z.number().int().min(1).max(10000),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_event_media_size", {
+      p_media: data.id,
+      p_width: data.width,
+      p_height: data.height,
+    });
+    if (result.error) throw new Error(result.error.message);
+  });
+/** "Show in public gallery" for a photo of a public event. */
+export const setEventMediaGallery = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ id: z.string().uuid(), inGallery: z.boolean() }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_event_media_gallery", {
+      p_media: data.id,
+      p_in_gallery: data.inGallery,
+    });
     if (result.error) throw new Error(result.error.message);
   });

@@ -113,10 +113,15 @@ export function EventCard({ event, now = new Date() }: { event: HubEvent; now?: 
         {event.location_type === "online" ? (
           <p className="text-sm text-muted-foreground">{t("events.online")}</p>
         ) : (
-          event.location && (
+          (event.location || event.location_tba) && (
             <p className="flex items-start gap-1 text-sm text-muted-foreground">
               <MapPin className="mt-0.5 size-4 shrink-0" />
-              <span className="break-words">{event.location}</span>
+              <span
+                className="break-words"
+                data-testid={event.location_tba ? "event-card-location-tba" : undefined}
+              >
+                {event.location_tba ? t("events.locationTba") : event.location}
+              </span>
             </p>
           )
         )}

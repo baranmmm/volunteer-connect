@@ -6,7 +6,8 @@ import { createNationalEventAdmin, deleteEvents } from "../../api/events";
 import { requestInput, rpcAs } from "../../api/eventRequests";
 
 const PUBLIC_FIELDS = ["all_day", "branch", "branch_id", "category", "description", "end_at", "end_date", "has_image", "id", "is_online",
-  "location", "organizer", "region", "region_id", "registration", "scope", "start_at", "start_date", "status", "title"];
+  "location", "location_tba", "max_places", "organizer", "past_record", "region", "region_id", "registration", "scope", "spots_left",
+  "start_at", "start_date", "status", "title"];
 
 test.describe("Followers", () => {
   test("see only public published events, register only for those, never names or other people's data", { tag: "@smoke" }, async ({ freshUser, freshEvent }) => {

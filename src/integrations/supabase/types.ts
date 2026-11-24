@@ -529,6 +529,7 @@ export type Database = {
           created_at: string
           event_id: string
           guest: boolean
+          ics_offset: number
           id: string
           notice: string | null
           notice_seen_at: string | null
@@ -546,6 +547,7 @@ export type Database = {
           created_at?: string
           event_id: string
           guest?: boolean
+          ics_offset?: number
           id?: string
           notice?: string | null
           notice_seen_at?: string | null
@@ -563,6 +565,7 @@ export type Database = {
           created_at?: string
           event_id?: string
           guest?: boolean
+          ics_offset?: number
           id?: string
           notice?: string | null
           notice_seen_at?: string | null

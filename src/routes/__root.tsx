@@ -20,13 +20,14 @@ import "@/lib/i18n";
 function NotFoundComponent() {
   const { t } = useTranslation();
   return (
-    <div data-testid="not-found-page" className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div
+      data-testid="not-found-page"
+      className="flex min-h-screen items-center justify-center bg-background px-4"
+    >
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">{t("common.notFoundTitle")}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t("common.notFoundText")}
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{t("common.notFoundText")}</p>
         <div className="mt-6">
           <Link
             to="/"
@@ -49,14 +50,15 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   }, [error]);
 
   return (
-    <div data-testid="error-page" className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div
+      data-testid="error-page"
+      className="flex min-h-screen items-center justify-center bg-background px-4"
+    >
       <div className="max-w-md text-center">
         <h1 className="text-xl font-bold tracking-tight text-foreground">
           {t("common.errorTitle")}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t("common.errorText")}
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{t("common.errorText")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -88,12 +90,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Dialogue Society Volunteer Hub" },
-      { name: "description", content: "The volunteer hub for Dialogue Society branches across the UK." },
+      {
+        name: "description",
+        content: "The volunteer hub for Dialogue Society branches across the UK.",
+      },
       { name: "author", content: "Dialogue Society" },
       { name: "theme-color", content: "#0B3A52" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { property: "og:title", content: "Dialogue Society Volunteer Hub" },
-      { property: "og:description", content: "The volunteer hub for Dialogue Society branches across the UK." },
+      {
+        property: "og:description",
+        content: "The volunteer hub for Dialogue Society branches across the UK.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -107,11 +115,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/brand/favicon-32.png", type: "image/png", sizes: "32x32" },
       { rel: "icon", href: "/brand/favicon-16.png", type: "image/png", sizes: "16x16" },
       { rel: "icon", href: "/brand/favicon.ico", type: "image/x-icon" },
-      { rel: "apple-touch-icon", href: "/brand/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+      {
+        rel: "apple-touch-icon",
+        href: "/brand/apple-touch-icon.png",
+        type: "image/png",
+        sizes: "180x180",
+      },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" },
+      // Inter loads without blocking the first paint (see FONT_LOADER below); system fonts show until then.
+      { rel: "preload", as: "style", href: INTER_CSS },
     ],
   }),
   shellComponent: RootShell,
@@ -119,6 +133,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
+
+const INTER_CSS =
+  "https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap";
+/** Adds the Inter stylesheet after parsing, so it never blocks rendering (a static string, no user data). */
+const FONT_LOADER = `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href=${JSON.stringify(INTER_CSS)};document.head.appendChild(l);})();`;
 
 function RootShell({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
@@ -129,13 +148,19 @@ function RootShell({ children }: { children: ReactNode }) {
     };
     updateLanguage(i18n.language);
     i18n.on("languageChanged", updateLanguage);
-    return () => { i18n.off("languageChanged", updateLanguage); };
+    return () => {
+      i18n.off("languageChanged", updateLanguage);
+    };
   }, [i18n]);
 
   return (
     <html lang="en-GB" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: FONT_LOADER }} />
+        <noscript>
+          <link rel="stylesheet" href={INTER_CSS} />
+        </noscript>
       </head>
       <body>
         {children}

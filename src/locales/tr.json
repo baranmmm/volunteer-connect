@@ -629,7 +629,16 @@
       "count": "Toplantı sayısı",
       "countHint": "12 ay içinde 2 ile 52 arasında toplantı.",
       "countError": "2 ile 52 arasında bir sayı girin."
-    }
+    },
+    "coverRequired": "Herkese açık bir etkinliğin kapak görseli olmalı: yayınlamadan önce en az bir fotoğraf ekleyin.",
+    "coverHint": "Herkese açık etkinlikler en az bir görselle yayınlanabilir (ilk görsel kapak olur).",
+    "locationTba": "Daha sonra duyurulacak",
+    "locationTbaOption": "Yer daha sonra duyurulacak",
+    "maxPlaces": "Kayıt başına yer",
+    "maxPlacesHint": "Bir kişinin ayırabileceği yer sayısı (1–10).",
+    "maxPlacesError": "1 ile 10 arasında bir tam sayı girin.",
+    "showInGallery": "Herkese açık galeride göster",
+    "publicOnly": "Yalnızca herkese açık etkinlikler"
   },
   "recycleBin": {
     "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",
@@ -1730,5 +1739,232 @@
       "count_one": "{{count}} not",
       "count_other": "{{count}} not"
     }
+  },
+  "landing": {
+    "skip": "İçeriğe geç",
+    "loadError": "Sayfa yüklenemedi. Lütfen tekrar deneyin.",
+    "nav": {
+      "label": "Ana menü",
+      "home": "Dialogue Society ana sayfa",
+      "events": "Etkinlikler",
+      "signIn": "Giriş yap",
+      "join": "Katıl"
+    },
+    "hero": {
+      "next": "Sıradaki etkinlik",
+      "register": "Kayıt ol",
+      "allEvents": "Tüm etkinlikler",
+      "emptyTitle": "Bir sonraki etkinliğimize katılın",
+      "emptyText": "Yeni etkinlikler yolda. E-posta adresinizi bırakın, bir sonraki etkinlik duyurulur duyurulmaz size haber verelim."
+    },
+    "place": {
+      "online": "Çevrim içi etkinlik",
+      "tba": "Yer daha sonra duyurulacak"
+    },
+    "upcoming": {
+      "title": "Yaklaşan etkinlikler",
+      "intro": "Birleşik Krallık genelinde insanları bir araya getiren konuşmalar, yemekler ve buluşmalar. Herkes davetlidir.",
+      "filters": "Etkinlikleri filtrele",
+      "region": "Bölge",
+      "allRegions": "Tüm bölgeler",
+      "branch": "Şube",
+      "allBranches": "Tüm şubeler",
+      "national": "Ulusal",
+      "placesLeft_one": "{{count}} yer kaldı",
+      "placesLeft_other": "{{count}} yer kaldı",
+      "full": "Dolu — bekleme listesine katılın",
+      "emptyFilter": "Bu seçim için yaklaşan etkinlik yok.",
+      "none": "Şu anda yaklaşan etkinlik yok. Yakında tekrar bakın.",
+      "more": "Daha fazla göster",
+      "seeAll": "Tüm etkinlikleri gör"
+    },
+    "highlights": {
+      "title": "Öne çıkanlar",
+      "intro": "Etkinliklerimizden konuşmalar ve anlar.",
+      "untitled": "Video",
+      "play": "Videoyu oynat: {{title}}",
+      "iframeTitle": "{{title}} (YouTube videosu)",
+      "privacy": "Videolar YouTube'un gelişmiş gizlilik modunda ve yalnızca oynat düğmesine bastığınızda yüklenir."
+    },
+    "gallery": {
+      "title": "Geçmiş etkinlikler",
+      "intro": "Son etkinliklerimizden kareler.",
+      "photoAlt": "{{title}}, fotoğraf {{n}} / {{total}}",
+      "counter": "Fotoğraf {{n}} / {{total}}",
+      "prev": "Önceki fotoğraf",
+      "next": "Sonraki fotoğraf",
+      "close": "Kapat",
+      "more": "Daha fazla geçmiş etkinlik göster"
+    },
+    "stats": {
+      "label": "Rakamlarla Dialogue Society",
+      "events_held_one": "düzenlenen etkinlik",
+      "events_held_other": "düzenlenen etkinlik",
+      "registrations_one": "ayrılan yer",
+      "registrations_other": "ayrılan yer",
+      "branches_one": "şube",
+      "branches_other": "şube"
+    },
+    "subscribe": {
+      "title": "Etkinlik duyurularını alın",
+      "text": "Yakınınızda yeni bir herkese açık etkinlik duyurulduğunda tek bir e-posta. Spam yok; aboneliğinizi istediğiniz zaman iptal edebilirsiniz."
+    },
+    "footer": {
+      "label": "Alt bilgi",
+      "copyright": "© {{year}} Dialogue Society",
+      "privacy": "Gizlilik bildirimi",
+      "attendeePrivacy": "Katılımcı gizlilik bildirimi"
+    }
+  },
+  "guest": {
+    "title": "Bu etkinliğe kaydol",
+    "intro": "Hesap gerekmez. Yerinizi onaylamanız için size bir bağlantı göndereceğiz.",
+    "waitlistTitle": "Bekleme listesine katıl",
+    "waitlistIntro": "Bu etkinlik dolu. Bekleme listesine katılın; bir yer boşalırsa size e-posta göndereceğiz.",
+    "memberIntro": "Zaten üye misiniz? Hesabınızla kaydolmak için oturum açın.",
+    "name": "Ad soyad",
+    "email": "E-posta adresi",
+    "phone": "Telefon (isteğe bağlı)",
+    "places": "Yer sayısı",
+    "keepInformed": "Gelecek etkinliklerden haberdar et",
+    "privacy": "Bilgilerinizi yalnızca kaydınızı yönetmek için kullanırız.",
+    "honeypot": "Bu alanı boş bırakın",
+    "submit": "Kaydol",
+    "submitWaitlist": "Bekleme listesine katıl",
+    "sending": "Gönderiliyor…",
+    "sentTitle": "E-postanızı kontrol edin",
+    "sentBody": "{{email}} adresine bir e-posta gönderdik. Yerinizi onaylamak için içindeki bağlantıyı 48 saat içinde açın. Gelmezse istenmeyen e-posta klasörünüze bakın.",
+    "again": "Başka bir e-posta adresi kullan",
+    "dateTba": "Tarih daha sonra duyurulacak",
+    "confirmTitle": "Kaydınızı onaylayın",
+    "confirmIntro_one": "Bu etkinlikteki yerinizi ({{count}} yer) onaylayın.",
+    "confirmIntro_other": "Bu etkinlikteki yerlerinizi ({{count}} yer) onaylayın.",
+    "confirmButton": "Kaydımı onayla",
+    "cancelTitle": "Kaydınızı iptal edin",
+    "cancelIntro_one": "Gelemeyecek misiniz? Bekleme listesindeki biri gelebilsin diye kaydınızı ({{count}} yer) iptal edin.",
+    "cancelIntro_other": "Gelemeyecek misiniz? Bekleme listesindeki biri gelebilsin diye kaydınızı ({{count}} yer) iptal edin.",
+    "cancelButton": "Kaydımı iptal et",
+    "state": {
+      "pending": "Bu kayıt henüz onaylanmadı. E-postanızdaki onay bağlantısını açın.",
+      "registered": "Kaydınız tamam. Planlarınız değişirse iptal edebilmeniz için bağlantı içeren bir onay e-postası gönderdik.",
+      "waitlisted": "Etkinlik dolu olduğu için bekleme listesindesiniz ({{position}}. sıra). Bir yer boşalırsa size e-posta göndereceğiz.",
+      "cancelled": "Bu kayıt iptal edildi. Haber verdiğiniz için teşekkürler.",
+      "attended": "Bu etkinliğe geldiğiniz için teşekkürler.",
+      "no_show": "Bu etkinlik gerçekleşti.",
+      "closed": "Bu etkinliğin kaydı kapandı.",
+      "started": "Etkinlik başladığı için bu kayıt artık iptal edilemez.",
+      "invalid": "Bu bağlantı artık geçerli değil. Onay bağlantıları 48 saat geçerlidir; etkinlik sayfasından yeniden kaydolabilirsiniz."
+    },
+    "errors": {
+      "nameRequired": "Adınızı girin.",
+      "emailInvalid": "Geçerli bir e-posta adresi girin.",
+      "places": "Geçerli bir yer sayısı seçin.",
+      "details": "Adınızı, e-posta adresinizi ve telefon numaranızı kontrol edin.",
+      "link": "Bu bağlantı artık geçerli değil.",
+      "verification": "Lütfen güvenlik kontrolünü tamamlayıp yeniden deneyin.",
+      "unavailable": "Bu form şu anda kullanılamıyor. Lütfen daha sonra yeniden deneyin."
+    }
+  },
+  "subscribe": {
+    "email": "E-posta adresi",
+    "name": "Ad (isteğe bağlı)",
+    "branch": "İlgilendiğiniz şube (isteğe bağlı)",
+    "allBranches": "Tüm şubeler",
+    "consent": "Size yaklaşan Dialogue Society etkinlikleri hakkında e-posta göndereceğiz. Önce bir onay bağlantısı göndeririz; istediğiniz zaman abonelikten çıkabilirsiniz.",
+    "submit": "Etkinlik duyurularını al",
+    "sentTitle": "Onaylamak için e-postanızı kontrol edin",
+    "sentBody": "{{email}} adresine bir bağlantı gönderdik. Aboneliğinizi onaylamak için açın. Gelmezse istenmeyen e-posta klasörünüze bakın.",
+    "confirmTitle": "Aboneliğinizi onaylayın",
+    "confirmIntro": "Yaklaşan Dialogue Society etkinlikleri hakkında e-posta almak istediğinizi onaylayın.",
+    "confirmButton": "Aboneliği onayla",
+    "unsubscribeTitle": "Etkinlik duyurularından çık",
+    "unsubscribeIntro": "Artık yaklaşan etkinliklerle ilgili e-posta almayacaksınız. Kaydolduğunuz etkinliklerle ilgili e-postalar bundan etkilenmez.",
+    "unsubscribeButton": "Abonelikten çık",
+    "seeEvents": "Yaklaşan etkinlikleri gör",
+    "state": {
+      "confirmed": "Teşekkürler. Aboneliğiniz onaylandı.",
+      "unsubscribed": "Abonelikten çıktınız. Size bir daha etkinlik duyurusu göndermeyeceğiz.",
+      "invalid": "Bu bağlantı artık geçerli değil. Onay bağlantıları 7 gün geçerlidir; web sitemizden yeniden kaydolabilirsiniz."
+    },
+    "errors": {
+      "details": "E-posta adresini kontrol edip yeniden deneyin."
+    }
+  },
+  "attendeePrivacy": {
+    "link": "Etkinlik katılımcıları gizlilik bildirimi",
+    "back": "Etkinlikler"
+  },
+  "pastEvents": {
+    "add": "Geçmiş etkinlik ekle",
+    "addTitle": "Geçmiş etkinlik ekle",
+    "editTitle": "Geçmiş etkinliği düzenle",
+    "intro": "Gerçekleşmiş bir etkinliği fotoğrafları ve videolarıyla kaydedin. Herkese açık olarak gösterilir.",
+    "date": "Tarih",
+    "dateError": "Tarih bugün ya da daha önce olmalı.",
+    "photos": "Fotoğraflar",
+    "photoLimits": "JPG, PNG veya WebP · her biri en fazla 10 MB · en fazla {{count}} fotoğraf",
+    "addPhotos": "Fotoğraf ekle",
+    "tooManyPhotos": "Bir geçmiş etkinlikte en fazla 12 fotoğraf olabilir.",
+    "videos": "Videolar",
+    "youtubeLink": "YouTube bağlantısı",
+    "youtubeHint": "Bir youtu.be veya youtube.com bağlantısı yapıştırın (en fazla 6 video).",
+    "addVideo": "Video ekle",
+    "invalidYoutube": "Bu geçerli bir YouTube bağlantısı değil.",
+    "duplicateVideo": "Bu video zaten eklenmiş.",
+    "tooManyVideos": "Bir etkinlikte en fazla 6 video olabilir.",
+    "videosPublicOnly": "Videolar yalnızca herkese açık etkinliklere eklenebilir.",
+    "watchVideo": "{{title}} videosunu YouTube'da izle",
+    "galleryOnlyPublic": "Galeride yalnızca herkese açık etkinliklerin fotoğrafları gösterilebilir.",
+    "notEditable": "Geçmiş etkinlikler geçmiş etkinlik formundan düzenlenir.",
+    "saved": "Geçmiş etkinlik kaydedildi",
+    "badge": "Geçmiş etkinlik"
+  },
+  "attendees": {
+    "title": "Katılımcılar",
+    "counts": "{{seats}} yer dolu · bekleme listesinde {{waitlisted}} kişi",
+    "exportCsv": "CSV olarak dışa aktar",
+    "filter": "Katılımcıları filtrele",
+    "filters": {
+      "active": "Kayıtlı",
+      "waitlisted": "Bekleme listesi",
+      "cancelled": "İptal edilen"
+    },
+    "empty": "Henüz kimse yok.",
+    "columns": {
+      "name": "Ad",
+      "type": "Tür",
+      "email": "E-posta",
+      "phone": "Telefon",
+      "places": "Yer",
+      "status": "Durum",
+      "checkedIn": "Giriş yaptı"
+    },
+    "kind": {
+      "member": "Üye",
+      "guest": "Misafir"
+    },
+    "checkIn": "Giriş yaptı: {{name}}",
+    "checkInAfterStart": "Başladıktan sonra"
+  },
+  "announce": {
+    "button": "Abonelere duyur",
+    "title": "Abonelere duyur",
+    "hint": "Bu etkinliği, etkinlik güncellemelerine abone olanlara e-postayla gönderir. Her abone bunu bir kez alır.",
+    "target": "Alıcılar",
+    "targets": {
+      "branch": "Bir şubenin aboneleri",
+      "region": "Bir bölgenin aboneleri",
+      "all": "Tüm aboneler"
+    },
+    "recipients_one": "Bu e-postayı {{count}} abone alacak.",
+    "recipients_other": "Bu e-postayı {{count}} abone alacak.",
+    "limitHint": "E-postalar günlük gönderim sınırı içinde gider; bazıları yarın ulaşabilir.",
+    "send": "Duyuruyu gönder",
+    "queued_one": "Duyuru {{count}} abone için sıraya alındı",
+    "queued_other": "Duyuru {{count}} abone için sıraya alındı",
+    "history": "Gönderilen duyurular",
+    "historyItem": "{{date}} · {{target}} · {{count}}",
+    "noHistory": "Henüz duyurulmadı.",
+    "onlyUpcoming": "Yalnızca yaklaşan herkese açık etkinlikler duyurulabilir."
   }
 }

@@ -629,7 +629,16 @@
       "count": "Occurrences",
       "countHint": "From 2 to 52 meetings, within 12 months.",
       "countError": "Enter a number from 2 to 52."
-    }
+    },
+    "coverRequired": "A public event needs a cover image: add at least one photo before publishing.",
+    "coverHint": "Public events need at least one image (the first one is the cover) to be published.",
+    "locationTba": "To be announced",
+    "locationTbaOption": "Location to be announced",
+    "maxPlaces": "Places per registration",
+    "maxPlacesHint": "How many places one person may book (1–10).",
+    "maxPlacesError": "Enter a whole number from 1 to 10.",
+    "showInGallery": "Show in public gallery",
+    "publicOnly": "Public events only"
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
@@ -1730,5 +1739,232 @@
       "count_one": "{{count}} note",
       "count_other": "{{count}} notes"
     }
+  },
+  "landing": {
+    "skip": "Skip to content",
+    "loadError": "The page could not be loaded. Please try again.",
+    "nav": {
+      "label": "Main",
+      "home": "Dialogue Society home",
+      "events": "Events",
+      "signIn": "Sign in",
+      "join": "Join"
+    },
+    "hero": {
+      "next": "Next event",
+      "register": "Register",
+      "allEvents": "All events",
+      "emptyTitle": "Join our next event",
+      "emptyText": "New events are on the way. Leave your email and we will tell you as soon as the next one is announced."
+    },
+    "place": {
+      "online": "Online event",
+      "tba": "Place to be announced"
+    },
+    "upcoming": {
+      "title": "Upcoming events",
+      "intro": "Talks, dinners and gatherings that bring people together across the UK. Everyone is welcome.",
+      "filters": "Filter events",
+      "region": "Region",
+      "allRegions": "All regions",
+      "branch": "Branch",
+      "allBranches": "All branches",
+      "national": "National",
+      "placesLeft_one": "{{count}} place left",
+      "placesLeft_other": "{{count}} places left",
+      "full": "Full — join the waitlist",
+      "emptyFilter": "No upcoming events for this selection.",
+      "none": "No upcoming events right now. Check back soon.",
+      "more": "Show more",
+      "seeAll": "See all events"
+    },
+    "highlights": {
+      "title": "Highlights",
+      "intro": "Talks and moments from our events.",
+      "untitled": "Video",
+      "play": "Play video: {{title}}",
+      "iframeTitle": "{{title}} (YouTube video)",
+      "privacy": "Videos play from YouTube in privacy-enhanced mode, and only after you press play."
+    },
+    "gallery": {
+      "title": "Past events",
+      "intro": "A look back at recent events.",
+      "photoAlt": "{{title}}, photo {{n}} of {{total}}",
+      "counter": "Photo {{n}} of {{total}}",
+      "prev": "Previous photo",
+      "next": "Next photo",
+      "close": "Close",
+      "more": "Show more past events"
+    },
+    "stats": {
+      "label": "Dialogue Society in numbers",
+      "events_held_one": "event held",
+      "events_held_other": "events held",
+      "registrations_one": "place booked",
+      "registrations_other": "places booked",
+      "branches_one": "branch",
+      "branches_other": "branches"
+    },
+    "subscribe": {
+      "title": "Get event updates",
+      "text": "One email when a new public event is announced near you. No spam, and you can unsubscribe at any time."
+    },
+    "footer": {
+      "label": "Footer",
+      "copyright": "© {{year}} Dialogue Society",
+      "privacy": "Privacy notice",
+      "attendeePrivacy": "Attendee privacy notice"
+    }
+  },
+  "guest": {
+    "title": "Register for this event",
+    "intro": "No account needed. We will email you a link to confirm your place.",
+    "waitlistTitle": "Join the waitlist",
+    "waitlistIntro": "This event is full. Join the waitlist and we will email you if a place becomes free.",
+    "memberIntro": "Already a member? Sign in to register with your account.",
+    "name": "Full name",
+    "email": "Email address",
+    "phone": "Phone (optional)",
+    "places": "Number of places",
+    "keepInformed": "Keep me informed about future events",
+    "privacy": "We use your details only to manage your registration.",
+    "honeypot": "Leave this field empty",
+    "submit": "Register",
+    "submitWaitlist": "Join the waitlist",
+    "sending": "Sending…",
+    "sentTitle": "Check your email",
+    "sentBody": "We have sent an email to {{email}}. Open the link in it within 48 hours to confirm your place. If it does not arrive, check your spam folder.",
+    "again": "Use a different email address",
+    "dateTba": "Date to be announced",
+    "confirmTitle": "Confirm your registration",
+    "confirmIntro_one": "Confirm your place ({{count}} place) at this event.",
+    "confirmIntro_other": "Confirm your places ({{count}} places) at this event.",
+    "confirmButton": "Confirm my registration",
+    "cancelTitle": "Cancel your registration",
+    "cancelIntro_one": "Can't make it? Cancel your registration ({{count}} place) so someone on the waitlist can come.",
+    "cancelIntro_other": "Can't make it? Cancel your registration ({{count}} places) so someone on the waitlist can come.",
+    "cancelButton": "Cancel my registration",
+    "state": {
+      "pending": "This registration has not been confirmed yet. Open the confirmation link in your email.",
+      "registered": "You are registered. We have emailed you a confirmation with a link to cancel if your plans change.",
+      "waitlisted": "The event is full, so you are on the waitlist (position {{position}}). We will email you if a place becomes free.",
+      "cancelled": "This registration is cancelled. Thank you for letting us know.",
+      "attended": "Thank you for coming to this event.",
+      "no_show": "This event has taken place.",
+      "closed": "Registration for this event is closed.",
+      "started": "The event has started, so this registration can no longer be cancelled.",
+      "invalid": "This link is no longer valid. Confirmation links work for 48 hours; you can register again from the event page."
+    },
+    "errors": {
+      "nameRequired": "Enter your name.",
+      "emailInvalid": "Enter a valid email address.",
+      "places": "Choose a valid number of places.",
+      "details": "Check your name, email address and phone number.",
+      "link": "This link is no longer valid.",
+      "verification": "Please complete the security check and try again.",
+      "unavailable": "This form is not available right now. Please try again later."
+    }
+  },
+  "subscribe": {
+    "email": "Email address",
+    "name": "Name (optional)",
+    "branch": "Branch you are interested in (optional)",
+    "allBranches": "All branches",
+    "consent": "We will email you about upcoming Dialogue Society events. We send a confirmation link first, and you can unsubscribe at any time.",
+    "submit": "Get event updates",
+    "sentTitle": "Check your email to confirm",
+    "sentBody": "We have sent a link to {{email}}. Open it to confirm your subscription. If it does not arrive, check your spam folder.",
+    "confirmTitle": "Confirm your subscription",
+    "confirmIntro": "Confirm that you would like to receive emails about upcoming Dialogue Society events.",
+    "confirmButton": "Confirm subscription",
+    "unsubscribeTitle": "Unsubscribe from event updates",
+    "unsubscribeIntro": "You will no longer receive emails about upcoming events. Emails about events you have registered for are not affected.",
+    "unsubscribeButton": "Unsubscribe",
+    "seeEvents": "See upcoming events",
+    "state": {
+      "confirmed": "Thank you. Your subscription is confirmed.",
+      "unsubscribed": "You are unsubscribed. We will not send you event updates again.",
+      "invalid": "This link is no longer valid. Confirmation links work for 7 days; you can sign up again on our website."
+    },
+    "errors": {
+      "details": "Check the email address and try again."
+    }
+  },
+  "attendeePrivacy": {
+    "link": "Event attendee privacy notice",
+    "back": "Events"
+  },
+  "pastEvents": {
+    "add": "Add past event",
+    "addTitle": "Add a past event",
+    "editTitle": "Edit past event",
+    "intro": "Record an event that already took place, with its photos and videos. It is shown publicly.",
+    "date": "Date",
+    "dateError": "The date must be today or earlier.",
+    "photos": "Photos",
+    "photoLimits": "JPG, PNG or WebP · 10 MB each · up to {{count}} photos",
+    "addPhotos": "Add photos",
+    "tooManyPhotos": "A past event can have at most 12 photos.",
+    "videos": "Videos",
+    "youtubeLink": "YouTube link",
+    "youtubeHint": "Paste a youtu.be or youtube.com link (up to 6 videos).",
+    "addVideo": "Add video",
+    "invalidYoutube": "This is not a valid YouTube link.",
+    "duplicateVideo": "This video is already added.",
+    "tooManyVideos": "An event can have at most 6 videos.",
+    "videosPublicOnly": "Videos can be added to public events only.",
+    "watchVideo": "Watch {{title}} on YouTube",
+    "galleryOnlyPublic": "Only photos of public events can be shown in the gallery.",
+    "notEditable": "Past events are edited from the past event form.",
+    "saved": "Past event saved",
+    "badge": "Past event"
+  },
+  "attendees": {
+    "title": "Attendees",
+    "counts": "{{seats}} places taken · {{waitlisted}} on the waitlist",
+    "exportCsv": "Export CSV",
+    "filter": "Filter attendees",
+    "filters": {
+      "active": "Registered",
+      "waitlisted": "Waitlist",
+      "cancelled": "Cancelled"
+    },
+    "empty": "Nobody here yet.",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "email": "Email",
+      "phone": "Phone",
+      "places": "Places",
+      "status": "Status",
+      "checkedIn": "Checked in"
+    },
+    "kind": {
+      "member": "Member",
+      "guest": "Guest"
+    },
+    "checkIn": "Checked in: {{name}}",
+    "checkInAfterStart": "After the start"
+  },
+  "announce": {
+    "button": "Announce to subscribers",
+    "title": "Announce to subscribers",
+    "hint": "Emails this event to people who subscribed to event updates. Each subscriber gets it once.",
+    "target": "Send to",
+    "targets": {
+      "branch": "Subscribers of a branch",
+      "region": "Subscribers of a region",
+      "all": "All subscribers"
+    },
+    "recipients_one": "{{count}} subscriber will get this email.",
+    "recipients_other": "{{count}} subscribers will get this email.",
+    "limitHint": "Emails go out within the daily sending limit, so some may arrive tomorrow.",
+    "send": "Send announcement",
+    "queued_one": "Announcement queued for {{count}} subscriber",
+    "queued_other": "Announcement queued for {{count}} subscribers",
+    "history": "Sent announcements",
+    "historyItem": "{{date}} · {{target}} · {{count}}",
+    "noHistory": "Not announced yet.",
+    "onlyUpcoming": "Only upcoming public events can be announced."
   }
 }

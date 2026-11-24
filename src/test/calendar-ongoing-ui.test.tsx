@@ -32,6 +32,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 vi.mock("@/lib/events.functions", () => ({ listEvents: vi.fn() }));
 vi.mock("@/components/events/EventForm", () => ({ EventForm: () => null }));
+vi.mock("@/components/events/PastEventDialog", () => ({ PastEventDialog: () => null }));
 vi.mock("@/components/events/RecentlyDeletedEvents", () => ({ RecentlyDeletedEvents: () => null }));
 vi.mock("@/components/requests/RequestEventButton", () => ({ RequestEventButton: () => null }));
 vi.mock("@/lib/use-event-requests", () => ({ useCanRequestEvents: () => false }));

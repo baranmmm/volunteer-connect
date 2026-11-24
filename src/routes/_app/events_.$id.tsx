@@ -23,7 +23,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { getEvent, cancelEvent } from "@/lib/events.functions";
 import { deleteEvent, deleteSeries } from "@/lib/delete-event.functions";
-import { eventWhen, isMeetingEvent } from "@/lib/event-rules";
+import { eventStart, eventWhen, isMeetingEvent, londonToIso } from "@/lib/event-rules";
 import { describeRule, type SeriesInfo } from "@/lib/recurrence";
 import { AddToCalendarMenu } from "@/components/events/AddToCalendarMenu";
 import { dateLocale, translateError } from "@/lib/i18n";
@@ -45,6 +45,10 @@ import { EventStatusBadge } from "@/components/events/EventStatus";
 import { cancelledTitle } from "@/components/events/event-status-styles";
 import { ManagerRegistrations, RegistrationPanel } from "@/components/events/EventRegistration";
 import { MeetingEventActions } from "@/components/events/MeetingEventActions";
+import { AttendeeList } from "@/components/events/AttendeeList";
+import { AnnounceButton } from "@/components/events/AnnounceDialog";
+import { EventVideos } from "@/components/events/EventVideos";
+import { PastEventDialog } from "@/components/events/PastEventDialog";
 
 export const Route = createFileRoute("/_app/events_/$id")({
   ssr: false,
@@ -81,7 +85,8 @@ function EventDetail() {
 function MemberEventDetail() {
   const { id } = Route.useParams(),
     { t } = useTranslation();
-  const { session, profile } = useAuth();
+  const { session, profile, roles } = useAuth();
+  const nc = roles.includes("national_coordinator");
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000);
@@ -154,6 +159,14 @@ function MemberEventDetail() {
     pdfs = event.media.filter((m) => m.kind === "pdf" && m.url),
     documents = event.media.filter((m) => m.kind === "document" && m.url);
   const when = eventWhen(event, dateLocale());
+  // A past-event record: photos and videos only (no registration, sharing or cancelling).
+  const pastRecord = !!event.past_record;
+  const publicEvent = event.audience === "public" && !meetingEntry;
+  const startValue = eventStart(event);
+  const upcoming =
+    !!startValue &&
+    (event.all_day ? Date.parse(londonToIso(`${startValue}T00:00`)) : Date.parse(startValue)) >
+      now.getTime();
   const selected = image === null ? null : images[image];
   function next(delta: number) {
     setImage((current) =>
@@ -253,6 +266,11 @@ function MemberEventDetail() {
           <EventStatusBadge status={event.status} />
           <HappeningNowBadge event={event} now={now} />
           {event.audience === "public" && <PublicBadge />}
+          {pastRecord && (
+            <Badge data-testid="event-past-record-badge" variant="outline">
+              {t("pastEvents.badge")}
+            </Badge>
+          )}
           {event.is_external && <ExternalBadge />}
           {event.series_id && (
             <span
@@ -407,7 +425,16 @@ function MemberEventDetail() {
             <span className="break-all">{t("events.joinOnline")}</span>
           </a>
         )}
-        {event.location_type !== "online" && event.location && (
+        {event.location_type !== "online" && event.location_tba && (
+          <p
+            data-testid="event-detail-location-tba"
+            className="flex items-start gap-3 text-muted-foreground"
+          >
+            <MapPin className="mt-0.5 size-5 shrink-0" />
+            <span>{t("events.locationTba")}</span>
+          </p>
+        )}
+        {event.location_type !== "online" && !event.location_tba && event.location && (
           <a
             data-testid="event-detail-location-link"
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
@@ -447,7 +474,10 @@ function MemberEventDetail() {
       {event.description && (
         <p className="whitespace-pre-wrap break-words leading-relaxed">{event.description}</p>
       )}
-      {event.status !== "cancelled" && (
+      {publicEvent && (pastRecord || canManage) && (
+        <EventVideos eventId={event.id} canManage={canManage} />
+      )}
+      {event.status !== "cancelled" && !pastRecord && (
         <div
           data-testid="event-share-actions"
           className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"
@@ -466,8 +496,12 @@ function MemberEventDetail() {
           </Button>
         </div>
       )}
-      {!meetingEntry && <RegistrationPanel event={event} now={now} />}
-      {canManage && <ManagerRegistrations event={event} now={now} />}
+      {!meetingEntry && !pastRecord && <RegistrationPanel event={event} now={now} />}
+      {/* Public events: members and guests together (scope managers; National Coordinators see counts only). */}
+      {canManage && !pastRecord && publicEvent && !nc && event.status !== "draft" && (
+        <AttendeeList event={event} now={now} />
+      )}
+      {canManage && !publicEvent && <ManagerRegistrations event={event} now={now} />}
       <EventLinkedTasks
         event={{
           id: event.id,
@@ -498,7 +532,14 @@ function MemberEventDetail() {
                   <Pencil />
                   {t("events.edit")}
                 </Button>
-                {event.status !== "cancelled" && (
+                {publicEvent && !pastRecord && event.status === "published" && upcoming && (
+                  <AnnounceButton
+                    eventId={event.id}
+                    branchId={event.branch_id}
+                    regionId={event.region_id}
+                  />
+                )}
+                {event.status !== "cancelled" && !pastRecord && (
                   <Button
                     data-testid="event-cancel-event-button"
                     variant="outline"
@@ -536,7 +577,16 @@ function MemberEventDetail() {
           )}
         </section>
       )}
-      {editing && canManage && (
+      {editing && canManage && pastRecord && (
+        <PastEventDialog
+          event={event}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+          }}
+        />
+      )}
+      {editing && canManage && !pastRecord && (
         <EventForm
           event={event}
           series={series}
