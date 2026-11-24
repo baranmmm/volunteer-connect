@@ -89,7 +89,7 @@ test.describe("Landing page (signed out)", () => {
     await expect(card).toBeVisible();
     await expect(card.getByRole("link")).toHaveAttribute("href", `/events/${event.id}`);
     await expect(card).toContainText("30");
-    // Branch events name their host: the chip sits on the image (above the title), the hero says "Dialogue Society <branch>".
+    // Branch events name their host: the chip sits on the image (above the title), the hero shows the same name as a chip next to its "Next event" badge.
     const branchName = await nameOfBranch(manager.branchId!);
     const chip = card.getByTestId("landing-upcoming-chip");
     await expect(chip).toHaveText(branchName);
@@ -97,7 +97,7 @@ test.describe("Landing page (signed out)", () => {
     const [chipBox, titleBox] = [await chip.boundingBox(), await card.getByRole("heading").boundingBox()];
     expect(chipBox!.y + chipBox!.height, "the chip is on the image, above the title").toBeLessThanOrEqual(titleBox!.y);
     if ((await page.getByTestId("landing-hero-register").getAttribute("href")) === `/events/${event.id}`) {
-      await expect(page.getByTestId("landing-hero-branch")).toHaveText(`Dialogue Society ${branchName}`);
+      await expect(page.getByTestId("landing-hero-branch")).toHaveText(branchName);
     }
     await expect(page.getByTestId("landing-sign-in")).toHaveAttribute("href", "/auth");
     await expect(page.getByTestId("landing-join")).toHaveAttribute("href", "/auth?mode=signup");

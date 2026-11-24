@@ -1839,7 +1839,6 @@
     }
   },
   "landing": {
-    "hostedBy": "Dialogue Society {{name}}",
     "skip": "Skip to content",
     "loadError": "The page could not be loaded. Please try again.",
     "nav": {

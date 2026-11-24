@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Building2, CalendarDays, MapPin, Video } from "lucide-react";
+import { CalendarDays, MapPin, Video } from "lucide-react";
 import { ResponsiveImage } from "@/components/public/ResponsiveImage";
 import type { SignedImage } from "@/lib/image-variants";
 import { HERO_SIZES } from "@/lib/landing.functions";
@@ -93,7 +93,7 @@ export function Hero({
   const start = startOf(event);
   const when = whenText(event, i18n.language, true);
   const place = where(event, t);
-  // The hosting branch, or the region for region-wide events; national events need no host line.
+  // The hosting branch, or the region for region-wide events; national events get no chip.
   const host = event.branch ?? event.region;
   return (
     <Frame
@@ -119,9 +119,20 @@ export function Hero({
       }
     >
       <div className="max-w-2xl space-y-4">
-        <p className="ds-enter inline-flex items-center gap-2 rounded-full bg-[#006D9C] px-3 py-1 text-sm font-semibold text-white">
-          {t("landing.hero.next")}
-        </p>
+        <div className="ds-enter flex flex-wrap items-center gap-2">
+          <p className="inline-flex items-center gap-2 rounded-full bg-[#006D9C] px-3 py-1 text-sm font-semibold text-white">
+            {t("landing.hero.next")}
+          </p>
+          {/* Same style as the upcoming cards' chip, larger; white on black/70 stays >= 7:1 over any photo. */}
+          {host && (
+            <span
+              data-testid="landing-hero-branch"
+              className="max-w-full break-words rounded-[3px] bg-black/70 px-3 py-1 text-base font-semibold text-white"
+            >
+              {host}
+            </span>
+          )}
+        </div>
         <h1
           id="landing-hero-title"
           className="ds-enter text-3xl font-bold leading-tight break-words sm:text-5xl"
@@ -139,12 +150,6 @@ export function Hero({
             <li className="flex min-w-0 items-start gap-2">
               <place.icon aria-hidden className="mt-1 h-5 w-5 shrink-0" />
               <span className="min-w-0 break-words">{place.text}</span>
-            </li>
-          )}
-          {host && (
-            <li data-testid="landing-hero-branch" className="flex min-w-0 items-start gap-2">
-              <Building2 aria-hidden className="mt-1 h-5 w-5 shrink-0" />
-              <span className="min-w-0 break-words">{t("landing.hostedBy", { name: host })}</span>
             </li>
           )}
         </ul>
