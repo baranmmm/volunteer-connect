@@ -107,7 +107,8 @@ export const NAV_ITEMS: NavItem[] = [
     testId: "nav-regions",
     labelKey: "navigation.regions",
     icon: Network,
-    roles: ["national_coordinator"],
+    // Regional Directors see their own region's branches (map and list) and set branch postcodes.
+    roles: ["regional_director", "national_coordinator"],
   },
   {
     to: "/recycle-bin",

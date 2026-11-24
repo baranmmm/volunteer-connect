@@ -221,6 +221,7 @@ const ERROR_KEYS: Record<string, string> = {
   "Password update requires reauthentication.": "errors.passwordReauth",
   "Password update requires reauthentication": "errors.passwordReauth",
   "Not allowed": "errors.notAllowed",
+  "Enter a valid UK postcode": "errors.postcodeInvalid",
   "Not signed in": "errors.notSignedIn",
   "Only active Regional Directors can change roles": "errors.directorOnlyRoles",
   "Only active Regional Directors can move users": "errors.directorOnlyMove",
