@@ -36,7 +36,8 @@
       "inactive": "Pasif"
     },
     "hubName": "Gönüllü Platformu",
-    "opensInNewTab": "(yeni sekmede açılır)"
+    "opensInNewTab": "(yeni sekmede açılır)",
+    "goHomeLabel": "Ana sayfaya git"
   },
   "navigation": {
     "main": "Ana menü",
@@ -265,7 +266,21 @@
     "followerDeleteText": "Hesabınız hemen silinir ve geri yüklenemez.",
     "typeYourName": "Onaylamak için tam adınızı yazın: {{name}}",
     "deleteNow": "Hesabımı sil",
-    "followerDeleted": "Hesabınız silindi."
+    "followerDeleted": "Hesabınız silindi.",
+    "password": {
+      "title": "Şifreyi değiştir",
+      "current": "Mevcut şifre",
+      "new": "Yeni şifre",
+      "confirm": "Yeni şifreyi doğrula",
+      "signOutOthers": "Diğer cihazlardan çıkış yap",
+      "submit": "Şifreyi değiştir",
+      "changed": "Şifreniz değiştirildi.",
+      "changedSignedOut": "Şifreniz değiştirildi ve diğer cihazlarınızdan çıkış yapıldı.",
+      "errors": {
+        "currentRequired": "Mevcut şifrenizi girin.",
+        "currentWrong": "Mevcut şifreniz doğru değil."
+      }
+    }
   },
   "history": {
     "title": "Geçmiş",
@@ -377,7 +392,9 @@
     "taskNoteMentionHidden": "Bahsettiğiniz kişilerden biri bu görevi göremiyor.",
     "taskTooMany": "Aynı anda çok fazla görev seçildi.",
     "taskChooseAssignee": "En az bir kişi seçin.",
-    "notificationLocked": "Atamalar, bahsedilmeler ve sizi bekleyen istekler her zaman hemen gönderilir."
+    "notificationLocked": "Atamalar, bahsedilmeler ve sizi bekleyen istekler her zaman hemen gönderilir.",
+    "passwordSame": "Mevcut şifrenizden farklı yeni bir şifre seçin.",
+    "passwordReauth": "Güvenliğiniz için çıkış yapıp tekrar giriş yapın, sonra şifrenizi değiştirin."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -1417,7 +1434,7 @@
       "meeting_request_declined": "{{actor}}, “{{title}}” toplantı talebinizi reddetti. Gerekçe: {{reason}}",
       "other": "“{{title}}” hakkında güncelleme",
       "task_note_mention": "{{actor}}, “{{title}}” görevindeki bir notta sizden bahsetti",
-      "task_note_added": "{{actor}}, “{{title}}” görevine bir not ekledi",
+      "task_note_added": "{{actor}} şu göreve not ekledi: “{{title}}”",
       "review_waiting_one": "{{count}} talep sizi bekliyor",
       "review_waiting_other": "{{count}} talep sizi bekliyor",
       "review_waiting_branch_one": "{{branches}} şubesinden {{count}} talep sizi bekliyor",
@@ -1425,7 +1442,8 @@
       "review_waiting_branches_one": "{{branches}} şubelerinden {{count}} talep sizi bekliyor",
       "review_waiting_branches_other": "{{branches}} şubelerinden {{count}} talep sizi bekliyor",
       "daily_digest_one": "Günlük özetiniz: {{count}} güncelleme",
-      "daily_digest_other": "Günlük özetiniz: {{count}} güncelleme"
+      "daily_digest_other": "Günlük özetiniz: {{count}} güncelleme",
+      "task_note_added_many": "“{{title}}” görevinde {{count}} yeni not"
     },
     "taskStatus": {
       "todo": "Yapılacak",
@@ -1531,7 +1549,6 @@
     "filters": {
       "all": "Tümü",
       "branch": "Şube",
-      "noBranch": "Şube yok (bölge veya ulusal)",
       "dueOverdue": "Gecikmiş",
       "dueWeek": "Önümüzdeki 7 gün içinde",
       "dueNone": "Son tarih yok",
@@ -1550,7 +1567,14 @@
         "mine": "Önce benimkiler"
       },
       "groupMine": "Size atananlar",
-      "groupOthers": "Diğer görevler"
+      "groupOthers": "Diğer görevler",
+      "branches": "Şube",
+      "regions": "Bölge",
+      "regionWide": "Bölge geneli",
+      "national": "Ulusal",
+      "selectedCount_one": "{{count}} seçili",
+      "selectedCount_other": "{{count}} seçili",
+      "scopeHint": "Görevlerim, tüm şubelerdeki bütün görevlerinizi gösterir"
     },
     "calendar": {
       "previous": "Önceki ay",

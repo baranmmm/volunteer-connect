@@ -2,7 +2,7 @@
 // drop on desktop, the status select on phones), every task by default with my tasks marked ("My tasks" off), scope
 // labels only for people with more than one scope, the list and calendar views, reminder settings (off by default),
 // an assignee's own reminders, volunteer assignment, notes with @mentions, archiving, tasks from an event page, upward
-// task requests, the Recycle Bin and long titles at 390 px. Every item is created by fresh users in a temporary branch (cleaned up by the fixtures) and every check
+// task requests, the RD branch filter with My tasks, the Recycle Bin and long titles at 390 px. Every item is created by fresh users in a temporary branch (cleaned up by the fixtures) and every check
 // looks at this test's own ids only.
 import type { Page } from "@playwright/test";
 import { test, expect, runId, type TestUser } from "../../fixtures/roles";
@@ -179,6 +179,48 @@ test.describe("Tasks", () => {
     const rdPage = await pageAs(director);
     await openTasks(rdPage);
     await expect(card(rdPage, other).getByTestId("task-card-scope")).toHaveAttribute("data-scope", "branch", { timeout: APP_LOAD_TIMEOUT });
+  });
+
+  test("branch filter (RD): one branch hides other branches; My tasks ignores it (shown disabled) and turning it off restores it", async ({ freshUser, freshBranch, pageAs }) => {
+    const branchA = await freshBranch("tasks-filter-a");
+    const branchB = await freshBranch("tasks-filter-b");
+    const director = await freshUser({ role: "regional_director" });
+    const inA = await createTaskAs(director, { scope: "branch", branch_id: branchA, title: title("filter a") });
+    const mineInB = await createTaskAs(director, { scope: "branch", branch_id: branchB, title: title("filter b mine"), assignee_ids: [director.id] });
+
+    const page = await pageAs(director);
+    await openTasks(page);
+    await expect(card(page, mineInB)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    const branches = page.getByTestId("tasks-filter-branches");
+    await expect(branches).toHaveAttribute("data-count", "0");
+    await branches.click();
+    await expect(page.locator('[data-testid="tasks-filter-branches-option"][data-value="region-wide"]')).toBeVisible();
+    await page.locator(`[data-testid="tasks-filter-branches-option"][data-value="${branchA}"]`).click();
+    await expect(page.locator(`[data-testid="tasks-filter-branches-option"][data-value="${branchA}"]`)).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("Escape");
+    await expect(branches).toHaveAttribute("data-count", "1");
+    await expect(card(page, inA)).toBeVisible();
+    await expect(card(page, mineInB)).toHaveCount(0);
+
+    // My tasks shows every task assigned to me, in any branch; the branch filter is ignored and shown disabled.
+    await page.getByTestId("tasks-filter-mine").click();
+    await expect(card(page, mineInB)).toBeVisible();
+    await expect(card(page, inA)).toHaveCount(0);
+    await expect(branches).toHaveAttribute("data-disabled", "true");
+    await expect(branches).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByTestId("tasks-filter-scope-hint")).toBeVisible();
+
+    // Off again: the branch choice is back (and remembered after a reload).
+    await page.getByTestId("tasks-filter-mine").click();
+    await expect(page.getByTestId("tasks-filter-scope-hint")).toHaveCount(0);
+    await expect(branches).not.toHaveAttribute("data-disabled", "true");
+    await expect(branches).toHaveAttribute("data-count", "1");
+    await expect(card(page, mineInB)).toHaveCount(0);
+    await expect(card(page, inA)).toBeVisible();
+    await page.reload();
+    await expect(card(page, inA)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page.getByTestId("tasks-filter-branches")).toHaveAttribute("data-count", "1");
+    await expect(card(page, mineInB)).toHaveCount(0);
   });
 
   test("a volunteer adds, edits and removes their own reminders on a task assigned to them", { tag: "@smoke" }, async ({ freshUser, freshBranch, pageAs }) => {

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,7 @@ import {
   updateTaskNote,
 } from "@/lib/tasks.functions";
 import { formatDate, translateError } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,10 +40,30 @@ type Mention = { id: string; full_name: string | null };
  * mirrors can_set_status); authors edit and delete their own. "@" or the Mention button opens a picker of the people
  * who can see the task; chosen people are sent as `mentions` (the database checks them and sends the notices).
  */
-export function TaskNotes({ taskId, canWrite }: { taskId: string; canWrite: boolean }) {
+export function TaskNotes({
+  taskId,
+  canWrite,
+  highlightId,
+}: {
+  taskId: string;
+  canWrite: boolean;
+  /** Highlighted and scrolled into view once (from a note notice). */
+  highlightId?: string | undefined;
+}) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const fetchNotes = useServerFn(listTaskNotes);
+  // The highlighted note comes into view once, when it first appears.
+  const scrolled = useRef<string | null>(null);
+  const scrollToHighlight = useCallback(
+    (el: HTMLLIElement | null) => {
+      if (!el || !highlightId || scrolled.current === highlightId) return;
+      scrolled.current = highlightId;
+      el.scrollIntoView({ block: "center" });
+      el.focus({ preventScroll: true });
+    },
+    [highlightId],
+  );
   const fetchPeople = useServerFn(listTaskMentionPeople);
   const add = useServerFn(addTaskNote);
   const update = useServerFn(updateTaskNote);
@@ -110,7 +131,13 @@ export function TaskNotes({ taskId, canWrite }: { taskId: string; canWrite: bool
               data-testid="task-note"
               data-note-id={note.id}
               data-mine={note.mine}
-              className="min-w-0 space-y-1.5 rounded-xl border bg-card p-3"
+              data-highlighted={note.id === highlightId ? "true" : undefined}
+              ref={note.id === highlightId ? scrollToHighlight : undefined}
+              tabIndex={note.id === highlightId ? -1 : undefined}
+              className={cn(
+                "min-w-0 space-y-1.5 rounded-xl border bg-card p-3",
+                note.id === highlightId && "border-primary ring-2 ring-primary/40",
+              )}
             >
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
                 <span className="min-w-0 truncate font-medium" data-testid="task-note-author">

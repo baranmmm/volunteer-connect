@@ -26,7 +26,7 @@ import {
   type NavBadge,
   type NavItem,
 } from "@/components/app/nav";
-import { Logo } from "@/components/app/Logo";
+import { LogoLink } from "@/components/app/LogoLink";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNotificationCounts, useReviewWaiting } from "@/lib/use-work-notices";
@@ -172,7 +172,7 @@ function AppLayout() {
         data-testid="app-sidebar"
         className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-5 text-sidebar-foreground lg:flex"
       >
-        <Logo className="mb-8 w-full" />
+        <LogoLink className="mb-8 w-full" />
         <nav
           aria-label={t("navigation.main")}
           className="-mx-1 min-h-0 flex-1 space-y-1 overflow-y-auto px-1"
@@ -197,7 +197,7 @@ function AppLayout() {
       </aside>
 
       <header className="sticky top-0 z-30 grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
-        <Logo size="sm" className="min-w-0 flex-1 text-primary" />
+        <LogoLink size="sm" className="min-w-0 flex-1 text-primary" />
       </header>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-10 lg:pt-10">

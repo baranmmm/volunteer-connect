@@ -51,7 +51,9 @@ test.describe("Notifications", () => {
     const notes = typeRow(page, "task_note");
     await notes.getByTestId("profile-notification-enabled").click();
     await expect(notes).toHaveAttribute("data-enabled", "false");
-    await expect(notes.getByTestId("profile-notification-delivery-immediate")).toBeDisabled();
+    // Task notes are always immediate: only the switch, no delivery choice.
+    await expect(notes).toHaveAttribute("data-delivery-locked", "true");
+    await expect(notes.getByTestId("profile-notification-delivery")).toHaveCount(0);
     await expect(section.getByTestId("profile-task-reminder-emails")).toBeVisible();
 
     await page.reload();
