@@ -148,3 +148,7 @@ export const MOBILE_PRIMARY = [
   "/requests",
   "/regions",
 ];
+
+/** The mobile "More" tab's count: the sum of the badges of the items it holds (hidden at zero). */
+export const moreBadgeCount = (items: NavItem[], counts: Record<NavBadge, number>) =>
+  items.reduce((sum, item) => sum + (item.badge ? counts[item.badge] || 0 : 0), 0);

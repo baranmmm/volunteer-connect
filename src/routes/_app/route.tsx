@@ -22,14 +22,14 @@ import {
   navItemsFor,
   forbiddenItem,
   MOBILE_PRIMARY,
+  moreBadgeCount,
   type NavBadge,
   type NavItem,
 } from "@/components/app/nav";
 import { Logo } from "@/components/app/Logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { usePendingRequestCount } from "@/lib/use-event-requests";
-import { useNotificationCounts } from "@/lib/use-work-notices";
+import { useNotificationCounts, useReviewWaiting } from "@/lib/use-work-notices";
 
 export const Route = createFileRoute("/_app")({
   ssr: false,
@@ -52,17 +52,18 @@ function useSignOut() {
 }
 
 function AppLayout() {
-  const { loading, session, profile, roles, isManager, refresh } = useAuth();
+  const { loading, session, profile, roles, refresh } = useAuth();
   const signOut = useSignOut();
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const pending = usePendingRequestCount().data?.total ?? 0;
+  const waiting = useReviewWaiting().data?.total ?? 0;
   const notices = useNotificationCounts().data;
-  // Requests: pending event requests (managers) plus unread task/meeting request notices; Tasks: new assignments;
-  // Meetings: meeting notices. Followers have none of these (the query is off for them).
+  // Requests: everything waiting for my review (task/meeting requests, event requests, volunteer applications) plus
+  // unread decisions on my own task/meeting requests; Tasks: new assignments; Meetings: meeting notices. Followers have
+  // none of these (the queries are off for them).
   const badgeCounts: Record<NavBadge, number> = {
-    requests: (isManager ? pending : 0) + (notices?.requests ?? 0),
+    requests: waiting + (notices?.requests ?? 0),
     tasks: notices?.tasks ?? 0,
     meetings: notices?.meetings ?? 0,
   };
@@ -162,6 +163,7 @@ function AppLayout() {
   const items = navItemsFor(role);
   const primary = items.filter((i) => MOBILE_PRIMARY.includes(i.to)).slice(0, 4);
   const more = items.filter((i) => !primary.includes(i));
+  const moreCount = moreBadgeCount(more, badgeCounts);
   const active = (to: string) => pathname === to || pathname.startsWith(to + "/");
 
   return (
@@ -231,10 +233,27 @@ function AppLayout() {
         <button
           data-testid="mobile-nav-more"
           onClick={() => setMoreOpen(true)}
-          aria-label={t("navigation.more")}
+          aria-label={
+            moreCount
+              ? `${t("navigation.more")}, ${t("notifications.badges.more", { count: moreCount })}`
+              : t("navigation.more")
+          }
           className={`flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${more.some((m) => active(m.to)) ? "text-primary" : "text-muted-foreground"}`}
         >
-          <MoreHorizontal className="h-6 w-6" aria-hidden /> {t("navigation.more")}
+          <span className="relative">
+            <MoreHorizontal className="h-6 w-6" aria-hidden />
+            {moreCount > 0 && (
+              <span
+                aria-hidden
+                data-testid="mobile-nav-more-badge"
+                data-count={moreCount}
+                className="absolute -right-3 -top-2 min-w-5 rounded-full bg-primary px-1.5 py-0 text-center text-[0.65rem] font-semibold leading-4 text-primary-foreground"
+              >
+                {moreCount > 99 ? "99+" : moreCount}
+              </span>
+            )}
+          </span>
+          {t("navigation.more")}
         </button>
       </nav>
 

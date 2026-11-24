@@ -24,8 +24,10 @@ export class DashboardPage {
   readonly myRegistrationItem = (eventId: string) => this.myRegistrations().locator(`[data-testid="dashboard-my-registration-item"][data-event-id="${eventId}"]`);
   readonly registrationNotice = (registrationId: string) => this.page.getByTestId(`dashboard-registration-notice-${registrationId}`);
   readonly dismissRegistrationNotice = (registrationId: string) => this.page.getByTestId(`dashboard-registration-notice-dismiss-${registrationId}`);
-  /** Reviewers: "Pending requests (n)"; data-count carries n. */
-  readonly pendingRequests = () => this.page.getByTestId("dashboard-pending-requests");
+  /** "Waiting for you" (absent when nothing waits for the viewer's review); its count carries data-count. */
+  readonly waiting = () => this.page.getByTestId("dashboard-waiting");
+  readonly waitingCount = () => this.waiting().getByTestId("dashboard-waiting-count");
+  readonly waitingLink = () => this.waiting().getByTestId("dashboard-waiting-link");
   readonly requestNotice = (requestId: string) => this.page.getByTestId(`dashboard-request-notice-${requestId}`);
   readonly dismissRequestNotice = (requestId: string) => this.page.getByTestId(`dashboard-request-notice-dismiss-${requestId}`);
 

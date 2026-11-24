@@ -305,6 +305,10 @@ describe("task permissions", () => {
         "Not allowed",
       );
       await fails("SELECT public.delete_task($1)", [task], "Not allowed");
+      // In progress is not news for the creator; Blocked (and Done) is.
+      expect(await notices(ids.bm1, "task_status_changed")).toEqual([]);
+      await as(ids.vol1);
+      await one("SELECT public.set_task_status($1,'blocked') v", [task]);
       expect((await notices(ids.bm1, "task_status_changed")).map((n) => n.entity_id)).toEqual([
         task,
       ]);
@@ -352,7 +356,15 @@ describe("task requests", () => {
       const second = await one<string>("SELECT public.submit_task_request($1::jsonb) v", [
         JSON.stringify({ target_id: ids.bm1, title: "Buy tea" }),
       ]);
-      expect((await notices(ids.bm1, "task_request_received")).length).toBe(2);
+      // One grouped "waiting for you" notice, updated in place (no notice per request).
+      expect(await notices(ids.bm1, "task_request_received")).toEqual([]);
+      await as(null);
+      expect(
+        await q<{ payload: { total: number } }>(
+          "SELECT payload FROM notifications WHERE user_id=$1 AND kind='review_waiting' AND read_at IS NULL",
+          [ids.bm1],
+        ),
+      ).toEqual([{ payload: expect.objectContaining({ total: 2, work: 2 }) }]);
       await as(ids.bm1);
       expect(await one("SELECT public.get_work_request_count() v")).toBe(2);
       const task = await one<string>("SELECT public.accept_task_request($1) v", [request]);
@@ -600,10 +612,10 @@ describe("meetings", () => {
         JSON.stringify({ starts_at: "2027-04-01T16:00:00Z" }),
       ]);
       await one("SELECT public.set_meeting_status($1,'cancelled') v", [meeting]);
-      expect((await notices(ids.vol1)).map((n) => n.kind)).toEqual([
-        "meeting_invited",
-        "meeting_changed",
+      expect((await notices(ids.vol1)).map((n) => n.kind).sort()).toEqual([
         "meeting_cancelled",
+        "meeting_changed",
+        "meeting_invited",
       ]);
     }));
 

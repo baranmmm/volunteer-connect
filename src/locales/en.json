@@ -112,7 +112,17 @@
     "viewAll": "View all",
     "draftsTitle": "Your drafts",
     "editDraft": "Edit",
-    "draftSaved": "Saved {{date}}"
+    "draftSaved": "Saved {{date}}",
+    "waiting": {
+      "title": "Waiting for you",
+      "total_one": "{{count}} request is waiting for your decision",
+      "total_other": "{{count}} requests are waiting for your decision",
+      "work": "Tasks and meetings: {{count}}",
+      "eventRequests": "Event requests: {{count}}",
+      "applications": "Volunteer applications: {{count}}",
+      "branches": "From {{branches}}",
+      "link": "Review requests"
+    }
   },
   "users": {
     "title": "Users",
@@ -366,7 +376,8 @@
     "taskNoteTooManyMentions": "You can mention at most 20 people in a note.",
     "taskNoteMentionHidden": "Someone you mentioned cannot see this task.",
     "taskTooMany": "Too many tasks were selected at once.",
-    "taskChooseAssignee": "Choose at least one person."
+    "taskChooseAssignee": "Choose at least one person.",
+    "notificationLocked": "Assignments, mentions and requests waiting for you are always sent at once."
   },
   "events": {
     "title": "Calendar & Events",
@@ -1197,7 +1208,14 @@
       "standing": "Standing",
       "resolved": "Resolved",
       "markedResolved": "Agenda item marked as resolved.",
-      "markedOpen": "Agenda item marked as open."
+      "markedOpen": "Agenda item marked as open.",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "decisionsCount_one": "{{count}} decision",
+      "decisionsCount_other": "{{count}} decisions",
+      "tasksCount_one": "{{count}} task",
+      "tasksCount_other": "{{count}} tasks",
+      "countsBoth": "{{decisions}}, {{tasks}}"
     },
     "decisions": {
       "title": "Decisions",
@@ -1304,6 +1322,11 @@
       "agendaTooMany": "At most 30 standing items.",
       "agendaSave": "Save standing items",
       "agendaSaved": "Standing agenda items saved."
+    },
+    "inviteesToggle": {
+      "summaryNone": "{{label}} (0)",
+      "summary": "{{label}} ({{total}}): {{names}}",
+      "summaryMore": "{{label}} ({{total}}): {{names}} +{{more}}"
     }
   },
   "workRequests": {
@@ -1394,7 +1417,15 @@
       "meeting_request_declined": "{{actor}} declined your meeting request “{{title}}”. Reason: {{reason}}",
       "other": "Update about “{{title}}”",
       "task_note_mention": "{{actor}} mentioned you in a note on “{{title}}”",
-      "task_note_added": "{{actor}} added a note to “{{title}}”"
+      "task_note_added": "{{actor}} added a note to “{{title}}”",
+      "review_waiting_one": "{{count}} request is waiting for you",
+      "review_waiting_other": "{{count}} requests are waiting for you",
+      "review_waiting_branch_one": "{{count}} request from {{branches}} is waiting for you",
+      "review_waiting_branch_other": "{{count}} requests from {{branches}} are waiting for you",
+      "review_waiting_branches_one": "{{count}} request from {{branches}} is waiting for you",
+      "review_waiting_branches_other": "{{count}} requests from {{branches}} are waiting for you",
+      "daily_digest_one": "Your daily summary: {{count}} update",
+      "daily_digest_other": "Your daily summary: {{count}} updates"
     },
     "taskStatus": {
       "todo": "To do",
@@ -1405,7 +1436,8 @@
     "badges": {
       "requests": "{{count}} requests need your attention",
       "tasks": "{{count}} new tasks",
-      "meetings": "{{count}} meeting updates"
+      "meetings": "{{count}} meeting updates",
+      "more": "{{count}} updates under More"
     },
     "preferences": {
       "title": "Task reminders",
@@ -1413,6 +1445,58 @@
       "taskEmailsOn": "We'll email you task reminders. Reminders also appear in the app.",
       "taskEmailsOff": "Task reminders appear in the app only.",
       "saved": "Reminder preference saved"
+    },
+    "groups": {
+      "task_assigned": "{{count}} tasks were assigned to you",
+      "task_assigned_branch": "{{count}} tasks in {{branch}} were assigned to you",
+      "task_status_changed": "{{count}} tasks moved to {{status}}",
+      "task_status_changed_branch": "{{count}} tasks in {{branch}} moved to {{status}}",
+      "task_status_changed_done": "{{count}} tasks were completed",
+      "task_status_changed_done_branch": "{{count}} tasks in {{branch}} were completed",
+      "task_status_changed_blocked": "{{count}} tasks are blocked",
+      "task_status_changed_blocked_branch": "{{count}} tasks in {{branch}} are blocked",
+      "task_reminder": "{{count}} task reminders",
+      "task_reminder_branch": "{{count}} task reminders in {{branch}}",
+      "task_note_mention": "You were mentioned in {{count}} task notes",
+      "task_note_mention_branch": "You were mentioned in {{count}} task notes in {{branch}}",
+      "task_note_added": "{{count}} new notes on tasks",
+      "task_note_added_branch": "{{count}} new notes on tasks in {{branch}}",
+      "meeting_invited": "You were invited to {{count}} meetings",
+      "meeting_invited_branch": "You were invited to {{count}} meetings in {{branch}}",
+      "meeting_changed": "{{count}} meetings were changed",
+      "meeting_changed_branch": "{{count}} meetings in {{branch}} were changed",
+      "meeting_cancelled": "{{count}} meetings were cancelled",
+      "meeting_cancelled_branch": "{{count}} meetings in {{branch}} were cancelled",
+      "task_request_accepted": "{{count}} of your task requests were accepted",
+      "task_request_declined": "{{count}} of your task requests were declined",
+      "meeting_request_approved": "{{count}} of your meeting requests were approved",
+      "meeting_request_declined": "{{count}} of your meeting requests were declined",
+      "other": "{{count}} updates",
+      "show": "Show the {{count}} notices",
+      "hide": "Hide the notices"
+    },
+    "settings": {
+      "title": "Notifications",
+      "intro": "Choose which notices you get in the app and when. The daily summary arrives at 08:00 (UK time).",
+      "defaultImmediate": "Unless you change it, notices arrive immediately.",
+      "defaultDigest": "Unless you change it, notices come in the daily summary.",
+      "enabled": "On",
+      "delivery": "Delivery",
+      "immediate": "Immediately",
+      "digest": "Daily summary",
+      "locked": "Always on and immediate, so nothing waiting for you is missed.",
+      "saved": "Notification setting saved",
+      "loadError": "Notification settings could not be loaded.",
+      "types": {
+        "task_assigned": "A task is assigned to me",
+        "mention": "I am mentioned in a note",
+        "review": "Requests waiting for my review",
+        "task_status": "A task I created is blocked or done",
+        "task_note": "New notes on my tasks",
+        "task_reminder": "Task reminders",
+        "meeting": "Meetings I am invited to (invited, changed, cancelled)",
+        "request_decided": "Decisions on my requests"
+      }
     }
   },
   "tasks": {
@@ -1550,7 +1634,20 @@
       "deleting": "Deleting…",
       "deleteTitle": "Delete this task?",
       "deleteText": "The task moves to the Recycle Bin, where it can be restored for 30 days.",
-      "deleted": "Task moved to the Recycle Bin."
+      "deleted": "Task moved to the Recycle Bin.",
+      "muteTaskReminders": "Mute this task's reminders for me",
+      "muteTaskRemindersHint": "Silences only the reminders set on the task. Your own reminders below still arrive.",
+      "myReminders": {
+        "title": "My reminders",
+        "hint": "Reminders only for you, on top of the task's own reminders. Nobody else sees them.",
+        "add": "Add a reminder",
+        "edit": "Edit my reminders",
+        "remove": "Remove my reminders",
+        "needDue": "This task has no due date. Reminders need one.",
+        "pickOne": "Choose at least one reminder, or remove your reminders.",
+        "saved": "Your reminders are saved.",
+        "removed": "Your reminders were removed."
+      }
     },
     "card": {
       "viewAll": "All tasks",

@@ -112,7 +112,17 @@
     "viewAll": "Tümünü gör",
     "draftsTitle": "Taslaklarınız",
     "editDraft": "Düzenle",
-    "draftSaved": "{{date}} tarihinde kaydedildi"
+    "draftSaved": "{{date}} tarihinde kaydedildi",
+    "waiting": {
+      "title": "Sizi bekleyenler",
+      "total_one": "Kararınızı bekleyen {{count}} talep var",
+      "total_other": "Kararınızı bekleyen {{count}} talep var",
+      "work": "Görevler ve toplantılar: {{count}}",
+      "eventRequests": "Etkinlik talepleri: {{count}}",
+      "applications": "Gönüllülük başvuruları: {{count}}",
+      "branches": "Şubeler: {{branches}}",
+      "link": "Talepleri incele"
+    }
   },
   "users": {
     "title": "Kullanıcılar",
@@ -366,7 +376,8 @@
     "taskNoteTooManyMentions": "Bir notta en fazla 20 kişiden bahsedebilirsiniz.",
     "taskNoteMentionHidden": "Bahsettiğiniz kişilerden biri bu görevi göremiyor.",
     "taskTooMany": "Aynı anda çok fazla görev seçildi.",
-    "taskChooseAssignee": "En az bir kişi seçin."
+    "taskChooseAssignee": "En az bir kişi seçin.",
+    "notificationLocked": "Atamalar, bahsedilmeler ve sizi bekleyen istekler her zaman hemen gönderilir."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -1197,7 +1208,14 @@
       "standing": "Sabit",
       "resolved": "Çözüldü",
       "markedResolved": "Gündem maddesi çözüldü olarak işaretlendi.",
-      "markedOpen": "Gündem maddesi açık olarak işaretlendi."
+      "markedOpen": "Gündem maddesi açık olarak işaretlendi.",
+      "expandAll": "Tümünü aç",
+      "collapseAll": "Tümünü kapat",
+      "decisionsCount_one": "{{count}} karar",
+      "decisionsCount_other": "{{count}} karar",
+      "tasksCount_one": "{{count}} görev",
+      "tasksCount_other": "{{count}} görev",
+      "countsBoth": "{{decisions}}, {{tasks}}"
     },
     "decisions": {
       "title": "Kararlar",
@@ -1304,6 +1322,11 @@
       "agendaTooMany": "En fazla 30 sabit madde olabilir.",
       "agendaSave": "Sabit maddeleri kaydet",
       "agendaSaved": "Sabit gündem maddeleri kaydedildi."
+    },
+    "inviteesToggle": {
+      "summaryNone": "{{label}} (0)",
+      "summary": "{{label}} ({{total}}): {{names}}",
+      "summaryMore": "{{label}} ({{total}}): {{names}} +{{more}}"
     }
   },
   "workRequests": {
@@ -1394,7 +1417,15 @@
       "meeting_request_declined": "{{actor}}, “{{title}}” toplantı talebinizi reddetti. Gerekçe: {{reason}}",
       "other": "“{{title}}” hakkında güncelleme",
       "task_note_mention": "{{actor}}, “{{title}}” görevindeki bir notta sizden bahsetti",
-      "task_note_added": "{{actor}}, “{{title}}” görevine bir not ekledi"
+      "task_note_added": "{{actor}}, “{{title}}” görevine bir not ekledi",
+      "review_waiting_one": "{{count}} talep sizi bekliyor",
+      "review_waiting_other": "{{count}} talep sizi bekliyor",
+      "review_waiting_branch_one": "{{branches}} şubesinden {{count}} talep sizi bekliyor",
+      "review_waiting_branch_other": "{{branches}} şubesinden {{count}} talep sizi bekliyor",
+      "review_waiting_branches_one": "{{branches}} şubelerinden {{count}} talep sizi bekliyor",
+      "review_waiting_branches_other": "{{branches}} şubelerinden {{count}} talep sizi bekliyor",
+      "daily_digest_one": "Günlük özetiniz: {{count}} güncelleme",
+      "daily_digest_other": "Günlük özetiniz: {{count}} güncelleme"
     },
     "taskStatus": {
       "todo": "Yapılacak",
@@ -1405,7 +1436,8 @@
     "badges": {
       "requests": "İlginizi bekleyen {{count}} talep",
       "tasks": "{{count}} yeni görev",
-      "meetings": "{{count}} toplantı güncellemesi"
+      "meetings": "{{count}} toplantı güncellemesi",
+      "more": "Diğer menüsünde {{count}} güncelleme"
     },
     "preferences": {
       "title": "Görev hatırlatmaları",
@@ -1413,6 +1445,58 @@
       "taskEmailsOn": "Görev hatırlatmalarını size e-postayla göndereceğiz. Hatırlatmalar uygulamada da görünür.",
       "taskEmailsOff": "Görev hatırlatmaları yalnızca uygulamada görünür.",
       "saved": "Hatırlatma tercihi kaydedildi"
+    },
+    "groups": {
+      "task_assigned": "Size {{count}} görev atandı",
+      "task_assigned_branch": "{{branch}} şubesinde size {{count}} görev atandı",
+      "task_status_changed": "{{count}} görev “{{status}}” durumuna geçti",
+      "task_status_changed_branch": "{{branch}} şubesinde {{count}} görev “{{status}}” durumuna geçti",
+      "task_status_changed_done": "{{count}} görev tamamlandı",
+      "task_status_changed_done_branch": "{{branch}} şubesinde {{count}} görev tamamlandı",
+      "task_status_changed_blocked": "{{count}} görev engellendi",
+      "task_status_changed_blocked_branch": "{{branch}} şubesinde {{count}} görev engellendi",
+      "task_reminder": "{{count}} görev hatırlatması",
+      "task_reminder_branch": "{{branch}} şubesinde {{count}} görev hatırlatması",
+      "task_note_mention": "{{count}} görev notunda sizden bahsedildi",
+      "task_note_mention_branch": "{{branch}} şubesinde {{count}} görev notunda sizden bahsedildi",
+      "task_note_added": "Görevlere {{count}} yeni not eklendi",
+      "task_note_added_branch": "{{branch}} şubesinde görevlere {{count}} yeni not eklendi",
+      "meeting_invited": "{{count}} toplantıya davet edildiniz",
+      "meeting_invited_branch": "{{branch}} şubesinde {{count}} toplantıya davet edildiniz",
+      "meeting_changed": "{{count}} toplantı değiştirildi",
+      "meeting_changed_branch": "{{branch}} şubesinde {{count}} toplantı değiştirildi",
+      "meeting_cancelled": "{{count}} toplantı iptal edildi",
+      "meeting_cancelled_branch": "{{branch}} şubesinde {{count}} toplantı iptal edildi",
+      "task_request_accepted": "{{count}} görev talebiniz kabul edildi",
+      "task_request_declined": "{{count}} görev talebiniz reddedildi",
+      "meeting_request_approved": "{{count}} toplantı talebiniz onaylandı",
+      "meeting_request_declined": "{{count}} toplantı talebiniz reddedildi",
+      "other": "{{count}} güncelleme",
+      "show": "{{count}} bildirimi göster",
+      "hide": "Bildirimleri gizle"
+    },
+    "settings": {
+      "title": "Bildirimler",
+      "intro": "Uygulamada hangi bildirimleri ne zaman alacağınızı seçin. Günlük özet saat 08:00'de (Birleşik Krallık saati) gelir.",
+      "defaultImmediate": "Siz değiştirmedikçe bildirimler hemen gelir.",
+      "defaultDigest": "Siz değiştirmedikçe bildirimler günlük özette gelir.",
+      "enabled": "Açık",
+      "delivery": "Gönderim",
+      "immediate": "Hemen",
+      "digest": "Günlük özet",
+      "locked": "Sizi bekleyen hiçbir şey kaçmasın diye her zaman açık ve hemen gelir.",
+      "saved": "Bildirim ayarı kaydedildi",
+      "loadError": "Bildirim ayarları yüklenemedi.",
+      "types": {
+        "task_assigned": "Bana görev atandığında",
+        "mention": "Bir notta benden bahsedildiğinde",
+        "review": "İncelememi bekleyen talepler",
+        "task_status": "Oluşturduğum bir görev engellendiğinde veya tamamlandığında",
+        "task_note": "Görevlerime eklenen yeni notlar",
+        "task_reminder": "Görev hatırlatmaları",
+        "meeting": "Davet edildiğim toplantılar (davet, değişiklik, iptal)",
+        "request_decided": "Taleplerime verilen kararlar"
+      }
     }
   },
   "tasks": {
@@ -1550,7 +1634,20 @@
       "deleting": "Siliniyor…",
       "deleteTitle": "Bu görev silinsin mi?",
       "deleteText": "Görev Geri Dönüşüm Kutusu'na taşınır ve 30 gün boyunca geri yüklenebilir.",
-      "deleted": "Görev Geri Dönüşüm Kutusu'na taşındı."
+      "deleted": "Görev Geri Dönüşüm Kutusu'na taşındı.",
+      "muteTaskReminders": "Bu görevin hatırlatmalarını benim için kapat",
+      "muteTaskRemindersHint": "Yalnızca göreve ayarlanmış hatırlatmaları kapatır. Aşağıdaki kendi hatırlatmalarınız gelmeye devam eder.",
+      "myReminders": {
+        "title": "Hatırlatmalarım",
+        "hint": "Görevin kendi hatırlatmalarına ek olarak yalnızca size gelen hatırlatmalar. Bunları başka kimse görmez.",
+        "add": "Hatırlatma ekle",
+        "edit": "Hatırlatmalarımı düzenle",
+        "remove": "Hatırlatmalarımı kaldır",
+        "needDue": "Bu görevin son tarihi yok. Hatırlatmalar için son tarih gerekir.",
+        "pickOne": "En az bir hatırlatma seçin ya da hatırlatmalarınızı kaldırın.",
+        "saved": "Hatırlatmalarınız kaydedildi.",
+        "removed": "Hatırlatmalarınız kaldırıldı."
+      }
     },
     "card": {
       "viewAll": "Tüm görevler",

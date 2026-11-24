@@ -22,14 +22,28 @@ import {
 import { dateLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { BranchName } from "@/components/app/BranchName";
 import { TaskPriorityBadge, TaskStatusBadge } from "./TaskBadges";
 import { useSetTaskStatus } from "./use-task-status";
 import { useTaskArchive } from "./use-task-archive";
-import { TASK_STATUS_CARD, TASK_STATUS_COLUMN } from "./task-status-colors";
-import { formatDay, selectClass } from "./task-display";
+import {
+  TASK_MINE,
+  TASK_OTHER,
+  TASK_OTHER_TEXT,
+  TASK_STATUS_CARD,
+  TASK_STATUS_COLUMN,
+} from "./task-status-colors";
+import { formatDay, scopeText, selectClass } from "./task-display";
 
-type ViewProps = { tasks: Task[]; today: string; onOpen: (id: string) => void };
+/**
+ * `showScope`: scope labels (branch, region, national) are shown only to someone who can work in more than one place
+ * (useWorkScopes().single is false); with a single scope every task comes from there.
+ */
+type ViewProps = {
+  tasks: Task[];
+  today: string;
+  onOpen: (id: string) => void;
+  showScope: boolean;
+};
 
 /** "Assigned to you" marker on cards and rows (shown when the list is not filtered to my tasks only). */
 function MineBadge({ testId }: { testId: string }) {
@@ -126,7 +140,13 @@ function DueText({ task, today }: { task: Task; today: string }) {
 // ---------------------------------------------------------------------------------------------------------------
 // Kanban
 
-export function KanbanView({ tasks, today, onOpen, markMine }: ViewProps & { markMine: boolean }) {
+export function KanbanView({
+  tasks,
+  today,
+  onOpen,
+  markMine,
+  showScope,
+}: ViewProps & { markMine: boolean }) {
   const { t } = useTranslation();
   const setStatus = useSetTaskStatus();
   const [dragging, setDragging] = useState<Task | null>(null);
@@ -193,6 +213,7 @@ export function KanbanView({ tasks, today, onOpen, markMine }: ViewProps & { mar
                 key={task.id}
                 task={task}
                 markMine={markMine}
+                showScope={showScope}
                 today={today}
                 onOpen={onOpen}
                 onDragStart={() => setDragging(task)}
@@ -213,6 +234,7 @@ export function KanbanView({ tasks, today, onOpen, markMine }: ViewProps & { mar
 function TaskCard({
   task,
   markMine,
+  showScope,
   today,
   onOpen,
   onDragStart,
@@ -221,6 +243,7 @@ function TaskCard({
 }: {
   task: Task;
   markMine: boolean;
+  showScope: boolean;
   today: string;
   onOpen: (id: string) => void;
   onDragStart: () => void;
@@ -247,7 +270,7 @@ function TaskCard({
       className={cn(
         "min-w-0 space-y-2 rounded-xl border p-3 shadow-sm",
         TASK_STATUS_CARD[task.status],
-        task.mine && "border-l-4 border-l-primary",
+        task.mine ? TASK_MINE : TASK_OTHER,
         task.can_set_status && !task.archived_at && "cursor-grab active:cursor-grabbing",
       )}
     >
@@ -255,7 +278,10 @@ function TaskCard({
         type="button"
         data-testid="task-card-open"
         onClick={() => onOpen(task.id)}
-        className="block min-h-11 w-full min-w-0 text-left font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          "block min-h-11 w-full min-w-0 text-left font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          !task.mine && TASK_OTHER_TEXT,
+        )}
       >
         <span className="block truncate" title={task.title}>
           {task.title}
@@ -287,6 +313,15 @@ function TaskCard({
           {names}
         </p>
       )}
+      {showScope && (
+        <p
+          className="min-w-0 truncate text-xs text-muted-foreground"
+          data-testid="task-card-scope"
+          data-scope={task.scope}
+        >
+          {scopeText(t, task)}
+        </p>
+      )}
       <UnarchiveButton task={task} />
       {task.can_set_status && !task.archived_at && (
         <select
@@ -316,6 +351,7 @@ export function ListView({
   onOpen,
   group,
   markMine,
+  showScope,
 }: ViewProps & { group: TaskGroup; markMine: boolean }) {
   const { t } = useTranslation();
   const groups = groupTasks(tasks, group, t("tasks.unassigned"));
@@ -355,7 +391,7 @@ export function ListView({
                   key={task.id}
                   className={cn(
                     "flex min-w-0 flex-col sm:flex-row sm:items-center",
-                    task.mine && "border-l-4 border-l-primary",
+                    task.mine ? TASK_MINE : TASK_OTHER,
                   )}
                 >
                   <button
@@ -370,12 +406,19 @@ export function ListView({
                     className="grid min-h-11 w-full min-w-0 flex-1 grid-cols-1 gap-2 px-4 py-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[minmax(0,1fr)_auto_auto_minmax(0,10rem)] md:items-center md:gap-4"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-medium" title={task.title}>
+                      <span
+                        className={cn("block truncate font-medium", !task.mine && TASK_OTHER_TEXT)}
+                        title={task.title}
+                      >
                         {task.title}
                       </span>
-                      {task.branch && (
-                        <span className="block min-w-0 text-xs text-muted-foreground">
-                          <BranchName name={task.branch} />
+                      {showScope && (
+                        <span
+                          className="block min-w-0 truncate text-xs text-muted-foreground"
+                          data-testid="tasks-list-row-scope"
+                          data-scope={task.scope}
+                        >
+                          {scopeText(t, task)}
                         </span>
                       )}
                     </span>
@@ -450,7 +493,7 @@ function shiftMonth(month: string, by: number) {
   return d.toISOString().slice(0, 7);
 }
 
-export function CalendarView({ tasks, today, onOpen }: ViewProps) {
+export function CalendarView({ tasks, today, onOpen, showScope }: ViewProps) {
   const { t, i18n } = useTranslation();
   const phone = useIsPhone();
   const [month, setMonth] = useState(today.slice(0, 7));
@@ -482,16 +525,23 @@ export function CalendarView({ tasks, today, onOpen }: ViewProps) {
           data-testid="tasks-calendar-item"
           data-task-id={task.id}
           data-overdue={overdue}
+          data-mine={task.mine}
           onClick={() => onOpen(task.id)}
-          title={task.title}
+          title={showScope ? `${task.title} · ${scopeText(t, task)}` : task.title}
           className={cn(
-            "block w-full min-w-0 truncate rounded-md border px-1.5 py-1 text-left text-xs hover:bg-muted",
+            "group block w-full min-w-0 truncate rounded-md border px-1.5 py-1 text-left text-xs hover:bg-muted",
             phone && "min-h-11 px-3 text-sm",
             overdue ? "border-destructive/40 bg-destructive/10 text-destructive" : "bg-card",
-            task.status === "done" && "line-through opacity-70",
+            task.mine ? TASK_MINE : !overdue && TASK_OTHER_TEXT,
+            task.status === "done" && "line-through",
           )}
         >
           {task.title}
+          {showScope && (
+            <span className="sr-only" data-testid="tasks-calendar-item-scope">
+              {` · ${scopeText(t, task)}`}
+            </span>
+          )}
         </button>
       </li>
     );

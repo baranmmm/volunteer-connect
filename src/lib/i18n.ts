@@ -193,6 +193,7 @@ const ERROR_KEYS: Record<string, string> = {
   "The category of a meeting cannot change": "errors.meetingCategoryFixed",
   "Add files on the meeting page": "errors.meetingFilesOnMeeting",
   "Recurring meetings are created from the meeting form": "errors.meetingRepeatFromMeetingForm",
+  "This notice cannot be changed": "errors.notificationLocked",
   "Not allowed": "errors.notAllowed",
   "Not signed in": "errors.notSignedIn",
   "Only active Regional Directors can change roles": "errors.directorOnlyRoles",

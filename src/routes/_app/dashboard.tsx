@@ -24,7 +24,7 @@ import { EventStatusBadge } from "@/components/events/EventStatus";
 import { STATUS_CARD, cancelledTitle } from "@/components/events/event-status-styles";
 import { HappeningNowBadge } from "@/components/events/HappeningNowBadge";
 import { MyRegistrationsCard } from "@/components/events/MyRegistrations";
-import { PendingRequestsCard, RequestNotices } from "@/components/requests/RequestDashboard";
+import { RequestNotices, WaitingForYouCard } from "@/components/requests/RequestDashboard";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => pageHead("Dashboard", "Your volunteer dashboard."),
@@ -82,6 +82,7 @@ function Dashboard() {
         </p>
       </section>
       <div data-testid="dashboard-grid" className="grid gap-5 lg:grid-cols-2">
+        {!follower && <WaitingForYouCard />}
         {nc && <NcDashboard />}
         {follower && (
           <div data-testid="follower-dashboard" className="grid gap-5 lg:col-span-2 lg:grid-cols-2">
@@ -98,7 +99,6 @@ function Dashboard() {
           now={now}
           canCreate={isManager || nc}
         />
-        {isManager && <PendingRequestsCard />}
         {drafts.length > 0 && <DraftsCard drafts={drafts} />}
         <MyRegistrationsCard />
         {!follower && <MyTasksCard />}

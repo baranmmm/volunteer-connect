@@ -21,6 +21,7 @@ import type { Person } from "@/lib/tasks";
  * Test ids (prefix = testId): root `${testId}` (data-count), the opener `${testId}-open`, the search box
  * `${testId}-search`, options `${testId}-option` (data-user-id, aria-selected), chips `${testId}-chip` (data-user-id)
  * with `${testId}-chip-remove`, and `${testId}-empty` when nobody can be chosen.
+ * `hideLabel` keeps the label for screen readers only (when a surrounding header already shows it).
  */
 export function PeopleCombobox({
   testId,
@@ -32,6 +33,7 @@ export function PeopleCombobox({
   loading,
   emptyText,
   placeholder,
+  hideLabel,
 }: {
   testId: string;
   label: string;
@@ -42,6 +44,7 @@ export function PeopleCombobox({
   loading?: boolean;
   emptyText?: string;
   placeholder?: string;
+  hideLabel?: boolean;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -60,7 +63,7 @@ export function PeopleCombobox({
 
   return (
     <div className="min-w-0 space-y-2" data-testid={testId} data-count={selected.length}>
-      <div id={labelId} className="text-sm font-medium">
+      <div id={labelId} className={hideLabel ? "sr-only" : "text-sm font-medium"}>
         {label} <span className="text-muted-foreground">({selected.length})</span>
       </div>
       {chosen.length > 0 && (

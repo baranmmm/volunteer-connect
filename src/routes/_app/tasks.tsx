@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Archive, CalendarDays, Columns3, List, Plus } from "lucide-react";
 import { z } from "zod";
@@ -10,7 +10,6 @@ import {
   DEFAULT_FILTERS,
   TASK_PRIORITIES,
   TASK_STATUSES,
-  defaultMineFilter,
   filterTasks,
   londonDay,
   readTaskView,
@@ -22,7 +21,6 @@ import {
   type TaskView,
 } from "@/lib/tasks";
 import { listTasks } from "@/lib/tasks.functions";
-import { listMyWorkScopes } from "@/lib/work-scopes";
 import { pageHead } from "@/components/app/head";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -35,6 +33,7 @@ import {
   ListView,
 } from "@/components/tasks/TaskViews";
 import { selectClass } from "@/components/tasks/task-display";
+import { useWorkScopes } from "@/components/work/use-work-scopes";
 
 const tasksSearch = z.object({ task: z.string().uuid().optional().catch(undefined) });
 
@@ -57,36 +56,22 @@ function TasksPage() {
   const navigate = useNavigate();
   const { task: openTask } = Route.useSearch();
   const fetchTasks = useServerFn(listTasks);
-  const fetchScopes = useServerFn(listMyWorkScopes);
   const tasks = useQuery({ queryKey: ["tasks", uid], queryFn: () => fetchTasks(), enabled: !!uid });
-  const scopes = useQuery({
-    queryKey: ["work-scopes", uid],
-    queryFn: () => fetchScopes(),
-    enabled: !!uid,
-  });
+  const work = useWorkScopes();
+  // Scope labels only for someone who works in more than one place (nothing to tell apart otherwise).
+  const showScope = !work.loading && !work.single;
   const [view, setViewState] = useState<TaskView>(() => readTaskView(uid));
   const setView = (v: TaskView) => {
     setViewState(v);
     saveTaskView(uid, v);
   };
-  const [rawFilters, setFilters] = useState<TaskFilters>(DEFAULT_FILTERS);
-  // "My tasks" starts on for anyone with tasks assigned; decided once, when the list first loads (null until then).
-  const [mineChoice, setMineChoice] = useState<boolean | null>(null);
+  // Every task the user can see by default; "My tasks" starts off (their own tasks are marked instead).
+  const [filters, setFilters] = useState<TaskFilters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<TaskSort>("due");
   const [group, setGroup] = useState<TaskGroup>("none");
   const [creating, setCreating] = useState(false);
   const today = londonDay();
   const all = useMemo(() => tasks.data ?? [], [tasks.data]);
-  useEffect(() => {
-    if (mineChoice === null && tasks.data) setMineChoice(defaultMineFilter(tasks.data));
-  }, [mineChoice, tasks.data]);
-  const filters = useMemo(
-    (): TaskFilters => ({
-      ...rawFilters,
-      mine: mineChoice ?? (tasks.data ? defaultMineFilter(tasks.data) : false),
-    }),
-    [rawFilters, mineChoice, tasks.data],
-  );
 
   const shown = useMemo(() => {
     const active: TaskFilters =
@@ -108,13 +93,13 @@ function TasksPage() {
     return [...map].sort((a, b) => a[1].localeCompare(b[1]));
   }, [all, t]);
   const hasNoBranch = all.some((x) => !x.branch_id);
+  // The branch filter only helps when the tasks come from more than one place.
+  const showBranchFilter = branchOptions.length + (hasNoBranch ? 1 : 0) > 1;
 
   const open = (id: string) => void navigate({ to: "/tasks", search: { task: id } });
   const close = () => void navigate({ to: "/tasks", search: {} });
-  const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
-    if (key === "mine") setMineChoice(value as boolean);
-    else setFilters((f) => ({ ...f, [key]: value }));
-  };
+  const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) =>
+    setFilters((f) => ({ ...f, [key]: value }));
 
   const filterSelect = (
     key: "status" | "priority" | "assignee" | "branch" | "due",
@@ -146,7 +131,7 @@ function TasksPage() {
     <div className="min-w-0 space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">{t("navigation.tasks")}</h1>
-        {(scopes.data?.length ?? 0) > 0 && (
+        {work.scopes.length > 0 && (
           <Button data-testid="tasks-new" className="h-11" onClick={() => setCreating(true)}>
             <Plus />
             {t("tasks.new")}
@@ -207,10 +192,13 @@ function TasksPage() {
             TASK_PRIORITIES.map((p) => [p, t(`tasks.priority.${p}`)]),
           )}
           {filterSelect("assignee", t("tasks.form.assignees"), assigneeOptions)}
-          {filterSelect("branch", t("tasks.filters.branch"), [
-            ...branchOptions,
-            ...(hasNoBranch ? ([["none", t("tasks.filters.noBranch")]] as [string, string][]) : []),
-          ])}
+          {showBranchFilter &&
+            filterSelect("branch", t("tasks.filters.branch"), [
+              ...branchOptions,
+              ...(hasNoBranch
+                ? ([["none", t("tasks.filters.noBranch")]] as [string, string][])
+                : []),
+            ])}
           {filterSelect("due", t("tasks.form.dueDate"), [
             ["overdue", t("tasks.filters.dueOverdue")],
             ["week", t("tasks.filters.dueWeek")],
@@ -294,7 +282,13 @@ function TasksPage() {
           )}
         </div>
       ) : view === "kanban" ? (
-        <KanbanView tasks={shown} today={today} onOpen={open} markMine={!filters.mine} />
+        <KanbanView
+          tasks={shown}
+          today={today}
+          onOpen={open}
+          markMine={!filters.mine}
+          showScope={showScope}
+        />
       ) : view === "list" ? (
         <ListView
           tasks={shown}
@@ -302,9 +296,10 @@ function TasksPage() {
           onOpen={open}
           group={group}
           markMine={!filters.mine}
+          showScope={showScope}
         />
       ) : (
-        <CalendarView tasks={shown} today={today} onOpen={open} />
+        <CalendarView tasks={shown} today={today} onOpen={open} showScope={showScope} />
       )}
       <TaskPanel taskId={openTask ?? null} onClose={close} />
       <TaskFormDialog open={creating} onClose={() => setCreating(false)} onSaved={open} />

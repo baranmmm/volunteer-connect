@@ -7,6 +7,7 @@ import { EventDialog } from "@/components/events/EventDialog";
 import { DateTimeField } from "@/components/events/DateTimeField";
 import { ScopeSelect } from "@/components/work/ScopeSelect";
 import { PeopleCombobox } from "@/components/work/PeopleCombobox";
+import { useWorkScopes } from "@/components/work/use-work-scopes";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,7 @@ import {
 } from "@/lib/meetings.functions";
 import { listMyWorkScopes, scopeKey, type WorkScopeOption } from "@/lib/work-scopes";
 import { MeetingScopeDialog } from "./MeetingScopeDialog";
-import { meetingRecurrenceError } from "./meeting-ui";
+import { inviteesHeader, meetingRecurrenceError } from "./meeting-ui";
 import { uploadMeetingFiles } from "./meeting-upload";
 
 type Props = {
@@ -62,7 +63,9 @@ type Repeat = "none" | MeetingRecurrence["freq"];
 /**
  * Create, edit or (from a meeting request) approve a meeting. The database checks scope, invitees and edit rights
  * again; in "approve" mode it uses the request's scope and invites the requester, so both pickers are hidden.
- * Visible: title, start/end (end follows start + 1 hour), place and invitees. "More options" (collapsed on every open)
+ * The scope field shows only when the user can create in more than one scope (useWorkScopes().single hides it).
+ * Visible: title, start/end (end follows start + 1 hour), place and invitees (a collapsed section whose header shows the
+ * count and the first names: meeting-form-invitees-toggle, aria-expanded). "More options" (collapsed on every open)
  * holds the description and, when creating, agenda titles, files (uploaded once the meeting exists) and repetition.
  * Editing an occurrence of a recurring meeting asks which occurrences change (updateMeetingSeries).
  */
@@ -148,6 +151,8 @@ function MeetingForm({
     staleTime: 60000,
   });
   const effectiveScope = mode === "create" ? (scope ?? scopes.data?.[0] ?? null) : scope;
+  // One possible scope: it is used without showing a "Where" field.
+  const { single } = useWorkScopes();
 
   const [titleValue, setTitle] = useState(source?.title ?? initial?.title ?? "");
   const [description, setDescription] = useState(source?.description ?? initial?.description ?? "");
@@ -201,6 +206,13 @@ function MeetingForm({
     const extra = (source?.invitees ?? []).filter((p) => !list.some((x) => x.id === p.id));
     return [...list, ...extra];
   }, [people.data, source?.invitees]);
+
+  // Invitees: collapsed on every open; the header names the first three.
+  const [inviteesOpen, setInviteesOpen] = useState(false);
+  const inviteeNames = useMemo(() => {
+    const byId = new Map(peopleList.map((p) => [p.id, p.full_name]));
+    return invitees.map((id) => byId.get(id) ?? t("common.formerMember"));
+  }, [invitees, peopleList, t]);
 
   // More options: collapsed on every open.
   const [more, setMore] = useState(false);
@@ -626,6 +638,7 @@ function MeetingForm({
     >
       <p className="text-sm text-muted-foreground">{t("meetings.form.requiredNote")}</p>
       {mode !== "approve" &&
+        !single &&
         (mode === "create" && scopes.isLoading ? (
           <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : (
@@ -717,16 +730,42 @@ function MeetingForm({
         </div>
       )}
       {showPeople && (
-        <PeopleCombobox
-          testId={`${testId}-invitees`}
-          label={t("meetings.form.invitees")}
-          people={peopleList}
-          selected={invitees}
-          onChange={setInvitees}
-          disabled={busy || !!createdId}
-          loading={people.isLoading}
-          emptyText={t("meetings.form.noPeople")}
-        />
+        <Collapsible
+          open={inviteesOpen}
+          onOpenChange={setInviteesOpen}
+          className="min-w-0 rounded-lg border"
+        >
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              data-testid={`${testId}-invitees-toggle`}
+              data-count={invitees.length}
+              aria-expanded={inviteesOpen}
+              className="flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {inviteesHeader(t, t("meetings.invitees"), inviteeNames)}
+              </span>
+              <ChevronDown
+                className={cn("size-4 shrink-0 transition-transform", inviteesOpen && "rotate-180")}
+                aria-hidden
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="min-w-0 border-t p-3">
+            <PeopleCombobox
+              testId={`${testId}-invitees`}
+              label={t("meetings.form.invitees")}
+              hideLabel
+              people={peopleList}
+              selected={invitees}
+              onChange={setInvitees}
+              disabled={busy || !!createdId}
+              loading={people.isLoading}
+              emptyText={t("meetings.form.noPeople")}
+            />
+          </CollapsibleContent>
+        </Collapsible>
       )}
       <Collapsible open={more} onOpenChange={setMore} className="min-w-0 rounded-lg border">
         <CollapsibleTrigger asChild>

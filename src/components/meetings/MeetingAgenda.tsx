@@ -3,7 +3,18 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { ArrowDown, ArrowUp, ListChecks, Pencil, Plus, Repeat, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  ListChecks,
+  Pencil,
+  Plus,
+  Repeat,
+  Trash2,
+} from "lucide-react";
 import { EventDialog } from "@/components/events/EventDialog";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import type { AgendaItem, MeetingDetail } from "@/lib/meetings";
 import {
   addAgendaItem,
@@ -25,10 +37,16 @@ import {
   updateAgendaItem,
   updateMeetingDecision,
 } from "@/lib/meetings.functions";
+import { agendaCounts } from "./meeting-ui";
 
 type Decision = AgendaItem["decisions"][number];
 
-/** Agenda items with their decisions and the tasks created from them. Invitees see everything read-only. */
+/**
+ * Agenda items with their decisions and the tasks created from them. Invitees see everything read-only.
+ * Each item is a toggle row (chevron, title, "2 decisions, 3 tasks"), collapsed by default; expanding it shows the
+ * notes, decisions, tasks and the editing controls. A just-added item opens expanded. "Expand all / Collapse all"
+ * (meeting-agenda-expand-all, aria-pressed) opens or closes every item.
+ */
 export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -48,6 +66,24 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   const [editingDecision, setEditingDecision] = useState<string | null>(null);
   const [removing, setRemoving] = useState<AgendaItem | null>(null);
   const [taskFor, setTaskFor] = useState<Decision | null>(null);
+  // Expanded agenda items (collapsed by default).
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const setOpen = (id: string, open: boolean) =>
+    setExpanded((cur) => {
+      const next = new Set(cur);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  const countsText = (c: { decisions: number; tasks: number }) => {
+    const decisions = c.decisions
+      ? t("meetings.agenda.decisionsCount", { count: c.decisions })
+      : "";
+    const tasks = c.tasks ? t("meetings.agenda.tasksCount", { count: c.tasks }) : "";
+    return decisions && tasks
+      ? t("meetings.agenda.countsBoth", { decisions, tasks })
+      : decisions || tasks;
+  };
   // Resolved checkboxes answer at once; the saved value replaces this once the meeting is read again.
   const [resolving, setResolving] = useState<Record<string, boolean>>({});
   async function toggleResolved(id: string, resolved: boolean) {
@@ -78,6 +114,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   }
 
   const items = [...meeting.agenda].sort((a, b) => a.position - b.position);
+  const allOpen = items.length > 0 && items.every((item) => expanded.has(item.id));
   return (
     <section
       data-testid="meeting-agenda"
@@ -88,32 +125,50 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
         <h2 id="meeting-agenda-title" className="text-xl font-semibold">
           {t("meetings.agenda.title")}
         </h2>
-        {editable && !adding && (
-          <Button
-            data-testid="meeting-agenda-add"
-            variant="outline"
-            className="h-11"
-            disabled={busy}
-            onClick={() => {
-              setEditingItem(null);
-              setAdding(true);
-            }}
-          >
-            <Plus />
-            {t("meetings.agenda.add")}
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {items.length > 0 && (
+            <Button
+              type="button"
+              data-testid="meeting-agenda-expand-all"
+              aria-pressed={allOpen}
+              variant="ghost"
+              className="h-11"
+              onClick={() =>
+                setExpanded(allOpen ? new Set() : new Set(items.map((item) => item.id)))
+              }
+            >
+              {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
+              {allOpen ? t("meetings.agenda.collapseAll") : t("meetings.agenda.expandAll")}
+            </Button>
+          )}
+          {editable && !adding && (
+            <Button
+              data-testid="meeting-agenda-add"
+              variant="outline"
+              className="h-11"
+              disabled={busy}
+              onClick={() => {
+                setEditingItem(null);
+                setAdding(true);
+              }}
+            >
+              <Plus />
+              {t("meetings.agenda.add")}
+            </Button>
+          )}
+        </div>
       </div>
       {editable && adding && (
         <ItemForm
           busy={busy}
           onCancel={() => setAdding(false)}
           onSave={async (title, notes) => {
+            // A new item opens expanded, ready for its decisions.
             if (
-              await run(
-                () => add({ data: { meetingId: meeting.id, title, notes } }),
-                t("meetings.agenda.added"),
-              )
+              await run(async () => {
+                const id = await add({ data: { meetingId: meeting.id, title, notes } });
+                setOpen(id, true);
+              }, t("meetings.agenda.added"))
             )
               setAdding(false);
           }}
@@ -125,193 +180,161 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
         </p>
       ) : (
         <ol className="mt-4 grid min-w-0 grid-cols-1 gap-3">
-          {items.map((item, index) => (
-            <li
-              key={item.id}
-              data-testid="meeting-agenda-item"
-              data-item-id={item.id}
-              data-resolved={resolving[item.id] ?? item.resolved}
-              data-standing={item.standing}
-              className="min-w-0 rounded-xl border p-3 sm:p-4"
-            >
-              {editingItem === item.id ? (
-                <ItemForm
-                  busy={busy}
-                  title={item.title}
-                  notes={item.notes ?? ""}
-                  onCancel={() => setEditingItem(null)}
-                  onSave={async (title, notes) => {
-                    if (
-                      await run(
-                        () => update({ data: { id: item.id, title, notes } }),
-                        t("meetings.agenda.updated"),
-                      )
-                    )
-                      setEditingItem(null);
-                  }}
-                />
-              ) : (
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="mt-0.5 shrink-0 font-semibold text-muted-foreground" aria-hidden>
-                    {index + 1}.
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <h3
-                      data-testid="meeting-agenda-item-title"
-                      className="font-semibold [overflow-wrap:anywhere]"
+          {items.map((item, index) => {
+            const open = expanded.has(item.id);
+            const counts = agendaCounts(item);
+            const bodyId = `meeting-agenda-item-body-${item.id}`;
+            return (
+              <li
+                key={item.id}
+                data-testid="meeting-agenda-item"
+                data-item-id={item.id}
+                data-resolved={resolving[item.id] ?? item.resolved}
+                data-standing={item.standing}
+                data-expanded={open}
+                className="min-w-0 rounded-xl border p-2 sm:p-3"
+              >
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <h3 className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      data-testid="meeting-agenda-item-toggle"
+                      aria-expanded={open}
+                      aria-controls={bodyId}
+                      onClick={() => setOpen(item.id, !open)}
+                      className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-1 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      {item.title}
-                    </h3>
-                    {(item.standing || (item.resolved && !editable)) && (
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {item.standing && (
-                          <Badge
-                            variant="secondary"
-                            data-testid="meeting-agenda-standing"
-                            className="gap-1"
-                          >
-                            <Repeat className="size-3" aria-hidden />
-                            {t("meetings.agenda.standing")}
-                          </Badge>
+                      <ChevronRight
+                        className={cn(
+                          "size-4 shrink-0 text-muted-foreground transition-transform",
+                          open && "rotate-90",
                         )}
-                        {item.resolved && !editable && (
-                          <Badge variant="outline" data-testid="meeting-agenda-resolved-badge">
-                            {t("meetings.agenda.resolved")}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    {editable && (
-                      <label className="mt-1 inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm">
-                        <Checkbox
-                          data-testid="meeting-agenda-resolved"
-                          checked={resolving[item.id] ?? item.resolved}
-                          disabled={busy}
-                          onCheckedChange={(checked) =>
-                            void toggleResolved(item.id, checked === true)
-                          }
-                        />
-                        {t("meetings.agenda.resolved")}
-                      </label>
-                    )}
-                    {item.notes && (
-                      <p
-                        data-testid="meeting-agenda-item-notes"
-                        className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground [overflow-wrap:anywhere]"
+                        aria-hidden
+                      />
+                      <span className="shrink-0 font-semibold text-muted-foreground" aria-hidden>
+                        {index + 1}.
+                      </span>
+                      <span
+                        data-testid="meeting-agenda-item-title"
+                        className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]"
                       >
-                        {item.notes}
-                      </p>
-                    )}
-                  </div>
-                  {editable && (
-                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        data-testid="meeting-agenda-up"
-                        aria-label={t("meetings.agenda.moveUp")}
-                        disabled={busy || index === 0}
-                        onClick={() =>
-                          void run(() => move({ data: { id: item.id, direction: -1 } }))
-                        }
+                        {item.title}
+                      </span>
+                      <span
+                        data-testid="meeting-agenda-item-counts"
+                        data-decisions={counts.decisions}
+                        data-tasks={counts.tasks}
+                        className="shrink-0 text-xs font-normal text-muted-foreground"
                       >
-                        <ArrowUp />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        data-testid="meeting-agenda-down"
-                        aria-label={t("meetings.agenda.moveDown")}
-                        disabled={busy || index === items.length - 1}
-                        onClick={() =>
-                          void run(() => move({ data: { id: item.id, direction: 1 } }))
-                        }
-                      >
-                        <ArrowDown />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        data-testid="meeting-agenda-edit"
-                        aria-label={t("meetings.agenda.edit")}
-                        disabled={busy}
-                        onClick={() => {
-                          setAdding(false);
-                          setEditingItem(item.id);
-                        }}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        data-testid="meeting-agenda-delete"
-                        aria-label={t("meetings.agenda.delete")}
-                        disabled={busy}
-                        onClick={() => setRemoving(item)}
-                      >
-                        <Trash2 />
-                      </Button>
+                        {countsText(counts)}
+                      </span>
+                    </button>
+                  </h3>
+                  {(item.standing || (item.resolved && !editable)) && (
+                    <div className="flex shrink-0 flex-wrap gap-1.5">
+                      {item.standing && (
+                        <Badge
+                          variant="secondary"
+                          data-testid="meeting-agenda-standing"
+                          className="gap-1"
+                        >
+                          <Repeat className="size-3" aria-hidden />
+                          {t("meetings.agenda.standing")}
+                        </Badge>
+                      )}
+                      {item.resolved && !editable && (
+                        <Badge variant="outline" data-testid="meeting-agenda-resolved-badge">
+                          {t("meetings.agenda.resolved")}
+                        </Badge>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-              <div className="mt-3 min-w-0 border-t pt-3">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  {t("meetings.decisions.title")}
-                </h4>
-                {item.decisions.length === 0 && decisionFor !== item.id && (
-                  <p
-                    data-testid="meeting-decisions-empty"
-                    className="mt-1 text-sm text-muted-foreground"
-                  >
-                    {t("meetings.decisions.empty")}
-                  </p>
-                )}
-                {item.decisions.length > 0 && (
-                  <ul className="mt-2 grid min-w-0 grid-cols-1 gap-2">
-                    {item.decisions.map((d) => (
-                      <li
-                        key={d.id}
-                        data-testid="meeting-decision"
-                        data-decision-id={d.id}
-                        className="min-w-0 rounded-lg bg-muted/50 p-3"
-                      >
-                        {editingDecision === d.id ? (
-                          <DecisionForm
-                            busy={busy}
-                            text={d.text}
-                            onCancel={() => setEditingDecision(null)}
-                            onSave={async (text) => {
-                              if (
-                                await run(
-                                  () => updateDecision({ data: { id: d.id, text } }),
-                                  t("meetings.decisions.updated"),
-                                )
+                <div
+                  id={bodyId}
+                  data-testid="meeting-agenda-item-body"
+                  hidden={!open}
+                  className="min-w-0 px-1 pb-1"
+                >
+                  {open && (
+                    <>
+                      {editingItem === item.id ? (
+                        <ItemForm
+                          busy={busy}
+                          title={item.title}
+                          notes={item.notes ?? ""}
+                          onCancel={() => setEditingItem(null)}
+                          onSave={async (title, notes) => {
+                            if (
+                              await run(
+                                () => update({ data: { id: item.id, title, notes } }),
+                                t("meetings.agenda.updated"),
                               )
-                                setEditingDecision(null);
-                            }}
-                          />
-                        ) : (
-                          <div className="flex min-w-0 items-start gap-2">
-                            <p
-                              data-testid="meeting-decision-text-value"
-                              className="min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere]"
-                            >
-                              {d.text}
-                            </p>
+                            )
+                              setEditingItem(null);
+                          }}
+                        />
+                      ) : (
+                        (editable || item.notes) && (
+                          <div className="mt-1 flex min-w-0 flex-wrap items-start gap-3">
+                            <div className="min-w-0 flex-1">
+                              {editable && (
+                                <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                                  <Checkbox
+                                    data-testid="meeting-agenda-resolved"
+                                    checked={resolving[item.id] ?? item.resolved}
+                                    disabled={busy}
+                                    onCheckedChange={(checked) =>
+                                      void toggleResolved(item.id, checked === true)
+                                    }
+                                  />
+                                  {t("meetings.agenda.resolved")}
+                                </label>
+                              )}
+                              {item.notes && (
+                                <p
+                                  data-testid="meeting-agenda-item-notes"
+                                  className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground [overflow-wrap:anywhere]"
+                                >
+                                  {item.notes}
+                                </p>
+                              )}
+                            </div>
                             {editable && (
-                              <div className="flex shrink-0 gap-1">
+                              <div className="flex shrink-0 flex-wrap justify-end gap-1">
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  data-testid="meeting-decision-edit"
-                                  aria-label={t("meetings.decisions.edit")}
+                                  data-testid="meeting-agenda-up"
+                                  aria-label={t("meetings.agenda.moveUp")}
+                                  disabled={busy || index === 0}
+                                  onClick={() =>
+                                    void run(() => move({ data: { id: item.id, direction: -1 } }))
+                                  }
+                                >
+                                  <ArrowUp />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  data-testid="meeting-agenda-down"
+                                  aria-label={t("meetings.agenda.moveDown")}
+                                  disabled={busy || index === items.length - 1}
+                                  onClick={() =>
+                                    void run(() => move({ data: { id: item.id, direction: 1 } }))
+                                  }
+                                >
+                                  <ArrowDown />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  data-testid="meeting-agenda-edit"
+                                  aria-label={t("meetings.agenda.edit")}
                                   disabled={busy}
                                   onClick={() => {
-                                    setDecisionFor(null);
-                                    setEditingDecision(d.id);
+                                    setAdding(false);
+                                    setEditingItem(item.id);
                                   }}
                                 >
                                   <Pencil />
@@ -320,101 +343,183 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                   size="icon"
                                   variant="ghost"
                                   className="text-destructive hover:text-destructive"
-                                  data-testid="meeting-decision-delete"
-                                  aria-label={t("meetings.decisions.delete")}
+                                  data-testid="meeting-agenda-delete"
+                                  aria-label={t("meetings.agenda.delete")}
                                   disabled={busy}
-                                  onClick={() =>
-                                    void run(
-                                      () => removeDecision({ data: { id: d.id } }),
-                                      t("meetings.decisions.deleted"),
-                                    )
-                                  }
+                                  onClick={() => setRemoving(item)}
                                 >
                                   <Trash2 />
                                 </Button>
                               </div>
                             )}
                           </div>
-                        )}
-                        {d.tasks.length > 0 && (
-                          <ul
-                            className="mt-2 grid min-w-0 grid-cols-1 gap-1"
-                            aria-label={t("meetings.decisions.tasks")}
+                        )
+                      )}
+                      <div className="mt-3 min-w-0 border-t pt-3">
+                        <h4 className="text-sm font-medium text-muted-foreground">
+                          {t("meetings.decisions.title")}
+                        </h4>
+                        {item.decisions.length === 0 && decisionFor !== item.id && (
+                          <p
+                            data-testid="meeting-decisions-empty"
+                            className="mt-1 text-sm text-muted-foreground"
                           >
-                            {d.tasks.map((task) => (
-                              <li key={task.id} className="min-w-0">
-                                <Link
-                                  to="/tasks"
-                                  search={{ task: task.id } as never}
-                                  data-testid="meeting-decision-task"
-                                  data-task-id={task.id}
-                                  data-status={task.status}
-                                  className="flex min-w-0 items-center gap-2 text-sm text-primary underline-offset-4 hover:underline"
-                                >
-                                  <ListChecks className="size-4 shrink-0" aria-hidden />
-                                  <span className="min-w-0 flex-1 truncate" title={task.title}>
-                                    {task.title}
-                                  </span>
-                                  <Badge variant="outline" className="shrink-0">
-                                    {t(`meetings.taskStatus.${task.status}`)}
-                                  </Badge>
-                                </Link>
+                            {t("meetings.decisions.empty")}
+                          </p>
+                        )}
+                        {item.decisions.length > 0 && (
+                          <ul className="mt-2 grid min-w-0 grid-cols-1 gap-2">
+                            {item.decisions.map((d) => (
+                              <li
+                                key={d.id}
+                                data-testid="meeting-decision"
+                                data-decision-id={d.id}
+                                className="min-w-0 rounded-lg bg-muted/50 p-3"
+                              >
+                                {editingDecision === d.id ? (
+                                  <DecisionForm
+                                    busy={busy}
+                                    text={d.text}
+                                    onCancel={() => setEditingDecision(null)}
+                                    onSave={async (text) => {
+                                      if (
+                                        await run(
+                                          () => updateDecision({ data: { id: d.id, text } }),
+                                          t("meetings.decisions.updated"),
+                                        )
+                                      )
+                                        setEditingDecision(null);
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="flex min-w-0 items-start gap-2">
+                                    <p
+                                      data-testid="meeting-decision-text-value"
+                                      className="min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere]"
+                                    >
+                                      {d.text}
+                                    </p>
+                                    {editable && (
+                                      <div className="flex shrink-0 gap-1">
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          data-testid="meeting-decision-edit"
+                                          aria-label={t("meetings.decisions.edit")}
+                                          disabled={busy}
+                                          onClick={() => {
+                                            setDecisionFor(null);
+                                            setEditingDecision(d.id);
+                                          }}
+                                        >
+                                          <Pencil />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="text-destructive hover:text-destructive"
+                                          data-testid="meeting-decision-delete"
+                                          aria-label={t("meetings.decisions.delete")}
+                                          disabled={busy}
+                                          onClick={() =>
+                                            void run(
+                                              () => removeDecision({ data: { id: d.id } }),
+                                              t("meetings.decisions.deleted"),
+                                            )
+                                          }
+                                        >
+                                          <Trash2 />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {d.tasks.length > 0 && (
+                                  <ul
+                                    className="mt-2 grid min-w-0 grid-cols-1 gap-1"
+                                    aria-label={t("meetings.decisions.tasks")}
+                                  >
+                                    {d.tasks.map((task) => (
+                                      <li key={task.id} className="min-w-0">
+                                        <Link
+                                          to="/tasks"
+                                          search={{ task: task.id } as never}
+                                          data-testid="meeting-decision-task"
+                                          data-task-id={task.id}
+                                          data-status={task.status}
+                                          className="flex min-w-0 items-center gap-2 text-sm text-primary underline-offset-4 hover:underline"
+                                        >
+                                          <ListChecks className="size-4 shrink-0" aria-hidden />
+                                          <span
+                                            className="min-w-0 flex-1 truncate"
+                                            title={task.title}
+                                          >
+                                            {task.title}
+                                          </span>
+                                          <Badge variant="outline" className="shrink-0">
+                                            {t(`meetings.taskStatus.${task.status}`)}
+                                          </Badge>
+                                        </Link>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {editable && editingDecision !== d.id && (
+                                  <Button
+                                    variant="link"
+                                    className="mt-1 h-auto min-h-11 px-0"
+                                    data-testid="meeting-decision-create-task"
+                                    disabled={busy}
+                                    onClick={() => setTaskFor(d)}
+                                  >
+                                    <Plus />
+                                    {t("meetings.decisions.createTask")}
+                                  </Button>
+                                )}
                               </li>
                             ))}
                           </ul>
                         )}
-                        {editable && editingDecision !== d.id && (
-                          <Button
-                            variant="link"
-                            className="mt-1 h-auto min-h-11 px-0"
-                            data-testid="meeting-decision-create-task"
-                            disabled={busy}
-                            onClick={() => setTaskFor(d)}
-                          >
-                            <Plus />
-                            {t("meetings.decisions.createTask")}
-                          </Button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {editable &&
-                  (decisionFor === item.id ? (
-                    <div className="mt-2">
-                      <DecisionForm
-                        busy={busy}
-                        onCancel={() => setDecisionFor(null)}
-                        onSave={async (text) => {
-                          if (
-                            await run(
-                              () => addDecision({ data: { itemId: item.id, text } }),
-                              t("meetings.decisions.added"),
-                            )
-                          )
-                            setDecisionFor(null);
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 h-10"
-                      data-testid="meeting-decision-add"
-                      disabled={busy}
-                      onClick={() => {
-                        setEditingDecision(null);
-                        setDecisionFor(item.id);
-                      }}
-                    >
-                      <Plus />
-                      {t("meetings.decisions.add")}
-                    </Button>
-                  ))}
-              </div>
-            </li>
-          ))}
+                        {editable &&
+                          (decisionFor === item.id ? (
+                            <div className="mt-2">
+                              <DecisionForm
+                                busy={busy}
+                                onCancel={() => setDecisionFor(null)}
+                                onSave={async (text) => {
+                                  if (
+                                    await run(
+                                      () => addDecision({ data: { itemId: item.id, text } }),
+                                      t("meetings.decisions.added"),
+                                    )
+                                  )
+                                    setDecisionFor(null);
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2 h-10"
+                              data-testid="meeting-decision-add"
+                              disabled={busy}
+                              onClick={() => {
+                                setEditingDecision(null);
+                                setDecisionFor(item.id);
+                              }}
+                            >
+                              <Plus />
+                              {t("meetings.decisions.add")}
+                            </Button>
+                          ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
       <EventDialog

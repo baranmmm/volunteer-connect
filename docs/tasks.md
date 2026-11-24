@@ -49,6 +49,10 @@ nothing.
   medium), status, linked event, scope and reminders. Errors in the collapsed part open it.
 - **Scope.** Defaults to the caller's own branch from `list_my_work_scopes` (otherwise the first option). It is fixed,
   and shown above the title, for a task from a meeting decision, from an event page, or when editing.
+- **Single scope.** When `list_my_work_scopes` returns exactly one scope (volunteers, Branch Managers, National
+  Coordinators), the form has no scope field and uses that scope; an edited task shows no scope line (a task from an
+  event or a decision still says where it goes). The detection is shared with meetings:
+  `useWorkScopes()` in `src/components/work/use-work-scopes.ts` returns `{ scopes, single, loading }`.
 - **Volunteers** get themselves preselected on a new task.
 - **From an event.** "Add task" on the event page (`event-add-task`) opens the form linked to that event, in the
   event's scope. It is shown to people who may create tasks in that scope.
@@ -63,10 +67,18 @@ nothing.
   Every text colour on a tint reaches 4.5:1 (checked by `src/test/task-status-colors.test.ts`).
 - **Remembered choice.** The chosen view is stored per user in `localStorage` (`dsvh-tasks-view:<user id>`, wrapped in
   try/catch). Without storage the default is Kanban.
-- **My tasks.** A "My tasks" filter chip shows only tasks assigned to you. It starts on for anyone with at least one
-  (not archived) task assigned; someone with none, for example a manager who only hands tasks out, starts with every
-  task. When all tasks are shown, yours carry an "Assigned to you" badge and an accent border, and come first in each
-  Kanban column.
+- **Default view: every task.** `/tasks` shows every task you can see. The "My tasks" chip narrows the list to tasks
+  assigned to you; it starts **off** on every visit.
+- **Mine and others.** Your own tasks (assigned to you) stand out on Kanban cards, list rows and calendar items: an
+  accent left border, a light primary tint over the status tint and, on cards and rows, an "Assigned to you" badge.
+  They come first in each Kanban column. Other people's tasks are quieter: muted title text and no shadow, back to full
+  strength on hover and keyboard focus (`focus-within`). No opacity is used, because at 0.75 the muted and red text
+  fell below 4.5:1; `src/test/task-status-colors.test.ts` checks the muted text and every text colour on the mine tint
+  (`TASK_MINE`, `TASK_OTHER`, `TASK_OTHER_TEXT` in `task-status-colors.ts`).
+- **Scope labels.** Cards, list rows, calendar items (screen-reader text and tooltip) and the panel show the scope
+  (branch, region or national) only to someone with more than one scope (Regional Directors). With one scope every
+  task comes from there, so the labels are hidden. The list's branch filter appears only when the tasks come from more
+  than one branch.
 - **Archive.** Done tasks can be archived (panel button, or "Archive all done" in the Kanban Done column header, in
   the Done group of the list grouped by status, or in the list filter bar; it archives the shown done tasks you may
   change and reports how many). Archived tasks are hidden from Kanban, list and calendar. The "Archived" chip shows
@@ -119,7 +131,13 @@ edit keeps the existing settings unless "Remind me" is turned off. The options c
 | Repeat | None, daily, every N days or weekly, from a start date until the task is done or the due date passes | None |
 | Overdue | Every N days after the due date until the task is done | Off |
 
-- **Assignees.** They see the reminder settings read only and can mute reminders for themselves on that task.
+- **Assignees.** They see the task's reminder settings read only. "Mute this task's reminders for me" silences only
+  the task's reminders for them.
+- **My reminders.** Any assignee (volunteers included) can add their own reminders in the side panel, with the same
+  options as the form (days before, repeat, overdue). They apply only to that assignee, next to the task's reminders,
+  are not silenced by the mute switch, and nobody else sees them (`task_assignees.my_reminders`, set through
+  `set_my_task_reminders`, which refuses anyone not assigned; null clears them). Off by default ("Add a reminder"), and
+  they need a due date.
 - **When reminders stop.** When the task is done or deleted, when the person is no longer an assignee, or when they
   could no longer be assigned there (for example, they moved branch).
 - **Scheduler.** `run_task_reminders()` runs at 09:00 Europe/London (pg_cron at 08:05 and 09:05 UTC when available,
@@ -134,16 +152,19 @@ edit keeps the existing settings unless "Remind me" is turned off. The options c
 
 ## Notifications
 
+Who gets which notice, the settings (on/off, Immediately or Daily summary), grouping and the "Waiting for you" card:
+see [notifications.md](notifications.md). For tasks in short:
+
 | Event | Who is notified | Notice |
 |---|---|---|
-| A task is created with assignees, or an assignee is added | Each new assignee, never someone who assigned themselves | `task_assigned` |
-| An assignee changes the status | The creator | `task_status_changed` |
-| Someone is @mentioned in a note | The mentioned person | `task_note_mention` |
+| A task is created with assignees, or an assignee is added | Each new assignee, never someone who assigned themselves | `task_assigned` (always on) |
+| A task moves to Blocked or Done (by someone else) | The creator | `task_status_changed` |
+| Someone is @mentioned in a note | The mentioned person | `task_note_mention` (always on) |
 | An assignee writes a note | The creator (unless mentioned) | `task_note_added` |
-| A task request is received | The target | `task_request_received` |
+| A reminder is due (reminders turned on) | The assignee | `task_reminder` |
+| A task request waits for review | The target, in one grouped notice | `review_waiting` (always on) |
 | A task request is accepted or declined | The requester | `task_request_accepted` / `task_request_declined` |
 
-- **Storage.** Notices are stored per user with read/unread (`notifications`). Users read only their own.
 - **Badges.** The Tasks badge counts unseen task notices (assignments, mentions, notes); opening the task marks its
   notices read.
 
@@ -164,22 +185,23 @@ All kebab-case, never derived from text. Lists expose `data-task-id` / `data-req
   - List filters: `tasks-filter-status|priority|assignee|branch|due`, `tasks-sort`, `tasks-group` (none, status, assignee, mine), `tasks-archive-done` (data-count)
 - **Kanban**:
   - Board: `tasks-kanban`, `tasks-kanban-column` (data-status), `tasks-kanban-count`, `tasks-kanban-archive-done` (data-count, Done column)
-  - Cards: `task-card` (data-task-id, data-status, data-overdue, data-mine, data-archived), `task-card-open`, `task-card-mine`, `task-card-notes` (data-count), `task-card-assignees`, `task-card-status` (the keyboard alternative to dragging), `task-card-unarchive`, `task-due` (data-overdue)
-- **List**: `tasks-list`, `tasks-list-group` (data-group: a status, a user id, `mine` / `others`), `tasks-list-archive-done`, `tasks-list-row` (data-task-id, data-status, data-overdue, data-mine, data-archived), `tasks-list-row-mine`, `task-card-unarchive`
+  - Cards: `task-card` (data-task-id, data-status, data-overdue, data-mine, data-archived), `task-card-open`, `task-card-mine`, `task-card-scope` (data-scope; more than one scope only), `task-card-notes` (data-count), `task-card-assignees`, `task-card-status` (the keyboard alternative to dragging), `task-card-unarchive`, `task-due` (data-overdue)
+- **List**: `tasks-list`, `tasks-list-group` (data-group: a status, a user id, `mine` / `others`), `tasks-list-archive-done`, `tasks-list-row` (data-task-id, data-status, data-overdue, data-mine, data-archived), `tasks-list-row-mine`, `tasks-list-row-scope` (data-scope; more than one scope only), `task-card-unarchive`
 - **Calendar**:
   - `tasks-calendar` (data-month), `tasks-calendar-previous|next`, `tasks-calendar-title`
-  - `tasks-calendar-day` (data-day), `tasks-calendar-item` (data-task-id, data-overdue)
+  - `tasks-calendar-day` (data-day), `tasks-calendar-item` (data-task-id, data-overdue, data-mine), `tasks-calendar-item-scope` (screen-reader text; more than one scope only)
   - On phones: `tasks-calendar-agenda`, `tasks-calendar-empty`, plus `tasks-calendar-undated`
 - **Side panel**:
   - `task-panel` (data-task-id), `task-panel-detail` (data-status, data-archived), `task-panel-not-found`
-  - Fields: `task-panel-title`, `task-panel-description`, `task-panel-status`, `task-panel-due`, `task-panel-scope`, `task-panel-creator`, `task-panel-assignees`
+  - Fields: `task-panel-title`, `task-panel-description`, `task-panel-status`, `task-panel-due`, `task-panel-scope` (more than one scope only), `task-panel-creator`, `task-panel-assignees`
   - Links: `task-panel-event-link`, `task-panel-meeting-link`, `task-panel-decision`
+  - My reminders: `task-panel-my-reminders` (data-on), `task-panel-my-reminders-add`, `-need-due`, `-summary`, `-edit`, `-form` (with the form's option ids under this prefix: `task-panel-my-reminders-remind-before-1|2|3|7`, `-remind-custom`, `-repeat-kind`, `-repeat-every`, `-repeat-start`, `-overdue-toggle`, `-overdue-every`, `-<field>-error`), `-save`, `-cancel`, `-remove`, `-error`
   - Reminders and actions: `task-panel-reminders`, `task-panel-mute-reminders`, `task-panel-archive`, `task-panel-unarchive`, `task-panel-archived`, `task-panel-edit`, `task-panel-delete`
   - Notes: `task-notes` (data-count), `task-notes-empty`, `task-note` (data-note-id, data-mine), `task-note-author`, `task-note-edited`, `task-note-body`, `task-note-mentions`, `task-note-edit`, `task-note-delete`, `task-note-delete-dialog`, `task-note-delete-confirm`, `task-note-delete-cancel`
   - Note composer: `task-note-input`, `task-note-mention` (opens the picker), `task-note-mention-search`, `task-note-mention-option` (data-user-id), `task-note-mention-chip` (data-user-id) with `task-note-mention-chip-remove`, `task-note-submit`, `task-note-save`, `task-note-cancel`, `task-note-error`
   - Delete confirm: `task-delete-dialog`, `task-delete-confirm`, `task-delete-cancel`, `task-delete-error`
 - **Form** (`task-form`):
-  - Scope: `task-form-scope` (or `-scope-fixed`), `task-form-no-scopes`, `task-form-from-decision`, `task-form-from-event`
+  - Scope: `task-form-scope` (or `-scope-fixed`; neither for a single-scope user, except `-scope-fixed` for a task from an event or a decision), `task-form-no-scopes`, `task-form-from-decision`, `task-form-from-event`
   - Visible fields: `task-form-title`, `task-form-due-date`, `task-form-assignees` (PeopleCombobox, data-count: `-open`, `-search`, `-option` with data-user-id and aria-selected, `-chip` with data-user-id, `-chip-remove`, `-empty`)
   - More options: `task-form-more` (aria-expanded), `task-form-more-section`, `task-form-description`, `task-form-status`, `task-form-priority`, `task-form-event`
   - Reminders: `task-form-reminders` (data-on), `task-form-reminders-toggle`, `task-form-reminders-need-due`, `task-form-remind-before-1|2|3|7`, `task-form-remind-custom`, `task-form-repeat-kind`, `task-form-repeat-every`, `task-form-repeat-start`, `task-form-overdue-toggle`, `task-form-overdue-every`

@@ -2,7 +2,7 @@
 // entries, series navigation, scoped edits and deletes, "from last meeting", series tasks), agenda and decisions turned
 // into tasks, meeting requests approved into meetings, private files and long names at 390 px. Every meeting is created by fresh users in
 // a temporary branch (cleaned up with its files by the fixtures) and every check looks at this test's own ids only.
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { test, expect, runId, type TestUser } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import {
@@ -32,6 +32,19 @@ async function pickPerson(page: Page, prefix: string, userId: string) {
   await page.locator(`[data-testid="${prefix}-option"][data-user-id="${userId}"]`).click();
   await page.keyboard.press("Escape");
   await expect(page.locator(`[data-testid="${prefix}-chip"][data-user-id="${userId}"]`)).toBeVisible();
+}
+/** Opens a collapsible invitees section (page `meeting-invitees-toggle` or form `<prefix>-invitees-toggle`). */
+async function expandInvitees(page: Page, toggleId: string) {
+  const toggle = page.getByTestId(toggleId);
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+/** Expands one agenda item (collapsed by default) so its notes, decisions and controls are shown. */
+async function expandItem(item: Locator) {
+  const toggle = item.getByTestId("meeting-agenda-item-toggle");
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
 }
 /** True when `first` comes before `second` in the page. */
 const comesBefore = (page: Page, first: string, second: string) =>
@@ -77,6 +90,10 @@ test.describe("Meetings", () => {
     await page.getByTestId("meetings-new").click();
     const form = page.getByTestId("meeting-form");
     await expect(form).toBeVisible();
+    // A volunteer creates in their branch only: no "Where" field.
+    await expect(form.getByTestId("meeting-form-title")).toBeVisible();
+    await expect(form.getByTestId("meeting-form-scope")).toHaveCount(0);
+    await expect(form.getByTestId("meeting-form-scope-fixed")).toHaveCount(0);
     await form.getByTestId("meeting-form-title").fill(name);
     await form.getByTestId("meeting-form-start-date").fill(day);
     await pickOption(page, "meeting-form-start-time", "meeting-form-start-time-option", "18:00");
@@ -88,8 +105,13 @@ test.describe("Meetings", () => {
     // More options stay collapsed: title, date, time and place are enough.
     await expect(form.getByTestId("meeting-form-more")).toHaveAttribute("data-state", "closed");
     await expect(form.getByTestId("meeting-form-description")).toHaveCount(0);
+    // Invitees are collapsed: the header counts them; the picker is inside.
+    await expect(form.getByTestId("meeting-form-invitees-toggle")).toHaveAttribute("data-count", "0");
+    await expect(form.getByTestId("meeting-form-invitees")).toHaveCount(0);
+    await expandInvitees(page, "meeting-form-invitees-toggle");
     await pickPerson(page, "meeting-form-invitees", invitee.id);
     await expect(form.getByTestId("meeting-form-invitees")).toHaveAttribute("data-count", "1");
+    await expect(form.getByTestId("meeting-form-invitees-toggle")).toHaveAttribute("data-count", "1");
     // A file chosen in More options is uploaded once the meeting exists.
     await form.getByTestId("meeting-form-more").click();
     await form.getByTestId("meeting-form-files-input").setInputFiles({
@@ -108,6 +130,9 @@ test.describe("Meetings", () => {
     expect(await comesBefore(page, "meeting-agenda", "meeting-invitees")).toBe(true);
     await expect(page.getByTestId("meeting-series-info")).toHaveCount(0);
     await expect(page.getByTestId("meeting-from-last")).toHaveCount(0);
+    // One possible scope: the page shows no scope label.
+    await expect(page.getByTestId("meeting-creator")).toBeVisible();
+    await expect(page.getByTestId("meeting-scope")).toHaveCount(0);
     const invited = await adminClient().from("meeting_invitees").select("user_id").eq("meeting_id", id);
     expect((invited.data ?? []).map((r) => r.user_id)).toEqual([invitee.id]);
 
@@ -116,9 +141,14 @@ test.describe("Meetings", () => {
     await openMeetings(asInvitee);
     await expect(meetingCard(asInvitee, id)).toBeVisible();
     await expect(meetingCard(asInvitee, id).getByTestId("meeting-card-invited")).toBeVisible();
+    await expect(meetingCard(asInvitee, id).getByTestId("meeting-card-scope")).toHaveCount(0);
     await meetingCard(asInvitee, id).click();
     await expect(asInvitee.getByTestId("meeting-detail")).toHaveAttribute("data-meeting-id", id, { timeout: APP_LOAD_TIMEOUT });
     await expect(asInvitee.getByTestId("meeting-title")).toHaveText(name);
+    // Invitees are collapsed by default; the header counts them.
+    await expect(asInvitee.getByTestId("meeting-invitees-toggle")).toHaveAttribute("data-count", "1");
+    await expect(asInvitee.getByTestId("meeting-invitee")).toHaveCount(0);
+    await expandInvitees(asInvitee, "meeting-invitees-toggle");
     await expect(asInvitee.locator(`[data-testid="meeting-invitee"][data-user-id="${invitee.id}"]`)).toBeVisible();
     await expect(asInvitee.getByTestId("meeting-agenda")).toBeVisible();
     await expect(asInvitee.getByTestId("meeting-edit")).toHaveCount(0);
@@ -145,6 +175,7 @@ test.describe("Meetings", () => {
     await form.getByTestId("meeting-form-start-date").fill(londonDay(4));
     await pickOption(page, "meeting-form-start-time", "meeting-form-start-time-option", "18:00");
     await form.getByTestId("meeting-form-location").fill("E2E Community Hall");
+    await expandInvitees(page, "meeting-form-invitees-toggle");
     await pickPerson(page, "meeting-form-invitees", volunteer.id);
     await form.getByTestId("meeting-form-more").click();
     await form.getByTestId("meeting-form-agenda-input").fill("Finance");
@@ -188,7 +219,9 @@ test.describe("Meetings", () => {
     await openMeeting(page, o2!.id);
     await page.getByTestId("meeting-edit").click();
     const form = page.getByTestId("meeting-form");
-    // Invitees are kept and shown as chips.
+    // Invitees are kept: counted in the collapsed header and shown as chips inside.
+    await expect(form.getByTestId("meeting-form-invitees-toggle")).toHaveAttribute("data-count", "1");
+    await expandInvitees(page, "meeting-form-invitees-toggle");
     await expect(form.locator(`[data-testid="meeting-form-invitees-chip"][data-user-id="${volunteer.id}"]`)).toBeVisible();
     await form.getByTestId("meeting-form-title").fill(`${name} moved`);
     await form.getByTestId("meeting-form-submit").click();
@@ -246,8 +279,21 @@ test.describe("Meetings", () => {
     await openMeeting(page, o1!.id);
     const item = page.locator(`[data-testid="meeting-agenda-item"][data-item-id="${open}"]`);
     await expect(item).toHaveAttribute("data-resolved", "false");
+    // Collapsed by default, with the counts in the row: one decision, one task.
+    await expect(item.getByTestId("meeting-agenda-item-toggle")).toHaveAttribute("aria-expanded", "false");
+    await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-decisions", "1");
+    await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-tasks", "1");
+    await expect(item.getByTestId("meeting-agenda-resolved")).toHaveCount(0);
+    await expandItem(item);
+    await expect(item.locator(`[data-testid="meeting-decision-task"][data-task-id="${task}"]`)).toHaveAttribute("data-status", "todo");
     await item.getByTestId("meeting-agenda-resolved").check();
     await expect(item).toHaveAttribute("data-resolved", "true", { timeout: APP_LOAD_TIMEOUT });
+    // The checkbox updates at once; wait until the database has it before opening the next occurrence.
+    await expect
+      .poll(async () => (await adminClient().from("meeting_agenda_items").select("resolved").eq("id", open).single()).data?.resolved, {
+        timeout: APP_LOAD_TIMEOUT,
+      })
+      .toBe(true);
     await openMeeting(page, o2!.id);
     await expect(page.getByTestId("meeting-from-last-item")).toHaveCount(0);
     await expect(page.getByTestId("meeting-from-last-task")).toHaveCount(1);
@@ -270,6 +316,8 @@ test.describe("Meetings", () => {
     const item = page.getByTestId("meeting-agenda-item");
     await expect(item).toHaveCount(1);
     await expect(item.getByTestId("meeting-agenda-item-title")).toHaveText("Ramadan iftar planning");
+    // A just-added item opens expanded, ready for decisions.
+    await expect(item.getByTestId("meeting-agenda-item-toggle")).toHaveAttribute("aria-expanded", "true");
 
     const decisionText = `${TASK_TITLE_PREFIX}${runId} book the hall for the iftar`;
     await item.getByTestId("meeting-decision-add").click();
@@ -289,6 +337,26 @@ test.describe("Meetings", () => {
     const link = decision.getByTestId("meeting-decision-task");
     await expect(link).toHaveCount(1, { timeout: APP_LOAD_TIMEOUT });
     const taskId = (await link.getAttribute("data-task-id"))!;
+    await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-decisions", "1");
+    await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-tasks", "1");
+
+    // The row toggles by click and keyboard; "Expand all / Collapse all" opens and closes every item.
+    const toggle = item.getByTestId("meeting-agenda-item-toggle");
+    const controls = (await toggle.getAttribute("aria-controls"))!;
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(decision).toHaveCount(0);
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator(`[id="${controls}"]`).getByTestId("meeting-decision")).toHaveCount(1);
+    await page.keyboard.press("Space");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const expandAll = page.getByTestId("meeting-agenda-expand-all");
+    await expect(expandAll).toHaveAttribute("aria-pressed", "false");
+    await expandAll.click();
+    await expect(expandAll).toHaveAttribute("aria-pressed", "true");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
     const task = (await workRpc(manager, "get_task", { p_id: taskId })).data as { title: string; meeting_id: string; assignees: { id: string }[] };
     expect([task.title, task.meeting_id, task.assignees.map((a) => a.id)]).toEqual([decisionText, id, [volunteer.id]]);
 
@@ -310,6 +378,8 @@ test.describe("Meetings", () => {
     await page.getByTestId("request-type-card-meeting").click();
     const form = page.getByTestId("meeting-request-form");
     await expect(form).toBeVisible();
+    // One possible scope: the request form has no "Where" field.
+    await expect(form.locator('[data-testid*="scope"]')).toHaveCount(0);
     await form.getByTestId("meeting-request-target").click();
     await page.locator(`[data-testid="meeting-request-target-option"][data-user-id="${manager.id}"]`).click();
     await form.getByTestId("meeting-request-topic").fill(topic);
@@ -397,6 +467,7 @@ test.describe("Meetings", () => {
       await expect(meetingCard(page, id)).toBeVisible();
       expect(await sideways(page), "list").toBeLessThanOrEqual(0);
       await openMeeting(page, id);
+      await expandInvitees(page, "meeting-invitees-toggle");
       await expect(page.locator(`[data-testid="meeting-invitee"][data-user-id="${volunteer.id}"]`)).toBeVisible();
       expect(await sideways(page), "detail").toBeLessThanOrEqual(0);
     });

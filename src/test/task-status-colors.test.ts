@@ -3,6 +3,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TASK_STATUSES } from "@/lib/tasks";
 import {
+  MINE_TINT,
+  TASK_MINE,
+  TASK_OTHER,
+  TASK_OTHER_TEXT,
   TASK_STATUS_BADGE,
   TASK_STATUS_CARD,
   TASK_STATUS_COLUMN,
@@ -45,6 +49,11 @@ function token(name: string): Rgb {
   if (!m) throw new Error(`token --${name} not found`);
   return oklch(Number(m[1]), Number(m[2]), Number(m[3]));
 }
+/** `top` (with alpha 0..1) painted over `bottom`, as the browser composites in sRGB. */
+const over = (top: Rgb, alpha: number, bottom: Rgb) =>
+  top.map((v, i) => alpha * v + (1 - alpha) * bottom[i]!) as Rgb;
+/** A #RRGGBBAA tint as colour and alpha. */
+const hexA = (h: string): [Rgb, number] => [hex(h), parseInt(h.slice(7, 9), 16) / 255];
 const theme = {
   foreground: token("foreground"),
   "muted-foreground": token("muted-foreground"),
@@ -101,5 +110,60 @@ describe("task status colours", () => {
       expect(TASK_STATUS_CARD[status]).toContain(`dark:bg-[${dark.card}]`);
       expect(TASK_STATUS_CARD[status]).toContain(`dark:text-[${dark.badgeFg}]`);
     }
+  });
+
+  describe("mine and other people's tasks", () => {
+    const card = token("card");
+    const muted = token("muted");
+    const [mineLight, mineLightAlpha] = hexA(MINE_TINT.light);
+    const [mineDark, mineDarkAlpha] = hexA(MINE_TINT.dark);
+
+    it("other people's tasks are quiet without opacity (opacity 0.75 took muted text below 4.5:1)", () => {
+      for (const cls of [TASK_OTHER, TASK_OTHER_TEXT]) expect(cls).not.toMatch(/opacity/);
+      expect(TASK_OTHER_TEXT).toContain("text-muted-foreground");
+      expect(TASK_OTHER_TEXT).toContain("group-hover:text-foreground");
+      expect(TASK_OTHER_TEXT).toContain("group-focus-within:text-foreground");
+      expect(TASK_OTHER).toContain("group");
+    });
+
+    it("muted text on other people's cards, list rows and calendar items reaches 4.5:1 (also on hover)", () => {
+      const surfaces: [string, Rgb][] = [
+        ["card", card],
+        ["list row hover (muted/60 on card)", over(muted, 0.6, card)],
+        ["calendar item hover (muted)", muted],
+        ...TASK_STATUSES.map((s): [string, Rgb] => [
+          `${s} card`,
+          hex(TASK_STATUS_TINTS.light[s].card),
+        ]),
+      ];
+      for (const [name, bg] of surfaces)
+        expect(contrast(theme["muted-foreground"], bg), name).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it("every text colour on the mine tint reaches 4.5:1 (cards, list rows, calendar items)", () => {
+      const light: [string, Rgb][] = [
+        ["card", card],
+        ...TASK_STATUSES.map((s): [string, Rgb] => [
+          `${s} card`,
+          hex(TASK_STATUS_TINTS.light[s].card),
+        ]),
+      ];
+      for (const [name, bg] of light) {
+        const tinted = over(mineLight, mineLightAlpha, bg);
+        for (const [text, colour] of Object.entries(theme))
+          expect(contrast(colour, tinted), `${text} on mine ${name}`).toBeGreaterThanOrEqual(4.5);
+      }
+      for (const s of TASK_STATUSES) {
+        const tint = TASK_STATUS_TINTS.dark[s];
+        const tinted = over(mineDark, mineDarkAlpha, hex(tint.card));
+        expect(contrast(hex(tint.badgeFg), tinted), `dark ${s}`).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it("the mine classes use exactly the tint colours, with the accent border", () => {
+      expect(TASK_MINE).toContain("border-l-4 border-l-primary");
+      expect(TASK_MINE).toContain(`bg-[linear-gradient(${MINE_TINT.light},${MINE_TINT.light})]`);
+      expect(TASK_MINE).toContain(`dark:bg-[linear-gradient(${MINE_TINT.dark},${MINE_TINT.dark})]`);
+    });
   });
 });

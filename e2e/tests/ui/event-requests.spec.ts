@@ -38,6 +38,8 @@ test.describe("Event requests", () => {
     const form = new EventRequestFormDialog(page);
     await form.chooseType("proposal");
     await expect(form.scope()).toHaveAttribute("data-scope", "branch");
+    // A volunteer has one possible scope: the branch name is not repeated in the form.
+    await expect(page.getByTestId("event-request-form-scope-name")).toHaveCount(0);
     // Required fields are checked before anything is sent.
     await form.submitButton().click();
     await expect(form.fieldError("title")).toBeVisible();
@@ -83,6 +85,8 @@ test.describe("Event requests", () => {
     const form = new EventRequestFormDialog(managerPage);
     await form.chooseType("proposal");
     await expect(form.scope()).toHaveAttribute("data-scope", "region");
+    // A regional request goes beyond the manager's branch, so the region is named.
+    await expect(managerPage.getByTestId("event-request-form-scope-name")).toBeVisible();
     const name = title("regional");
     await form.title().fill(name);
     await form.allDay().click();
@@ -170,13 +174,13 @@ test.describe("Event requests", () => {
     const dashboard = new DashboardPage(page);
     const sidebar = new Sidebar(page, isMobile);
     await dashboard.goto();
-    await expect(dashboard.pendingRequests()).toHaveAttribute("data-count", "0");
+    await expect(dashboard.waiting()).toHaveCount(0);
     await expect(await sidebar.requestsBadge()).toHaveCount(0);
 
     const first = await submitRequestAs(volunteer.email, title("badge 1"));
     const second = await submitRequestAs(volunteer.email, title("badge 2"));
     await dashboard.goto();
-    await expect(dashboard.pendingRequests()).toHaveAttribute("data-count", "2");
+    await expect(dashboard.waitingCount()).toHaveAttribute("data-count", "2");
     await expect(await sidebar.requestsBadge()).toHaveAttribute("data-count", "2");
 
     // Under review still counts as pending; a decision removes it.
@@ -192,7 +196,7 @@ test.describe("Event requests", () => {
       ).error,
     ).toBeNull();
     await dashboard.goto();
-    await expect(dashboard.pendingRequests()).toHaveAttribute("data-count", "1");
+    await expect(dashboard.waitingCount()).toHaveAttribute("data-count", "1");
     await expect(await sidebar.requestsBadge()).toHaveAttribute("data-count", "1");
   });
 });

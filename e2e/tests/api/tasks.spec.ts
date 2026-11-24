@@ -85,12 +85,14 @@ test.describe("Tasks (database rules)", () => {
     expect((await workRpc(follower, "create_task", { p: { scope: "branch", branch_id: seed.branches.Medway, title: title("x") } })).error?.message).toBe("Not allowed");
   });
 
-  test("an assignee changes only the status (the creator is notified); others cannot; deleted tasks are restored from the Recycle Bin", async ({ freshUser, seed }) => {
+  test("an assignee changes only the status (the creator hears only of Blocked or Done); others cannot; deleted tasks are restored from the Recycle Bin", async ({ freshUser, seed }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const assignee = await freshUser({ role: "volunteer" });
     const other = await freshUser({ role: "volunteer" });
     const task = await createTaskAs(manager, { scope: "branch", branch_id: seed.branches.Medway, title: title("status"), assignee_ids: [assignee.id] });
     expect((await workRpc(assignee, "set_task_status", { p_id: task, p_status: "in_progress" })).error).toBeNull();
+    expect(await kinds(manager.id, task)).toEqual([]);
+    expect((await workRpc(assignee, "set_task_status", { p_id: task, p_status: "blocked" })).error).toBeNull();
     expect(await kinds(manager.id, task)).toEqual(["task_status_changed"]);
     expect((await workRpc(assignee, "update_task", { p_id: task, p: { title: title("renamed") } })).error?.message).toBe("Not allowed");
     expect((await workRpc(assignee, "delete_task", { p_id: task })).error?.message).toBe("Not allowed");
@@ -111,7 +113,9 @@ test.describe("Tasks (database rules)", () => {
     expect(targets.map((t) => t.id)).toContain(manager.id);
     const accepted = (await workRpc(volunteer, "submit_task_request", { p: { target_id: manager.id, title: title("please"), priority: "high" } })).data as string;
     const declined = (await workRpc(volunteer, "submit_task_request", { p: { target_id: manager.id, title: title("another") } })).data as string;
-    expect(await kinds(manager.id, accepted)).toEqual(["task_request_received"]);
+    // The target gets one grouped "waiting for you" notice instead of one per request.
+    expect(await kinds(manager.id, accepted)).toEqual([]);
+    expect(((await adminClient().from("notifications").select("kind").eq("user_id", manager.id).eq("kind", "review_waiting")).data ?? []).length).toBe(1);
     expect((await workRpc(volunteer, "accept_task_request", { p_id: accepted })).error?.message).toBe("Not allowed");
     const task = (await workRpc(manager, "accept_task_request", { p_id: accepted })).data as string;
     const detail = (await workRpc(manager, "get_task", { p_id: task })).data as { scope: string; branch_id: string; assignees: { id: string }[]; priority: string };
@@ -134,6 +138,35 @@ test.describe("Tasks (database rules)", () => {
     expect(await reminders(on)).toMatchObject({ before_days: [3] });
     expect((await workRpc(manager, "update_task", { p_id: on, p: { title: title("renamed") } })).error).toBeNull();
     expect(await reminders(on)).toMatchObject({ before_days: [3] });
+  });
+
+  test("self-reminders: only an assignee sets their own (not the task's); invalid settings and non-assignees are refused; null clears", async ({ freshUser, seed }) => {
+    const manager = await freshUser({ role: "branch_manager" });
+    const volunteer = await freshUser({ role: "volunteer" });
+    const colleague = await freshUser({ role: "volunteer" });
+    const medway = { scope: "branch" as const, branch_id: seed.branches.Medway };
+    const id = await createTaskAs(manager, { ...medway, title: title("self reminders"), due_date: "2030-01-10", assignee_ids: [volunteer.id] });
+    const mine = { before_days: [2], repeat_kind: "none", repeat_every_days: null, repeat_start: null, overdue_every_days: 1 };
+    const stored = async (userId: string) => (await adminClient().from("task_assignees").select("my_reminders").eq("task_id", id).eq("user_id", userId).maybeSingle()).data?.my_reminders ?? null;
+
+    // Off by default; the assignee sets theirs; the task's own reminders stay off; only they see theirs.
+    expect(await stored(volunteer.id)).toBeNull();
+    expect((await workRpc(volunteer, "set_my_task_reminders", { p_id: id, p_reminders: mine })).error).toBeNull();
+    expect(await stored(volunteer.id)).toMatchObject({ before_days: [2], overdue_every_days: 1 });
+    const own = (await workRpc(volunteer, "get_task", { p_id: id })).data as { my_reminders: unknown; reminders: { before_days: number[] } };
+    expect(own.my_reminders).toMatchObject({ before_days: [2] });
+    expect(own.reminders.before_days).toEqual([]);
+    expect(((await workRpc(manager, "get_task", { p_id: id })).data as { my_reminders: unknown }).my_reminders ?? null).toBeNull();
+
+    // A colleague who can see the task but is not assigned, and the manager who is not assigned either, are refused.
+    expect((await workRpc(colleague, "set_my_task_reminders", { p_id: id, p_reminders: mine })).error?.message).toBe("Not allowed");
+    expect((await workRpc(manager, "set_my_task_reminders", { p_id: id, p_reminders: mine })).error?.message).toBe("Not allowed");
+    // Invalid settings are refused and leave the stored ones.
+    expect((await workRpc(volunteer, "set_my_task_reminders", { p_id: id, p_reminders: { ...mine, overdue_every_days: 0 } })).error?.message).toBe("Reminder settings are not valid");
+    expect(await stored(volunteer.id)).toMatchObject({ before_days: [2] });
+    // Null clears them.
+    expect((await workRpc(volunteer, "set_my_task_reminders", { p_id: id, p_reminders: null })).error).toBeNull();
+    expect(await stored(volunteer.id)).toBeNull();
   });
 
   test("archive: only done tasks, by assignees and editors; leaving done unarchives; Archive all done counts", async ({ freshUser, seed }) => {

@@ -57,6 +57,13 @@ Meetings never appear on the public `/events` pages or the ICS feed.
 managers edit them; invitees read only. Editors can mark an item **resolved**; items copied from a series template are
 **standing** (badge "Standing").
 
+On the meeting page each agenda item is a toggle row (Notion-style), collapsed by default:
+- The row shows a chevron, the number and title, small counts ("2 decisions, 3 tasks", plural forms in both languages;
+  nothing when both are zero) and the Standing / Resolved badges.
+- Click, Enter or Space expands it: notes, the resolved checkbox, reorder/edit/delete (editors), the decisions and the
+  tasks created from them with their status badges. The toggle is a button with `aria-expanded` and `aria-controls`.
+- "Expand all / Collapse all" opens or closes every item. A just-added item opens expanded, ready for its decisions.
+
 **Decision to task.** "Create task" on a decision opens the task form prefilled:
 - the title comes from the decision;
 - the scope is the meeting's scope;
@@ -75,8 +82,13 @@ The decision then shows the linked task and its status, and the task links back 
 ## The meeting form
 
 Visible: title, start and end (the end follows start + 1 hour until it is changed), in person or online with the
-place or link, and invitees (a searchable people picker with chips). In person is the default, so a meeting saves with
-title, date, time and location. Times are London time.
+place or link, and invitees. In person is the default, so a meeting saves with title, date, time and location. Times
+are London time.
+
+- **Scope.** The "Where" field shows only when the user can create in more than one scope (`useWorkScopes().single`
+  from `list_my_work_scopes`). With one scope (for example a volunteer or a Branch Manager) it is used automatically.
+- **Invitees.** A collapsible section, collapsed every time the form opens. Its header shows the count and the first
+  three names ("Invitees (8): Ali, Ayse, John +5"); inside is the searchable people picker with chips.
 
 "More options" is collapsed every time the form opens. It holds the description and, when creating:
 - **Agenda**: titles added one by one, sent as `agenda` (standing items for a recurring meeting).
@@ -115,6 +127,11 @@ changes. Invitees are copied to every occurrence and told once (about the first 
   editor actions, "From last meeting", the agenda with decisions, invitees, files, and for a series the series tasks
   and (editors) the standing agenda items.
 - The dashboard card "Upcoming meetings" shows the next 3 meetings the user can see.
+- **Single scope.** Users with one possible scope see no scope/branch label on meeting cards or the meeting page
+  (every meeting they see comes from that place). The same applies to the branch name in a volunteer's event request
+  form; region requests and reviewers still see where a request goes.
+- **Invitees** on the meeting page are a collapsible section, collapsed by default, with the same header as the form
+  ("Invitees (8): Ali, Ayse, John +5"); expanding it lists the invitees.
 
 ## Meeting requests
 
@@ -131,15 +148,19 @@ A request has a topic, up to 3 proposed times and a note. The target either:
 
 ## Notifications
 
+Settings, the daily summary, grouping and the "Waiting for you" card: see [notifications.md](notifications.md).
+For meetings in short:
+
 | Event | Who is notified | Notice |
 |---|---|---|
 | Invited (on create or when added; once for a recurring meeting) | The invitee | `meeting_invited` |
 | Time or place changed | Every invitee | `meeting_changed` |
 | Cancelled | Every invitee | `meeting_cancelled` |
-| Meeting request received | The target | `meeting_request_received` |
+| Meeting request waits for review | The target, in one grouped notice | `review_waiting` (always on) |
 | Meeting request approved or declined | The requester | `meeting_request_approved` / `meeting_request_declined` |
 
-Opening the meeting marks its notices read.
+Meeting notices (type `meeting`) can be turned off or delivered in the daily summary. Opening the meeting marks its
+notices read.
 
 ## Recycle Bin
 
@@ -158,20 +179,21 @@ All kebab-case, never derived from text. Lists expose `data-meeting-id`, `data-i
 - **List** (`/meetings`):
   - Header and tabs: `meetings-new`, `meetings-tab-upcoming|past`
   - Lists: `meetings-list` and `meetings-empty` (data-when), `meetings-retry`
-  - Cards: `meeting-card` (data-meeting-id, data-status), with `meeting-card-title`, `meeting-card-status`, `meeting-card-invited`, `meeting-card-scope`, `meeting-card-recurring`
+  - Cards: `meeting-card` (data-meeting-id, data-status), with `meeting-card-title`, `meeting-card-status`, `meeting-card-invited`, `meeting-card-scope` (only with more than one scope), `meeting-card-recurring`
 - **Detail**:
   - Page: `meeting-detail` (data-meeting-id, data-status), `meeting-not-found`, `meeting-back`
-  - Facts: `meeting-title`, `meeting-status`, `meeting-invited`, `meeting-when`, `meeting-online-link`, `meeting-location`, `meeting-scope`, `meeting-creator`, `meeting-description`, `meeting-open-calendar`
+  - Facts: `meeting-title`, `meeting-status`, `meeting-invited`, `meeting-when`, `meeting-online-link`, `meeting-location`, `meeting-scope` (only with more than one scope), `meeting-creator`, `meeting-description`, `meeting-open-calendar`
   - Series: `meeting-series-info` (data-position, data-count), `meeting-series-previous`, `meeting-series-next`
   - From last meeting: `meeting-from-last` (data-meeting-id), `meeting-from-last-item` (data-item-id), `meeting-from-last-task` (data-task-id, data-status), `meeting-from-last-link`, `meeting-from-last-empty`
   - Series panel: `meeting-series` (data-series-id), `meeting-series-tasks` (data-filter), `meeting-series-tasks-filter`, `meeting-series-task` (data-task-id, data-status, data-meeting-id), `meeting-series-tasks-empty`; editors: `meeting-series-agenda`, `meeting-series-agenda-input` (one item per line), `meeting-series-agenda-save`, `meeting-series-agenda-error`
   - Scope dialog (series edit, cancel, delete): `meeting-scope-dialog`, `meeting-scope-this|following|all` (radios), `meeting-scope-confirm`, `meeting-scope-dismiss`, `meeting-scope-error`
-  - Invitees: `meeting-invitees`, `meeting-invitee` (data-user-id), `meeting-invitees-empty`
+  - Invitees: `meeting-invitees`, `meeting-invitees-toggle` (aria-expanded, data-count; collapsed by default), then `meeting-invitee` (data-user-id) or `meeting-invitees-empty` inside
   - Editors: `meeting-edit`, `meeting-complete`, `meeting-cancel`, `meeting-reschedule`, `meeting-reopen`, `meeting-delete`
   - Confirm dialog: `meeting-confirm-dialog`, `meeting-cancel-confirm`, `meeting-delete-confirm`, `meeting-confirm-dismiss`, `meeting-confirm-error`
 - **Agenda**:
-  - `meeting-agenda`, `meeting-agenda-empty`, `meeting-agenda-item` (data-item-id, data-resolved, data-standing), `meeting-agenda-item-title`, `meeting-agenda-item-notes`, `meeting-agenda-standing`, `meeting-agenda-resolved-badge` (read only)
-  - Resolved checkbox (editors): `meeting-agenda-resolved`
+  - `meeting-agenda`, `meeting-agenda-empty`, `meeting-agenda-expand-all` (aria-pressed)
+  - Row (always visible): `meeting-agenda-item` (data-item-id, data-resolved, data-standing, data-expanded), `meeting-agenda-item-toggle` (aria-expanded, aria-controls), `meeting-agenda-item-title`, `meeting-agenda-item-counts` (data-decisions, data-tasks), `meeting-agenda-standing`, `meeting-agenda-resolved-badge` (read only)
+  - Body (`meeting-agenda-item-body`, rendered only when expanded; tests expand first): `meeting-agenda-item-notes`, the resolved checkbox (editors) `meeting-agenda-resolved`, the editing buttons below and the decisions
   - Editing: `meeting-agenda-add`, `meeting-agenda-form`, `meeting-agenda-title`, `meeting-agenda-notes`, `meeting-agenda-save`, `meeting-agenda-cancel`, `meeting-agenda-edit`, `meeting-agenda-up`, `meeting-agenda-down`
   - Delete: `meeting-agenda-delete`, then `meeting-agenda-delete-dialog`, `-confirm`, `-cancel`
 - **Decisions**:
@@ -180,10 +202,10 @@ All kebab-case, never derived from text. Lists expose `data-meeting-id`, `data-i
   - Tasks: `meeting-decision-task` (data-task-id, data-status), `meeting-decision-create-task`
 - **Files**: `meeting-files`, `meeting-files-empty`, `meeting-file-upload`, `meeting-file-input`, `meeting-file` (data-file-id), `meeting-file-name`, `meeting-file-download`, `meeting-file-delete`, `meeting-file-errors`
 - **Form** (prefix `meeting-form`, or `work-review-meeting` when approving a request, or `meeting-reschedule-form`):
-  - Shell and scope: `-dialog`, `-scope` (or `-scope-fixed`)
+  - Shell and scope: `-dialog`, `-scope` (or `-scope-fixed`); neither is shown when the user has one scope
   - Fields: `-title`, `-description`, `-start-date`, `-start-time`, `-end-date`, `-end-time`
   - Place: `-place-in-person`, `-place-online`, `-location`, `-online-url`
-  - Invitees: `-invitees` (PeopleCombobox, data-count) with `-invitees-open`, `-invitees-search`, `-invitees-option` (data-user-id), `-invitees-chip` (data-user-id), `-invitees-chip-remove`, `-invitees-empty`
+  - Invitees: `-invitees-toggle` (aria-expanded, data-count; collapsed on open), then inside `-invitees` (PeopleCombobox, data-count) with `-invitees-open`, `-invitees-search`, `-invitees-option` (data-user-id), `-invitees-chip` (data-user-id), `-invitees-chip-remove`, `-invitees-empty`
   - More options: `-more` (data-state), `-more-content`; agenda `-agenda` (data-count), `-agenda-input`, `-agenda-add`, `-agenda-item`, `-agenda-remove`; files `-files` (data-count), `-files-input`, `-files-pick`, `-file`, `-file-remove`, `-file-errors`; repeat `-repeat-none|weekly|monthly`, `-repeat-interval`, `-repeat-count`, `-repeat-error`
   - After a create with rejected files: `-file-errors` and `-submit` (continue)
   - Errors and buttons: `-<field>-error`, `-submit`, `-cancel`, `-error`

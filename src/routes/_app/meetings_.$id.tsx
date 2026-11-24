@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CalendarDays,
   CalendarRange,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleCheck,
@@ -32,11 +33,13 @@ import {
 } from "@/components/meetings/MeetingScopeDialog";
 import { MeetingSeriesPanel } from "@/components/meetings/MeetingSeriesPanel";
 import { MeetingStatusBadge } from "@/components/meetings/MeetingStatusBadge";
-import { meetingWhen } from "@/components/meetings/meeting-ui";
+import { inviteesHeader, meetingWhen } from "@/components/meetings/meeting-ui";
+import { useWorkScopes } from "@/components/work/use-work-scopes";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import type { MeetingDetail, MeetingSeriesMode, MeetingStatus } from "@/lib/meetings";
 import {
   deleteMeeting,
@@ -86,7 +89,11 @@ function MeetingDetailPage() {
     // An occurrence of a recurring meeting: cancel and delete first ask which occurrences.
     [scopeAction, setScopeAction] = useState<Exclude<MeetingScopeAction, "edit"> | null>(null),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    // Invitees: collapsed by default; the header shows the count and the first names.
+    [inviteesOpen, setInviteesOpen] = useState(false);
+  // One possible scope: every meeting the user sees comes from it, so the scope is not shown.
+  const { single } = useWorkScopes();
 
   if (query.isLoading) return <p className="text-muted-foreground">{t("common.loading")}</p>;
   if (query.isError)
@@ -325,12 +332,14 @@ function MeetingDetailPage() {
           </p>
         )}
         <dl className="grid min-w-0 grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-          <div className="min-w-0">
-            <dt className="text-muted-foreground">{t("work.scope.label")}</dt>
-            <dd className="flex min-w-0" data-testid="meeting-scope">
-              <MeetingScope meeting={meeting} />
-            </dd>
-          </div>
+          {!single && (
+            <div className="min-w-0">
+              <dt className="text-muted-foreground">{t("work.scope.label")}</dt>
+              <dd className="flex min-w-0" data-testid="meeting-scope">
+                <MeetingScope meeting={meeting} />
+              </dd>
+            </div>
+          )}
           <div className="min-w-0">
             <dt className="text-muted-foreground">{t("meetings.createdBy")}</dt>
             <dd className="[overflow-wrap:anywhere]" data-testid="meeting-creator">
@@ -438,34 +447,56 @@ function MeetingDetailPage() {
         className="min-w-0 rounded-2xl border bg-card p-4 shadow-soft sm:p-6"
       >
         <h2 id="meeting-invitees-title" className="text-xl font-semibold">
-          {t("meetings.invitees")}{" "}
-          <span className="text-muted-foreground">({meeting.invitees.length})</span>
+          <button
+            type="button"
+            data-testid="meeting-invitees-toggle"
+            data-count={meeting.invitees.length}
+            aria-expanded={inviteesOpen}
+            aria-controls="meeting-invitees-body"
+            onClick={() => setInviteesOpen((open) => !open)}
+            className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] min-w-0 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronDown
+              className={cn("size-5 shrink-0 transition-transform", !inviteesOpen && "-rotate-90")}
+              aria-hidden
+            />
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              {inviteesHeader(
+                t,
+                t("meetings.invitees"),
+                meeting.invitees.map((p) => p.full_name ?? t("common.formerMember")),
+              )}
+            </span>
+          </button>
         </h2>
-        {meeting.invitees.length === 0 ? (
-          <p data-testid="meeting-invitees-empty" className="mt-3 text-muted-foreground">
-            {t("meetings.noInvitees")}
-          </p>
-        ) : (
-          <ul className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-            {meeting.invitees.map((p) => (
-              <li
-                key={p.id}
-                data-testid="meeting-invitee"
-                data-user-id={p.id}
-                className="min-w-0 rounded-lg border px-3 py-2"
-              >
-                <span className="block truncate font-medium" title={p.full_name ?? ""}>
-                  {p.full_name ?? t("common.formerMember")}
-                </span>
-                {p.role && (
-                  <span className="block text-xs text-muted-foreground">
-                    {t(`common.roles.${p.role}`)}
-                  </span>
-                )}
-              </li>
+        <div id="meeting-invitees-body" hidden={!inviteesOpen}>
+          {inviteesOpen &&
+            (meeting.invitees.length === 0 ? (
+              <p data-testid="meeting-invitees-empty" className="mt-3 text-muted-foreground">
+                {t("meetings.noInvitees")}
+              </p>
+            ) : (
+              <ul className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+                {meeting.invitees.map((p) => (
+                  <li
+                    key={p.id}
+                    data-testid="meeting-invitee"
+                    data-user-id={p.id}
+                    className="min-w-0 rounded-lg border px-3 py-2"
+                  >
+                    <span className="block truncate font-medium" title={p.full_name ?? ""}>
+                      {p.full_name ?? t("common.formerMember")}
+                    </span>
+                    {p.role && (
+                      <span className="block text-xs text-muted-foreground">
+                        {t(`common.roles.${p.role}`)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             ))}
-          </ul>
-        )}
+        </div>
       </section>
       <MeetingFiles meeting={meeting} />
       <MeetingSeriesPanel

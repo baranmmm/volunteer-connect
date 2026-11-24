@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireMember } from "@/lib/require-member";
 import {
   linkedTask,
+  reminderSettings,
   person,
   task,
   taskDetail,
@@ -204,4 +205,17 @@ export const listTaskMentionPeople = createServerFn({ method: "GET" })
     const result = await context.supabase.rpc("list_task_mention_people", { p_task: data.id });
     fail(result.error);
     return z.array(person).parse(result.data ?? []);
+  });
+
+/** An assignee's own reminders on a task assigned to them (null clears them). Only for them. */
+export const setMyTaskReminders = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(taskId.extend({ reminders: reminderSettings.nullable() }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_my_task_reminders", {
+      p_id: data.id,
+      p_reminders: data.reminders,
+    });
+    fail(result.error);
+    return { reminders: reminderSettings.nullable().parse(result.data ?? null) };
   });

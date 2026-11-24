@@ -6,7 +6,7 @@ import { notification } from "./notifications";
 import { taskSummary } from "./tasks";
 
 export const DASHBOARD_MEETINGS = 3;
-export const DASHBOARD_NOTIFICATIONS = 10;
+export const DASHBOARD_NOTIFICATIONS = 30;
 
 /** One part of the dashboard: its data, or null when that RPC failed (the card shows its own error and retry). */
 function part<T>(

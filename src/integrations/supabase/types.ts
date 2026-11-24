@@ -1332,19 +1332,58 @@ export type Database = {
           },
         ]
       }
+      notification_digest_log: {
+        Row: {
+          created_at: string
+          day: string
+          notification_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          notification_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          notification_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_digest_log_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_digest_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           task_reminder_emails: boolean
+          types: NonNullable<Json>
           updated_at: string
           user_id: string
         }
         Insert: {
           task_reminder_emails?: boolean
+          types?: NonNullable<Json>
           updated_at?: string
           user_id: string
         }
         Update: {
           task_reminder_emails?: boolean
+          types?: NonNullable<Json>
           updated_at?: string
           user_id?: string
         }
@@ -1362,8 +1401,10 @@ export type Database = {
         Row: {
           actor_id: string | null
           created_at: string
+          digest_id: string | null
           entity_id: string
           entity_type: string
+          held: boolean
           id: string
           kind: string
           link: string
@@ -1375,8 +1416,10 @@ export type Database = {
         Insert: {
           actor_id?: string | null
           created_at?: string
+          digest_id?: string | null
           entity_id: string
           entity_type: string
+          held?: boolean
           id?: string
           kind: string
           link: string
@@ -1388,8 +1431,10 @@ export type Database = {
         Update: {
           actor_id?: string | null
           created_at?: string
+          digest_id?: string | null
           entity_id?: string
           entity_type?: string
+          held?: boolean
           id?: string
           kind?: string
           link?: string
@@ -1399,6 +1444,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_digest_id_fkey"
+            columns: ["digest_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_actor_id_fkey"
             columns: ["actor_id"]
@@ -1564,6 +1616,7 @@ export type Database = {
         Row: {
           assigned_by: string | null
           created_at: string
+          my_reminders: Json | null
           reminders_muted: boolean
           task_id: string
           user_id: string
@@ -1571,6 +1624,7 @@ export type Database = {
         Insert: {
           assigned_by?: string | null
           created_at?: string
+          my_reminders?: Json | null
           reminders_muted?: boolean
           task_id: string
           user_id: string
@@ -1578,6 +1632,7 @@ export type Database = {
         Update: {
           assigned_by?: string | null
           created_at?: string
+          my_reminders?: Json | null
           reminders_muted?: boolean
           task_id?: string
           user_id?: string
@@ -2279,6 +2334,7 @@ export type Database = {
       cancel_account_deletion: { Args: never; Returns: undefined }
       cancel_event: { Args: { _event: string }; Returns: undefined }
       cancel_registration: { Args: { p_event_id: string }; Returns: Json }
+      clean_reminders: { Args: { p: Json }; Returns: Json }
       clean_structure_name: { Args: { _name: string }; Returns: string }
       create_branch: {
         Args: { p_name: string; p_region_id: string }
@@ -2536,6 +2592,10 @@ export type Database = {
         Args: never
         Returns: Json
       }
+      get_notification_settings: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_pending_event_request_count: { Args: never; Returns: Json }
       get_privacy_status: { Args: never; Returns: Json }
       get_public_event: { Args: { p_id: string }; Returns: Json }
@@ -2551,6 +2611,7 @@ export type Database = {
         Returns: Json
       }
       get_regions_tree: { Args: never; Returns: Json }
+      get_review_waiting: { Args: Record<PropertyKey, never>; Returns: Json }
       get_task: { Args: { p_id: string }; Returns: Json }
       get_unread_notification_counts: {
         Args: never
@@ -2853,6 +2914,16 @@ export type Database = {
         Args: { p_direction: number; p_id: string }
         Returns: undefined
       }
+      notification_default_delivery: {
+        Args: { _user: string }
+        Returns: string
+      }
+      notification_setting: {
+        Args: { _type: string; _user: string }
+        Returns: Json
+      }
+      notification_type: { Args: { _kind: string }; Returns: string }
+      notification_type_locked: { Args: { _type: string }; Returns: boolean }
       notify: {
         Args: {
           _entity_id: string
@@ -2987,10 +3058,17 @@ export type Database = {
       restore_structure: { Args: { _id: string; _type: string }; Returns: Json }
       restore_volunteer_application: { Args: { _id: string }; Returns: Json }
       restore_work_item: { Args: { _id: string; _type: string }; Returns: Json }
+      review_notice_refresh: { Args: { _user: string }; Returns: undefined }
+      review_waiting_for: { Args: { _user: string }; Returns: Json }
+      run_notification_digest: { Args: { p_now?: string }; Returns: number }
       run_task_reminders: { Args: { p_now?: string }; Returns: number }
       scope_people: {
         Args: { _branch: string; _region: string; _scope: string }
         Returns: Json
+      }
+      scope_reviewers: {
+        Args: { _branch: string; _region: string; _scope: string }
+        Returns: string[]
       }
       series_expand: {
         Args: {
@@ -3037,6 +3115,14 @@ export type Database = {
       set_meeting_status: {
         Args: { p_id: string; p_status: string }
         Returns: string
+      }
+      set_my_task_reminders: {
+        Args: { p_id: string; p_reminders: Json }
+        Returns: Json
+      }
+      set_notification_setting: {
+        Args: { p_delivery: string; p_enabled: boolean; p_type: string }
+        Returns: Json
       }
       set_registration_show_name: {
         Args: { p_event_id: string; p_show_name: boolean }
@@ -3252,6 +3338,47 @@ export type Database = {
         Args: { _task: string; _uid: string }
         Returns: boolean
       }
+      task_with_reminders: {
+        Args: {
+          _r: Json
+          _t: Database["public"]["Tables"]["tasks"]["Row"]
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          branch_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          decision_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          due_date: string | null
+          event_id: string | null
+          id: string
+          meeting_id: string | null
+          overdue_every_days: number | null
+          priority: string
+          region_id: string | null
+          remind_before_days: number[]
+          repeat_every_days: number | null
+          repeat_kind: string
+          repeat_start: string | null
+          scope: string
+          self_task: boolean
+          source_request_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tasks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       unfollow_branch: { Args: { p_branch_id: string }; Returns: undefined }
       update_agenda_item: {
         Args: { p_id: string; p_notes?: string; p_title: string }
@@ -3282,6 +3409,15 @@ export type Database = {
       update_task_note: {
         Args: { p_body: string; p_id: string; p_mentions?: Json }
         Returns: string
+      }
+      user_manages_scope: {
+        Args: {
+          _branch: string
+          _region: string
+          _scope: string
+          _user: string
+        }
+        Returns: boolean
       }
       wants_task_reminder_emails: { Args: { _user: string }; Returns: boolean }
       withdraw_event_request: { Args: { p_id: string }; Returns: undefined }

@@ -1,7 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireMember } from "@/lib/require-member";
-import { notification, notificationCounts } from "./notifications";
+import {
+  NOTIFICATION_DELIVERIES,
+  notification,
+  notificationCounts,
+  notificationSettings,
+  reviewWaiting,
+} from "./notifications";
 
 // In-app notices (the caller's own only; RLS and the RPCs check it).
 const fail = (error: { message: string } | null) => {
@@ -33,7 +39,9 @@ export const markNotificationsRead = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       id: z.string().uuid().optional(),
-      entityType: z.enum(["task", "meeting", "task_request", "meeting_request"]).optional(),
+      entityType: z
+        .enum(["task", "meeting", "task_request", "meeting_request", "review", "digest"])
+        .optional(),
       entityId: z.string().uuid().optional(),
     }),
   )
@@ -67,4 +75,41 @@ export const setTaskReminderEmails = createServerFn({ method: "POST" })
     const result = await context.supabase.rpc("set_task_reminder_emails", { p_on: data.on });
     fail(result.error);
     return { task_reminder_emails: data.on };
+  });
+
+/** Profile > Notifications: every type with its setting (locked types are always on and immediate). */
+export const getNotificationSettings = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .handler(async ({ context }) => {
+    const result = await context.supabase.rpc("get_notification_settings");
+    fail(result.error);
+    return notificationSettings.parse(result.data);
+  });
+
+export const setNotificationSetting = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(
+    z.object({
+      type: z.enum(["task_status", "task_note", "task_reminder", "meeting", "request_decided"]),
+      enabled: z.boolean(),
+      delivery: z.enum(NOTIFICATION_DELIVERIES),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_notification_setting", {
+      p_type: data.type,
+      p_enabled: data.enabled,
+      p_delivery: data.delivery,
+    });
+    fail(result.error);
+    return { ok: true };
+  });
+
+/** Requests waiting for the caller's decision: task/meeting requests, event requests and volunteer applications. */
+export const getReviewWaiting = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .handler(async ({ context }) => {
+    const result = await context.supabase.rpc("get_review_waiting");
+    fail(result.error);
+    return reviewWaiting.parse(result.data);
   });

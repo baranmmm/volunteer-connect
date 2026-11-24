@@ -11,7 +11,7 @@ import { MeetingCard } from "@/components/meetings/MeetingCard";
 import { MeetingFormDialog } from "@/components/meetings/MeetingFormDialog";
 import { useAuth } from "@/lib/auth";
 import { listMeetings } from "@/lib/meetings.functions";
-import { listMyWorkScopes } from "@/lib/work-scopes";
+import { useWorkScopes } from "@/components/work/use-work-scopes";
 
 type When = "upcoming" | "past";
 
@@ -29,20 +29,12 @@ export const Route = createFileRoute("/_app/meetings")({
 
 function MeetingsPage() {
   const { t } = useTranslation();
-  const { session } = useAuth();
-  const uid = session?.user.id;
   const navigate = useNavigate();
   const { tab } = Route.useSearch();
   const when: When = tab === "past" ? "past" : "upcoming";
-  const fetchScopes = useServerFn(listMyWorkScopes);
-  const scopes = useQuery({
-    queryKey: ["work-scopes", uid],
-    queryFn: () => fetchScopes(),
-    enabled: !!uid,
-    staleTime: 60000,
-  });
+  const { scopes } = useWorkScopes();
   const [creating, setCreating] = useState(false);
-  const canCreate = (scopes.data ?? []).length > 0;
+  const canCreate = scopes.length > 0;
   return (
     <div className="min-w-0 space-y-6">
       <header className="flex min-w-0 flex-wrap items-center justify-between gap-3">
