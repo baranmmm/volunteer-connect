@@ -1176,8 +1176,7 @@
       "closePanel": "Şube ayrıntılarını kapat",
       "hint": "Şube Yöneticilerini ve sayıları görmek için haritadan bir şube seçin.",
       "openBranch": "Şubeyi aç",
-      "markerLabel_one": "{{name}}, {{region}}: {{count}} gönüllü",
-      "markerLabel_other": "{{name}}, {{region}}: {{count}} gönüllü",
+      "markerLabel": "{{name}}, {{region}}",
       "counts": {
         "volunteers": "Gönüllüler",
         "followers": "Takipçiler",
