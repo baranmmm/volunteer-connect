@@ -70,11 +70,16 @@ function Card({
               <span className="text-2xl font-bold">{badge.day}</span>
             </time>
           )}
-        </div>
-        <div className="flex flex-1 flex-col gap-2 p-4">
-          <span className="w-fit max-w-full truncate rounded-[3px] bg-ds-slate px-2 py-0.5 text-xs font-medium text-ds-slate-fg">
+          {/* Above the card link so the full name shows on hover; white on black/70 stays >= 7:1 over any photo. */}
+          <span
+            data-testid="landing-upcoming-chip"
+            title={chip}
+            className="absolute bottom-3 left-3 z-[1] max-w-[calc(100%-1.5rem)] truncate rounded-[3px] bg-black/70 px-2 py-1 text-xs font-semibold text-white"
+          >
             {chip}
           </span>
+        </div>
+        <div className="flex flex-1 flex-col gap-2 p-4">
           <h3 className="text-lg font-semibold leading-snug break-words">
             <Link
               to="/events/$id"

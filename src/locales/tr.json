@@ -1804,6 +1804,7 @@
     }
   },
   "landing": {
+    "hostedBy": "Dialogue Society {{name}}",
     "skip": "İçeriğe geç",
     "loadError": "Sayfa yüklenemedi. Lütfen tekrar deneyin.",
     "nav": {
