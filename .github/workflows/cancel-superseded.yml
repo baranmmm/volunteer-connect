@@ -3,9 +3,10 @@ name: Cancel superseded E2E
 # A new push to a PR makes its earlier E2E (local) runs pointless: they test older code. This workflow runs at once and
 # cancels the PR's earlier E2E runs, running or pending, so their runners are freed for the new run. PR runs use their
 # own local Supabase stack (e2e-pr.yml), so cancelling one never leaves data anywhere.
+# Switched off: E2E (local) is manual now and cancels its own earlier run (concurrency in e2e-pr.yml). Kept only
+# until it is deleted.
 on:
-  pull_request:
-    types: [synchronize, reopened]
+  workflow_dispatch:
 
 permissions:
   actions: write

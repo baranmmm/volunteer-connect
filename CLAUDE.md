@@ -9,70 +9,76 @@ TanStack Start + React 19 + Supabase, client-side SPA only (every route `ssr: fa
 Claude Code makes frontend (`src/`) and database (`supabase/migrations/`) changes. Lovable is used only for new
 screens and design, and still syncs two-way on `main`.
 - Every task gets its own branch from `main`. Pull `main` before starting. Never commit or push to `main` directly:
-  changes go through a PR and the user merges it.
+  changes go through a PR, merged with `gh pr merge` under the merge rule below.
 - **No parallel work with Lovable.** When the user says a Lovable task is running, do not touch `src/` or
   `supabase/` until they say it has finished.
 - Never rewrite pushed history (Lovable mirrors it), and keep `main` buildable.
+- Before every push to a PR branch, check the PR is still open (`gh pr view <n> --json state`); if it was merged,
+  open a new PR.
 
-### Risk levels
-Every module is one PR. Never run the full Playwright suite locally: CI runs it (nightly and with the `full-ci` label,
-both on the local stack in CI).
-Local tests run on the local Supabase stack (Docker, `cd e2e && npm run local:up`), not on the remote QA project.
+### Local checks (every PR)
+Local tests run on the local Supabase stack (Docker, `cd e2e && npm run local:up`), never on the remote QA project.
+Never run the full Playwright suite locally.
+1. `npx tsc --noEmit` at the repo root, and inside `e2e/` when it changed.
+2. ESLint on the changed files only: `npx eslint <changed files>` (the rest of `src/` has known formatting issues).
+3. Vitest: `npx vitest run`.
+4. Playwright `@smoke` plus the specs related to the change, on the local stack:
+   `cd e2e && npm run local:test -- --grep "$(npm run -s related -- --grep-only)"` (the related set always includes
+   `@smoke`).
+5. Every new migration: a local dry run first: `npm run local:reset` (every migration from scratch on the local
+   stack), plus `npm run local:dryrun -- ../supabase/migrations/<file>.sql` for the rolled-back preview, then the
+   related tests on that stack.
+Put the local results (commands and pass/fail counts) in the PR description.
 
-**Low risk**: UI and test work that does not touch migrations, RLS, grants, auth or the deletion/GDPR flow.
-1. Run `npx tsc --noEmit` at the repo root, and inside `e2e/` when it changed.
-2. Run ESLint on the changed files only: `npx eslint <changed files>`. The rest of `src/` has known formatting issues.
-3. Run Vitest (`npx vitest run`).
-4. Run only the Playwright specs related to the change on the local stack
-   (`cd e2e && npm run local:test -- --grep "$(npm run -s related -- --grep-only)"`, or name the specs).
-5. Push and open the PR without asking or waiting for approval. The description has a short summary and the test
-   results.
-6. Report back only the PR link.
+### Merge rule
+- **Non-critical change:** when every local check passes, merge to `main` yourself (`gh pr merge --merge`, never
+  squash or rebase: Lovable mirrors history) without asking. Report the PR link and the result.
+- **Critical change:** run the same local checks, then stop and ask the user before merging. Critical means any of:
+  auth or sign-in; RLS policies or grants; deleting or rewriting existing production data; secrets or env handling;
+  email sending limits; anything that cannot be rolled back.
+- **Any local check fails:** do not merge. Fix it, or report back (a test still red after two attempts: report).
+- Still stop and ask for a deviation from the spec, a security or authorization decision the spec does not cover, or
+  a need to touch an existing migration.
 
-**High risk**: migrations, RLS, grants, SECURITY DEFINER functions, auth, and deletion/GDPR.
-1. Do a rolled-back dry run on the local stack (`npm run local:dryrun -- ../supabase/migrations/<file>.sql`), then
-   apply it locally (`npm run local:migrate`) and run the related specs there.
-2. Run the checks from the low-risk steps 1-4.
-3. If the dry run is clean and nothing deviates from the spec, push and open the PR without waiting for approval.
-   Put the migration summary in the PR description, with the line "Merge sonrası prod migration gerekli: <file>".
-   Stop and ask only for a deviation from the spec, a security or authorization decision the spec does not cover,
-   a need to touch an existing migration, or a test that is still red after two attempts.
+### Migrations and production
+- Production migrations run only through the `PROD DB migrate` workflow (`.github/workflows/prod-db-migrate.yml`,
+  `main` only): a `dry-run` first, then `apply` with `confirm: APPLY PROD`. Never `supabase db push` or a direct
+  connection to production from this machine.
+- **Migrations first, code second**, so production never runs code without its schema: the PR's new migration files
+  go to `main` first as their own small PR (migrations only, so `main` stays buildable), `PROD DB migrate` applies
+  them, and only then the code PR is merged.
+- **Additive, non-critical migrations** (new tables, new columns, new or changed functions with no data loss): when
+  the local dry run and tests pass, do this as part of the merge without asking.
+- **Destructive or data-changing migrations** (dropping or rewriting data, changing what existing rows mean) and
+  migrations of a critical change: dry run locally, then ask the user before applying to production.
+- After applying, check the workflow's "Migration list (after)" (local and remote columns match for every file) and
+  report it in the PR.
 
 ### CI (`.github/workflows/`)
-- `checks.yml` on every PR and push to main: tsc (app and e2e), ESLint on changed files, Vitest.
-- `e2e-local.yml` (reusable): the local-stack e2e run. Each of three shards starts its own local Supabase stack
-  (`npm run local:up`: every migration, seed, local TOTP for the NC), then one merged report. It never touches QA.
-- `e2e-pr.yml` (E2E (local)) on every PR, through `e2e-local.yml`. Test selection (`e2e/scripts/select-specs.mjs`):
-  - Every run includes `@smoke`, plus the specs related to the changed files.
-  - **Changed spec:** that spec.
-  - **Test-infrastructure file** (fixtures, setup, teardown, helpers, pages, `playwright.config`): only the specs that
-    import it, directly or through other e2e modules, never through `e2e/fixtures` or `e2e/setup`. A file that no spec
-    imports (`playwright.config`, teardown) adds nothing beyond `@smoke`.
-  - **`src/` file:** the specs of its area. **Migration:** every spec of each area it touches.
-  - **Build files, the Supabase client, a migration with no known area:** `@smoke` only, with a hint to add `full-ci`.
-  - **Full suite on a PR:** only with the `full-ci` label.
-  - The plan writes one line into the PR description, marked `<!-- e2e-plan -->`: the selected specs, test runs and
-    estimated Actions minutes.
-- `e2e.yml` (E2E):
-  - **Nightly at 02:00 UTC:** the full suite on the local stack (`e2e-local.yml`), only when main has new commits
-    since the last nightly run; otherwise it skips.
-  - **Push to main:** `@smoke` on the shared QA project, after migrating it. This is the only regular QA run.
-  - **`workflow_dispatch`:** a chosen suite on a chosen target, local (default) or `qa`.
-  - QA runs wait in the workflow-level `qa-db` queue and are never cancelled while running.
+GitHub Actions has the free 2,000 minutes a month and a $0 budget (usage stops at the limit): nothing heavy runs
+automatically.
+- `checks.yml` on pull requests only (about 2–3 minutes): tsc (app and e2e), ESLint on changed files, Vitest.
+- `e2e-pr.yml` (E2E (local)) and `e2e.yml` (E2E): **manual only** (`workflow_dispatch`). E2E (local) runs `related`
+  (`@smoke` + the specs related to the branch's changes, `e2e/scripts/select-specs.mjs`) or `full` on the chosen
+  branch; E2E runs a chosen suite on `local` (default) or `qa` (migrates QA first).
+- `e2e-local.yml` (reusable): each of three shards starts its own local Supabase stack, then one merged report.
+- `task-reminders.yml` and `cleanup-deleted-events.yml` stay scheduled: they send the emails and run the retention
+  cleanup. Do not change their schedules without asking.
+- `cancel-superseded.yml` is switched off (manual trigger only) and can be deleted.
 - QA runs on a small instance with a limited disk IO budget: add nothing that runs on QA regularly.
-- A new push to a PR cancels that PR's earlier E2E (local) runs (`cancel-superseded.yml`).
-- **Push discipline.**
-  - Push only after the related specs are green locally, and collect fixes into one push.
-  - When CI is red, read the log and trace first and tell the user the cause before changing anything.
-  - When the cause is infrastructure (QA, runner, network), do not re-run the same code.
+- Branch protection / required checks are not available on this private repository's plan, so nothing blocks
+  `gh pr merge`; check the PR's checks yourself before merging.
+- When CI is red, read the log first and tell the user the cause before changing anything; when the cause is
+  infrastructure (QA, runner, network), do not re-run the same code.
 - Applying migrations to remote QA by hand (`npm run qa:migrate`, `npm run qa:dryrun`) only while CI is idle:
   check that `gh run list` shows no run in progress, and set `E2E_RUN_ID` for local runs and teardown.
 
 ### Always ask first
-- Pushing to `main`, force pushing, `git reset --hard`, rebase.
+- Pushing to `main` directly, force pushing, `git reset --hard`, rebase. (Merging a PR under the merge rule is
+  allowed.)
 - Deleting any file, migration files included.
-- Any connection to the production database, and any `supabase db push`. Production migrations go only through
-  the `PROD DB migrate` workflow (`.github/workflows/prod-db-migrate.yml`), with the user's approval.
+- Any production migration outside the merge rule above (destructive or critical ones), and any connection to the
+  production database other than the `PROD DB migrate` workflow.
 - Reading, showing or changing `.env`, `e2e/.env.qa` or any other key or secret file.
 
 ## Roles
@@ -117,7 +123,7 @@ Ranking: follower < volunteer < branch_manager < regional_director < national_co
 - Never grant `INSERT`, `UPDATE`, `DELETE` or `TRUNCATE` to `anon`.
 - `SECURITY DEFINER` functions pin the search path (`SET search_path = ''` or `public`, with schema-qualified
   names), `REVOKE EXECUTE ... FROM PUBLIC, anon`, and `GRANT EXECUTE ... TO authenticated` only.
-- QA gets migrations from `E2E`, which migrates QA before its QA runs (push to main, manual `qa`), from
+- QA gets migrations from `E2E`, which migrates QA before its manual `qa` runs, from
   `QA DB migrate` (manual), or from `npm run qa:migrate` in `e2e/` (applies without a prompt; only while CI is idle).
   PR runs apply every migration to their own local stack only. Production only through `PROD DB migrate`, dry-run first (see `e2e/README.md`).
 

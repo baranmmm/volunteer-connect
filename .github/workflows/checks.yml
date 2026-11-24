@@ -2,9 +2,8 @@ name: Checks
 
 # Type check, lint (changed files only: the rest of src/ has known formatting issues) and Vitest.
 # No QA access and no secrets, so it runs in parallel with the E2E workflows and outside the qa-db queue.
+# Pull requests only (about 2–3 minutes); not repeated on the push to main (Actions minutes).
 on:
-  push:
-    branches: [main]
   pull_request:
 
 concurrency:

@@ -33,7 +33,8 @@ use the editor.
 - **Working agreement (overrides "What Lovable manages → Database" above).** Claude Code changes `src/` and adds new
   migrations to `supabase/migrations/`. Lovable is used only for new screens and design, and never at the same time
   as Claude Code. Existing migrations are never edited or deleted. Each task uses its own branch from `main` and
-  goes through a PR the user merges. Production migrations run only through `.github/workflows/prod-db-migrate.yml`.
+  goes through a PR merged under the merge rule in `CLAUDE.md` (non-critical: merged after local checks; critical: the
+  user decides). Production migrations run only through `.github/workflows/prod-db-migrate.yml`, migrations before code.
   Details: `CLAUDE.md`.
 - Calendar timing uses shared UTC-instant/London-date helpers and one client clock; Month ignores List time filters, and cached events update at start/end without extra network reads.
 - All routes use `ssr: false` (client-side SPA) because the app will be packaged as a PWA/native app.

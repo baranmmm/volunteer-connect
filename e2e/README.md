@@ -37,7 +37,8 @@ npm run local:reset     # fresh database (all migrations again) + seed
 npm run local:down
 ```
 
-Never run the full suite locally; CI runs it nightly and on PRs with the `full-ci` label (both on the local stack in CI).
+Never run the full suite locally; when the full suite is needed, start **E2E (local)** by hand with `suite: full`
+(Actions minutes are limited, so nothing e2e runs automatically).
 
 To reproduce CI's parallel shards locally (only when asked), give each shard its own app port with `E2E_LOCAL_PORT`.
 Seed state stays shared; sessions go to `e2e/.auth/local/port-<port>/`.
@@ -130,40 +131,27 @@ against production by hand.
 
 ## CI
 
-- `.github/workflows/checks.yml`: every PR and push to main — tsc (app, e2e), ESLint on changed files, Vitest.
-- `.github/workflows/e2e-local.yml` (reusable, `workflow_call`): the **local-stack run** used by pull requests, the
-  nightly run and manual local runs.
+- `.github/workflows/checks.yml`: pull requests only (about 2–3 minutes): tsc (app, e2e), ESLint on changed files,
+  Vitest.
+- **E2E is manual only** (`workflow_dispatch`): GitHub Actions has 2,000 free minutes a month with a $0 budget. Before
+  merging, `@smoke` + the related specs run on the local stack (CLAUDE.md "Merge rule").
+- `.github/workflows/e2e-local.yml` (reusable, `workflow_call`): the **local-stack run** used by both e2e workflows.
   - **Shards:** 3, each on its own runner with its own local Supabase stack (`npm run local:up`: every migration,
     seed, a local TOTP authenticator for the National Coordinator).
   - **Isolation:** no QA access and no secrets.
   - **Speed-ups:** unused containers are skipped (`E2E_LOCAL_EXCLUDE`). The stack's Docker images are cached
     (`docker save` + zstd, keyed by CLI version and local config), and so are the Playwright browsers.
   - **Report:** one merged HTML report artifact.
-- `.github/workflows/e2e-pr.yml` (**E2E (local)**), every pull request, through `e2e-local.yml`. Which tests:
-  - **pull request**: `@smoke` + the specs related to the changed files (`scripts/select-specs.mjs`, shown in the
-    run's summary):
-    - A changed spec selects itself; a changed `src/` file selects the specs of its area; a migration selects every
-      spec of each area it touches.
-    - A test-infrastructure file (fixtures, setup, teardown, helpers, pages) selects the specs that import it. The
-      search does not go through `e2e/fixtures` or `e2e/setup`, which every spec imports. A file no spec imports
-      (`playwright.config`, teardown) selects only `@smoke`.
-    - Package files, vite/tsconfig, the Supabase client and a migration with no known area select only `@smoke`; the
-      summary suggests `full-ci`.
-  - **`full-ci` label** on the PR: the full suite, the only way a PR runs everything (adding another label starts a
-    run that does nothing).
-  - **Plan line:** the plan writes one line into the PR description (`<!-- e2e-plan -->`): selected specs, test runs
-    (tests × projects) and estimated Actions minutes. The estimate uses measured costs: about 2.5 min of setup per
-    shard, about 24 min of tests for the full suite, plan and report.
-  - A new push to the PR cancels its earlier runs (`cancel-superseded.yml`).
-- `.github/workflows/e2e.yml` (**E2E**):
-  - **Nightly 02:00 UTC** on main: the full suite on the local stack (`e2e-local.yml`), only when main has new commits
-    since the last nightly run (otherwise the run skips). QA is not touched.
-  - **push to main**: `@smoke` on **QA**: guard → **QA migrate** → seed → 3 shards (own `E2E_RUN_ID` and teardown
-    each) → merged report. This is the only regular QA run: QA is a small instance with a limited disk IO budget.
-  - **workflow_dispatch**: `suite` (full, smoke, selected) and `target` (`local` by default, or `qa`).
-  - The QA migrate step runs `npm run qa:migrate` (Supabase CLI 3.2.0). It applies the commit's pending migrations
-    before the tests run against them. When nothing is pending it logs
-    `No pending migrations: QA is up to date, nothing applied.` and does not run `db push`.
+- `.github/workflows/e2e-pr.yml` (**E2E (local)**), manual: choose the branch under "Use workflow from" and a suite:
+  - **related**: `@smoke` + the specs related to the branch's changes against main (`scripts/select-specs.mjs`, shown
+    in the run's summary): a changed spec selects itself; a changed `src/` file the specs of its area; a migration
+    every spec of each area it touches; a test-infrastructure file the specs that import it; package files,
+    vite/tsconfig, the Supabase client and a migration with no known area only `@smoke`.
+  - **full**: the full suite.
+  - A new manual run on the same branch cancels the earlier one.
+- `.github/workflows/e2e.yml` (**E2E**), manual: `suite` (full, smoke, selected) and `target` (`local` by default, or
+  `qa`). A `qa` run goes guard → **QA migrate** (`npm run qa:migrate`, pending migrations only) → seed → 3 shards →
+  merged report. The push-to-main QA smoke and the nightly full run are switched off.
 - `.github/workflows/qa-db-migrate.yml`: manual only, with a seed + API smoke run.
 - **Secret masking**: `setup/redact-reporter.ts` is the first reporter; it masks the test password and any value
   typed into a `password` field in step titles, errors, traces and error-context before other reporters copy them.

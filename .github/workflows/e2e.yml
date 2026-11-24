@@ -1,17 +1,12 @@
 name: E2E
 
-# Runs on main and by hand. Pull requests use e2e-pr.yml (local stack).
-#   push to main            @smoke on the shared hosted QA project (after migrating it): the one regular QA run.
-#   schedule 02:00 UTC      the full suite on the local stack (e2e-local.yml), only when main has new commits since
-#                           the last nightly run (otherwise the run skips); QA is not touched.
-#   workflow_dispatch       the suite you choose, on the target you choose: local (default) or qa.
+# Manual only (Actions minutes: the free 2,000 a month with a $0 budget). The push-to-main QA smoke and the nightly
+# full run were switched off; e2e runs locally before merging (CLAUDE.md "Merge rule").
+#   workflow_dispatch       the suite you choose, on the target you choose: local (default) or qa (migrates QA first).
+# The push/schedule branches below stay in the scripts so they can be switched back on by restoring the triggers.
 # QA runs on a small instance with a limited disk IO budget, so nothing else runs there on a schedule.
 # tsc, ESLint and Vitest run in "Checks" (checks.yml), without QA and in parallel.
 on:
-  push:
-    branches: [main]
-  schedule:
-    - cron: "0 2 * * *"
   workflow_dispatch:
     inputs:
       target:
