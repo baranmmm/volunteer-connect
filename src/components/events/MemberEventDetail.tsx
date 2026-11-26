@@ -86,6 +86,8 @@ export function MemberEventDetail() {
   // "Edit" links (dashboard drafts) open the form once the user is known to manage the event.
   // A meeting's calendar entry is managed through its meeting (MeetingEventActions), never with the event form.
   const meetingEntry = !!query.data?.event && isMeetingEvent(query.data.event);
+  // A meeting's entry: the scope, branch and region facts are collapsed under "Details".
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const { edit } = route.useSearch(),
     canManageLoaded = !!query.data?.canManage && !meetingEntry,
     recurring = !!query.data?.event?.series_id;
@@ -414,30 +416,57 @@ export function MemberEventDetail() {
             <span className="break-words">{event.location}</span>
           </a>
         )}
-        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted-foreground">{t("events.scope")}</dt>
-            <dd>{t(`events.${event.scope}`)}</dd>
-          </div>
-          {query.data.branchName && (
-            <div>
-              <dt className="text-muted-foreground">{t("events.branch")}</dt>
-              <dd>
-                <BranchName name={query.data.branchName} />
-              </dd>
+        {(() => {
+          const facts = (
+            <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-muted-foreground">{t("events.scope")}</dt>
+                <dd>{t(`events.${event.scope}`)}</dd>
+              </div>
+              {query.data.branchName && (
+                <div>
+                  <dt className="text-muted-foreground">{t("events.branch")}</dt>
+                  <dd>
+                    <BranchName name={query.data.branchName} />
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-muted-foreground">{t("events.region")}</dt>
+                <dd>{query.data.regionName ?? "—"}</dd>
+              </div>
+              {!meetingEntry && (
+                <div>
+                  <dt className="text-muted-foreground">{t("events.capacity")}</dt>
+                  <dd>{event.capacity ?? t("events.unlimited")}</dd>
+                </div>
+              )}
+            </dl>
+          );
+          // A meeting's entry: scope, branch and region are rarely needed, so they sit in a collapsed "Details".
+          if (!meetingEntry) return facts;
+          return (
+            <div className="min-w-0" data-testid="event-meeting-details">
+              <button
+                type="button"
+                data-testid="event-meeting-details-toggle"
+                aria-expanded={detailsOpen}
+                aria-controls="event-meeting-details-body"
+                onClick={() => setDetailsOpen((v) => !v)}
+                className="-mx-2 flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-muted-foreground hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronRight
+                  className={`size-4 shrink-0 transition-transform ${detailsOpen ? "rotate-90" : ""}`}
+                  aria-hidden
+                />
+                {t("events.meetingDetails")}
+              </button>
+              <div id="event-meeting-details-body" hidden={!detailsOpen} className="pt-2">
+                {detailsOpen && facts}
+              </div>
             </div>
-          )}
-          <div>
-            <dt className="text-muted-foreground">{t("events.region")}</dt>
-            <dd>{query.data.regionName ?? "—"}</dd>
-          </div>
-          {!meetingEntry && (
-            <div>
-              <dt className="text-muted-foreground">{t("events.capacity")}</dt>
-              <dd>{event.capacity ?? t("events.unlimited")}</dd>
-            </div>
-          )}
-        </dl>
+          );
+        })()}
       </div>
       {event.description && (
         <p className="whitespace-pre-wrap break-words leading-relaxed">{event.description}</p>

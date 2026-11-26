@@ -55,8 +55,7 @@ const comesBefore = (page: Page, first: string, second: string) =>
 
 async function openMeetings(page: Page) {
   await page.goto("/meetings");
-  await expect(page.getByTestId("meetings-tab-upcoming")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-  await expect(page.getByTestId("meetings-list").or(page.getByTestId("meetings-empty"))).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+  await expect(page.getByTestId("meetings-timeline").or(page.getByTestId("meetings-empty"))).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
 }
 async function openMeeting(page: Page, id: string) {
   await page.goto(`/meetings/${id}`);
@@ -321,8 +320,15 @@ test.describe("Meetings", () => {
 
     const decisionText = `${TASK_TITLE_PREFIX}${runId} book the hall for the iftar`;
     await item.getByTestId("meeting-decision-add").click();
-    await item.getByTestId("meeting-decision-text").fill(decisionText);
-    await item.getByTestId("meeting-decision-save").click();
+    // Shift+Enter is a new line; Enter saves the decision.
+    const decisionInput = item.getByTestId("meeting-decision-text");
+    await decisionInput.fill(decisionText);
+    await decisionInput.press("Shift+Enter");
+    await expect(decisionInput).toHaveValue(`${decisionText}\n`);
+    await expect(item.getByTestId("meeting-decision-form")).toBeVisible();
+    await decisionInput.fill(decisionText);
+    await decisionInput.press("Enter");
+    await expect(item.getByTestId("meeting-decision-form")).toHaveCount(0, { timeout: APP_LOAD_TIMEOUT });
     const decision = item.getByTestId("meeting-decision");
     await expect(decision.getByTestId("meeting-decision-text-value")).toHaveText(decisionText);
 
@@ -360,12 +366,72 @@ test.describe("Meetings", () => {
     const task = (await workRpc(manager, "get_task", { p_id: taskId })).data as { title: string; meeting_id: string; assignees: { id: string }[] };
     expect([task.title, task.meeting_id, task.assignees.map((a) => a.id)]).toEqual([decisionText, id, [volunteer.id]]);
 
+    // The task opens in the side panel on the meeting page; the URL keeps it, so a refresh reopens it.
     await link.click();
-    await expect(page).toHaveURL(new RegExp(`/tasks\\?task=${taskId}$`), { timeout: APP_LOAD_TIMEOUT });
+    await expect(page).toHaveURL(new RegExp(`/meetings/${id}\\?task=${taskId}$`), { timeout: APP_LOAD_TIMEOUT });
     const panel = page.getByTestId("task-panel");
     await expect(panel.getByTestId("task-panel-title")).toHaveText(decisionText, { timeout: APP_LOAD_TIMEOUT });
     await expect(panel.getByTestId("task-panel-meeting-link")).toHaveAttribute("href", `/meetings/${id}`);
     await expect(panel.getByTestId("task-panel-decision")).toBeVisible();
+    await expect(page.getByTestId("meeting-detail")).toBeAttached();
+    await page.reload();
+    await expect(page.getByTestId("task-panel").getByTestId("task-panel-title")).toHaveText(decisionText, { timeout: APP_LOAD_TIMEOUT });
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("task-panel")).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`/meetings/${id}$`));
+
+    // Edit and Delete icons on the task row (the manager may edit the task).
+    await expandItem(item);
+    const row = item.getByTestId("meeting-decision-task-row");
+    await row.getByTestId("meeting-decision-task-edit").click({ timeout: APP_LOAD_TIMEOUT });
+    const editForm = page.getByTestId("task-form");
+    const renamed = `${decisionText} (renamed)`;
+    await editForm.getByTestId("task-form-title").fill(renamed);
+    await editForm.getByTestId("task-form-submit").click();
+    await expect(editForm).toBeHidden();
+    await expect(row.getByTestId("meeting-decision-task")).toContainText("(renamed)", { timeout: APP_LOAD_TIMEOUT });
+
+    // The meeting's calendar entry lists the decision's task under Linked tasks; scope facts sit under "Details".
+    const meetingRow = (await adminClient().from("meetings").select("event_id").eq("id", id).single()).data!;
+    await page.goto(`/events/${meetingRow.event_id}`);
+    await expect(page.locator(`[data-testid="event-linked-task"][data-task-id="${taskId}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    const details = page.getByTestId("event-meeting-details-toggle");
+    await expect(details).toHaveAttribute("aria-expanded", "false");
+    await details.click();
+    await expect(details).toHaveAttribute("aria-expanded", "true");
+    await openMeeting(page, id);
+
+    // Delete asks first; then the task leaves the decision.
+    await expandItem(item);
+    await row.getByTestId("meeting-decision-task-delete").click({ timeout: APP_LOAD_TIMEOUT });
+    const dialog = page.getByTestId("meeting-decision-task-delete-dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByTestId("meeting-decision-task-delete-cancel").click();
+    await expect(link).toHaveCount(1);
+    await row.getByTestId("meeting-decision-task-delete").click();
+    await dialog.getByTestId("meeting-decision-task-delete-confirm").click();
+    await expect(page.getByTestId("toast-success")).toBeVisible();
+    await expect(link).toHaveCount(0, { timeout: APP_LOAD_TIMEOUT });
+  });
+
+  test("the meetings page is one timeline: earlier past meetings collapsed, the two latest past, the next three, later ones collapsed", async ({ freshUser, freshBranch, pageAs }) => {
+    const { branch, manager } = await branchTeam(freshBranch, freshUser, "meetings-timeline");
+    const past = [];
+    for (const d of [-9, -7, -5, -3]) past.push(await createMeetingAs(manager, meetingAt(branch, `past ${d}`, { starts_at: inDays(d), ends_at: inDays(d, 1) })));
+    const upcoming = [];
+    for (const d of [2, 3, 4, 5, 6]) upcoming.push(await createMeetingAs(manager, meetingAt(branch, `next ${d}`, { starts_at: inDays(d), ends_at: inDays(d, 1) })));
+    const page = await pageAs(manager);
+    await openMeetings(page);
+    const shown = async () =>
+      page.locator('[data-testid="meeting-card"]').evaluateAll((cards) => cards.map((c) => c.getAttribute("data-meeting-id")));
+    // Collapsed: the two latest past meetings, then the next three, oldest first.
+    await expect.poll(shown, { timeout: APP_LOAD_TIMEOUT }).toEqual([past[2], past[3], upcoming[0], upcoming[1], upcoming[2]]);
+    await expect(page.getByTestId("meetings-show-earlier")).toHaveAttribute("data-count", "2");
+    await expect(page.getByTestId("meetings-show-later")).toHaveAttribute("data-count", "2");
+    await page.getByTestId("meetings-show-earlier").click();
+    await page.getByTestId("meetings-show-later").click();
+    await expect.poll(shown).toEqual([...past, ...upcoming]);
+    await expect(page.getByTestId("meetings-show-earlier")).toHaveAttribute("aria-expanded", "true");
   });
 
   test("meeting request: a volunteer asks the branch manager, who approves it into a meeting the volunteer is invited to", async ({ freshUser, freshBranch, pageAs }) => {
