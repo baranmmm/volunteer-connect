@@ -116,8 +116,13 @@ test.describe("Public top bar (signed out)", () => {
     await expect(events).toHaveText("Etkinlikler");
     await expect(bar.getByTestId("public-topbar-sign-in")).toHaveText("Giriş yap");
     await expect(bar.getByTestId("public-topbar-join")).toHaveText("Katıl");
-    // Still one row of links that fits the phone in Turkish (the longest labels).
+    // Still one row that fits a 390 px phone in Turkish (the longest labels), as high as the sticky offset below it.
     await expectBar(page, "events");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expectBar(page, "events");
+    expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(64);
+    const box = (await bar.getByTestId("public-topbar-join").boundingBox())!;
+    expect(box.x + box.width, "Join stays on the screen").toBeLessThanOrEqual(390);
     await bar.getByTestId("auth-language-toggle-en").click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en-GB");
     await expect(events).toHaveText("Events");

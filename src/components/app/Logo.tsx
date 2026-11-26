@@ -11,10 +11,13 @@ export function Logo({
   className = "",
   size = "md",
   variant = "sidebar",
+  phoneMarkOnly = false,
 }: {
   className?: string;
   size?: keyof typeof MARK_SIZES;
   variant?: "sidebar" | "auth";
+  /** Phones show only the mark (its alt names it); the title from 640 px (the public top bar). */
+  phoneMarkOnly?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -33,7 +36,7 @@ export function Logo({
         className={`shrink-0 ${MARK_SIZES[size]}`}
       />
       <div
-        className={`min-w-0 flex-1 leading-tight ${mobile || auth ? "block" : "hidden lg:block"}`}
+        className={`min-w-0 flex-1 leading-tight ${phoneMarkOnly ? "hidden sm:block" : mobile || auth ? "block" : "hidden lg:block"}`}
       >
         <div
           className={`truncate font-semibold ${mobile ? "text-[15px]" : "text-base"} ${mobile || auth ? "text-foreground" : "text-sidebar-foreground"}`}

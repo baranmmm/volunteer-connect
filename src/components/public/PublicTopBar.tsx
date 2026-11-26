@@ -6,9 +6,9 @@ import { useAuth } from "@/lib/auth";
 import { publicNavItems, publicNavPage, type PublicNavPage } from "@/lib/public-nav";
 
 const ITEM =
-  "inline-flex min-h-11 items-center rounded-md px-2.5 text-sm font-medium hover:text-primary sm:px-3 aria-[current=page]:text-primary aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8";
+  "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md px-2 text-sm font-medium hover:text-primary sm:px-3 aria-[current=page]:text-primary aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8";
 const BUTTON =
-  "inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90";
+  "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md bg-primary px-3 text-sm sm:px-4 font-medium text-primary-foreground transition-colors hover:bg-primary/90";
 
 /**
  * The one top bar of every signed-out page (/, /join, /sign-in, /auth, /reset-password, /events, event pages, the
@@ -18,8 +18,9 @@ const BUTTON =
  * out the account links (the National Coordinator's MFA prompt, where Dashboard is not open yet).
  *
  * Server-rendered pages never know the session: the HTML has Sign in and Join, hidden before the first paint for a
- * stored session ([data-signed-out-only]); a signed-in member then gets Dashboard instead. Phones: two rows (logo and
- * language, then the links) so nothing scrolls sideways at 390 px; from 640 px one row (61 px high, see AuthPage).
+ * stored session ([data-signed-out-only]); a signed-in member then gets Dashboard instead. One sticky row, 61 px high
+ * on every width (AuthPage and the /events map story stick below it); phones show the logo mark only and a compact
+ * language switch, so the Turkish labels fit 360-390 px without sideways scrolling.
  */
 export function PublicTopBar({
   current,
@@ -37,13 +38,13 @@ export function PublicTopBar({
     <header
       data-testid="public-topbar"
       data-current={page ?? undefined}
-      className="z-40 border-b bg-card/95 text-foreground [color-scheme:light] backdrop-blur supports-[backdrop-filter]:bg-card/85 sm:sticky sm:top-0"
+      className="sticky top-0 z-40 border-b bg-card/95 text-foreground [color-scheme:light] backdrop-blur supports-[backdrop-filter]:bg-card/85"
     >
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2 sm:flex-nowrap sm:gap-3 sm:px-6">
-        <LogoLink size="sm" className="min-w-0 flex-1 sm:flex-none" />
+      <div className="mx-auto flex max-w-6xl items-center gap-1 px-4 py-2 sm:gap-3 sm:px-6">
+        <LogoLink size="sm" phoneMarkOnly className="shrink-0" />
         <nav
           aria-label={t("landing.nav.label")}
-          className="order-last -ml-2.5 flex w-full min-w-0 items-center gap-1 sm:order-none sm:ml-auto sm:w-auto sm:gap-2"
+          className="ml-auto flex min-w-0 items-center gap-0.5 sm:gap-2"
         >
           <Link
             to="/events"
@@ -60,7 +61,7 @@ export function PublicTopBar({
               to="/dashboard"
               data-testid="public-topbar-dashboard"
               activeOptions={{ exact: true }}
-              className={`${BUTTON} ml-auto sm:ml-0`}
+              className={BUTTON}
             >
               {t("navigation.dashboard")}
             </Link>
@@ -83,7 +84,7 @@ export function PublicTopBar({
                   data-testid="public-topbar-join"
                   activeOptions={{ exact: true }}
                   data-signed-out-only=""
-                  className={`${BUTTON} ml-auto sm:ml-0`}
+                  className={BUTTON}
                 >
                   {t("landing.nav.join")}
                 </Link>
@@ -91,7 +92,7 @@ export function PublicTopBar({
             </>
           ) : null}
         </nav>
-        <LanguageToggle className="shrink-0" />
+        <LanguageToggle compact className="shrink-0" />
       </div>
     </header>
   );
