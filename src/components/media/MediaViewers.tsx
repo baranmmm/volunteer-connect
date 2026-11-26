@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Pause, Play, Shuffle, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Settings2, Shuffle, X } from "lucide-react";
 import {
   nextSlide,
   shuffledOrder,
@@ -607,10 +607,21 @@ export function Slideshow({
                 }}
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-4 text-sm font-medium hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
-                {t("media.slideshow.seconds", { count: interval })}
-                {shuffle && (
-                  <Shuffle className="size-4" aria-label={t("media.slideshow.shuffleOn")} />
-                )}
+                <Settings2 className="size-4" aria-hidden />
+                {/* Both settings at a glance: "10 s · Shuffle" / "10 s · In order". */}
+                <span data-testid="media-slideshow-settings-label" aria-hidden>
+                  {t(shuffle ? "media.slideshow.pillShuffle" : "media.slideshow.pillInOrder", {
+                    count: interval,
+                  })}
+                </span>
+                <span className="sr-only">
+                  {t(
+                    shuffle ? "media.slideshow.settingsShuffle" : "media.slideshow.settingsInOrder",
+                    {
+                      count: interval,
+                    },
+                  )}
+                </span>
               </button>
               {settings && (
                 <div

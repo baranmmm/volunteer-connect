@@ -14,11 +14,18 @@ import { isLocalTarget, isMain } from "./env";
 import { acquireLocalStackLock } from "./local-lock";
 import { assertQaEnvironment } from "./guard";
 
-const DAY = 24 * 60;
-
+// Landscape, portrait, square and wide, so the chapter view's masonry shows varied heights.
+const SIZES: [number, number][] = [[1600, 1067], [1067, 1600], [1200, 1200], [1600, 900], [1200, 1600]];
 async function photos(from: number, count: number) {
-  return Promise.all(Array.from({ length: count }, (_, i) => gradientPhoto(PALETTE[(from + i) % PALETTE.length]!, from * 10 + i)));
+  return Promise.all(
+    Array.from({ length: count }, (_, i) => {
+      const [w, h] = SIZES[(from + i) % SIZES.length]!;
+      return gradientPhoto(PALETTE[(from + i) % PALETTE.length]!, from * 10 + i, w, h);
+    }),
+  );
 }
+/** Days from a calendar date to today (the sample events keep the dates of their titles). */
+const daysSince = (date: string) => Math.max(1, Math.round((Date.now() - Date.parse(`${date}T12:00:00Z`)) / 86_400_000));
 
 export async function seedMedia() {
   assertQaEnvironment();
@@ -34,10 +41,10 @@ export async function seedMedia() {
   // Past records (published events cannot end in the past): create_past_event as the branch manager.
   const event = (email: string, branchId: string, title: string, daysAgo: number, location: string) =>
     createPastEventAs(email, branchId, title, daysAgo, location);
-  const iftar = await event(bm, medway, "2026 Iftar Dinner", 20, "Rochester Cathedral");
-  const xmas = await event(bm, medway, "2025 Christmas Dinner", 120, "Chatham Community Hall");
-  const walk = await event(bm, medway, "Peace Walk", 60, "Rochester Esplanade");
-  const other = await event(bmB, brighton, "Brighton Interfaith Picnic", 10, "Preston Park");
+  const iftar = await event(bm, medway, "2026 Iftar Dinner", daysSince("2026-03-11"), "Rochester Cathedral");
+  const xmas = await event(bm, medway, "2025 Christmas Dinner", daysSince("2025-12-06"), "Chatham Community Hall");
+  const walk = await event(bm, medway, "Peace Walk", daysSince("2026-06-14"), "Rochester Esplanade");
+  const other = await event(bmB, brighton, "Brighton Interfaith Picnic", daysSince("2026-09-20"), "Preston Park");
 
   for (const p of await photos(0, 3)) await addEventPagePhotoAs(bm, iftar, p);
   for (const p of await photos(3, 9)) await addLibraryPhotoAs(bm, medway, { event_id: iftar }, p);
@@ -48,7 +55,7 @@ export async function seedMedia() {
 
   const meetups = await createAlbumAs(bm, medway, "Volunteer meet-ups");
   for (const p of await photos(7, 5)) await addLibraryPhotoAs(bm, medway, { album_id: meetups }, p);
-  const ramadan = await createAlbumAs(bm, medway, "Ramadan 2026", new Date(Date.now() - 30 * DAY * 60_000).toISOString().slice(0, 10));
+  const ramadan = await createAlbumAs(bm, medway, "Ramadan 2026", "2026-03-01");
   for (const p of await photos(1, 4)) await addLibraryPhotoAs(bm, medway, { album_id: ramadan }, p);
 
   await uploadRequestAs(vol, { event_id: iftar }, await photos(8, 3), "From the evening at the cathedral");

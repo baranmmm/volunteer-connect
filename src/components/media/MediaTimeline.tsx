@@ -96,6 +96,7 @@ export function MediaTimeline({
 
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_200px] gap-10">
         <main className="min-w-0">
+          <MediaFilterBar home={home} filters={filters} onFilters={onFilters} />
           {loading ? (
             <p className="text-muted-foreground">{t("common.loading")}</p>
           ) : chapters.length === 0 ? (
@@ -137,12 +138,7 @@ export function MediaTimeline({
             </div>
           )}
         </main>
-        <MediaRail
-          home={home}
-          filters={filters}
-          onFilters={onFilters}
-          onOpenChapter={onOpenChapter}
-        />
+        <MediaRail home={home} onOpenChapter={onOpenChapter} />
       </div>
     </div>
   );
@@ -317,21 +313,14 @@ function Collage({
   );
 }
 
-/** The sticky right rail: filters, "Jump to" (years and chapter titles), then the album list. */
-function MediaRail({
-  home,
-  filters,
-  onFilters,
-  onOpenChapter,
-}: {
-  home: MediaHome;
-  filters: MediaFilters;
-  onFilters: (f: MediaFilters) => void;
-  onOpenChapter: OpenChapter;
-}) {
+/**
+ * The sticky right rail, as in the "Story chapters" mockup: "Jump to" with each year as a large heading (the current
+ * year dark, past years muted) and the chapter titles of that year (grouped by the chapter's date) as links, a divider,
+ * then the album titles.
+ */
+function MediaRail({ home, onOpenChapter }: { home: MediaHome; onOpenChapter: OpenChapter }) {
   const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
-  const years = mediaYears(home.years);
   const jump = (c: { kind: "event" | "album"; id: string }) => {
     const el = document.getElementById(`media-chapter-${c.id}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -341,51 +330,8 @@ function MediaRail({
     <aside
       data-testid="media-rail"
       aria-label={t("media.rail")}
-      className="sticky top-[calc(var(--app-header-h,0px)+1.5rem)] max-h-[calc(100dvh-var(--app-header-h,0px)-3rem)] space-y-6 self-start overflow-y-auto pb-6"
+      className="sticky top-[calc(var(--app-header-h,0px)+1.5rem)] mt-[4.25rem] max-h-[calc(100dvh-var(--app-header-h,0px)-3rem)] space-y-6 self-start overflow-y-auto pb-6"
     >
-      <div className="space-y-3">
-        <label className="relative block">
-          <span className="sr-only">{t("media.search")}</span>
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            data-testid="media-search"
-            type="search"
-            value={filters.search}
-            placeholder={t("media.search")}
-            onChange={(e) => onFilters({ ...filters, search: e.target.value.slice(0, 100) })}
-            className="h-11 rounded-full bg-card pl-9"
-          />
-        </label>
-        <div role="group" aria-label={t("media.filters.source")} className="flex flex-wrap gap-1.5">
-          {MEDIA_SOURCES.map((s) => (
-            <FilterChip
-              key={s}
-              testId={`media-filter-${s}`}
-              active={filters.source === s}
-              onClick={() => onFilters({ ...filters, source: s })}
-            >
-              {t(`media.filters.${s}`)}
-            </FilterChip>
-          ))}
-        </div>
-        {years.length > 1 && (
-          <div role="group" aria-label={t("media.filters.year")} className="flex flex-wrap gap-1.5">
-            {years.map((y) => (
-              <FilterChip
-                key={y}
-                testId={`media-filter-year-${y}`}
-                active={filters.year === y}
-                onClick={() => onFilters({ ...filters, year: filters.year === y ? null : y })}
-              >
-                {y}
-              </FilterChip>
-            ))}
-          </div>
-        )}
-      </div>
       {home.years.length > 0 && (
         <nav aria-labelledby="media-jump-h">
           <p
@@ -449,6 +395,66 @@ function MediaRail({
         </nav>
       )}
     </aside>
+  );
+}
+
+/**
+ * One slim row under the page header, aligned with the timeline column: the title search, then the chips All /
+ * Events / Albums and the years (a year narrows the source; "All" clears both).
+ */
+function MediaFilterBar({
+  home,
+  filters,
+  onFilters,
+}: {
+  home: MediaHome;
+  filters: MediaFilters;
+  onFilters: (f: MediaFilters) => void;
+}) {
+  const { t } = useTranslation();
+  const years = mediaYears(home.years);
+  return (
+    <div data-testid="media-filter-bar" className="mb-8 flex flex-wrap items-center gap-2">
+      <label className="relative block w-56 shrink-0">
+        <span className="sr-only">{t("media.search")}</span>
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          data-testid="media-search"
+          type="search"
+          value={filters.search}
+          placeholder={t("media.search")}
+          onChange={(e) => onFilters({ ...filters, search: e.target.value.slice(0, 100) })}
+          className="h-9 rounded-full bg-card pl-9"
+        />
+      </label>
+      <div role="group" aria-label={t("media.filters.label")} className="flex flex-wrap gap-1.5">
+        {MEDIA_SOURCES.map((s) => (
+          <FilterChip
+            key={s}
+            testId={`media-filter-${s}`}
+            active={filters.source === s && (s !== "all" || filters.year === null)}
+            onClick={() =>
+              onFilters({ ...filters, source: s, year: s === "all" ? null : filters.year })
+            }
+          >
+            {t(`media.filters.${s}`)}
+          </FilterChip>
+        ))}
+        {years.map((y) => (
+          <FilterChip
+            key={y}
+            testId={`media-filter-year-${y}`}
+            active={filters.year === y}
+            onClick={() => onFilters({ ...filters, year: filters.year === y ? null : y })}
+          >
+            {y}
+          </FilterChip>
+        ))}
+      </div>
+    </div>
   );
 }
 

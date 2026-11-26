@@ -226,3 +226,24 @@ export type SlideshowInterval = (typeof SLIDESHOW_INTERVALS)[number];
 export function movesEventPagePhotos(items: MediaItemRef[]) {
   return items.some((i) => i.source === "event");
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Masonry (full chapter view): a CSS grid of 2 px rows; each photo spans rows by its aspect ratio, so heights vary
+// while the DOM (and focus) order stays the photo order. Columns follow the available width: 5 from 1200 px, 4 from
+// 760 px (desktop content), 3 from 480 px, else 2.
+export const MASONRY_GAP = 10;
+export const MASONRY_ROW = 2;
+
+export function masonryColumns(width: number): number {
+  return width >= 1200 ? 5 : width >= 760 ? 4 : width >= 480 ? 3 : 2;
+}
+
+/** Rows a photo spans (its height at the column width plus the gap below it); 4:3 when the size is unknown. */
+export function masonrySpan(
+  columnWidth: number,
+  width: number | null,
+  height: number | null,
+): number {
+  const ratio = width && height ? height / width : 3 / 4;
+  return Math.max(1, Math.round((columnWidth * ratio + MASONRY_GAP) / MASONRY_ROW));
+}

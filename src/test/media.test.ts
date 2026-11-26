@@ -3,6 +3,8 @@ import {
   chapterAccent,
   collageLargeSide,
   collageTiles,
+  masonryColumns,
+  masonrySpan,
   mediaYears,
   movesEventPagePhotos,
   nextSlide,
@@ -52,5 +54,14 @@ describe("media helpers", () => {
         { source: "event", id: "b" },
       ]),
     ).toBe(true);
+  });
+
+  it("masonry: 4 to 5 columns on desktop widths, heights by aspect ratio", () => {
+    expect([400, 600, 944, 1199, 1200, 1600].map(masonryColumns)).toEqual([2, 3, 4, 4, 5, 5]);
+    // 200 px columns: landscape 3:2 → 133 px, portrait 2:3 → 300 px, unknown → 4:3 (150 px); plus the 10 px gap.
+    expect(masonrySpan(200, 1500, 1000)).toBe(Math.round((200 * (2 / 3) + 10) / 2));
+    expect(masonrySpan(200, 1000, 1500)).toBe(155);
+    expect(masonrySpan(200, null, null)).toBe(80);
+    expect(masonrySpan(200, 1000, 1500)).toBeGreaterThan(masonrySpan(200, 1500, 1000));
   });
 });

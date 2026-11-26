@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,7 +14,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { reorderMediaPhotos } from "@/lib/media.functions";
-import type { MediaChapter, MediaItemRef, MediaPhoto, MediaTarget } from "@/lib/media";
+import {
+  MASONRY_GAP,
+  MASONRY_ROW,
+  masonryColumns,
+  masonrySpan,
+  type MediaChapter,
+  type MediaItemRef,
+  type MediaPhoto,
+  type MediaTarget,
+} from "@/lib/media";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -53,6 +62,18 @@ export function ChapterView({
   const [arranging, setArranging] = useState<string[] | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState<"move" | "delete" | "edit" | "delete-album" | null>(null);
+  // The masonry's column count follows the width it really has (sidebar, page padding).
+  const grid = useRef<HTMLUListElement>(null);
+  const [gridWidth, setGridWidth] = useState(0);
+  useEffect(() => {
+    const el = grid.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setGridWidth(entry?.contentRect.width ?? 0));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [chapter.photos.length]);
+  const columns = masonryColumns(gridWidth);
+  const columnWidth = gridWidth ? (gridWidth - MASONRY_GAP * (columns - 1)) / columns : 200;
   const photos = arranging
     ? arranging.map((id) => chapter.photos.find((p) => p.id === id)!).filter(Boolean)
     : chapter.photos;
@@ -255,15 +276,26 @@ export function ChapterView({
         </p>
       ) : (
         <ul
+          ref={grid}
           data-testid="media-masonry"
-          className="columns-2 gap-2.5 sm:columns-3 xl:columns-4 [&>li]:mb-2.5"
+          data-columns={columns}
+          className="grid grid-flow-row-dense"
+          style={{
+            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+            gridAutoRows: `${MASONRY_ROW}px`,
+            columnGap: `${MASONRY_GAP}px`,
+          }}
         >
           {photos.map((p: MediaPhoto, i) => {
             const isSelected = selected.includes(p.id);
             const alt = photoAlt(t, chapter.title, i, photos.length);
             const ratio = p.width && p.height ? `${p.width} / ${p.height}` : "4 / 3";
             return (
-              <li key={p.id} className="relative break-inside-avoid">
+              <li
+                key={p.id}
+                className="relative"
+                style={{ gridRowEnd: `span ${masonrySpan(columnWidth, p.width, p.height)}` }}
+              >
                 <button
                   type="button"
                   data-testid="media-masonry-photo"
