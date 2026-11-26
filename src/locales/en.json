@@ -47,8 +47,6 @@
     "meetings": "Meetings",
     "media": "Media",
     "training": "Training",
-    "contacts": "Contacts",
-    "approvals": "Approvals",
     "users": "Users",
     "profile": "Profile",
     "more": "More",
@@ -238,18 +236,14 @@
     "chooseRegion": "Choose a region"
   },
   "approvals": {
-    "title": "Approvals",
-    "intro": "New volunteers and account deletion requests.",
     "newVolunteers": "New volunteers",
     "deletionRequests": "Deletion requests",
-    "allCaughtUp": "No one is waiting for approval. All caught up!",
     "signedUp": "signed up {{date}}",
     "approve": "Approve",
     "reject": "Reject",
     "approved": "Volunteer approved",
     "rejected": "Request rejected",
     "requestsError": "Deletion requests could not be loaded.",
-    "noRequests": "No pending deletion requests.",
     "requested": "Requested {{date}}",
     "daysRemaining": "{{count}} of 30 days remaining",
     "processDeletion": "Process deletion"
@@ -820,6 +814,7 @@
   "requests": {
     "title": "Event requests",
     "toReview": "To review",
+    "waitingForMe": "Waiting for my approval",
     "myTitle": "My requests",
     "open": "Request an event",
     "openHint": "Suggest an event for your branch. A manager reviews it before anything is published.",

@@ -27,7 +27,7 @@ const ROOT = resolve(E2E, "..");
 
 /** Spec groups by product area (paths relative to e2e/tests). */
 export const AREAS = {
-  requests: ["ui/event-requests", "ui/event-request-types", "ui/my-requests", "api/event-requests", "api/event-request-types", "ui/calendar-smoke"],
+  requests: ["ui/event-requests", "ui/event-request-types", "ui/my-requests", "ui/approvals", "api/event-requests", "api/event-request-types", "ui/calendar-smoke"],
   registrations: ["ui/registrations", "api/registrations", "ui/calendar-smoke"],
   events: ["ui/calendar-smoke", "ui/event-status-dashboard", "ui/event-time-picker", "ui/recurring-events", "api/recurring-events", "ui/registrations", "api/image-copies"],
   recurring: ["ui/recurring-events", "api/recurring-events"],

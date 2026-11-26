@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { APP_LOAD_TIMEOUT } from "../app";
 
-export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "contacts" | "approvals" | "my-requests" | "requests" | "users" | "regions" | "recycle-bin" | "profile" | "donate";
+export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "approvals" | "my-requests" | "requests" | "users" | "regions" | "recycle-bin" | "profile" | "donate";
 /** Bottom-nav items on phones (members); followers have dashboard, calendar and requests there. */
 export const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
 export const FOLLOWER_MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "requests"];
