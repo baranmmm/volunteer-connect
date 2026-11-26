@@ -100,9 +100,9 @@ test.describe("Events page with the landing sections (signed out)", () => {
     await expect(page.getByTestId("events-map-layout")).toHaveCount(1);
     await expect(page.getByTestId("landing-map-slot")).toHaveCount(0);
     // The server-rendered sign-in page and the join page (now the home page).
-    await expect(page.getByTestId("landing-sign-in")).toHaveAttribute("href", "/sign-in");
-    await expect(page.getByTestId("landing-join")).toHaveAttribute("href", "/");
-    await page.getByTestId("landing-join").click();
+    await expect(page.getByTestId("public-topbar-sign-in")).toHaveAttribute("href", "/sign-in");
+    await expect(page.getByTestId("public-topbar-join")).toHaveAttribute("href", "/");
+    await page.getByTestId("public-topbar-join").click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByTestId("auth-sign-up-form")).toBeVisible();
   });
@@ -225,11 +225,11 @@ test.describe("Home page: the join page", () => {
   test("signed out: logo, Events and Sign in above the sign-up form (no Join button on the join page)", { tag: "@smoke" }, async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("auth-sign-up-form")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    await expect(page.getByTestId("landing-nav-events")).toBeVisible();
-    await expect(page.getByTestId("landing-sign-in")).toHaveAttribute("href", "/sign-in");
-    await expect(page.getByTestId("landing-join")).toHaveCount(0);
+    await expect(page.getByTestId("public-topbar-events")).toBeVisible();
+    await expect(page.getByTestId("public-topbar-sign-in")).toHaveAttribute("href", "/sign-in");
+    await expect(page.getByTestId("public-topbar-join")).toHaveCount(0);
     await expect(page.getByTestId("landing-hero")).toHaveCount(0);
-    await page.getByTestId("landing-nav-events").click();
+    await page.getByTestId("public-topbar-events").click();
     await expect(page).toHaveURL(/\/events$/);
     await expect(page.getByTestId("public-events-page")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   });

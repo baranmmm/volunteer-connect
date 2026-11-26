@@ -5,11 +5,15 @@ import {
   firstUpcomingIndex,
   framePosition,
   mapFrame,
+  mapLayout,
+  placePoint,
+  targetPosition,
   playStep,
   progressOfStep,
   project,
   stepAtProgress,
   stepHeightVh,
+  startIndex,
   stepKey,
   storySteps,
   storyTarget,
@@ -19,11 +23,7 @@ import {
   type StoryEvent,
 } from "@/lib/events-story";
 import { readFileSync } from "node:fs";
-import {
-  EW_BOUNDS,
-  EW_DOT_COUNT,
-  EW_SVG_BOX,
-} from "@/components/public/events-map/england-wales-dots";
+import { UK_BOUNDS, UK_DOT_COUNT, UK_SVG_BOX } from "@/components/public/events-map/uk-dots";
 
 // The /events map story: event order, where an event lights up, stepping (keys, Play, scroll) and the fixed frame.
 const NOW = new Date("2026-11-24T12:00:00Z");
@@ -167,6 +167,30 @@ describe("stepping", () => {
     expect(stepAtProgress(0.5, 0)).toBe(0);
     for (let i = 0; i < 9; i++) expect(stepAtProgress(progressOfStep(i, 9), 9)).toBe(i);
   });
+  it("the story starts on Today: the next coming event, else the most recent past one", () => {
+    expect(startIndex([{ past: true }, { past: true }, { past: false }, { past: false }])).toBe(2);
+    expect(startIndex([{ past: false }, { past: false }])).toBe(0);
+    expect(startIndex([{ past: true }, { past: true }, { past: true }])).toBe(2);
+    expect(startIndex([])).toBe(0);
+  });
+  it("scrolling covers only Today onward; past steps map to the section's top", () => {
+    // 6 steps, Today at 2: four slices (2, 3, 4, 5).
+    expect(stepAtProgress(-1, 6, 2)).toBe(2);
+    expect(stepAtProgress(0, 6, 2)).toBe(2);
+    expect(stepAtProgress(0.25, 6, 2)).toBe(3);
+    expect(stepAtProgress(0.99, 6, 2)).toBe(5);
+    expect(stepAtProgress(1, 6, 2)).toBe(5);
+    for (let i = 2; i < 6; i++) expect(stepAtProgress(progressOfStep(i, 6, 2), 6, 2)).toBe(i);
+    expect(progressOfStep(0, 6, 2)).toBe(0);
+    expect(progressOfStep(1, 6, 2)).toBe(0);
+    // Every event past: a single slice for the most recent one.
+    expect(stepAtProgress(0.7, 3, 2)).toBe(2);
+  });
+  it("Play from a past position walks forward through Today to the end", () => {
+    const seen: number[] = [];
+    for (let i: number | null = 0; i !== null; i = playStep(i, 4)) seen.push(i);
+    expect(seen).toEqual([0, 1, 2, 3]);
+  });
   it("each step scrolls a shorter way with many events, within 8–40% of a screen", () => {
     expect(stepHeightVh(3)).toBe(40);
     expect(stepHeightVh(30)).toBe(20);
@@ -190,18 +214,29 @@ describe("stepping", () => {
 });
 
 describe("the fixed map frame", () => {
-  it("covers England and Wales and every branch inside them without changing", () => {
-    const f = mapFrame(EW_BOUNDS, BRANCHES);
-    expect(f).toEqual(mapFrame(EW_BOUNDS, []));
-    for (const b of BRANCHES) {
-      const p = framePosition(f, b.latitude, b.longitude);
-      expect(p.left).toBeGreaterThan(0);
-      expect(p.left).toBeLessThan(1);
-      expect(p.top).toBeGreaterThan(0);
-      expect(p.top).toBeLessThan(1);
-    }
+  const inside = (f: ReturnType<typeof mapFrame>, lat: number, lon: number) => {
+    const p = framePosition(f, lat, lon);
+    return p.left > 0 && p.left < 1 && p.top > 0 && p.top < 1;
+  };
+  it("is mainland Great Britain, Northern Ireland and the Hebrides; Orkney and Shetland are outside", () => {
+    const f = mapFrame(UK_BOUNDS);
+    for (const [lat, lon] of [
+      [51.5074, -0.1278], // London
+      [51.4816, -3.1791], // Cardiff
+      [55.9533, -3.1883], // Edinburgh
+      [54.5973, -5.9301], // Belfast
+      [58.6373, -3.0689], // John o' Groats (the mainland's north)
+      [58.209, -6.3849], // Stornoway (Outer Hebrides)
+      [50.0657, -5.7132], // Land's End
+    ] as const)
+      expect(inside(f, lat, lon)).toBe(true);
+    expect(inside(f, 58.9809, -2.9605)).toBe(false); // Kirkwall, Orkney
+    expect(inside(f, 60.155, -1.145)).toBe(false); // Lerwick, Shetland
+    // Tight: the frame is the land plus a small margin, no empty band.
+    expect(f.y).toBeGreaterThan(UK_BOUNDS.minY - 10);
+    expect(f.h).toBeLessThan(UK_BOUNDS.maxY - UK_BOUNDS.minY + 20);
   });
-  it("is extended once to take in a branch outside England and Wales (e.g. Glasgow)", () => {
+  it("never grows: branches on the mainland need no inset; a branch outside goes into a top-right inset", () => {
     const glasgow = {
       id: "b-glasgow",
       name: "Glasgow",
@@ -209,28 +244,89 @@ describe("the fixed map frame", () => {
       latitude: 55.8642,
       longitude: -4.2518,
     };
-    const base = mapFrame(EW_BOUNDS, BRANCHES);
-    const f = mapFrame(EW_BOUNDS, [...BRANCHES, glasgow]);
-    expect(f.y).toBeLessThan(base.y);
-    expect(f.h).toBeGreaterThan(base.h);
-    const p = framePosition(f, glasgow.latitude, glasgow.longitude);
-    expect(p.top).toBeGreaterThan(0);
-    expect(p.left).toBeGreaterThan(0);
-  });
-  it("the land dots were generated with the same projection (London inside the dotted bounds)", () => {
-    const [x, y] = project(51.5074, -0.1278);
-    expect(x).toBeGreaterThan(EW_BOUNDS.minX);
-    expect(x).toBeLessThan(EW_BOUNDS.maxX);
-    expect(y).toBeGreaterThan(EW_BOUNDS.minY);
-    expect(y).toBeLessThan(EW_BOUNDS.maxY);
-    // The dots are a static asset (out of the JS module graph) whose box frames the land bounds.
-    const svg = readFileSync("public/maps/england-wales-dots.svg", "utf8");
-    expect(svg.match(/h0/g)!.length).toBe(EW_DOT_COUNT);
-    expect(EW_DOT_COUNT).toBeGreaterThan(1000);
-    expect(svg).toContain(
-      `viewBox="${EW_SVG_BOX.x} ${EW_SVG_BOX.y} ${EW_SVG_BOX.w} ${EW_SVG_BOX.h}"`,
+    const lerwick = {
+      id: "b-lerwick",
+      name: "Lerwick",
+      region_id: null,
+      latitude: 60.155,
+      longitude: -1.145,
+    };
+    const kirkwall = {
+      id: "b-kirkwall",
+      name: "Kirkwall",
+      region_id: null,
+      latitude: 58.9809,
+      longitude: -2.9605,
+    };
+    expect(mapLayout(UK_BOUNDS, [...BRANCHES, glasgow]).inset).toBeNull();
+    const layout = mapLayout(UK_BOUNDS, [...BRANCHES, glasgow, lerwick, kirkwall]);
+    expect(layout.frame).toEqual(mapFrame(UK_BOUNDS));
+    const inset = layout.inset!;
+    expect(inset.branchIds.sort()).toEqual(["b-kirkwall", "b-lerwick"]);
+    // Top-right corner, inside the map, at most a quarter wide.
+    expect(inset.box.left + inset.box.width).toBeLessThanOrEqual(1);
+    expect(inset.box.left).toBeGreaterThan(0.7);
+    expect(inset.box.top).toBeLessThan(0.05);
+    expect(inset.box.height).toBeLessThanOrEqual(0.28);
+    // Placing: mainland points on the map, the islands inside the inset box (Lerwick north of Kirkwall).
+    const g = placePoint(layout, glasgow.latitude, glasgow.longitude);
+    expect(g.inset).toBe(false);
+    const l = placePoint(layout, lerwick.latitude, lerwick.longitude);
+    const k = placePoint(layout, kirkwall.latitude, kirkwall.longitude);
+    for (const p of [l, k]) {
+      expect(p.inset).toBe(true);
+      expect(p.left).toBeGreaterThanOrEqual(inset.box.left);
+      expect(p.left).toBeLessThanOrEqual(inset.box.left + inset.box.width);
+      expect(p.top).toBeGreaterThanOrEqual(inset.box.top);
+      expect(p.top).toBeLessThanOrEqual(inset.box.top + inset.box.height);
+    }
+    expect(l.top).toBeLessThan(k.top);
+    // The card anchors on the drawn dot (in the inset for Lerwick).
+    const t = targetPosition(
+      layout,
+      { branchIds: ["b-lerwick"], point: { latitude: 0, longitude: 0 } },
+      [lerwick],
     );
-    expect(EW_SVG_BOX.x).toBeLessThan(EW_BOUNDS.minX);
-    expect(EW_SVG_BOX.x + EW_SVG_BOX.w).toBeGreaterThan(EW_BOUNDS.maxX);
+    expect(t).toMatchObject({ left: l.left, top: l.top, inset: true });
+  });
+  it("the inset sits over sea (no mainland town under it)", () => {
+    const layout = mapLayout(UK_BOUNDS, [{ id: "x", latitude: 60.155, longitude: -1.145 }]);
+    const box = layout.inset!.box;
+    for (const [lat, lon] of [
+      [57.1497, -2.0943], // Aberdeen
+      [57.5052, -1.7981], // Peterhead
+      [58.4391, -3.0941], // Wick
+      [56.462, -2.9707], // Dundee
+    ] as const) {
+      const p = framePosition(layout.frame, lat, lon);
+      const under =
+        p.left >= box.left &&
+        p.left <= box.left + box.width &&
+        p.top >= box.top &&
+        p.top <= box.top + box.height;
+      expect(under).toBe(false);
+    }
+  });
+  it("the land dots were generated with the same projection (the capitals inside the dotted bounds)", () => {
+    for (const [lat, lon] of [
+      [51.5074, -0.1278],
+      [55.9533, -3.1883],
+      [54.5973, -5.9301],
+    ] as const) {
+      const [x, y] = project(lat, lon);
+      expect(x).toBeGreaterThan(UK_BOUNDS.minX);
+      expect(x).toBeLessThan(UK_BOUNDS.maxX);
+      expect(y).toBeGreaterThan(UK_BOUNDS.minY);
+      expect(y).toBeLessThan(UK_BOUNDS.maxY);
+    }
+    // The dots are a static asset (out of the JS module graph) whose box frames the land bounds.
+    const svg = readFileSync("public/maps/uk-dots.svg", "utf8");
+    expect(svg.match(/h0/g)!.length).toBe(UK_DOT_COUNT);
+    expect(UK_DOT_COUNT).toBeGreaterThan(1000);
+    expect(svg).toContain(
+      `viewBox="${UK_SVG_BOX.x} ${UK_SVG_BOX.y} ${UK_SVG_BOX.w} ${UK_SVG_BOX.h}"`,
+    );
+    expect(UK_SVG_BOX.x).toBeLessThan(UK_BOUNDS.minX);
+    expect(UK_SVG_BOX.x + UK_SVG_BOX.w).toBeGreaterThan(UK_BOUNDS.maxX);
   });
 });

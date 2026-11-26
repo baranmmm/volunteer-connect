@@ -1,4 +1,4 @@
-// The public events map on /events (signed out): one fixed dotted map of England and Wales that never zooms, pans or
+// The public events map on /events (signed out): one fixed dotted map of the United Kingdom that never zooms, pans or
 // re-centres; scrolling through the sticky section steps through the events in date order (past first), the active
 // event's branch dot pulses and its card opens the event page; the timeline (ticks, cursor, Today, keyboard, Play),
 // branch dot previews, reduced motion (static map + list), phones (card below the map, swipe) and the server HTML.
@@ -38,6 +38,16 @@ async function createPastRecord(owner: TestUser, regionId: string, daysAgo: numb
   return (data as { id: string }).id;
 }
 
+/** The app's map projection (src/lib/events-story.ts project()): map units of a point. */
+const K = Math.cos((54.5 * Math.PI) / 180);
+const project = (lat: number, lon: number) => [(lon + 9) * K * 100, (61 - lat) * 100] as const;
+const CAPITALS: [string, number, number][] = [
+  ["London", 51.5074, -0.1278],
+  ["Cardiff", 51.4816, -3.1791],
+  ["Edinburgh", 55.9533, -3.1883],
+  ["Belfast", 54.5973, -5.9301],
+];
+
 /** The scroll position and the map's place on screen and frame (they must never change for an event). */
 async function mapState(map: EventsMapPage) {
   return { frame: await map.canvas().getAttribute("data-frame"), box: await map.canvas().boundingBox() };
@@ -61,6 +71,36 @@ test.describe("Public events map", () => {
     // Online events are not on the map (no tick); they are in the Online panel and the list.
     await expect(map.tick(online.id)).toHaveCount(0);
     await expect(page.locator(`[data-testid="events-map-online-item"][data-event-id="${online.id}"]`)).toBeVisible();
+
+    // It opens on Today: the cursor on the next coming event (just after the Today marker), its card open.
+    const flags = await map.ticks().evaluateAll((ticks) => ticks.map((t) => t.getAttribute("data-past")));
+    const firstComing = flags.indexOf("false");
+    await expect(map.story()).toHaveAttribute("data-start", String(firstComing));
+    await expect(map.story()).toHaveAttribute("data-active", String(firstComing));
+    await expect(map.card()).toHaveAttribute("data-past", "false");
+    // The same when the section comes into view (its top reaches the sticky line under the site header).
+    await map.story().evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 64));
+    await expect(map.story()).toHaveAttribute("data-active", String(firstComing));
+    await expect(map.card()).toHaveAttribute("data-past", "false");
+
+    // No empty band: the dotted land fills the map box (a tight frame), and with every branch on the mainland there is
+    // no inset box. Map, card and timeline fit in one viewport.
+    const land = (await page.getByTestId("events-map-land").boundingBox())!;
+    const canvasBox = (await map.canvas().boundingBox())!;
+    expect(Math.abs(land.y - canvasBox.y)).toBeLessThanOrEqual(3);
+    expect(Math.abs(land.y + land.height - (canvasBox.y + canvasBox.height))).toBeLessThanOrEqual(3);
+    await expect(page.getByTestId("events-map-inset")).toHaveCount(0);
+    const viewport = page.viewportSize()!;
+    expect((await page.getByTestId("events-map-timeline").boundingBox())!.y + 40).toBeLessThanOrEqual(viewport.height);
+    const cardBox = (await map.card().boundingBox())!;
+    expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(canvasBox.y + canvasBox.height + 1);
+
+    // One fixed frame around mainland Great Britain and Northern Ireland: the four capitals are inside it.
+    const [fx, fy, fw, fh] = (await map.canvas().getAttribute("data-frame"))!.split(" ").map(Number) as [number, number, number, number];
+    for (const [name, lat, lon] of CAPITALS) {
+      const [x, y] = project(lat, lon);
+      expect(x > fx && x < fx + fw && y > fy && y < fy + fh, `${name} inside the map frame`).toBe(true);
+    }
 
     await map.tick(event.id).scrollIntoViewIfNeeded();
     await map.tick(event.id).click();
@@ -120,6 +160,17 @@ test.describe("Public events map", () => {
     await page.keyboard.press("End");
     await expect(map.story()).toHaveAttribute("data-active", String(count - 1));
 
+    // Dragging the cursor to the bar's left end goes to the earliest event.
+    await page.keyboard.press("End");
+    const bar = (await map.slider().boundingBox())!;
+    const cursor = (await page.getByTestId("events-map-timeline-cursor").boundingBox())!;
+    await page.mouse.move(cursor.x + cursor.width / 2, cursor.y + cursor.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2, { steps: 5 });
+    await page.mouse.move(bar.x + 1, bar.y + bar.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await expect(map.story()).toHaveAttribute("data-active", "0");
+
     // Play from the start advances on its own (scrolling the page with it), Pause stops it.
     await page.keyboard.press("Home");
     await map.play().click();
@@ -168,6 +219,22 @@ test.describe("Public events map", () => {
       const flags = await map.ticks().evaluateAll((ticks) => ticks.map((t) => t.getAttribute("data-past")));
       expect(flags.indexOf("false")).toBeGreaterThan(flags.lastIndexOf("true"));
       expect(await map.indexOf(regionId)).toBeLessThan(await map.indexOf(pastId));
+
+      // It opens on Today; "Past events" (left of Today) jumps to the earliest past event without scrolling back.
+      const start = Number(await map.story().getAttribute("data-start"));
+      await expect(map.tick(upcoming.id)).toHaveAttribute("data-past", "false");
+      expect(start).toBeGreaterThan(await map.indexOf(pastId));
+      await expect(map.story()).toHaveAttribute("data-active", String(start));
+      const past = page.getByTestId("events-map-timeline-past");
+      const pastBox = (await past.boundingBox())!;
+      const todayBox = (await page.getByTestId("events-map-timeline-today").boundingBox())!;
+      expect(pastBox.x + pastBox.width).toBeLessThanOrEqual(todayBox.x);
+      await past.click();
+      await expect(map.story()).toHaveAttribute("data-active", "0");
+      await expect(map.card()).toHaveAttribute("data-past", "true");
+      // Scrolling moves forward from Today again (past events have no scroll slice).
+      await page.mouse.wheel(0, 2000);
+      await expect.poll(async () => Number(await map.story().getAttribute("data-active"))).toBeGreaterThanOrEqual(start);
 
       await map.tick(pastId).click();
       await expect(map.card()).toHaveAttribute("data-past", "true");
@@ -226,6 +293,8 @@ test.describe("Public events map", () => {
     const cardBox = (await card.boundingBox())!;
     const bar = (await map.slider().boundingBox())!;
     expect(cardBox.y).toBeGreaterThanOrEqual(canvas.y + canvas.height - 1);
+    // All three fit in one viewport.
+    expect(bar.y + bar.height).toBeLessThanOrEqual(page.viewportSize()!.height);
     expect(bar.y).toBeGreaterThanOrEqual(cardBox.y + cardBox.height - 1);
 
     // Scrolling the page moves to later events while the map stays put (sticky). From the first event, a third of a

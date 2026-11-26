@@ -821,6 +821,8 @@
   "requests": {
     "title": "Etkinlik talepleri",
     "toReview": "İncelenecek",
+    "unreadDecisions_one": "Taleplerimde {{count}} okunmamış karar",
+    "unreadDecisions_other": "Taleplerimde {{count}} okunmamış karar",
     "waitingForMe": "Onayımı bekleyenler",
     "myTitle": "Taleplerim",
     "open": "Etkinlik talep et",
@@ -999,7 +1001,6 @@
     "confirmedOn": "{{version}} sürümünü {{date}} tarihinde onayladınız.",
     "notConfirmed": "Güncel Gizlilik Bildirimi'ni henüz onaylamadınız.",
     "preferencesSaved": "Gizlilik tercihleri kaydedildi",
-    "back": "Merkeze dön",
     "errors": {
       "mustAccept": "Lütfen Gizlilik Bildirimi'ni okuduğunuzu onaylayın.",
       "outdated": "Gizlilik Bildirimi güncellendi. Lütfen yeni sürümü okuyun.",
@@ -1024,8 +1025,6 @@
   "publicEvents": {
     "title": "Etkinlikler",
     "intro": "Dialogue Society'nin yaklaşan herkese açık etkinlikleri. Şube veya bölge seçin ya da takvime abone olun.",
-    "navLabel": "Herkese açık sayfalar",
-    "signIn": "Giriş yap",
     "privacyLink": "Gizlilik bildirimi",
     "filters": "Filtreler",
     "region": "Bölge",
@@ -1933,7 +1932,6 @@
     "loadError": "Sayfa yüklenemedi. Lütfen tekrar deneyin.",
     "nav": {
       "label": "Ana menü",
-      "home": "Dialogue Society ana sayfa",
       "events": "Etkinlikler",
       "signIn": "Giriş yap",
       "join": "Katıl"
@@ -2081,8 +2079,7 @@
     }
   },
   "attendeePrivacy": {
-    "link": "Etkinlik katılımcıları gizlilik bildirimi",
-    "back": "Etkinlikler"
+    "link": "Etkinlik katılımcıları gizlilik bildirimi"
   },
   "pastEvents": {
     "wholeRegion": "Tüm bölge",
@@ -2223,11 +2220,11 @@
     }
   },
   "eventsStory": {
-    "title": "İngiltere ve Galler'deki etkinliklerimiz",
+    "title": "Birleşik Krallık'taki etkinliklerimiz",
     "intro": "Geçen yıldan bu yana ve yaklaşan etkinliklerimiz arasında gezinmek için kaydırın. Oynat'a basın, ok tuşlarını kullanın ya da zaman çizelgesinde bir nokta seçin.",
     "introStatic": "Haritada tüm şubelerimiz; geçen yılki ve yaklaşan etkinliklerimiz aşağıdaki listede. Etkinliğini görmek için bir şubenin üzerine gelin ya da odaklanın.",
     "skip": "Haritayı geç, etkinlik listesine git",
-    "mapLabel": "İngiltere ve Galler'deki şubelerimizin haritası",
+    "mapLabel": "Birleşik Krallık'taki şubelerimizin haritası",
     "past": "Geçmiş etkinlik",
     "upcoming": "Yaklaşan",
     "regionWide": "{{region}} bölgesi",
@@ -2238,6 +2235,8 @@
     "listToggle_one": "Haritadaki {{count}} etkinlik, liste olarak",
     "listToggle_other": "Haritadaki {{count}} etkinlik, liste olarak",
     "listLabel": "Yaklaşan etkinlikler",
-    "mapKeys": "Yukarı ve aşağı oklar şubeler arasında kuzeyden güneye gezinir ve her şubenin etkinliğini gösterir; Enter o etkinliğe gider. Sol ve sağ oklar etkinlikler arasında ilerler."
+    "mapKeys": "Yukarı ve aşağı oklar şubeler arasında kuzeyden güneye gezinir ve her şubenin etkinliğini gösterir; Enter o etkinliğe gider. Sol ve sağ oklar etkinlikler arasında ilerler.",
+    "pastButton": "Geçmiş etkinlikler",
+    "pastJump": "En eski geçmiş etkinliğe git"
   }
 }

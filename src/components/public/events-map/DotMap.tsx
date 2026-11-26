@@ -1,4 +1,4 @@
-// The fixed dotted map of England and Wales: the land as halftone dots (generated SVG paths), every branch as a small
+// The fixed dotted map of the United Kingdom: the land as halftone dots (generated SVG paths), every branch as a small
 // dot, the active event's branch dot(s) larger and pulsing. The frame never changes for an event: no zoom, no pan, no
 // re-centring. A size container keeps the map's aspect ratio, so dots and the card are placed in percent of it and
 // the server-rendered HTML is already in place.
@@ -9,16 +9,16 @@ import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   branchEventIndex,
-  framePosition,
+  placePoint,
   type BranchPoint,
-  type Frame,
+  type MapLayout,
   type StoryStep,
 } from "@/lib/events-story";
 import { cn } from "@/lib/utils";
-import { EW_SVG_BOX, EW_SVG_URL } from "./england-wales-dots";
+import { UK_SVG_BOX, UK_SVG_URL } from "./uk-dots";
 
 export function DotMap({
-  frame,
+  layout,
   branches,
   steps,
   shown,
@@ -26,7 +26,8 @@ export function DotMap({
   onPick,
   children,
 }: {
-  frame: Frame;
+  /** The fixed frame, and the inset box for branches outside it. */
+  layout: MapLayout;
   branches: BranchPoint[];
   steps: StoryStep[];
   /** The step whose dot(s) are highlighted (the active event, or the one a dot previews). */
@@ -76,6 +77,8 @@ export function DotMap({
     }
   }
   const venue = shown && !shown.target.branchIds.length ? shown.target.point : null;
+  const frame = layout.frame;
+  const inset = layout.inset;
   const ratio = frame.w / frame.h;
   return (
     <div
@@ -105,23 +108,38 @@ export function DotMap({
         {/* The land: a static, cached SVG asset (not in the JS bundle or the HTML), placed in the same frame. */}
         <img
           data-testid="events-map-land"
-          src={EW_SVG_URL}
+          src={UK_SVG_URL}
           alt=""
           aria-hidden="true"
-          width={Math.round(EW_SVG_BOX.w)}
-          height={Math.round(EW_SVG_BOX.h)}
+          width={Math.round(UK_SVG_BOX.w)}
+          height={Math.round(UK_SVG_BOX.h)}
           decoding="async"
           draggable={false}
           className="pointer-events-none absolute max-w-none select-none"
           style={{
-            left: `${((EW_SVG_BOX.x - frame.x) / frame.w) * 100}%`,
-            top: `${((EW_SVG_BOX.y - frame.y) / frame.h) * 100}%`,
-            width: `${(EW_SVG_BOX.w / frame.w) * 100}%`,
-            height: `${(EW_SVG_BOX.h / frame.h) * 100}%`,
+            left: `${((UK_SVG_BOX.x - frame.x) / frame.w) * 100}%`,
+            top: `${((UK_SVG_BOX.y - frame.y) / frame.h) * 100}%`,
+            width: `${(UK_SVG_BOX.w / frame.w) * 100}%`,
+            height: `${(UK_SVG_BOX.h / frame.h) * 100}%`,
           }}
         />
+        {inset && (
+          // Branches outside the frame (e.g. Orkney, Shetland) sit in a small box, top right, instead of enlarging the map.
+          <span
+            aria-hidden
+            data-testid="events-map-inset"
+            data-count={inset.branchIds.length}
+            className="pointer-events-none absolute rounded-lg border border-[#c3d0da] bg-background/80"
+            style={{
+              left: `${inset.box.left * 100}%`,
+              top: `${inset.box.top * 100}%`,
+              width: `${inset.box.width * 100}%`,
+              height: `${inset.box.height * 100}%`,
+            }}
+          />
+        )}
         {branches.map((b) => {
-          const pos = framePosition(frame, b.latitude, b.longitude);
+          const pos = placePoint(layout, b.latitude, b.longitude);
           const on = lit.has(b.id);
           const index = branchEventIndex(steps, b.id);
           const step = index === null ? null : steps[index]!;
@@ -132,6 +150,7 @@ export function DotMap({
               data-testid="events-map-branch"
               data-branch-id={b.id}
               data-active={on ? "true" : "false"}
+              data-inset={pos.inset ? "true" : undefined}
               data-focused={focused === b.id ? "true" : undefined}
               data-event-id={step?.event.id}
               title={step ? b.name : undefined}
@@ -156,7 +175,7 @@ export function DotMap({
             data-testid="events-map-venue"
             className="pointer-events-none absolute z-20 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
             style={(() => {
-              const p = framePosition(frame, venue.latitude, venue.longitude);
+              const p = placePoint(layout, venue.latitude, venue.longitude);
               return { left: `${p.left * 100}%`, top: `${p.top * 100}%` };
             })()}
           >
