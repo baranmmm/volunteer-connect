@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AuthPage } from "@/components/auth/AuthPage";
+import { JoinPage, JOIN_DESCRIPTION, JOIN_TITLE } from "@/components/auth/JoinPage";
 import { safeRedirect } from "@/lib/auth-redirect";
 import { pageMeta, siteOrigin } from "@/lib/public-meta";
 
-const TITLE = "Join · Dialogue Society Volunteer Hub";
-const DESCRIPTION =
-  "Create your Dialogue Society account: follow your local branch's events or apply to volunteer.";
-
-/** Server-rendered sign-up page (the same page as /auth?mode=signup). */
+/**
+ * Server-rendered sign-up page: the same page as the home page (/), kept for links with ?redirect= (back to a public
+ * event after joining) and older links. Its canonical address is the home page.
+ */
 export const Route = createFileRoute("/join")({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
     typeof search["redirect"] === "string" && safeRedirect(search["redirect"])
@@ -17,16 +16,16 @@ export const Route = createFileRoute("/join")({
   headers: () => ({ "Cache-Control": "private, no-cache" }),
   head: ({ loaderData }) =>
     pageMeta({
-      title: TITLE,
-      description: DESCRIPTION,
-      url: `${loaderData?.origin ?? ""}/join`,
+      title: JOIN_TITLE,
+      description: JOIN_DESCRIPTION,
+      url: `${loaderData?.origin ?? ""}/`,
       image: `${loaderData?.origin ?? ""}/auth/join-1600.webp`,
       imageAlt: "Dialogue Society volunteers at an event",
     }),
-  component: JoinPage,
+  component: JoinRoute,
 });
 
-function JoinPage() {
+function JoinRoute() {
   const { redirect } = Route.useSearch();
-  return <AuthPage redirect={redirect} initialMode="signup" />;
+  return <JoinPage redirect={redirect} />;
 }

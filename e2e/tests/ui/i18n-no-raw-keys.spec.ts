@@ -86,7 +86,7 @@ test.describe("Translations on every first load", () => {
       await expectNoRawKeys(page);
 
       await page.goto("/events");
-      await expect(page.getByTestId("public-nav-events")).toHaveText(text(lang, "publicEvents.title"), { timeout: APP_LOAD_TIMEOUT });
+      await expect(page.getByTestId("landing-nav-events")).toHaveText(text(lang, "landing.nav.events"), { timeout: APP_LOAD_TIMEOUT });
       await expectNoRawKeys(page);
       await page.getByTestId("public-events-view-month").click();
       await expect(page.getByTestId("public-events-view-month")).toHaveAttribute("aria-pressed", "true");
@@ -103,7 +103,7 @@ test.describe("Translations on every first load", () => {
     // Only the browser's saved choice (as saved before the cookie existed); the request asks for English.
     await page.addInitScript(() => window.localStorage.setItem("dsvh-language", "tr"));
     await page.goto("/events");
-    await expect(page.getByTestId("public-nav-events")).toHaveText(text("tr", "publicEvents.title"), { timeout: APP_LOAD_TIMEOUT });
+    await expect(page.getByTestId("landing-nav-events")).toHaveText(text("tr", "landing.nav.events"), { timeout: APP_LOAD_TIMEOUT });
     await expect(page.locator("html")).toHaveAttribute("data-lang", "tr");
     await expectNoRawKeys(page);
     await page.getByTestId("public-events-view-month").click();

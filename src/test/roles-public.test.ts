@@ -105,10 +105,8 @@ describe("roles and menus", () => {
       "/meetings",
       "/media",
       "/training",
-      "/contacts",
       "/users",
       "/recycle-bin",
-      "/approvals",
       "/regions",
       "/users/abc",
     ]) {

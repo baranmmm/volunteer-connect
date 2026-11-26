@@ -2,14 +2,17 @@ import { expect, type Page } from "@playwright/test";
 import { APP_LOAD_TIMEOUT } from "./app";
 import { DeleteUserDialog } from "./components/ConfirmDialog";
 
+/**
+ * The former Approvals page, now in Requests → "Waiting for my approval" (/approvals redirects there): pending
+ * sign-ups ("New volunteers") and account deletion requests, each section shown only while it has rows.
+ */
 export class ApprovalsPage {
   constructor(readonly page: Page) {}
 
-  readonly newTab = () => this.page.getByTestId("approvals-tab-new");
-  readonly deletionsTab = () => this.page.getByTestId("approvals-tab-deletions");
+  readonly approvalTab = () => this.page.getByTestId("requests-tab-review");
+  readonly newVolunteers = () => this.page.getByTestId("approvals-new-volunteers");
+  readonly deletionRequests = () => this.page.getByTestId("approvals-deletion-requests");
   readonly rows = () => this.page.getByTestId("approvals-row");
-  readonly emptyState = () => this.page.getByTestId("approvals-empty-state");
-  readonly deletionsEmptyState = () => this.page.getByTestId("deletion-requests-empty-state");
   readonly deletionsError = () => this.page.getByTestId("deletion-requests-error");
 
   row(userId: string) {
@@ -23,9 +26,11 @@ export class ApprovalsPage {
     return this.page.locator(`[data-testid="deletion-request-row"][data-request-id="${requestId}"]`);
   }
 
+  /** The old address: redirected to Requests with "Waiting for my approval" open. */
   async goto() {
     await this.page.goto("/approvals");
-    await expect(this.newTab()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(this.page).toHaveURL(/\/requests\?tab=review$/, { timeout: APP_LOAD_TIMEOUT });
+    await expect(this.approvalTab()).toHaveAttribute("data-state", "active", { timeout: APP_LOAD_TIMEOUT });
   }
 
   async approve(userId: string) {
@@ -35,9 +40,9 @@ export class ApprovalsPage {
     await this.row(userId).getByTestId("approvals-reject-button").click();
   }
 
+  /** Deletion requests sit in the same tab, below the other items. */
   async openDeletionRequests() {
-    await this.deletionsTab().click();
-    await expect(this.deletionsTab()).toHaveAttribute("data-state", "active");
+    await expect(this.deletionRequests()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   }
 
   /** Opens the erasure dialog for a request without confirming (the full name must be typed first). */

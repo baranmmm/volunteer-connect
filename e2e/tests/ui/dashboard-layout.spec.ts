@@ -19,4 +19,17 @@ test.describe("Dashboard layout", () => {
       }, { message: `${width}px` }).toBeCloseTo(ratio, 1);
     }
   });
+
+  test("cards read top to bottom: Upcoming meetings, Upcoming events, My tasks, My registrations", async ({ pageAs }) => {
+    const page = await pageAs("volunteerMedway");
+    await new DashboardPage(page).goto();
+    const order = ["dashboard-upcoming-meetings", "dashboard-upcoming-events", "dashboard-my-tasks", "dashboard-my-registrations"];
+    for (const id of order) await expect(page.getByTestId(id)).toBeVisible();
+    // Document order of the grid's cards: the reading order, also for screen readers.
+    const ids = await page.getByTestId("dashboard-grid").evaluate(
+      (grid, wanted) => Array.from(grid.querySelectorAll("[data-testid]")).map((el) => el.getAttribute("data-testid") ?? "").filter((id) => wanted.includes(id)),
+      order,
+    );
+    expect(ids).toEqual(order);
+  });
 });

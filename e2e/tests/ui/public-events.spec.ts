@@ -81,12 +81,25 @@ test.describe("Public events (signed out)", () => {
     expect(cover.headers()["cache-control"]).toMatch(/public, max-age=\d+/);
     expect((await request.get(`/api/public/event-image/${members.id}`)).status()).toBe(404);
 
-    // The landing page: its own title and a preview image.
+    // /events: the list, the hero and the landing sections in the HTML, its own preview; signed links, so no-store.
+    const list = await request.get("/events");
+    expect(list.headers()["cache-control"]).toMatch(/no-store/);
+    const listHtml = await list.text();
+    expect(listHtml).toContain('data-testid="landing-page"');
+    expect(listHtml).toContain('data-testid="landing-hero"');
+    expect(listHtml).toContain('data-testid="public-events-list"');
+    expect(meta(listHtml, "og:title")).toContain("Events");
+    expect(meta(listHtml, "og:image")).toMatch(/^https?:\/\//);
+    expect(listHtml).toMatch(/<link rel="canonical" href="[^"]+\/events"/);
+    expect(listHtml).not.toContain("e2e-ssr-room");
+
+    // The home page is the join page: its own title, preview image and canonical address.
     const home = await (await request.get("/")).text();
-    expect(meta(home, "og:title")).toBeTruthy();
-    expect(meta(home, "og:image")).toMatch(/^https?:\/\//);
-    expect(home).toContain('data-testid="landing-page"');
-    expect(home).not.toContain("e2e-ssr-room");
+    expect(meta(home, "og:title")).toContain("Join");
+    expect(meta(home, "og:image")).toMatch(/^https?:\/\/[^"]+\/auth\/join-1600\.webp$/);
+    expect(home).toMatch(/<link rel="canonical" href="https?:\/\/[^/"]+\/"/);
+    expect(home).toContain('data-testid="auth-sign-up-form"');
+    expect(home).not.toContain('data-testid="landing-hero"');
   });
 
   test("a very long branch name does not make the page scroll sideways (phones: taps would miss)", async ({ browser, seed }) => {

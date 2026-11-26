@@ -48,8 +48,6 @@
     "meetings": "Toplantılar",
     "media": "Medya",
     "training": "Eğitim",
-    "contacts": "Kişiler",
-    "approvals": "Onaylar",
     "users": "Kullanıcılar",
     "profile": "Profil",
     "more": "Daha fazla",
@@ -239,18 +237,14 @@
     "chooseRegion": "Bir bölge seçin"
   },
   "approvals": {
-    "title": "Onaylar",
-    "intro": "Yeni gönüllüler ve hesap silme talepleri.",
     "newVolunteers": "Yeni gönüllüler",
     "deletionRequests": "Silme talepleri",
-    "allCaughtUp": "Onay bekleyen kimse yok. Her şey tamam!",
     "signedUp": "{{date}} tarihinde kaydoldu",
     "approve": "Onayla",
     "reject": "Reddet",
     "approved": "Gönüllü onaylandı",
     "rejected": "Başvuru reddedildi",
     "requestsError": "Silme talepleri yüklenemedi.",
-    "noRequests": "Bekleyen silme talebi yok.",
     "requested": "Talep tarihi: {{date}}",
     "daysRemaining": "30 günden {{count}} gün kaldı",
     "processDeletion": "Silme işlemini yap"
@@ -827,6 +821,7 @@
   "requests": {
     "title": "Etkinlik talepleri",
     "toReview": "İncelenecek",
+    "waitingForMe": "Onayımı bekleyenler",
     "myTitle": "Taleplerim",
     "open": "Etkinlik talep et",
     "openHint": "Şubeniz için bir etkinlik önerin. Yayınlanmadan önce bir yönetici inceler.",

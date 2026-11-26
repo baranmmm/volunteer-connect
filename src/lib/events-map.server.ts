@@ -1,6 +1,6 @@
 // Server only: past public events for the map's "Past events" toggle. The events come from the anon-executable
 // get_public_events (public fields only, imported past records included); which of them have photos in the landing
-// gallery comes from public_landing_data (service role), as event ids only, so the card can link to "/#gallery-<id>".
+// gallery comes from public_landing_data (service role), as event ids only, so the card can link to "/events#gallery-<id>".
 import { anonClient, publicBranches } from "@/lib/public-events.server";
 import { branchIdsFromSlugs, publicEventsSchema, type PublicEvent } from "@/lib/public-events";
 
@@ -33,7 +33,7 @@ export async function fetchPastPublicEvents(opts: {
   return { events, galleryIds: await galleryEventIds() };
 }
 
-/** Event ids of the landing gallery groups (the anchors "/#gallery-<id>" exist exactly for these). */
+/** Event ids of the landing gallery groups (the anchors "/events#gallery-<id>" exist exactly for these). */
 async function galleryEventIds(): Promise<string[]> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
