@@ -91,7 +91,11 @@ describe("P-256 public key from the private scalar", () => {
     for (let i = 0; i < 20; i++) {
       const ecdh = createECDH("prime256v1");
       ecdh.generateKeys();
-      const derived = p256PublicKey(ecdh.getPrivateKey());
+      // getPrivateKey() drops leading zero bytes (about 1 key in 256): a raw P-256 scalar is always 32 bytes.
+      const scalar = Buffer.alloc(32);
+      const raw = ecdh.getPrivateKey();
+      raw.copy(scalar, 32 - raw.length);
+      const derived = p256PublicKey(scalar);
       expect(hex(derived)).toBe(ecdh.getPublicKey("hex"));
       const x = BigInt("0x" + hex(derived.slice(1, 33)));
       const y = BigInt("0x" + hex(derived.slice(33)));
