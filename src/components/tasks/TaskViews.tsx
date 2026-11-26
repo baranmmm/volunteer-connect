@@ -37,6 +37,7 @@ import {
   TASK_STATUS_COLUMN,
 } from "./task-status-colors";
 import { formatDay, initials, scopeText } from "./task-display";
+import { TaskGroupMembers, TaskGroupProgress } from "./TaskGroupParts";
 
 /**
  * `showScope`: scope labels (branch, region, national) are shown only to someone who can work in more than one place
@@ -301,22 +302,32 @@ export function KanbanView({
                 {t("tasks.columnEmpty")}
               </p>
             )}
-            {column.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                markMine={markMine}
-                showScope={showScope}
-                today={today}
-                onOpen={onOpen}
-                onDragStart={() => setDragging(task)}
-                onDragEnd={() => {
-                  setDragging(null);
-                  setOver(null);
-                }}
-                onStatus={(s) => void setStatus(task.id, s)}
-              />
-            ))}
+            {column.map((task) =>
+              task.group ? (
+                <GroupCard
+                  key={task.id}
+                  task={task}
+                  showScope={showScope}
+                  today={today}
+                  onOpen={onOpen}
+                />
+              ) : (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  markMine={markMine}
+                  showScope={showScope}
+                  today={today}
+                  onOpen={onOpen}
+                  onDragStart={() => setDragging(task)}
+                  onDragEnd={() => {
+                    setDragging(null);
+                    setOver(null);
+                  }}
+                  onStatus={(s) => void setStatus(task.id, s)}
+                />
+              ),
+            )}
           </section>
         );
       })}
@@ -447,6 +458,157 @@ function TaskCard({
   );
 }
 
+/**
+ * One card for a whole "@all" group (Kanban): placed by its derived status, not draggable (each member changes their
+ * own task). It opens the group panel.
+ */
+function GroupCard({
+  task,
+  showScope,
+  today,
+  onOpen,
+}: {
+  task: Task;
+  showScope: boolean;
+  today: string;
+  onOpen: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const group = task.group!;
+  return (
+    <article
+      data-testid="task-group-card"
+      data-group-id={group.id}
+      data-status={task.status}
+      data-overdue={isOverdue(task, today)}
+      data-archived={!!task.archived_at}
+      className={cn(
+        "min-w-0 rounded-lg border border-dashed px-2.5 py-1.5",
+        TASK_STATUS_CARD[task.status],
+        TASK_OTHER,
+      )}
+    >
+      <button
+        type="button"
+        data-testid="task-group-card-open"
+        onClick={() => onOpen(group.id)}
+        className={cn(
+          "block min-h-9 w-full min-w-0 text-left text-sm font-normal hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          TASK_OTHER_TEXT,
+        )}
+      >
+        <span className="block truncate" title={task.title}>
+          {task.title}
+        </span>
+      </button>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pb-1">
+        <TaskGroupProgress group={group} compact className="flex-1" />
+        <TaskLinkIcons task={task} />
+        <DueText task={task} today={today} />
+        {showScope && (
+          <span
+            className="min-w-0 truncate text-xs text-muted-foreground dark:text-inherit"
+            data-testid="task-card-scope"
+            data-scope={task.scope}
+          >
+            {scopeText(t, task)}
+          </span>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/** A group row in the list: the progress, and a toggle that shows each member's task and status. */
+function GroupListRow({
+  task,
+  today,
+  showScope,
+  onOpen,
+}: {
+  task: Task;
+  today: string;
+  showScope: boolean;
+  onOpen: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const group = task.group!;
+  const [open, setOpen] = useState(false);
+  const bodyId = `task-group-row-body-${group.id}`;
+  return (
+    <li
+      className={cn("min-w-0", TASK_OTHER)}
+      data-testid="task-group-row"
+      data-group-id={group.id}
+      data-status={task.status}
+      data-archived={!!task.archived_at}
+    >
+      <div className="flex min-w-0 items-center">
+        <button
+          type="button"
+          data-testid="task-group-row-toggle"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          aria-label={t(open ? "tasks.groups.collapse" : "tasks.groups.expand", {
+            title: task.title,
+          })}
+          onClick={() => setOpen((v) => !v)}
+          className="flex size-11 shrink-0 items-center justify-center hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ChevronRight
+            className={cn("size-4 transition-transform", open && "rotate-90")}
+            aria-hidden
+          />
+        </button>
+        <button
+          type="button"
+          data-testid="task-group-row-open"
+          onClick={() => onOpen(group.id)}
+          className="flex min-h-11 w-full min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1.5 pr-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex-nowrap"
+        >
+          <span className="flex min-w-0 flex-[1_1_12rem] items-center gap-2">
+            <span
+              className={cn("min-w-0 truncate text-sm font-normal", TASK_OTHER_TEXT)}
+              title={task.title}
+            >
+              {task.title}
+            </span>
+            {showScope && (
+              <span
+                className="min-w-0 shrink truncate text-xs text-muted-foreground"
+                data-testid="tasks-list-row-scope"
+                data-scope={task.scope}
+              >
+                {scopeText(t, task)}
+              </span>
+            )}
+          </span>
+          <span className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+            <TaskGroupProgress group={group} compact />
+            <TaskLinkIcons task={task} />
+            {task.due_date ? (
+              <DueText task={task} today={today} />
+            ) : (
+              <span className="whitespace-nowrap text-xs text-muted-foreground">
+                {t("tasks.noDueDate")}
+              </span>
+            )}
+            <TaskStatusBadge status={task.status} className="rounded-full" />
+          </span>
+        </button>
+      </div>
+      <div id={bodyId} hidden={!open} className="px-3 pb-2 pl-11">
+        {open && (
+          <TaskGroupMembers
+            group={group}
+            taskLink={(id) => ({ to: "/tasks", search: { task: id } })}
+          />
+        )}
+      </div>
+    </li>
+  );
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // List
 
@@ -489,70 +651,85 @@ export function ListView({
             </h2>
           )}
           <ul className="min-w-0 divide-y overflow-hidden rounded-2xl border bg-card">
-            {g.tasks.map((task) => (
-              <li
-                key={task.id}
-                className={cn("flex min-w-0 items-center", task.mine ? TASK_MINE : TASK_OTHER)}
-              >
-                <button
-                  type="button"
-                  data-testid="tasks-list-row"
-                  data-task-id={task.id}
-                  data-status={task.status}
-                  data-overdue={isOverdue(task, today)}
-                  data-mine={task.mine}
-                  data-archived={!!task.archived_at}
-                  onClick={() => onOpen(task.id)}
-                  className="flex min-h-11 w-full min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex-nowrap"
+            {g.tasks.map((task) =>
+              task.group ? (
+                <GroupListRow
+                  key={task.id}
+                  task={task}
+                  today={today}
+                  showScope={showScope}
+                  onOpen={onOpen}
+                />
+              ) : (
+                <li
+                  key={task.id}
+                  className={cn("flex min-w-0 items-center", task.mine ? TASK_MINE : TASK_OTHER)}
                 >
-                  <span className="flex min-w-0 flex-[1_1_12rem] items-center gap-2">
-                    <span
-                      className={cn(
-                        "min-w-0 truncate text-sm",
-                        task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
-                      )}
-                      title={task.title}
-                    >
-                      {task.title}
-                    </span>
-                    {markMine && task.mine && <MineBadge testId="tasks-list-row-mine" />}
-                    {showScope && (
+                  <button
+                    type="button"
+                    data-testid="tasks-list-row"
+                    data-task-id={task.id}
+                    data-status={task.status}
+                    data-overdue={isOverdue(task, today)}
+                    data-mine={task.mine}
+                    data-archived={!!task.archived_at}
+                    onClick={() => onOpen(task.id)}
+                    className="flex min-h-11 w-full min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex-nowrap"
+                  >
+                    <span className="flex min-w-0 flex-[1_1_12rem] items-center gap-2">
                       <span
-                        className="min-w-0 shrink truncate text-xs text-muted-foreground"
-                        data-testid="tasks-list-row-scope"
-                        data-scope={task.scope}
-                        title={scopeText(t, task)}
+                        className={cn(
+                          "min-w-0 truncate text-sm",
+                          task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
+                        )}
+                        title={task.title}
                       >
-                        {scopeText(t, task)}
+                        {task.title}
                       </span>
-                    )}
-                  </span>
-                  <span className="ml-auto flex shrink-0 items-center gap-2">
-                    <TaskLinkIcons task={task} />
-                    <LoudPriority task={task} />
-                    <NoteCount task={task} />
-                    {task.due_date ? (
-                      <DueText task={task} today={today} />
-                    ) : (
-                      <span className="whitespace-nowrap text-xs text-muted-foreground">
-                        {t("tasks.noDueDate")}
-                      </span>
-                    )}
-                    {task.assignees.length ? (
-                      <AssigneeAvatars people={task.assignees} testId="tasks-list-row-assignees" />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">{t("tasks.unassigned")}</span>
-                    )}
-                    <TaskStatusBadge status={task.status} className="rounded-full" />
-                  </span>
-                </button>
-                {task.archived_at && task.can_set_status && (
-                  <div className="shrink-0 pr-3">
-                    <UnarchiveButton task={task} />
-                  </div>
-                )}
-              </li>
-            ))}
+                      {markMine && task.mine && <MineBadge testId="tasks-list-row-mine" />}
+                      {showScope && (
+                        <span
+                          className="min-w-0 shrink truncate text-xs text-muted-foreground"
+                          data-testid="tasks-list-row-scope"
+                          data-scope={task.scope}
+                          title={scopeText(t, task)}
+                        >
+                          {scopeText(t, task)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="ml-auto flex shrink-0 items-center gap-2">
+                      <TaskLinkIcons task={task} />
+                      <LoudPriority task={task} />
+                      <NoteCount task={task} />
+                      {task.due_date ? (
+                        <DueText task={task} today={today} />
+                      ) : (
+                        <span className="whitespace-nowrap text-xs text-muted-foreground">
+                          {t("tasks.noDueDate")}
+                        </span>
+                      )}
+                      {task.assignees.length ? (
+                        <AssigneeAvatars
+                          people={task.assignees}
+                          testId="tasks-list-row-assignees"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {t("tasks.unassigned")}
+                        </span>
+                      )}
+                      <TaskStatusBadge status={task.status} className="rounded-full" />
+                    </span>
+                  </button>
+                  {task.archived_at && task.can_set_status && (
+                    <div className="shrink-0 pr-3">
+                      <UnarchiveButton task={task} />
+                    </div>
+                  )}
+                </li>
+              ),
+            )}
           </ul>
         </section>
       ))}
@@ -627,7 +804,8 @@ export function CalendarView({ tasks, today, onOpen, showScope }: ViewProps) {
         <button
           type="button"
           data-testid="tasks-calendar-item"
-          data-task-id={task.id}
+          data-task-id={task.group ? undefined : task.id}
+          data-group-id={task.group?.id}
           data-overdue={overdue}
           data-mine={task.mine}
           onClick={() => onOpen(task.id)}
@@ -641,7 +819,13 @@ export function CalendarView({ tasks, today, onOpen, showScope }: ViewProps) {
           )}
         >
           {task.mine && <MineBadge testId="tasks-calendar-item-mine" iconOnly />}
+          {task.group && <Users className="size-3 shrink-0" aria-hidden />}
           <span className="min-w-0 flex-1 truncate">{task.title}</span>
+          {task.group && (
+            <span className="sr-only">
+              {` · ${t("tasks.groups.allMembers", { count: task.group.member_count })}`}
+            </span>
+          )}
           {showScope && (
             <span className="sr-only" data-testid="tasks-calendar-item-scope">
               {` · ${scopeText(t, task)}`}

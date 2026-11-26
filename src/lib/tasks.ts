@@ -43,13 +43,16 @@ export const task = z.object({
   created_at: z.string(),
   /** Done tasks can be archived: hidden from Kanban, list and calendar unless the "Archived" filter is on. */
   archived_at: z.string().nullable(),
+  /** A member's task of an "@all" task group (task_groups). */
+  group_id: z.string().uuid().nullable().optional(),
   note_count: z.number(),
   assignees: z.array(person),
   mine: z.boolean(),
   can_edit: z.boolean(),
   can_set_status: z.boolean(),
 });
-export type Task = z.infer<typeof task>;
+/** A task in the views: an ordinary task, or (with `group`) one row standing for a whole task group. */
+export type Task = z.infer<typeof task> & { group?: TaskGroupData };
 
 export const reminderSettings = z.object({
   before_days: z.array(z.number().int().min(1).max(365)).max(6),
@@ -107,7 +110,166 @@ export const linkedTask = z.object({
   status: z.enum(TASK_STATUSES),
   due_date: isoDate.nullable().optional(),
   archived_at: z.string().nullable().optional(),
+  group_id: z.string().uuid().nullable().optional(),
 });
+export type LinkedTask = z.infer<typeof linkedTask>;
+
+/**
+ * An "@all" task group (get_task_group / list_task_groups): one task per member, a derived status (never stored)
+ * and per-status counts.
+ */
+export const taskGroup = z.object({
+  id: z.string().uuid(),
+  scope: z.literal("branch"),
+  branch_id: z.string().uuid(),
+  region_id: z.string().uuid(),
+  branch: z.string().nullable(),
+  region: z.string().nullable(),
+  title: z.string(),
+  description: z.string().nullable(),
+  priority: z.enum(TASK_PRIORITIES),
+  due_date: isoDate.nullable(),
+  event_id: z.string().uuid().nullable(),
+  meeting_id: z.string().uuid().nullable(),
+  decision_id: z.string().uuid().nullable(),
+  created_by: z.string().uuid().nullable(),
+  created_by_name: z.string().nullable(),
+  created_at: z.string(),
+  status: z.enum(TASK_STATUSES),
+  member_count: z.number(),
+  counts: z.object({
+    todo: z.number(),
+    in_progress: z.number(),
+    blocked: z.number(),
+    done: z.number(),
+  }),
+  /** Every member task is archived. */
+  archived: z.boolean(),
+  members: z.array(
+    z.object({
+      task_id: z.string().uuid(),
+      user_id: z.string().uuid().nullable(),
+      full_name: z.string().nullable(),
+      status: z.enum(TASK_STATUSES),
+      archived_at: z.string().nullable(),
+    }),
+  ),
+  /** The caller is a member (has their own task in the group). */
+  mine: z.boolean(),
+  my_task_id: z.string().uuid().nullable(),
+  can_edit: z.boolean(),
+});
+export type TaskGroupData = z.infer<typeof taskGroup>;
+export type TaskGroupCounts = TaskGroupData["counts"];
+
+/**
+ * The group's status from its members' statuses (the database computes the same in task_group_status): all done →
+ * done; any in progress or done → in progress; otherwise to do (blocked members count as to do).
+ */
+export function deriveGroupStatus(c: TaskGroupCounts): TaskStatus {
+  const total = c.todo + c.in_progress + c.blocked + c.done;
+  if (total > 0 && c.done === total) return "done";
+  if (c.in_progress > 0 || c.done > 0) return "in_progress";
+  return "todo";
+}
+
+/** "1 Done · 3 In progress · 2 To do" parts (status order done, in progress, blocked, to do; zero counts left out). */
+export function groupCountParts(c: TaskGroupCounts) {
+  return (["done", "in_progress", "blocked", "todo"] as const)
+    .filter((s) => c[s] > 0)
+    .map((s) => ({ status: s, count: c[s] }));
+}
+
+/**
+ * The task list as the views show it. A group the caller is not a member of becomes ONE row (`group` set, id = the
+ * group id, status = the derived status, the members as assignees) instead of its member tasks; for a group the caller
+ * is a member of, only their own task is shown (as an ordinary task). Member tasks of a group missing from `groups`
+ * stay as they are.
+ */
+export function collapseGroups(tasks: readonly Task[], groups: readonly TaskGroupData[]): Task[] {
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  const out: Task[] = [];
+  const added = new Set<string>();
+  for (const t of tasks) {
+    const g = t.group_id ? byId.get(t.group_id) : undefined;
+    if (!g) {
+      out.push(t);
+      continue;
+    }
+    if (g.mine) {
+      if (t.mine) out.push(t);
+      continue;
+    }
+    if (added.has(g.id)) continue;
+    added.add(g.id);
+    out.push(groupRow(g));
+  }
+  // Groups whose member tasks are not in the list (e.g. beyond the list limit) still get their row.
+  for (const g of groups)
+    if (!g.mine && !added.has(g.id) && g.member_count > 0) {
+      added.add(g.id);
+      out.push(groupRow(g));
+    }
+  return out;
+}
+
+/** One row standing for a group in the views (not draggable, no status of its own). */
+export function groupRow(g: TaskGroupData): Task {
+  return {
+    id: g.id,
+    scope: "branch",
+    branch_id: g.branch_id,
+    region_id: g.region_id,
+    branch: g.branch,
+    region: g.region,
+    title: g.title,
+    description: g.description,
+    status: g.status,
+    priority: g.priority,
+    due_date: g.due_date,
+    self_task: false,
+    created_by: g.created_by,
+    created_by_name: g.created_by_name,
+    event_id: g.event_id,
+    meeting_id: g.meeting_id,
+    decision_id: g.decision_id,
+    created_at: g.created_at,
+    archived_at: g.archived ? g.created_at : null,
+    group_id: null,
+    note_count: 0,
+    assignees: g.members
+      .filter((m) => m.user_id)
+      .map((m) => ({ id: m.user_id!, full_name: m.full_name })),
+    mine: false,
+    can_edit: g.can_edit,
+    can_set_status: false,
+    group: g,
+  };
+}
+
+/** Linked task rows (meeting decision, event page): one entry per group instead of its member tasks. */
+export type LinkedRow<T> =
+  { kind: "task"; task: T } | { kind: "group"; groupId: string; tasks: T[] };
+export function linkedRows<T extends { id: string; group_id?: string | null | undefined }>(
+  tasks: readonly T[],
+): LinkedRow<T>[] {
+  const rows: LinkedRow<T>[] = [];
+  const groups = new Map<string, { kind: "group"; groupId: string; tasks: T[] }>();
+  for (const t of tasks) {
+    if (!t.group_id) {
+      rows.push({ kind: "task", task: t });
+      continue;
+    }
+    const existing = groups.get(t.group_id);
+    if (existing) existing.tasks.push(t);
+    else {
+      const row = { kind: "group" as const, groupId: t.group_id, tasks: [t] };
+      groups.set(t.group_id, row);
+      rows.push(row);
+    }
+  }
+  return rows;
+}
 
 /** A note on a task (author, time, mentions). Only the author may edit or delete it ("mine"). */
 export const taskNote = z.object({
@@ -123,6 +285,15 @@ export const taskNote = z.object({
 });
 export type TaskNote = z.infer<typeof taskNote>;
 export const TASK_NOTE_MAX = 4000;
+
+/** Input of create_task_group ("@all") and update_task_group (validated again in the database). */
+export const taskGroupInput = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().max(5000).nullable().optional(),
+  priority: z.enum(TASK_PRIORITIES).optional(),
+  due_date: isoDate.nullable().optional(),
+});
+export type TaskGroupInput = z.infer<typeof taskGroupInput>;
 
 /** Input of create_task / update_task (validated again in the database). */
 export const taskInput = z.object({

@@ -145,6 +145,9 @@ export async function deleteTempBranch(id: string, fallbackBranch?: string): Pro
   const tasks = await db.from("tasks").select("id").eq("branch_id", id);
   const meetings = await db.from("meetings").select("id").eq("branch_id", id);
   await deleteWork({ tasks: (tasks.data ?? []).map((t) => t.id), meetings: (meetings.data ?? []).map((m) => m.id) });
+  // "@all" task groups reference the branch without ON DELETE.
+  const groups = await db.from("task_groups").delete().eq("branch_id", id);
+  if (groups.error) throw new Error(`delete task groups: ${groups.error.message}`);
   await db.from("events").delete().eq("branch_id", id);
   await db.from("event_series").delete().eq("branch_id", id);
   // Volunteer applications reference the branch without ON DELETE (they would block the delete and leave the

@@ -10,6 +10,8 @@ import {
   meetingDetail,
   meetingInput,
   meetingSeriesTask,
+  carryOverChoice,
+  carryOverMeeting,
 } from "./meetings";
 import { person, WORK_SCOPES } from "./tasks";
 
@@ -317,4 +319,44 @@ export const getMeetingSeriesTasks = createServerFn({ method: "GET" })
     const result = await context.supabase.rpc("get_meeting_series_tasks", { p_id: data.id });
     fail(result.error);
     return z.array(meetingSeriesTask).parse(result.data ?? []);
+  });
+
+// Carry-over --------------------------------------------------------------------------------------------------
+
+/** Unresolved agenda items of earlier meetings in this scope (that the caller may edit), with decisions and open tasks. */
+export const listMeetingCarryOver = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(
+    z.object({
+      scope: z.enum(WORK_SCOPES),
+      branchId: z.string().uuid().nullable(),
+      regionId: z.string().uuid().nullable(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("list_meeting_carry_over", {
+      p_scope: data.scope,
+      ...(data.branchId ? { p_branch: data.branchId } : {}),
+      ...(data.regionId ? { p_region: data.regionId } : {}),
+    });
+    fail(result.error);
+    return z.array(carryOverMeeting).parse(result.data ?? []);
+  });
+
+/**
+ * Copies the chosen items and decisions into the meeting and moves the chosen open tasks to the new decisions, in
+ * one transaction (carry_over_agenda). Returns how many items.
+ */
+export const carryOverAgenda = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(
+    z.object({ meetingId: z.string().uuid(), items: z.array(carryOverChoice).min(1).max(50) }),
+  )
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("carry_over_agenda", {
+      p_meeting: data.meetingId,
+      p: data.items,
+    });
+    fail(result.error);
+    return { count: z.number().parse(result.data) };
   });

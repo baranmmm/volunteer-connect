@@ -5,13 +5,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { WORK_SCOPES, visibleEventTasks, type WorkScope } from "@/lib/tasks";
+import { WORK_SCOPES, linkedRows, visibleEventTasks, type WorkScope } from "@/lib/tasks";
 import { getEventTasks } from "@/lib/tasks.functions";
 import { listMyWorkScopes, scopeKey } from "@/lib/work-scopes";
 import { useWorkMember } from "@/lib/use-work-notices";
 import { Button } from "@/components/ui/button";
 import { TaskStatusBadge } from "./TaskBadges";
 import { TaskFormDialog } from "./TaskFormDialog";
+import { TaskGroupLinkedRow } from "./TaskGroupParts";
 import { formatDay } from "./task-display";
 
 export type LinkedEvent = {
@@ -85,31 +86,43 @@ export function EventLinkedTasks({ event }: { event: LinkedEvent }) {
         </p>
       ) : (
         <ul className="min-w-0 divide-y rounded-xl border">
-          {shown.map((task) => (
-            <li key={task.id} className="min-w-0">
-              <Link
-                to="/tasks"
-                search={{ task: task.id }}
-                data-testid="event-linked-task"
-                data-task-id={task.id}
-                data-status={task.status}
-                data-archived={!!task.archived_at}
-                className="flex min-h-11 min-w-0 items-center justify-between gap-3 px-3 py-2 hover:bg-muted/60"
-              >
-                <span className="min-w-0 truncate font-medium" title={task.title}>
-                  {task.title}
-                </span>
-                <span className="flex shrink-0 items-center gap-2">
-                  {task.due_date && (
-                    <span className="text-xs text-muted-foreground">
-                      {formatDay(task.due_date)}
-                    </span>
-                  )}
-                  <TaskStatusBadge status={task.status} />
-                </span>
-              </Link>
-            </li>
-          ))}
+          {linkedRows(shown).map((row) => {
+            if (row.kind === "group")
+              return (
+                <TaskGroupLinkedRow
+                  key={row.groupId}
+                  groupId={row.groupId}
+                  testId="event-linked-group"
+                  taskLink={(id) => ({ to: "/tasks", search: { task: id } })}
+                />
+              );
+            const task = row.task;
+            return (
+              <li key={task.id} className="min-w-0">
+                <Link
+                  to="/tasks"
+                  search={{ task: task.id }}
+                  data-testid="event-linked-task"
+                  data-task-id={task.id}
+                  data-status={task.status}
+                  data-archived={!!task.archived_at}
+                  className="flex min-h-11 min-w-0 items-center justify-between gap-3 px-3 py-2 hover:bg-muted/60"
+                >
+                  <span className="min-w-0 truncate font-medium" title={task.title}>
+                    {task.title}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {task.due_date && (
+                      <span className="text-xs text-muted-foreground">
+                        {formatDay(task.due_date)}
+                      </span>
+                    )}
+                    <TaskStatusBadge status={task.status} />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
       {eventScope && (

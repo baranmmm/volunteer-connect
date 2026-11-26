@@ -12,6 +12,7 @@ import {
   REGION_WIDE,
   TASK_PRIORITIES,
   TASK_STATUSES,
+  collapseGroups,
   filterTasks,
   effectiveScopeSelection,
   londonDay,
@@ -32,6 +33,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { TaskPanel } from "@/components/tasks/TaskPanel";
+import { TaskGroupPanel } from "@/components/tasks/TaskGroupParts";
+import { useTaskGroups } from "@/components/tasks/use-task-groups";
 import { TaskScopeFilter } from "@/components/tasks/TaskScopeFilter";
 import {
   ArchiveDoneButton,
@@ -44,15 +47,19 @@ import { useWorkScopes } from "@/components/work/use-work-scopes";
 
 const tasksSearch = z.object({
   task: z.string().uuid().optional().catch(undefined),
+  /** An "@all" task group opened in the group panel. */
+  group: z.string().uuid().optional().catch(undefined),
   /** A note to highlight in the open task (links from note notices). */
   note: z.string().uuid().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/_app/tasks")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>): { task?: string; note?: string } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { task?: string; note?: string; group?: string } => {
     const parsed = tasksSearch.parse(search);
-    if (!parsed.task) return {};
+    if (!parsed.task) return parsed.group ? { group: parsed.group } : {};
     return parsed.note ? { task: parsed.task, note: parsed.note } : { task: parsed.task };
   },
   head: () => pageHead("Tasks", "Plan and follow up Dialogue Society tasks."),
@@ -66,9 +73,11 @@ function TasksPage() {
   const { session } = useAuth();
   const uid = session?.user.id;
   const navigate = useNavigate();
-  const { task: openTask, note: highlightNote } = Route.useSearch();
+  const { task: openTask, note: highlightNote, group: openGroup } = Route.useSearch();
   const fetchTasks = useServerFn(listTasks);
   const tasks = useQuery({ queryKey: ["tasks", uid], queryFn: () => fetchTasks(), enabled: !!uid });
+  // "@all" groups: one row per group for everyone who is not a member; members see only their own task.
+  const groups = useTaskGroups(uid);
   const work = useWorkScopes();
   // Scope labels only for someone who works in more than one place (nothing to tell apart otherwise).
   const showScope = !work.loading && !work.single;
@@ -87,7 +96,10 @@ function TasksPage() {
   const [group, setGroup] = useState<TaskGroup>("none");
   const [creating, setCreating] = useState(false);
   const today = londonDay();
-  const all = useMemo(() => tasks.data ?? [], [tasks.data]);
+  const all = useMemo(
+    () => collapseGroups(tasks.data ?? [], groups.data ?? []),
+    [tasks.data, groups.data],
+  );
 
   // Branch/region filters only for someone who works in more than one place (RD, NC). Options come from the visible
   // tasks and the work scopes; branch options narrow to the chosen regions, and a remembered value that is no longer
@@ -143,7 +155,9 @@ function TasksPage() {
     return [...map].sort((a, b) => a[1].localeCompare(b[1]));
   }, [all, t]);
 
-  const open = (id: string) => void navigate({ to: "/tasks", search: { task: id } });
+  const groupIds = useMemo(() => new Set((groups.data ?? []).map((g) => g.id)), [groups.data]);
+  const open = (id: string) =>
+    void navigate({ to: "/tasks", search: groupIds.has(id) ? { group: id } : { task: id } });
   const close = () => void navigate({ to: "/tasks", search: {} });
   const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
@@ -328,7 +342,7 @@ function TasksPage() {
           )}
         </div>
       )}
-      {tasks.isLoading ? (
+      {tasks.isLoading || groups.isLoading ? (
         <p className="py-10 text-center text-muted-foreground">{t("common.loading")}</p>
       ) : tasks.isError ? (
         <div role="alert" className="space-y-3">
@@ -383,7 +397,13 @@ function TasksPage() {
         <CalendarView tasks={shown} today={today} onOpen={open} showScope={showScope} />
       )}
       <TaskPanel taskId={openTask ?? null} highlightNote={highlightNote} onClose={close} />
-      <TaskFormDialog open={creating} onClose={() => setCreating(false)} onSaved={open} />
+      <TaskGroupPanel groupId={openTask ? null : (openGroup ?? null)} onClose={close} />
+      <TaskFormDialog
+        open={creating}
+        onClose={() => setCreating(false)}
+        onSaved={open}
+        onSavedGroup={(id) => void navigate({ to: "/tasks", search: { group: id } })}
+      />
     </div>
   );
 }

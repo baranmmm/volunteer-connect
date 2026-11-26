@@ -431,7 +431,12 @@
     "volunteerTime": "Ne kadar zaman ayırabileceğini seç.",
     "volunteerCommitment": "Lütfen gönüllülük taahhüdünü onayla.",
     "volunteerInvalid": "Gönüllülük başvurusu geçerli değil. Lütfen yanıtlarını kontrol et.",
-    "postcodeInvalid": "Geçerli bir Birleşik Krallık posta kodu girin."
+    "postcodeInvalid": "Geçerli bir Birleşik Krallık posta kodu girin.",
+    "taskGroupNotFound": "Bu görev grubu yok ya da silinmiş.",
+    "taskGroupNoMembers": "Bu şubede atanabilecek kimse yok.",
+    "taskGroupAlreadyMember": "Bu kişi zaten grupta.",
+    "taskGroupLastMember": "Bir görev grubunda en az bir üye olmalı. Bunun yerine grubu silin.",
+    "carryOverItem": "Bu gündem maddesi artık aktarılamıyor. Sayfayı yenileyip tekrar deneyin."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -1464,6 +1469,15 @@
       "next": "Yaklaşan toplantılar",
       "showLater": "Daha fazla yaklaşan toplantı göster ({{count}})",
       "hideLater": "Sonraki toplantıları gizle"
+    },
+    "carry": {
+      "toggle_one": "Önceki toplantılardan aktar ({{count}} açık madde)",
+      "toggle_other": "Önceki toplantılardan aktar ({{count}} açık madde)",
+      "chosen_one": "{{count}} seçildi",
+      "chosen_other": "{{count}} seçildi",
+      "hint": "Bir gündem maddesini, kararlarını ve açık görevlerini bu toplantıya getirmek için işaretleyin. Görevler buraya taşınır, kopyalanmaz.",
+      "done_one": "{{count}} gündem maddesi aktarıldı.",
+      "done_other": "{{count}} gündem maddesi aktarıldı."
     }
   },
   "workRequests": {
@@ -1861,6 +1875,42 @@
     "links": {
       "meeting": "Bir toplantıdan",
       "event": "Bir etkinliğe bağlı"
+    },
+    "groups": {
+      "allMembers": "Tüm üyeler ({{count}})",
+      "countPart": "{{count}} {{status}}",
+      "progress": "{{total}} görevden {{done}} tanesi tamamlandı",
+      "removeMember": "{{name}} kişisini gruptan çıkar",
+      "edit": "Grubu düzenle: {{title}}",
+      "delete": "Grubu sil: {{title}}",
+      "editTitle": "Görev grubunu düzenle",
+      "editHint": "Değişiklikler her üyenin görevine uygulanır.",
+      "saved": "Görev grubu güncellendi.",
+      "deleted_one": "{{count}} görev Geri Dönüşüm Kutusu'na taşındı.",
+      "deleted_other": "{{count}} görev Geri Dönüşüm Kutusu'na taşındı.",
+      "deleteTitle": "Bu görev grubu silinsin mi?",
+      "deleteText": "\"{{title}}\" ve her üyenin görevi ({{count}}) Geri Dönüşüm Kutusu'na taşınır.",
+      "deleteConfirm": "Grubu sil",
+      "panelTitle": "Görev grubu",
+      "notFoundTitle": "Görev grubu bulunamadı",
+      "notFoundText": "Bu grup yok, silinmiş ya da görme yetkiniz yok.",
+      "derivedHint": "Grubun durumu üyelerin görevlerinden gelir.",
+      "members": "Üyeler",
+      "addMembers": "Üye ekle",
+      "noneToAdd": "Atanabilecek herkes zaten grupta.",
+      "addSubmit_one": "{{count}} üye ekle",
+      "addSubmit_other": "{{count}} üye ekle",
+      "membersAdded_one": "{{count}} üye eklendi.",
+      "membersAdded_other": "{{count}} üye eklendi.",
+      "memberRemoved": "Üye çıkarıldı; görevi Geri Dönüşüm Kutusu'na taşındı.",
+      "removeTitle": "Bu üye çıkarılsın mı?",
+      "removeText": "{{name}} adlı kişinin bu gruptaki görevi Geri Dönüşüm Kutusu'na taşınır.",
+      "removeConfirm": "Çıkar",
+      "expand": "{{title}} üyelerini göster",
+      "collapse": "{{title}} üyelerini gizle",
+      "created": "Görev her üye için oluşturuldu.",
+      "allOption": "@all: şubenin her üyesi",
+      "allHint": "Şubenin her aktif üyesine şimdi kendi görevi verilir. Üyeleri daha sonra ekleyip çıkarabilirsiniz."
     }
   },
   "landing": {

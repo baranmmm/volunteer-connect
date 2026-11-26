@@ -150,8 +150,15 @@ export function inviteesHeader(t: TFunction, label: string, names: string[]) {
 
 /** Decisions on an agenda item and the tasks created from them (the collapsed row's counts). */
 export function agendaCounts(item: { decisions: { tasks: unknown[] }[] }) {
+  // An "@all" task group counts once (it is one row under its decision).
+  const groupOf = (x: unknown) =>
+    x && typeof x === "object" && "group_id" in x && typeof x.group_id === "string"
+      ? x.group_id
+      : null;
+  const rows = (tasks: unknown[]) =>
+    tasks.filter((x) => !groupOf(x)).length + new Set(tasks.map(groupOf).filter(Boolean)).size;
   return {
     decisions: item.decisions.length,
-    tasks: item.decisions.reduce((sum, d) => sum + d.tasks.length, 0),
+    tasks: item.decisions.reduce((sum, d) => sum + rows(d.tasks), 0),
   };
 }
