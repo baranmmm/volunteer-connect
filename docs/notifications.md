@@ -3,7 +3,8 @@
 In-app notices for tasks, meetings and requests (members only: followers get none). The rule is **less noise**: a
 person hears only about what directly concerns them, never about their own actions, and similar notices are grouped.
 Database: `supabase/migrations/20261128090000_notification_settings_self_reminders.sql` (on top of
-`20261125090100_notifications.sql`). Texts: `src/lib/notification-text.ts` (i18n keys `notifications.kinds.*`,
+`20261125090100_notifications.sql`); in-app notices always immediate and the daily summary as an email:
+`20261208090000_notifications_inapp_immediate.sql`. Texts: `src/lib/notification-text.ts` (i18n keys `notifications.kinds.*`,
 `notifications.groups.*`), never stored sentences.
 
 ## Who gets what
@@ -35,19 +36,29 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
 - **Note notices group per task**: while a person's "new note" notice for a task is unread, further notes update it
   ("3 new notes on: <task>", `payload.count`). Note and mention notices link to `/tasks?task=<id>&note=<note id>`;
   the panel scrolls to that note and highlights it (`task-note` with `data-highlighted="true"`).
-- **Changeable**: `task_status`, `meeting`, `request_decided`: on/off, and delivery **Immediately** or
-  **Daily summary** (`set_notification_setting`; the database refuses locked types and keeps reminders immediate).
-- **Default delivery**: immediately for volunteers, daily summary for Branch Managers, Regional Directors and
-  National Coordinators (`notification_default_delivery`).
+- **Changeable**: `task_status`, `meeting`, `request_decided`: on/off, and the email choice **No email (in the app
+  only)** (`immediate`) or **Daily summary email** (`digest`) (`set_notification_setting`; the database refuses locked
+  types and keeps reminders immediate). The choice decides only the email: every notice that is on appears in the app
+  and in the badges at once, for every role. Off means no notice at all.
+- **Default delivery**: `immediate` (no email) for volunteers, `digest` (daily summary email) for Branch Managers,
+  Regional Directors and National Coordinators (`notification_default_delivery`).
 - "Email reminders for tasks" stays in the same section (`set_task_reminder_emails`).
 
-## Daily summary
+## Daily summary email
 
-Notices set to the daily summary are stored *held*: they are neither listed nor counted. At 08:00 London time
-`run_notification_digest` (pg_cron, or the Task reminders workflow) creates one `daily_digest` notice per person
-(`payload {count, kinds, day}`, link `/dashboard`) and releases the held notices with `digest_id` set to it.
-On the dashboard it reads "Your daily summary: 7 updates" and expands to its items; expanding marks the summary line
-read (its items stay unread until opened or "Mark all as read"). No email is sent yet.
+- `notify()` never holds a notice: it is listed and counted (badges) at once. A notice whose type is set to the daily
+  summary is marked for the email (`notifications.email_digest`). `immediate` sends no email per notice (in the app
+  only); only opted-in task reminders have their own email (`task_reminder`).
+- At 08:00 London time `run_notification_digest` (the Task reminders workflow, or pg_cron where available) queues per
+  active person with marked notices not yet summarised **one** `email_outbox` row, template `daily_digest`,
+  `payload {count, kinds, day}`, then sets `email_digested_at` on those notices. Only types the person still has on
+  and set to the summary at that moment count. At most one per person and London day (`notification_digest_log`,
+  with `email_id`); notices that arrive after today's email wait for tomorrow's.
+- **Never an empty summary**: nothing new since the last one means no email and no log row.
+- No in-app `daily_digest` notice any more (the items are already in the app). Older `daily_digest` notices still
+  render and expand to their items (`digest_id`). Notices held before `20261208090000` were released by that
+  migration and went into the next summary email; `held` is always false now (check constraint).
+- The email itself: `docs/email.md`.
 
 ## Grouping (dashboard Notifications card)
 
@@ -55,8 +66,8 @@ read (its items stay unread until opened or "Mark all as read"). No email is sen
 - Unread notices with the same kind + `payload.branch` + `payload.status` become one expandable line when there are
   at least two ("4 tasks in Medway were completed"). Read notices are always single lines.
 - `review_waiting` and `daily_digest` are never grouped.
-- Items of a daily summary sit under it (grouped there as well); an item whose summary is not in the loaded list
-  stays at the top level.
+- Items of an older in-app daily summary sit under it (grouped there as well); an item whose summary is not in the
+  loaded list stays at the top level. New summaries are emails only.
 - The card loads the latest 30 notices (`DASHBOARD_NOTIFICATIONS`). "Mark all as read" marks every unread notice.
 
 ## Requests waiting for review ("Waiting for you")

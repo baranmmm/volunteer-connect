@@ -1,4 +1,5 @@
-// Email templates (server-rendered, English only; not i18n keys). Pure: the sender passes every link and the clock.
+// Email templates (server-rendered; not i18n keys). English only, except the members' daily summary (daily_digest),
+// which follows the member's preferred language (English or Turkish). Pure: the sender passes every link and the clock.
 // Each email has a branded HTML part (inline CSS, table layout, no remote images) and a plain-text part. All text that
 // comes from people (event titles, descriptions, names, places) is escaped in HTML.
 import { eventStart, eventWhen } from "@/lib/event-rules";
@@ -13,7 +14,8 @@ export type EmailTemplate =
   | "event_cancelled"
   | "subscriber_confirm"
   | "event_announcement"
-  | "task_reminder";
+  | "task_reminder"
+  | "daily_digest";
 
 export const EMAIL_TEMPLATES: readonly EmailTemplate[] = [
   "guest_confirm",
@@ -25,6 +27,7 @@ export const EMAIL_TEMPLATES: readonly EmailTemplate[] = [
   "subscriber_confirm",
   "event_announcement",
   "task_reminder",
+  "daily_digest",
 ];
 export const isEmailTemplate = (value: string): value is EmailTemplate =>
   (EMAIL_TEMPLATES as readonly string[]).includes(value);
@@ -46,6 +49,8 @@ export type RenderContext = {
   /** The sender address and name (ORGANIZER in calendar attachments). */
   from: { email: string; name?: string | null };
   payload?: Record<string, unknown>;
+  /** The member's preferred language (daily_digest only; English otherwise). */
+  language?: "en" | "tr" | null;
   event?: EmailEvent | null;
   registration?: EmailRegistration | null;
   /**
@@ -162,6 +167,8 @@ type Layout = {
   blocks: Block[];
   footer: string[];
   footerLinks?: { label: string; url: string }[];
+  /** The html lang attribute (default "en"). */
+  lang?: "en" | "tr";
 };
 
 function htmlParagraphs(text: string): string {
@@ -235,7 +242,7 @@ function layoutHtml(layout: Layout): string {
     )
     .join(" &middot; ");
   return (
-    `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<!DOCTYPE html><html lang="${layout.lang ?? "en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<meta name="color-scheme" content="light"><title>${escapeHtml(layout.subject)}</title></head>` +
     `<body style="margin:0;padding:0;background:${BG};font-family:${FONT};color:${SLATE};">` +
     `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(layout.preheader)}</div>` +
@@ -697,6 +704,151 @@ function taskReminder(ctx: RenderContext): RenderedEmail {
   });
 }
 
+// ─── Daily summary (members) ─────────────────────────────────────────────────────────────────────────────────────
+
+type DigestLanguage = "en" | "tr";
+/** One line per kind: [singular, plural] in English ({n} is the count), one form in Turkish. */
+const DIGEST_LINES: Record<string, { en: [string, string]; tr: string }> = {
+  task_status_changed: {
+    en: [
+      "{n} task you created was blocked or completed",
+      "{n} tasks you created were blocked or completed",
+    ],
+    tr: "Oluşturduğunuz {n} görev engellendi veya tamamlandı",
+  },
+  meeting_invited: {
+    en: ["{n} meeting invitation", "{n} meeting invitations"],
+    tr: "{n} toplantı daveti",
+  },
+  meeting_changed: {
+    en: ["{n} meeting changed", "{n} meetings changed"],
+    tr: "{n} toplantı değişti",
+  },
+  meeting_cancelled: {
+    en: ["{n} meeting cancelled", "{n} meetings cancelled"],
+    tr: "{n} toplantı iptal edildi",
+  },
+  task_request_accepted: {
+    en: ["{n} of your task requests was accepted", "{n} of your task requests were accepted"],
+    tr: "{n} görev isteğiniz kabul edildi",
+  },
+  task_request_declined: {
+    en: ["{n} of your task requests was declined", "{n} of your task requests were declined"],
+    tr: "{n} görev isteğiniz reddedildi",
+  },
+  meeting_request_approved: {
+    en: ["{n} of your meeting requests was approved", "{n} of your meeting requests were approved"],
+    tr: "{n} toplantı isteğiniz onaylandı",
+  },
+  meeting_request_declined: {
+    en: ["{n} of your meeting requests was declined", "{n} of your meeting requests were declined"],
+    tr: "{n} toplantı isteğiniz reddedildi",
+  },
+  volunteer_application_approved: {
+    en: ["{n} volunteer application approved", "{n} volunteer applications approved"],
+    tr: "{n} gönüllü başvurusu onaylandı",
+  },
+  volunteer_application_declined: {
+    en: ["{n} volunteer application declined", "{n} volunteer applications declined"],
+    tr: "{n} gönüllü başvurusu reddedildi",
+  },
+};
+const DIGEST_OTHER = {
+  en: ["{n} other update", "{n} other updates"] as [string, string],
+  tr: "{n} diğer güncelleme",
+};
+
+const DIGEST_TEXT = {
+  en: {
+    subject: (n: number) => `Your daily summary: ${n} ${n === 1 ? "update" : "updates"}`,
+    heading: "Your daily summary",
+    hello: (name?: string | null) => greeting(name),
+    intro: (day: string | null) =>
+      day
+        ? `Here is what is new for you in the Volunteer Hub (summary of ${day}):`
+        : "Here is what is new for you in the Volunteer Hub:",
+    already: "These notices are already in the app, under the bell.",
+    button: "Open my notifications",
+    footer: [
+      "You are receiving this email because your notification settings in the Dialogue Society Volunteer Hub include the daily summary email.",
+      "You can change this in your profile, under Notifications.",
+    ],
+    settings: "Notification settings",
+  },
+  tr: {
+    subject: (n: number) => `Günlük özetiniz: ${n} güncelleme`,
+    heading: "Günlük özetiniz",
+    hello: (name?: string | null) => (name?.trim() ? `Merhaba ${name.trim()},` : "Merhaba,"),
+    intro: (day: string | null) =>
+      day
+        ? `Gönüllü Platformu'nda sizin için yeni olanlar (${day} özeti):`
+        : "Gönüllü Platformu'nda sizin için yeni olanlar:",
+    already: "Bu bildirimler uygulamada, zil simgesinin altında zaten duruyor.",
+    button: "Bildirimlerimi aç",
+    footer: [
+      "Bu e-postayı, Dialogue Society Gönüllü Platformu'ndaki bildirim ayarlarınız günlük özet e-postasını içerdiği için alıyorsunuz.",
+      "Bunu profilinizde, Bildirimler bölümünden değiştirebilirsiniz.",
+    ],
+    settings: "Bildirim ayarları",
+  },
+} as const;
+
+function digestDay(value: unknown, lang: DigestLanguage): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return new Intl.DateTimeFormat(lang === "tr" ? "tr-TR" : "en-GB", {
+    timeZone: "Europe/London",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${value}T12:00:00Z`));
+}
+
+/** The summary lines in a fixed order (known kinds first, then one line for anything else). */
+export function digestLines(kinds: unknown, lang: DigestLanguage): string[] {
+  const counts =
+    kinds && typeof kinds === "object" && !Array.isArray(kinds)
+      ? Object.entries(kinds as Record<string, unknown>).filter(
+          (e): e is [string, number] => typeof e[1] === "number" && e[1] > 0,
+        )
+      : [];
+  const line = (text: { en: [string, string]; tr: string }, n: number) =>
+    (lang === "tr" ? text.tr : text.en[n === 1 ? 0 : 1]).replace("{n}", String(n));
+  const lines = Object.keys(DIGEST_LINES)
+    .map((kind) => [kind, counts.find(([k]) => k === kind)?.[1] ?? 0] as const)
+    .filter(([, n]) => n > 0)
+    .map(([kind, n]) => line(DIGEST_LINES[kind]!, n));
+  const other = counts.filter(([k]) => !(k in DIGEST_LINES)).reduce((sum, [, n]) => sum + n, 0);
+  if (other > 0) lines.push(line(DIGEST_OTHER, other));
+  return lines;
+}
+
+function dailyDigest(ctx: RenderContext): RenderedEmail {
+  const payload = ctx.payload ?? {};
+  const lang: DigestLanguage = ctx.language === "tr" ? "tr" : "en";
+  const text = DIGEST_TEXT[lang];
+  const lines = digestLines(payload["kinds"], lang);
+  const count =
+    typeof payload["count"] === "number" && payload["count"] > 0 ? payload["count"] : lines.length;
+  // The sender never sends an empty summary (the database queues none); a malformed row is retried, then fails.
+  if (count < 1 || lines.length === 0) throw new Error("Email context missing");
+  const intro = text.intro(digestDay(payload["day"], lang));
+  return build({
+    lang,
+    subject: text.subject(count),
+    preheader: lines.join(" · "),
+    heading: text.heading,
+    blocks: [
+      { kind: "p", text: text.hello(ctx.toName) },
+      { kind: "p", text: intro },
+      ...lines.map((l): Block => ({ kind: "strong", text: `• ${l}` })),
+      { kind: "note", text: text.already },
+      { kind: "button", label: text.button, url: `${ctx.origin}/notifications` },
+    ],
+    footer: [...text.footer],
+    footerLinks: [{ label: text.settings, url: `${ctx.origin}/profile` }],
+  });
+}
+
 /** Renders one email. Throws when the context is incomplete (the sender then retries the row later). */
 export function renderEmail(template: EmailTemplate, ctx: RenderContext): RenderedEmail {
   const now = ctx.now ?? new Date();
@@ -719,6 +871,8 @@ export function renderEmail(template: EmailTemplate, ctx: RenderContext): Render
       return eventAnnouncement(ctx);
     case "task_reminder":
       return taskReminder(ctx);
+    case "daily_digest":
+      return dailyDigest(ctx);
   }
 }
 

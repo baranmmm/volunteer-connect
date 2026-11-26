@@ -1612,22 +1612,32 @@ export type Database = {
         Row: {
           created_at: string
           day: string
+          email_id: string | null
           notification_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           day: string
+          email_id?: string | null
           notification_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           day?: string
+          email_id?: string | null
           notification_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notification_digest_log_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "email_outbox"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notification_digest_log_notification_id_fkey"
             columns: ["notification_id"]
@@ -1678,6 +1688,8 @@ export type Database = {
           actor_id: string | null
           created_at: string
           digest_id: string | null
+          email_digest: boolean
+          email_digested_at: string | null
           entity_id: string
           entity_type: string
           held: boolean
@@ -1693,6 +1705,8 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           digest_id?: string | null
+          email_digest?: boolean
+          email_digested_at?: string | null
           entity_id: string
           entity_type: string
           held?: boolean
@@ -1708,6 +1722,8 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           digest_id?: string | null
+          email_digest?: boolean
+          email_digested_at?: string | null
           entity_id?: string
           entity_type?: string
           held?: boolean

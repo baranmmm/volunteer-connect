@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   absoluteAppLink,
+  digestLines,
   escapeHtml,
   renderEmail,
   type EmailEvent,
@@ -276,6 +277,82 @@ describe("email templates", () => {
     expect(r.text).toMatch(/Tuesday,? 1 June 2027/);
     expect(absoluteAppLink(ORIGIN, "//evil.example")).toBe(`${ORIGIN}/dashboard`);
     expect(absoluteAppLink(ORIGIN, "https://evil.example")).toBe(`${ORIGIN}/dashboard`);
+  });
+
+  it("daily_digest lists the counts per kind and links to the app (English)", () => {
+    const r = renderEmail("daily_digest", {
+      origin: ORIGIN,
+      toEmail: "bm@example.org",
+      toName: "Ayse <b>",
+      from: { email: "events@example.org" },
+      payload: {
+        count: 4,
+        kinds: { task_status_changed: 2, meeting_invited: 1, some_new_kind: 1 },
+        day: "2027-01-15",
+      },
+    });
+    expect(r.subject).toBe("Your daily summary: 4 updates");
+    expect(r.text).toContain("Hello Ayse <b>,");
+    expect(r.html).toContain("Hello Ayse &lt;b&gt;,");
+    expect(r.html).toContain('<html lang="en">');
+    expect(r.text).toMatch(/summary of Friday,? 15 January/);
+    const lines = r.text.split("\n");
+    const first = lines.findIndex((l) =>
+      l.includes("2 tasks you created were blocked or completed"),
+    );
+    expect(first).toBeGreaterThan(-1);
+    expect(lines[first + 2]).toContain("1 meeting invitation");
+    expect(r.text).toContain("1 other update");
+    expect(r.text).toContain(`${ORIGIN}/notifications`);
+    expect(r.html).toContain(`href="${ORIGIN}/notifications"`);
+    expect(r.text).toContain(`${ORIGIN}/profile`);
+    expect(r.attachments).toEqual([]);
+    expect(r.listUnsubscribe).toBeNull();
+    expect(
+      renderEmail("daily_digest", {
+        origin: ORIGIN,
+        toEmail: "bm@example.org",
+        from: { email: "events@example.org" },
+        payload: { count: 1, kinds: { task_request_accepted: 1 }, day: "2027-01-15" },
+      }).subject,
+    ).toBe("Your daily summary: 1 update");
+  });
+
+  it("daily_digest in Turkish for a member who prefers Turkish", () => {
+    const r = renderEmail("daily_digest", {
+      origin: ORIGIN,
+      toEmail: "bm@example.org",
+      toName: "Ayşe",
+      from: { email: "events@example.org" },
+      language: "tr",
+      payload: {
+        count: 3,
+        kinds: { meeting_cancelled: 1, task_request_declined: 2 },
+        day: "2027-01-15",
+      },
+    });
+    expect(r.subject).toBe("Günlük özetiniz: 3 güncelleme");
+    expect(r.html).toContain('<html lang="tr">');
+    expect(r.text).toContain("Merhaba Ayşe,");
+    expect(r.text).toContain("1 toplantı iptal edildi");
+    expect(r.text).toContain("2 görev isteğiniz reddedildi");
+    expect(r.text).toMatch(/15 Ocak/);
+    expect(r.text).toContain("Bildirimlerimi aç: " + `${ORIGIN}/notifications`);
+    expect(digestLines({ task_status_changed: 1 }, "tr")).toEqual([
+      "Oluşturduğunuz 1 görev engellendi veya tamamlandı",
+    ]);
+  });
+
+  it("daily_digest refuses an empty summary", () => {
+    const ctx = {
+      origin: ORIGIN,
+      toEmail: "bm@example.org",
+      from: { email: "events@example.org" },
+    };
+    expect(() =>
+      renderEmail("daily_digest", { ...ctx, payload: { count: 0, kinds: {} } }),
+    ).toThrow();
+    expect(() => renderEmail("daily_digest", { ...ctx, payload: {} })).toThrow();
   });
 
   it("throws when the context is incomplete", () => {

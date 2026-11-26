@@ -1,4 +1,5 @@
-// Less notification noise: Profile > Notifications (per type on/off and Immediately / Daily summary, locked types),
+// Less notification noise: Profile > Notifications (per type on/off and the email choice: no email or the daily summary
+// email, locked types), in-app notices at once for every role with the daily summary as one email,
 // the header bell (grouped lines, "Mark all as read", opening a notice, See all and Load more on /notifications), and
 // requests waiting for review ("Waiting for you" card, Requests badge, mobile More badge, the grouped notice marked read
 // on To review). Every notice is created through the real RPCs by fresh users in a temporary branch (cleaned up by the
@@ -11,6 +12,7 @@ import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { DashboardPage } from "../../pages/DashboardPage";
 import { Sidebar } from "../../pages/components/Sidebar";
 import { NotificationBell } from "../../pages/components/NotificationBell";
+import { linkFrom, triggerScheduledRun, waitForEmail } from "../../api/outbox";
 
 let n = 0;
 const title = (label: string) => `${TASK_TITLE_PREFIX}${runId} notif-${Date.now().toString(36)}-${++n} ${label}`;
@@ -113,6 +115,45 @@ test.describe("Notifications", () => {
     await expect(bell.badge()).toHaveCount(0);
     await bell.close();
     expect(await unreadNotices(manager.id)).toBe(0);
+  });
+
+  test("a manager's notice is in the bell at once although they get the daily summary; the summary comes as one email", async ({ freshUser, freshBranch, pageAs }) => {
+    const branch = await freshBranch("notif-digest");
+    const manager = await freshUser({ role: "branch_manager", branch });
+    const volunteer = await freshUser({ role: "volunteer", branch });
+    // The manager keeps the default (daily summary email); the volunteer completes the manager's task.
+    const task = await createTaskAs(manager, { scope: "branch", branch_id: branch, title: title("summary"), assignee_ids: [volunteer.id] });
+    expect((await workRpc(volunteer, "set_task_status", { p_id: task, p_status: "done" })).error).toBeNull();
+    await expect.poll(() => unreadNotices(manager.id)).toBe(1);
+
+    const page = await pageAs(manager);
+    await page.goto("/dashboard");
+    const bell = new NotificationBell(page);
+    await expect(bell.badge()).toHaveAttribute("data-count", "1", { timeout: APP_LOAD_TIMEOUT });
+    await bell.open();
+    await expect(bell.notice("task_status_changed")).toHaveAttribute("data-unread", "true");
+    await bell.close();
+
+    // The 08:00 run (here for tomorrow 10:00 UTC, always after 08:00 London) queues one summary email; the scheduled
+    // run sends it (capture mode).
+    const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+    tomorrow.setUTCHours(10, 0, 0, 0);
+    const db = adminClient();
+    expect((await db.rpc("run_notification_digest", { p_now: tomorrow.toISOString() })).error).toBeNull();
+    await triggerScheduledRun();
+    const email = await waitForEmail({ template: "daily_digest", userId: manager.id, timeoutMs: 30000 });
+    expect(email.payload).toMatchObject({ count: 1, kinds: { task_status_changed: 1 } });
+    expect(email.captured.subject).toBe("Your daily summary: 1 update");
+    expect(email.captured.text).toContain("1 task you created was blocked or completed");
+    expect(new URL(linkFrom(email, "/notifications")).pathname).toBe("/notifications");
+    // Once a day: a second run the same day queues nothing more. The notice is still unread in the app.
+    expect((await db.rpc("run_notification_digest", { p_now: tomorrow.toISOString() })).error).toBeNull();
+    const rows = await db.from("email_outbox").select("id").eq("user_id", manager.id).eq("template", "daily_digest");
+    expect(rows.data).toHaveLength(1);
+    expect(await unreadNotices(manager.id)).toBe(1);
+    // The volunteer (no email by default) gets no summary email.
+    const none = await db.from("email_outbox").select("id").eq("user_id", volunteer.id).eq("template", "daily_digest");
+    expect(none.data).toHaveLength(0);
   });
 
   test("opening a notice from the bell marks it read and goes to it; See all lists read and unread with Load more", async ({ freshUser, freshBranch, pageAs }) => {

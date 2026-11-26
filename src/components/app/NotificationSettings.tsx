@@ -24,9 +24,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 type ChangeableType = "task_status" | "task_note" | "task_reminder" | "meeting" | "request_decided";
 
 /**
- * Profile > Notifications (volunteers and up): per type on/off and Immediately / Daily summary. Assignments, mentions
- * and requests waiting for review are always on and immediate (shown with disabled controls). The database checks
- * every change (set_notification_setting).
+ * Profile > Notifications (volunteers and up): per type on/off and the email choice. Every notice that is on appears in
+ * the app at once; the delivery choice ("immediate" = no email, "digest" = also in the 08:00 daily summary email)
+ * only decides the email. Assignments, mentions and requests waiting for review are always on and immediate (shown
+ * with disabled controls). The database checks every change (set_notification_setting).
  */
 export function NotificationSettings() {
   const { t } = useTranslation();

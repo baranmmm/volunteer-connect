@@ -16,10 +16,12 @@ API. Everything stays on free tiers: Brevo's free plan allows **300 emails a day
 | `subscriber_confirm` | "Get event updates" (double opt-in) | the subscriber | none |
 | `event_announcement` | a manager announces an upcoming public event | confirmed subscribers in the target | none |
 | `task_reminder` | task reminders (`docs/tasks.md`) | the assignee | none |
+| `daily_digest` | 08:00 London, when the member has new notices set to the daily summary (`docs/notifications.md`) | the member | none |
 
 Event emails go only to public events (not meetings, not past-event records). The database queues them with
 triggers; the sender renders them **at send time** from the current data, so an email always shows the latest time
-and place. Templates are English only (`src/lib/email/templates.ts`), with a branded HTML part (inline CSS, no remote
+and place. Templates are English only (`src/lib/email/templates.ts`), except `daily_digest`, which follows the
+member's `preferred_language` (English or Turkish, read at send time), with a branded HTML part (inline CSS, no remote
 images) and a plain-text part. Times are Europe/London.
 
 - **Guests** get signed links (`src/lib/email/links.server.ts`): `/e/confirm` (valid 48 hours) and `/e/cancel`
@@ -29,6 +31,10 @@ images) and a plain-text part. Times are Europe/London.
 - **Calendar files** (`src/lib/email/ics.ts`): UID `<registration id>@dialoguesociety-hub` (one entry per attendee and
   event; the registration row is reused when someone registers again), SEQUENCE from `events.ics_sequence`, which the
   database bumps on every time/place change and on cancel.
+- **Daily summary** (`daily_digest`): one email per member and London day at most, never empty: the counts per kind
+  of the notices set to the daily summary since the last one (`payload {count, kinds, day}`), a button to
+  `/notifications` and a link to `/profile` (Notifications, where the member switches it to "No email"). The notices
+  themselves are already in the app; "No email (in the app only)" sends no email per notice.
 - **Announcements** carry an unsubscribe link (`/updates/unsubscribe`) and `List-Unsubscribe` /
   `List-Unsubscribe-Post` headers pointing at the one-click endpoint `POST /api/public/unsubscribe?t=…`.
 
@@ -36,8 +42,8 @@ images) and a plain-text part. Times are Europe/London.
 
 `flushOutbox()` in `src/lib/email/outbox.server.ts` claims rows with `claim_email_batch`, renders them and sends them:
 
-- **Priorities**: 1 transactional (confirmations, updates, cancellations), 2 reminders (event and task), 3
-  announcements; oldest first within a priority.
+- **Priorities** (`email_priority`): 1 transactional (confirmations, updates, cancellations), 2 reminders (event and
+  task) and the daily summary, 3 announcements; oldest first within a priority.
 - **Daily limit**: 300 per London day (`email_daily_limit()`), counting sent and in-flight rows. Whatever does not fit
   stays pending for the next run or the next day.
 - **Results**: `finish_email` marks a row `sent`, `skipped` (no longer applies: unsubscribed, cancelled, event closed,
@@ -47,7 +53,8 @@ images) and a plain-text part. Times are Europe/London.
   - right after an action, for its transactional emails (member register/cancel, guest and subscriber forms, event
     changes; announcements send up to 50 at once);
   - in the scheduled run (`/api/public/task-reminders`, the "Task reminders" workflow at 07:05, 08:05, 09:05, 13:05 and
-    18:05 UTC): it queues task and event reminders, then sends up to 300 of every priority. The later runs drain the
+    18:05 UTC): it queues the daily summaries (from 08:00 London), task and event reminders, then sends up to 300 of
+    every priority. The later runs drain the
     outbox; announcements over the daily limit continue the next day.
 - Each call is bounded (at most 300 rows, about 20 seconds) and never throws. Logs contain only template names and
   error codes, never addresses or content.

@@ -1,5 +1,6 @@
 // The email sender (server only): claims queued email_outbox rows and sends them through Brevo, within the daily limit
-// (claim_email_batch: 300 a day, London day; transactional before reminders before announcements).
+// (claim_email_batch: 300 a day, London day; transactional before reminders and the members' daily summary before
+// announcements).
 // * EMAIL_TRANSPORT=capture (the e2e app server, never production): emails are rendered and stored on the row
 //   (payload.captured) instead of being sent.
 // * Without BREVO_API_KEY / EMAIL_FROM nothing is claimed: the rows stay pending until the sender is configured.
@@ -182,6 +183,20 @@ async function prepare(
     };
   }
   if (row.template === "task_reminder") return { ok: true, ctx: base };
+  if (row.template === "daily_digest") {
+    // The member's language at send time (the claim already skipped inactive and deleted members).
+    if (!row.user_id) return { ok: false, skip: "no_recipient" };
+    const { data, error } = await admin
+      .from("profiles")
+      .select("preferred_language")
+      .eq("id", row.user_id)
+      .maybeSingle();
+    if (error) throw new Error("context_unavailable");
+    return {
+      ok: true,
+      ctx: { ...base, language: data?.preferred_language === "tr" ? "tr" : "en" },
+    };
+  }
   return { ok: false, skip: "unknown_template" };
 }
 

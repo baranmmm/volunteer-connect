@@ -185,7 +185,7 @@ For meetings in short:
 | Meeting request waits for review | The target, in one grouped notice | `review_waiting` (always on) |
 | Meeting request approved or declined | The requester | `meeting_request_approved` / `meeting_request_declined` |
 
-Meeting notices (type `meeting`) can be turned off or delivered in the daily summary. Opening the meeting marks its
+Meeting notices (type `meeting`) can be turned off or also sent in the daily summary email (always in the app at once). Opening the meeting marks its
 notices read.
 
 ## Recycle Bin
