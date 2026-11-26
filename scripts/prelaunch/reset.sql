@@ -38,6 +38,9 @@
 --  10  meetings                      meetings.event_id is NO ACTION: must go before events
 --  11  meeting_series                meetings.series_id SET NULL: after meetings
 --  12  event_request_media, event_requests   event_requests.event_id SET NULL: before events
+--  12b media_chapter_views, media_upload_files, media_upload_requests (album/event ids SET NULL), media_albums
+--      (CASCADE removes their photos), media_photos (the rest: photos of events, also of kept events; event_id SET
+--      NULL): all before events and accounts, so no SET NULL update runs on them
 --  13  event_announcements, event_guests, event_registrations, event_audit_log, event_cleanup_audit,
 --      event_deletion_jobs           children / logs of events
 --  14  event_videos (not kept)       BEFORE accounts: a test channel video with created_by = a deleted account would
@@ -164,6 +167,12 @@ BEGIN
   -- 12 Event requests.
   DELETE FROM public.event_request_media; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' event_request_media=' || _n;
   DELETE FROM public.event_requests; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' event_requests=' || _n;
+  -- 12b Media library (members' albums and photos, upload requests, viewed markers): none of it is kept.
+  DELETE FROM public.media_chapter_views; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_chapter_views=' || _n;
+  DELETE FROM public.media_upload_files; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_upload_files=' || _n;
+  DELETE FROM public.media_upload_requests; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_upload_requests=' || _n;
+  DELETE FROM public.media_albums; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_albums=' || _n;
+  DELETE FROM public.media_photos; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_photos=' || _n;
   -- 13 Event children and logs (also those of kept events: registrations, guests, audit rows are test data).
   DELETE FROM public.event_announcements; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' event_announcements=' || _n;
   DELETE FROM public.event_guests; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' event_guests=' || _n;

@@ -1,6 +1,6 @@
 # Gizlilik Bildirimi: Dialogue Society Gönüllü Merkezi
 
-Sürüm 1.5 · 26 Kasım 2026
+Sürüm 1.6 · 26 Kasım 2026
 
 Bu bildirim, Dialogue Society Gönüllü Merkezi'nin (Volunteer Hub) hangi kişisel bilgileri topladığını, bunları neden kullandığımızı, kimlerin görebildiğini ve hangi haklara sahip olduğunuzu açıklar. Hesap oluşturmadan önce okumanız gerekir. Bu metin İngilizce bildirimin çevirisidir; aralarında bir fark olursa İngilizce sürüm geçerlidir.
 
@@ -18,6 +18,8 @@ Gönüllü Merkezi'ni, İngiltere ve Galler'de kayıtlı bir hayır kurumu olan 
 | Etkinlik kayıtları, bekleme listesindeki sıranız ve katılım | Etkinliklere kaydolduğunuzda ve bir yönetici katılımı kaydettiğinde |
 | Yüklediğiniz el ilanı veya davetiye dahil etkinlik istekleri | Bizden bir etkinlik eklememizi veya düzenlememizi istediğinizde |
 | Etkinliklere yüklediğiniz dosyalar | Bir etkinliğe görsel veya belge eklediğinizde |
+| Şubenizin Medya alanına eklediğiniz veya bir fotoğraf yükleme isteğiyle gönderdiğiniz fotoğraflar (seçtiğiniz albüm veya etkinlik, notunuz ve yöneticinin kararıyla birlikte) | Fotoğraf eklediğinizde veya böyle bir istek gönderdiğinizde |
+| Etkinliklerimizde ve faaliyetlerimizde çekilen, sizin de yer alabileceğiniz fotoğraflar | Düzenleyicilerimiz veya gönüllülerimiz bunları Merkezde paylaştığında |
 | Gizlilik bildirimi onayınız ve isteğe bağlı tercihleriniz | Kaydolduğunuzda veya profilinizde değiştirdiğinizde |
 | Takip ettiğiniz şubeler | Kaydolduğunuzda veya profilinizde değiştirdiğinizde |
 | Gönüllülük başvurusu (motivasyon, uygunluk, beceriler, verdiyseniz telefon) | Gönüllü olmak için başvurduğunuzda |
@@ -36,10 +38,14 @@ Bilgilerinizi gönüllülük faaliyetlerimizi yürütmek için kullanırız: etk
 
 Görevleri, toplantıları ve bildirimleri şubenizde ve bölgenizdeki gönüllülüğü koordine etmek için kullanırız. Size atanan bir görev için hatırlatmalar açıksa, size Merkezde ve profilinizde kapatmadığınız sürece e-postayla hatırlatırız.
 
-İki şey isteğe bağlıdır ve yalnızca onayınızla kullanılır; onayınızı profilinizde istediğiniz zaman geri çekebilirsiniz:
+Bir şey isteğe bağlıdır ve yalnızca onayınızla kullanılır; onayınızı profilinizde istediğiniz zaman geri çekebilirsiniz: size ara sıra e-postayla haber gönderilmesi.
 
-- Etkinliklerimizde çekilen fotoğraf veya videolarınızın kullanılması
-- Size ara sıra e-postayla haber gönderilmesi
+## Etkinliklerimizdeki fotoğraflar
+
+Dialogue Society etkinliklerinde ve faaliyetlerinde fotoğraf çekiyoruz. Bu fotoğraflar Merkezin üyelere özel Medya alanında (yalnızca şubenin üyeleri görür) ve herkese açık etkinlik sayfalarında paylaşılabilir. Bunu, hayır kurumumuzun çalışmalarını kayıt altına alma ve gösterme konusundaki meşru menfaatimize dayanarak yaparız. Fotoğrafınızın çekilmesini kabul etmek, Merkeze üye olmanın bir koşulu değildir.
+
+- Fotoğrafınızın çekilmesini istemiyorsanız, lütfen etkinlikte düzenleyiciye söyleyin.
+- Sizin yer aldığınız bir fotoğrafın kaldırılmasını isterseniz medway@dialoguesociety.org adresine e-posta gönderin; fotoğrafı kaldırırız.
 
 ## Kimler görebilir
 
@@ -50,6 +56,7 @@ Görevleri, toplantıları ve bildirimleri şubenizde ve bölgenizdeki gönüll�
 | Bölgenizin Bölge Direktörleri | Aynı bilgiler, bölgelerindeki tüm şubeler için |
 | Ulusal Koordinatörler | Gönüllüler ve mütevelliler için yalnızca sayılar; şube ve bölge yöneticilerinin bilgileri |
 | Şubenizin üyeleri | Kime atandıkları ve üzerlerindeki notlar dahil şube görevleri |
+| Şubenizin üyeleri ve mütevellileri, Şube Yöneticileri ve bölgenizin Bölge Direktörleri | Şubenizin Medya alanındaki fotoğraflar. Bir yükleme isteğiyle gönderdiğiniz fotoğrafları, onaylanana kadar yalnızca siz ve isteği inceleyen yöneticiler görür. |
 | Şubenizin mütevellileri | Şubenizin faaliyetleri: etkinlikleri, şube görevleri (kime atandıkları ve üzerlerindeki notlar dahil), şubenin toplantıları ile bunların gündemi, kararları ve dosyaları ve burada görünen şube üyelerinin adları. Mütevelliler bunları görebilir ancak değiştiremez. |
 | Bir toplantıya davet edilenler, düzenleyeni ve şubesinin ya da bölgesinin yöneticileri | O toplantı (takvimde de), davetlileri, gündemi, kararları ve dosyaları. Başka kimse göremez. |
 | Ulusal Koordinatörler | Yalnızca ulusal görevler ve toplantılar; gönüllülerin adlarını asla görmezler |
@@ -64,6 +71,7 @@ Bilgilerinizi satmayız ve pazarlama için paylaşmayız. Merkezi yürütmek iç
 - Hesabınız bizimle gönüllülük yaptığınız sürece aktif kalır. Gönüllülüğü bırakırsanız hesabınızı Profilinizden silebilir veya bizden silmemizi isteyebilirsiniz.
 - Merkezde silinen her şey (etkinlikler, istekler, hesaplar) yanlışlıkla silinmişse geri yüklenebilmesi için 30 gün Geri Dönüşüm Kutusunda kalır, sonra kalıcı olarak kaldırılır.
 - Silinen görevler ve toplantılar 30 gün Geri Dönüşüm Kutusunda kalır, sonra notları ve dosyalarıyla birlikte kaldırılır.
+- Medya alanındaki fotoğraflar, bir yönetici silene veya biri kendisinin yer aldığı bir fotoğrafın kaldırılmasını isteyene kadar kalır. Bir yükleme isteğindeki onaylanmayan fotoğraflar hemen silinir.
 - Hesabınızın silinmesini isterseniz, silinmesi planlanır ve geri yüklenemez. Adınız ve iletişim bilgileriniz kaldırılır; etkinlik sayıları anonim sayılar olarak kalır.
 - Geçmiş etkinlik kayıtları yalnızca raporlama için gerektiği sürece saklanır, sonra anonimleştirilir.
 
@@ -75,7 +83,8 @@ Bilgilerinizi satmayız ve pazarlama için paylaşmayız. Merkezi yürütmek iç
 - Yanlış bilgileri düzeltmek (çoğunu Profilinizde düzenleyebilirsiniz)
 - Bilgilerinizin silinmesini istemek (Profilinizde "Hesabımı sil" seçeneğini kullanın)
 - Bilgilerinizi kullanma şeklimize itiraz etmek veya kısıtlanmasını istemek
-- İsteğe bağlı fotoğraf ve e-posta tercihleri için verdiğiniz onayı istediğiniz zaman geri çekmek
+- İsteğe bağlı e-posta haberleri için verdiğiniz onayı istediğiniz zaman geri çekmek
+- Sizin yer aldığınız bir fotoğrafın kaldırılmasını istemek (bkz. Etkinliklerimizdeki fotoğraflar)
 
 Bu haklardan herhangi birini kullanmak için info@dialoguesociety.org adresine e-posta gönderin. Bir ay içinde yanıt veririz.
 
