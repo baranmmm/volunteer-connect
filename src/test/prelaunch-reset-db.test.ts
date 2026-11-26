@@ -119,36 +119,42 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => db.close());
 
-describe("a database without keep data (fresh stacks, CI, QA, this fixture)", () => {
-  it("is a no-op with a notice, also without the auth tables it would otherwise touch", () =>
-    tx(async () => {
-      // Runs before the auth.* stubs exist: the no-op path reads only auth.users and public tables, so the script is
-      // safe as a migration in the PGlite fixture too. An undotted NC (like the e2e seed's) is not keep data.
-      await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES
+// Each reset runs every statement on the whole seeded database: under a full parallel Vitest run that can pass the
+// default 5 s.
+describe(
+  "a database without keep data (fresh stacks, CI, QA, this fixture)",
+  { timeout: 30000 },
+  () => {
+    it("is a no-op with a notice, also without the auth tables it would otherwise touch", () =>
+      tx(async () => {
+        // Runs before the auth.* stubs exist: the no-op path reads only auth.users and public tables, so the script is
+        // safe as a migration in the PGlite fixture too. An undotted NC (like the e2e seed's) is not keep data.
+        await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES
         ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.3'));
         UPDATE public.user_roles SET role = 'national_coordinator' WHERE user_id = '${id(90)}';
         UPDATE public.profiles SET status = 'active' WHERE id = '${id(90)}';`);
-      const before = await snapshot();
-      const notices = await reset();
-      expect(notices.join("\n")).toContain("not the production database, nothing changed");
-      expect(await snapshot()).toEqual(before);
-    }));
+        const before = await snapshot();
+        const notices = await reset();
+        expect(notices.join("\n")).toContain("not the production database, nothing changed");
+        expect(await snapshot()).toEqual(before);
+      }));
 
-  it("leftover e2e channel videos (no dotted NC, no imported events) are still a no-op, not an abort", () =>
-    tx(async () => {
-      // landing.spec creates channel videos (event_id NULL, created_by NULL); some can be left on QA or a long-lived
-      // local stack. They match the video keep rule but must not make the migration fail there.
-      await db.exec(
-        `INSERT INTO public.event_videos(youtube_id, title) VALUES ('dQw4w9WgXcQ', 'Leftover e2e video');`,
-      );
-      const before = await snapshot();
-      const notices = await reset();
-      expect(notices.join("\n")).toContain("not the production database, nothing changed");
-      expect(await snapshot()).toEqual(before);
-    }));
-});
+    it("leftover e2e channel videos (no dotted NC, no imported events) are still a no-op, not an abort", () =>
+      tx(async () => {
+        // landing.spec creates channel videos (event_id NULL, created_by NULL); some can be left on QA or a long-lived
+        // local stack. They match the video keep rule but must not make the migration fail there.
+        await db.exec(
+          `INSERT INTO public.event_videos(youtube_id, title) VALUES ('dQw4w9WgXcQ', 'Leftover e2e video');`,
+        );
+        const before = await snapshot();
+        const notices = await reset();
+        expect(notices.join("\n")).toContain("not the production database, nothing changed");
+        expect(await snapshot()).toEqual(before);
+      }));
+  },
+);
 
-describe("the production-like database", () => {
+describe("the production-like database", { timeout: 30000 }, () => {
   let keptEvents: string[] = [];
   let keptMedia: string[] = [];
   let keptVideos: string[] = [];
