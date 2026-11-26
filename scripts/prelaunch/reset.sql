@@ -1,6 +1,7 @@
 -- Pre-launch reset: deletes every test account and all user-generated data, keeping only
 --   * the National Coordinator account with the DOTTED email (a "." before the @): auth user, identities, sessions,
---     MFA factors, profile, role, followed branches, consents, notification settings, privacy notice acceptances;
+--     MFA factors, profile, role, followed branches, consents, notification settings, privacy notice acceptances, its
+--     own push devices (push_subscriptions);
 --   * the 15 imported dialoguesociety.org past events (past_record, not deleted, with a photo whose source_url is on
 --     https://www.dialoguesociety.org/), every event_media row of those events, and the highlight videos (channel
 --     videos: event_id NULL and created_by NULL, plus videos attached to a kept event);
@@ -24,6 +25,7 @@
 --
 -- Deletion order (children before parents; every statement is explicit so no ON DELETE SET NULL action has to update
 -- a row that is about to be deleted anyway, which would fire that table's UPDATE triggers):
+--   0  push_outbox                   references notifications, push_subscriptions and profiles (all CASCADE)
 --   1  notification_digest_log       references notifications and email_outbox (both SET NULL)
 --   2  email_outbox                  references notifications (SET NULL), registrations, subscribers, events, profiles
 --   3  notifications                 self-reference digest_id (SET NULL) is resolved in the same statement
@@ -48,8 +50,8 @@
 --  18  volunteer_applications, account_deletion_requests (deletion_audit_id SET NULL),
 --      user_deletion_state (deletion_audit_id RESTRICT: must go before user_audit_log), user_audit_log,
 --      recycle_bin_audit_log
---  19  privacy_notice_acceptances, consent_preferences, notification_preferences, user_followed_branches: rows of
---      other accounts (and orphans with user_id NULL); the NC's own rows stay
+--  19  privacy_notice_acceptances, consent_preferences, notification_preferences, user_followed_branches,
+--      push_subscriptions: rows of other accounts (and orphans with user_id NULL); the NC's own rows stay
 --  20  reassign kept rows that reference a deleted account to the NC (see below)
 --  21  auth.refresh_tokens, auth.flow_state (user_id has no FK), auth.audit_log_entries of other accounts
 --  22  auth.users other than the NC; CASCADE removes profiles, user_roles, auth.identities, auth.sessions (and their
@@ -139,7 +141,8 @@ BEGIN
   END IF;
   SELECT count(*) INTO _n_media FROM public.event_media m WHERE m.event_id = ANY (_keep_events);
 
-  -- 1-3 Email and notifications.
+  -- 0-3 Push queue, email and notifications.
+  DELETE FROM public.push_outbox; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' push_outbox=' || _n;
   DELETE FROM public.notification_digest_log; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' notification_digest_log=' || _n;
   DELETE FROM public.email_outbox; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' email_outbox=' || _n;
   DELETE FROM public.notifications; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' notifications=' || _n;
@@ -187,6 +190,7 @@ BEGIN
   DELETE FROM public.consent_preferences WHERE user_id <> _nc; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' consent_preferences=' || _n;
   DELETE FROM public.notification_preferences WHERE user_id <> _nc; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' notification_preferences=' || _n;
   DELETE FROM public.user_followed_branches WHERE user_id <> _nc; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' user_followed_branches=' || _n;
+  DELETE FROM public.push_subscriptions WHERE user_id <> _nc; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' push_subscriptions=' || _n;
 
   -- 20 Kept rows that reference another account -> the NC (only rows that differ, so a second run updates nothing).
   UPDATE public.events SET created_by = _nc,
@@ -247,7 +251,8 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.user_followed_branches WHERE user_id <> _nc)
      OR EXISTS (SELECT 1 FROM public.consent_preferences WHERE user_id <> _nc)
      OR EXISTS (SELECT 1 FROM public.notification_preferences WHERE user_id <> _nc)
-     OR EXISTS (SELECT 1 FROM public.privacy_notice_acceptances WHERE user_id IS DISTINCT FROM _nc) THEN
+     OR EXISTS (SELECT 1 FROM public.privacy_notice_acceptances WHERE user_id IS DISTINCT FROM _nc)
+     OR EXISTS (SELECT 1 FROM public.push_subscriptions WHERE user_id <> _nc) THEN
     RAISE EXCEPTION 'prelaunch reset verification: settings rows of other accounts remain';
   END IF;
   -- Every other public table must be empty (reference tables and the kept tables checked above excepted).
@@ -256,7 +261,7 @@ BEGIN
     WHERE s.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
       AND c.relname NOT IN ('regions', 'branches', 'postcode_geocodes',
         'profiles', 'user_roles', 'user_followed_branches', 'consent_preferences', 'notification_preferences',
-        'privacy_notice_acceptances', 'events', 'event_media', 'event_videos')
+        'privacy_notice_acceptances', 'push_subscriptions', 'events', 'event_media', 'event_videos')
     ORDER BY c.relname
   LOOP
     EXECUTE format('SELECT count(*) FROM public.%I', _t) INTO _n;

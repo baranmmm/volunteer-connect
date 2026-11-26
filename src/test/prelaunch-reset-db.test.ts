@@ -109,6 +109,7 @@ const KEPT_TABLES = [
   "consent_preferences",
   "notification_preferences",
   "privacy_notice_acceptances",
+  "push_subscriptions",
   "events",
   "event_media",
   "event_videos",
@@ -130,7 +131,7 @@ describe(
         // Runs before the auth.* stubs exist: the no-op path reads only auth.users and public tables, so the script is
         // safe as a migration in the PGlite fixture too. An undotted NC (like the e2e seed's) is not keep data.
         await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES
-        ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.4'));
+        ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.5'));
         UPDATE public.user_roles SET role = 'national_coordinator' WHERE user_id = '${id(90)}';
         UPDATE public.profiles SET status = 'active' WHERE id = '${id(90)}';`);
         const before = await snapshot();
@@ -187,9 +188,9 @@ describe("the production-like database", { timeout: 30000 }, () => {
     await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
       INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}'),
         ('${ids.bGone}','Closed','${ids.region}');
-      ${people.map((p) => `INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${p}', '${email[p]}', jsonb_build_object('full_name','Person ${p.slice(0, 2)}','privacy_notice_version','1.4','branch_id','${ids.b1}'));`).join("\n")}
+      ${people.map((p) => `INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${p}', '${email[p]}', jsonb_build_object('full_name','Person ${p.slice(0, 2)}','privacy_notice_version','1.5','branch_id','${ids.b1}'));`).join("\n")}
       INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${ids.fol}', 'follower@x.test',
-        jsonb_build_object('full_name','Follower','privacy_notice_version','1.4','branch_id','${ids.b1}','follower',true,
+        jsonb_build_object('full_name','Follower','privacy_notice_version','1.5','branch_id','${ids.b1}','follower',true,
           'photo_consent',true,'updates_email_consent',true));
       UPDATE profiles SET status='active' WHERE id <> '${ids.pend}' AND id <> '${ids.fol}';
       UPDATE profiles SET branch_id=NULL WHERE id IN ('${ids.nc}','${ids.nc2}','${ids.rd}');
@@ -372,6 +373,12 @@ describe("the production-like database", { timeout: 30000 }, () => {
         INSERT INTO public.event_cleanup_audit(outcome) VALUES ('ok');
         INSERT INTO public.public_rate_limits(bucket, window_start, hits) VALUES ('guest:abc', now(), 3);
         INSERT INTO public.privacy_notice_acceptances(user_id, notice_version) VALUES (NULL, '1.2');
+        -- Push devices (20261212090000): the kept NC's own stays, the volunteer's goes; a queued push for each.
+        INSERT INTO public.push_subscriptions(user_id, endpoint, p256dh, auth, user_agent)
+        VALUES ('${ids.nc}', 'https://push.example.test/nc', repeat('A', 87), repeat('B', 22), 'Safari on iPhone'),
+          ('${ids.vol}', 'https://push.example.test/vol', repeat('C', 87), repeat('D', 22), 'Chrome on Android');
+        INSERT INTO public.push_outbox(user_id, subscription_id, notification_id, type)
+        SELECT s.user_id, s.id, _n, 'meeting' FROM public.push_subscriptions s;
       END $$;`);
     // A task group ("@all") created through its RPC by the Branch Manager (tasks, assignees, notices).
     await as(ids.bm);
@@ -386,6 +393,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
       consent_preferences: await count("consent_preferences", `user_id='${ids.nc}'`),
       notification_preferences: await count("notification_preferences", `user_id='${ids.nc}'`),
       privacy_notice_acceptances: await count("privacy_notice_acceptances", `user_id='${ids.nc}'`),
+      push_subscriptions: await count("push_subscriptions", `user_id='${ids.nc}'`),
     };
     deleteObjects = (
       await q<{ o: string }>(
@@ -541,7 +549,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
   it("aborts with nothing changed when a second dotted NC exists", () =>
     tx(async () => {
       await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${id(30)}', 'other.nc@x.test',
-          jsonb_build_object('privacy_notice_version','1.4'));
+          jsonb_build_object('privacy_notice_version','1.5'));
         UPDATE user_roles SET role='national_coordinator' WHERE user_id='${id(30)}';
         UPDATE profiles SET status='active' WHERE id='${id(30)}';`);
       const before = await snapshot();

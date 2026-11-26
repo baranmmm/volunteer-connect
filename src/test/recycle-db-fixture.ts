@@ -43,6 +43,6 @@ export async function initializeRecycleDatabase(db: PGlite, options: { until?: s
 }
 
 /** The privacy notice version the database requires (sign-up metadata must carry it). */
-export const PRIVACY_VERSION = "1.4";
+export const PRIVACY_VERSION = "1.5";
 export const FIXTURE_REGION = "f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1";
 export const FIXTURE_BRANCH = "f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2";

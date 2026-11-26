@@ -114,7 +114,7 @@ beforeAll(async () => {
     INSERT INTO auth.users(id, raw_user_meta_data) VALUES ${people
       .map(
         ([k, v]) =>
-          `('${v}', jsonb_build_object('full_name','Person ${k}','privacy_notice_version','1.4'))`,
+          `('${v}', jsonb_build_object('full_name','Person ${k}','privacy_notice_version','1.5'))`,
       )
       .join(",")};
     UPDATE profiles SET status='active';
