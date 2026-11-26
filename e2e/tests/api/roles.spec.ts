@@ -115,7 +115,7 @@ test.describe("National Coordinators", () => {
     const aal2 = await clientAsAal2(nc.email, nc.totpSecret!);
     expect((await aal2.rpc("is_nc")).data).toBe(true);
     const { data: dashboard } = await aal2.rpc("get_nc_dashboard");
-    expect(Object.keys(dashboard as object).sort()).toEqual(["attended_30d", "branches", "followers", "open_applications", "pending_requests", "regions", "registrations_30d", "upcoming_events", "volunteers"]);
+    expect(Object.keys(dashboard as object).sort()).toEqual(["attended_30d", "branches", "followers", "open_applications", "pending_requests", "regions", "registrations_30d", "trustees", "upcoming_events", "volunteers"]);
     const { data: seen } = await aal2.from("profiles").select("id").in("id", [volunteer.id, manager.id]);
     expect(seen).toEqual([{ id: manager.id }]);
     const tree = JSON.stringify((await aal2.rpc("get_regions_tree")).data);

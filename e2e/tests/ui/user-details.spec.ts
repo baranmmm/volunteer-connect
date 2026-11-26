@@ -26,14 +26,20 @@ test.describe("User details — regional director", () => {
 test.describe("User details — branch manager", () => {
   test.use({ storageState: storageFor("managerMedway") });
 
-  test("shows status actions but no role or branch actions", async ({ page, seed }) => {
+  test("shows status actions and the Volunteer/Trustee switch, but no other role or branch actions", async ({ page, seed }) => {
     const details = new UserDetailsPage(page);
     await details.goto(seed.users.volunteerMedway.id);
     await expect(details.name()).toHaveText(seed.users.volunteerMedway.fullName);
     await expect(details.deactivateButton()).toBeVisible();
     await expect(details.historyButton()).toBeVisible();
-    await expect(details.changeRoleButton()).toHaveCount(0);
     await expect(details.moveBranchButton()).toHaveCount(0);
+    // A Branch Manager switches a volunteer only between Volunteer and Trustee (docs/roles.md#trustees).
+    await details.changeRoleButton().click();
+    await expect(details.roleDialog().root).toBeVisible();
+    await page.getByTestId("change-role-select").click();
+    await expect(page.getByTestId("change-role-option-trustee")).toBeVisible();
+    await expect(page.getByTestId("change-role-option-branch_manager")).toHaveCount(0);
+    await expect(page.getByTestId("change-role-option-regional_director")).toHaveCount(0);
   });
 
   test("shows approve and reject for a pending user", async ({ page, freshUser }) => {
