@@ -11,6 +11,14 @@ import { APP_LOAD_TIMEOUT } from "../../pages/app";
 
 const banner = (page: Page) => page.getByTestId("install-app-banner");
 const sheet = (page: Page) => page.getByTestId("install-app-sheet");
+/**
+ * Waits until the open sheet holds the focus. Radix registers the dialog's Escape layer in an effect, before it moves
+ * the focus in: an Escape sent earlier would reach the "More" sheet underneath and close both.
+ */
+const sheetFocused = (page: Page) =>
+  expect
+    .poll(() => page.evaluate(() => !!document.activeElement?.closest('[data-testid="install-app-sheet"]')))
+    .toBe(true);
 
 /** Dispatches a synthetic install prompt; its prompt() calls are counted in window.__installPrompts. */
 async function offerInstallPrompt(page: Page, outcome: "accepted" | "dismissed" = "dismissed") {
@@ -144,6 +152,7 @@ test.describe("Install app", () => {
       await expect(sheet(page)).toHaveAttribute("role", "dialog");
       await expect(sheet(page).getByRole("img", { name: "Share icon" })).toBeVisible();
       await expect(sheet(page).getByTestId("install-app-steps").getByRole("listitem")).toHaveCount(3);
+      await sheetFocused(page);
       await page.keyboard.press("Escape");
       await expect(sheet(page)).toBeHidden();
       await expect(button).toBeFocused();
@@ -152,6 +161,7 @@ test.describe("Install app", () => {
       const item = await navInstall(page, true);
       await item.click();
       await expect(sheet(page)).toHaveAttribute("data-variant", "ios-safari");
+      await sheetFocused(page);
       await page.keyboard.press("Escape");
       await expect(sheet(page)).toBeHidden();
       await expect(item).toBeFocused();
