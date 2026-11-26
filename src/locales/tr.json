@@ -2201,5 +2201,23 @@
       "description": "Seçili etkinliklerin haritası ve zaman çizelgesi. Escape ile kapanır.",
       "close": "Haritayı kapat"
     }
+  },
+  "eventsStory": {
+    "title": "İngiltere ve Galler'deki etkinliklerimiz",
+    "intro": "Geçen yıldan bu yana ve yaklaşan etkinliklerimiz arasında gezinmek için kaydırın. Oynat'a basın, ok tuşlarını kullanın ya da zaman çizelgesinde bir nokta seçin.",
+    "introStatic": "Haritada tüm şubelerimiz; geçen yılki ve yaklaşan etkinliklerimiz aşağıdaki listede. Etkinliğini görmek için bir şubenin üzerine gelin ya da odaklanın.",
+    "skip": "Haritayı geç, etkinlik listesine git",
+    "mapLabel": "İngiltere ve Galler'deki şubelerimizin haritası",
+    "past": "Geçmiş etkinlik",
+    "upcoming": "Yaklaşan",
+    "regionWide": "{{region}} bölgesi",
+    "timeline": "Etkinlik zaman çizelgesi",
+    "today": "Bugün",
+    "position": "Etkinlik {{current}} / {{total}}",
+    "empty": "Haritada gösterilecek etkinlik henüz yok.",
+    "listToggle_one": "Haritadaki {{count}} etkinlik, liste olarak",
+    "listToggle_other": "Haritadaki {{count}} etkinlik, liste olarak",
+    "listLabel": "Yaklaşan etkinlikler",
+    "mapKeys": "Yukarı ve aşağı oklar şubeler arasında kuzeyden güneye gezinir ve her şubenin etkinliğini gösterir; Enter o etkinliğe gider. Sol ve sağ oklar etkinlikler arasında ilerler."
   }
 }

@@ -2201,5 +2201,23 @@
       "description": "The map of the selected events with the timeline. Escape closes it.",
       "close": "Close the map"
     }
+  },
+  "eventsStory": {
+    "title": "Our events across England and Wales",
+    "intro": "Scroll to travel through our events, from the past year to the next ones. Press Play, use the arrow keys, or pick a point on the timeline.",
+    "introStatic": "Every branch on the map, with our events of the past year and the coming ones in the list below. Point at or focus a branch to see its event.",
+    "skip": "Skip the map, go to the events list",
+    "mapLabel": "Map of our branches in England and Wales",
+    "past": "Past event",
+    "upcoming": "Upcoming",
+    "regionWide": "{{region}} region",
+    "timeline": "Event timeline",
+    "today": "Today",
+    "position": "Event {{current}} of {{total}}",
+    "empty": "No events to show on the map yet.",
+    "listToggle_one": "{{count}} event on the map, as a list",
+    "listToggle_other": "{{count}} events on the map, as a list",
+    "listLabel": "Coming events",
+    "mapKeys": "Up and down arrows move between the branches, from north to south, and show each branch's event; Enter goes to that event. Left and right arrows move through the events."
   }
 }
