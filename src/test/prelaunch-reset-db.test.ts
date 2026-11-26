@@ -130,7 +130,7 @@ describe(
         // Runs before the auth.* stubs exist: the no-op path reads only auth.users and public tables, so the script is
         // safe as a migration in the PGlite fixture too. An undotted NC (like the e2e seed's) is not keep data.
         await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES
-        ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.3'));
+        ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.4'));
         UPDATE public.user_roles SET role = 'national_coordinator' WHERE user_id = '${id(90)}';
         UPDATE public.profiles SET status = 'active' WHERE id = '${id(90)}';`);
         const before = await snapshot();
@@ -186,15 +186,17 @@ describe("the production-like database", { timeout: 30000 }, () => {
     await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
       INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}'),
         ('${ids.bGone}','Closed','${ids.region}');
-      ${people.map((p) => `INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${p}', '${email[p]}', jsonb_build_object('full_name','Person ${p.slice(0, 2)}','privacy_notice_version','1.3','branch_id','${ids.b1}'));`).join("\n")}
+      ${people.map((p) => `INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${p}', '${email[p]}', jsonb_build_object('full_name','Person ${p.slice(0, 2)}','privacy_notice_version','1.4','branch_id','${ids.b1}'));`).join("\n")}
       INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${ids.fol}', 'follower@x.test',
-        jsonb_build_object('full_name','Follower','privacy_notice_version','1.3','branch_id','${ids.b1}','follower',true,
+        jsonb_build_object('full_name','Follower','privacy_notice_version','1.4','branch_id','${ids.b1}','follower',true,
           'photo_consent',true,'updates_email_consent',true));
       UPDATE profiles SET status='active' WHERE id <> '${ids.pend}' AND id <> '${ids.fol}';
       UPDATE profiles SET branch_id=NULL WHERE id IN ('${ids.nc}','${ids.nc2}','${ids.rd}');
       UPDATE user_roles SET role='national_coordinator' WHERE user_id IN ('${ids.nc}','${ids.nc2}');
       UPDATE user_roles SET role='regional_director', region_id='${ids.region}' WHERE user_id='${ids.rd}';
       UPDATE user_roles SET role='branch_manager' WHERE user_id='${ids.bm}';
+      -- A branch trustee (20261210090000): deleted like every other account.
+      UPDATE user_roles SET role='trustee' WHERE user_id='${ids.vol2}';
       INSERT INTO user_followed_branches(user_id, branch_id) VALUES ('${ids.nc}','${ids.b2}');
       INSERT INTO notification_preferences(user_id) VALUES ('${ids.nc}'), ('${ids.vol}');
       INSERT INTO consent_preferences(user_id) VALUES ('${ids.nc}') ON CONFLICT DO NOTHING;
@@ -532,7 +534,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
   it("aborts with nothing changed when a second dotted NC exists", () =>
     tx(async () => {
       await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${id(30)}', 'other.nc@x.test',
-          jsonb_build_object('privacy_notice_version','1.3'));
+          jsonb_build_object('privacy_notice_version','1.4'));
         UPDATE user_roles SET role='national_coordinator' WHERE user_id='${id(30)}';
         UPDATE profiles SET status='active' WHERE id='${id(30)}';`);
       const before = await snapshot();

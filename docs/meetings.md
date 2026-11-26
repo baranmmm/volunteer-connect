@@ -35,6 +35,11 @@ Meetings never appear on the public `/events` pages or the ICS feed.
 
 ## Who can do what
 
+Trustees (`docs/roles.md#trustees`) see meetings like volunteers (created by them, which they no longer edit, or
+invited) and read the agenda, decisions, files and invitees; they create and edit nothing. Only the managers of the
+meeting's scope (the branch's Branch Manager, the region's Regional Director) invite them (`meeting_invitee_ok`, also
+for a series edit); volunteers' invitee pickers leave them out. Trustees send meeting requests like volunteers.
+
 | | Volunteer | Branch Manager | Regional Director | National Coordinator (MFA) |
 |---|---|---|---|---|
 | Create | In their branch | In their branch | In their region, or a branch in it | National |
