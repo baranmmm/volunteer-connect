@@ -33,7 +33,7 @@ SECURITY DEFINER functions; the menus and screens only reflect it.
 | Tasks: edit | — | Tasks they created; status of tasks assigned to them | Tasks of own branch; status when assigned | Tasks in the region | National tasks |
 | Tasks: archive / notes | — | Archive done tasks and write notes on tasks assigned to them or they created; edit/delete own notes; @mention people who can see the task | Same, plus tasks of own branch | Same, plus tasks in the region | Same, for national tasks |
 | Task / meeting requests | — | To own BM or RD | To own RD; review those sent to them | To an NC; review those sent to them | Review those sent to them |
-| Meetings: see | — | Created by them or invited | Same + meetings of own branch | Same + meetings in the region | Same + national meetings |
+| Meetings: see | — | Created by them or invited (trustees: every meeting of their branch, read only) | Same + meetings of own branch | Same + meetings in the region | Same + national meetings |
 | Meetings: create / invite (single or recurring) | — | Own branch; branch members | Own branch; branch members and the RD | Region or a branch in it; people in the region | National; RDs, BMs and NCs only |
 | Media, Training | Hidden and refused | Yes | Yes | Yes | Yes |
 | Requests (`/requests`) | "My requests" (volunteer application) | "My requests" | "My requests" and "Waiting for my approval": volunteer applications, pending sign-ups, account deletion requests, event, task and meeting requests of own branch | Same, for the region | "Waiting for my approval" only: task and meeting requests sent to them |
@@ -51,7 +51,8 @@ They see no online links, attendees, emails, creators, or files other than the f
 
 ## Trustees
 
-Migrations `20261210090000_app_role_trustee.sql` (the enum value) and `20261210090100_trustee_role.sql` (the rules).
+Migrations `20261210090000_app_role_trustee.sql` (the enum value), `20261210090100_trustee_role.sql` (the rules) and
+`20261210090300_trustee_branch_meetings.sql` (every branch meeting readable).
 A trustee is a member of their branch (`is_member`, `is_branch_member`), so every read rule of a volunteer of the
 branch applies; `is_trustee()` takes away every write.
 
@@ -59,7 +60,7 @@ branch applies; `is_trustee()` takes away every write.
 |---|---|
 | Becoming one | Sign-up is unchanged (people apply as volunteers). The reviewer (the branch's BM or the region's RD) chooses Volunteer or Trustee on approval (`approve_volunteer_application(p_id, p_role)`, default volunteer; audited `follower → trustee`). |
 | Switching | The branch's BM switches a member of the branch between Volunteer and Trustee on the user page (`set_user_role`, audited `role_change`). RDs may also set Trustee (Volunteer, Trustee or BM) within their region; NCs where they already change roles. |
-| See | Same as a volunteer of the branch: calendar and events (members events of the branch and region, national), every branch task and task group, linked tasks, meetings they created or are invited to (agenda, decisions, files, invitees), registrant names they are allowed to see. |
+| See | Same as a volunteer of the branch: calendar and events (members events of the branch and region, national), every branch task and task group, linked tasks, registrant names they are allowed to see. Meetings: every meeting of their own branch, read only (agenda, decisions, files, invitees, calendar entry; `20261210090300_trustee_branch_meetings.sql`); region and national meetings only when created or invited, as for volunteers. |
 | Create / edit | Nothing: no events, tasks, "@all" groups, meetings, agenda items, decisions, files or invitees (`can_create_task`, `can_create_meeting`, `can_edit_task`, `can_edit_task_group`, `can_edit_meeting` refuse them, and with them every RPC and the meeting-files Storage policies). A volunteer who becomes a trustee loses edit rights on what they created. |
 | Own tasks | Change the status and write notes (edit/delete their own notes); personal reminders and the mute switch. Archiving is refused (`can_archive_task`, `task_json.can_archive`). |
 | Assigned by | Only the branch's Branch Manager (`task_assignee_ok`). Volunteers and Regional Directors cannot assign a trustee (an RD editing a task keeps a trustee assigned earlier). "@all" groups, from anyone, never include trustees and send them nothing; a trustee cannot be added to a group later. |

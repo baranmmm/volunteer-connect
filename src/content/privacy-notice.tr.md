@@ -49,7 +49,7 @@ Görevleri, toplantıları ve bildirimleri şubenizde ve bölgenizdeki gönüll�
 | Bölgenizin Bölge Direktörleri | Aynı bilgiler, bölgelerindeki tüm şubeler için |
 | Ulusal Koordinatörler | Gönüllüler ve mütevelliler için yalnızca sayılar; şube ve bölge yöneticilerinin bilgileri |
 | Şubenizin üyeleri | Kime atandıkları ve üzerlerindeki notlar dahil şube görevleri |
-| Şubenizin mütevellileri | Şubenizin faaliyetleri: etkinlikleri, şube görevleri (kime atandıkları ve üzerlerindeki notlar dahil), davet edildikleri toplantılar ile bunların gündemi, kararları ve dosyaları ve burada görünen şube üyelerinin adları. Mütevelliler bunları görebilir ancak değiştiremez. |
+| Şubenizin mütevellileri | Şubenizin faaliyetleri: etkinlikleri, şube görevleri (kime atandıkları ve üzerlerindeki notlar dahil), şubenin toplantıları ile bunların gündemi, kararları ve dosyaları ve burada görünen şube üyelerinin adları. Mütevelliler bunları görebilir ancak değiştiremez. |
 | Bir toplantıya davet edilenler, düzenleyeni ve şubesinin ya da bölgesinin yöneticileri | O toplantı (takvimde de), davetlileri, gündemi, kararları ve dosyaları. Başka kimse göremez. |
 | Ulusal Koordinatörler | Yalnızca ulusal görevler ve toplantılar; gönüllülerin adlarını asla görmezler |
 | Merkezde başka hiç kimse | E-posta adresiniz ve telefon numaranız |

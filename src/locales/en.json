@@ -308,7 +308,7 @@
     "roleExplanation": {
       "follower": "You follow {{branch}}: you hear about its events and can attend them.",
       "volunteer": "You give your time to {{branch}}: you take on tasks, join meetings and help run events.",
-      "trustee": "You are a trustee of {{branch}}: you follow its events, tasks and the meetings you are invited to, without changing them."
+      "trustee": "You are a trustee of {{branch}}: you follow its events, tasks and the branch's meetings, without changing them."
     }
   },
   "history": {

@@ -49,7 +49,7 @@ Two things are optional and are only used with your consent, which you can withd
 | Regional Directors of your region | The same, for all branches in their region |
 | National Coordinators | Numbers only for volunteers and trustees; details of branch and regional managers |
 | Members of your branch | Branch tasks, including who they are assigned to and the notes on them |
-| Trustees of your branch | Your branch's activity: its events, branch tasks (including who they are assigned to and the notes on them), the meetings they are invited to with their agenda, decisions and files, and the names of the branch members shown there. Trustees can see this but cannot change it. |
+| Trustees of your branch | Your branch's activity: its events, branch tasks (including who they are assigned to and the notes on them), the branch's meetings with their agenda, decisions and files, and the names of the branch members shown there. Trustees can see this but cannot change it. |
 | The people invited to a meeting, its organiser and the managers of its branch or region | That meeting (also in the calendar), its invitees, agenda, decisions and files. Nobody else sees it. |
 | National Coordinators | National tasks and meetings only; they never see volunteers' names |
 | Nobody else in the Hub | Your email address and phone number |

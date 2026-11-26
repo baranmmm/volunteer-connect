@@ -106,6 +106,28 @@ test.describe("trustees", () => {
     for (const id of ["meeting-edit", "meeting-cancel", "meeting-delete", "meeting-agenda-add", "meeting-agenda-edit", "meeting-decision-add", "meeting-decision-create-task", "meeting-file-upload"])
       await expect(page.getByTestId(id), id).toHaveCount(0);
 
+    // A branch meeting the trustee is not invited to: listed and readable, still read only.
+    const uninvited = await createMeetingAs(manager, {
+      scope: "branch",
+      branch_id: branch,
+      title: meetingTitle("managers only"),
+      starts_at: inDays(7),
+      ends_at: inDays(7, 1),
+      invitee_ids: [],
+    });
+    const uninvitedItem = (await workRpc(manager, "add_agenda_item", { p_meeting: uninvited, p_title: "Plans", p_notes: "Draft" })).data as string;
+    await page.goto("/meetings");
+    await expect(page.locator(`[data-testid="meeting-card"][data-meeting-id="${uninvited}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await page.goto(`/meetings/${uninvited}`);
+    await expect(page.getByTestId("meeting-detail")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page.locator(`[data-testid="meeting-agenda-item"][data-item-id="${uninvitedItem}"]`)).toBeVisible();
+    for (const id of ["meeting-edit", "meeting-cancel", "meeting-delete", "meeting-agenda-add", "meeting-file-upload"])
+      await expect(page.getByTestId(id), id).toHaveCount(0);
+    // A volunteer of the branch still does not see it.
+    const asVolunteer = await pageAs(volunteer);
+    await asVolunteer.goto(`/meetings/${uninvited}`);
+    await expect(asVolunteer.getByTestId("meeting-not-found")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+
     await openTask(page, other);
     await expect(page.getByTestId("tasks-new")).toHaveCount(0);
     for (const id of ["task-panel-status", "task-panel-edit", "task-panel-delete", "task-note-input"])

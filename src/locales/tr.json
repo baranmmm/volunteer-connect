@@ -308,7 +308,7 @@
     "roleExplanation": {
       "follower": "{{branch}} şubesini takip ediyorsun: etkinliklerinden haberdar olur, onlara katılabilirsin.",
       "volunteer": "{{branch}} şubesi için zamanını veriyorsun: görev alıyor, toplantılara katılıyor, etkinliklerin yürütülmesine yardım ediyorsun.",
-      "trustee": "{{branch}} şubesinin mütevellisisin: etkinliklerini, görevlerini ve davet edildiğin toplantıları takip ediyorsun, ancak değiştirmiyorsun."
+      "trustee": "{{branch}} şubesinin mütevellisisin: etkinliklerini, görevlerini ve şubenin toplantılarını takip ediyorsun, ancak değiştirmiyorsun."
     }
   },
   "history": {

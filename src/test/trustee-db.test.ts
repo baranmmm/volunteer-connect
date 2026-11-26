@@ -208,14 +208,99 @@ describe("a trustee reads what a volunteer of the branch reads", () => {
       });
     }));
 
-  it("a meeting they are not invited to stays hidden, as for volunteers", () =>
+  it("an uninvited branch meeting: hidden from a volunteer, readable by the branch's trustee", () =>
     tx(async () => {
       await as(ids.bm1);
       const meeting = await createMeeting({ invitee_ids: [] });
-      for (const user of [ids.vol1, ids.tr1]) {
+      await as(ids.vol1);
+      expect(await one("SELECT public.get_meeting($1) v", [meeting])).toBeNull();
+      await as(ids.tr1);
+      expect(await one("SELECT public.get_meeting($1) v", [meeting])).not.toBeNull();
+    }));
+});
+
+describe("a trustee sees every meeting of their branch, read only (20261210090300)", () => {
+  it("an uninvited branch meeting: readable by the branch's trustee, not by a volunteer or another branch's trustee", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const meeting = await createMeeting({ title: "Board only", invitee_ids: [ids.bm1] });
+      const item = await one<string>("SELECT public.add_agenda_item($1,'Budget','Notes') v", [
+        meeting,
+      ]);
+      const decision = await one<string>("SELECT public.add_meeting_decision($1,'Buy chairs') v", [
+        item,
+      ]);
+      await one("SELECT public.add_meeting_file($1,'pdf','plan.pdf') v", [meeting]);
+      await as(null);
+      const file = await one<string>("SELECT id v FROM meeting_files WHERE meeting_id=$1", [
+        meeting,
+      ]);
+      const entry = await one<string>("SELECT event_id v FROM meetings WHERE id=$1", [meeting]);
+      const reads = async (user: string) => {
         await as(user);
-        expect(await one("SELECT public.get_meeting($1) v", [meeting])).toBeNull();
-      }
+        return {
+          meeting: (await one<Row | null>("SELECT public.get_meeting($1) v", [meeting])) !== null,
+          listed: (await one<{ id: string }[]>("SELECT public.list_meetings('upcoming') v")).some(
+            (m) => m.id === meeting,
+          ),
+          rows: await q(
+            `SELECT (SELECT count(*)::int FROM meetings WHERE id=$1) meetings,
+                    (SELECT count(*)::int FROM meeting_agenda_items WHERE meeting_id=$1) items,
+                    (SELECT count(*)::int FROM meeting_decisions WHERE meeting_id=$1) decisions,
+                    (SELECT count(*)::int FROM meeting_files WHERE meeting_id=$1) files,
+                    (SELECT count(*)::int FROM meeting_invitees WHERE meeting_id=$1) invitees,
+                    (SELECT count(*)::int FROM events WHERE id=$2) calendar`,
+            [meeting, entry],
+          ),
+        };
+      };
+      expect(await reads(ids.tr1)).toEqual({
+        meeting: true,
+        listed: true,
+        rows: [{ meetings: 1, items: 1, decisions: 1, files: 1, invitees: 1, calendar: 1 }],
+      });
+      const none = {
+        meeting: false,
+        listed: false,
+        rows: [{ meetings: 0, items: 0, decisions: 0, files: 0, invitees: 0, calendar: 0 }],
+      };
+      expect(await reads(ids.vol1)).toEqual(none);
+      expect(await reads(ids.tr2)).toEqual(none);
+
+      // Read only: every write is refused.
+      await as(ids.tr1);
+      expect(
+        (await one<{ can_edit: boolean }>("SELECT public.get_meeting($1) v", [meeting])).can_edit,
+      ).toBe(false);
+      const refused: [string, unknown[]][] = [
+        ["SELECT public.update_meeting($1,$2::jsonb)", [meeting, json({ title: "Renamed" })]],
+        ["SELECT public.set_meeting_status($1,'cancelled')", [meeting]],
+        ["SELECT public.set_meeting_invitees($1,$2::jsonb)", [meeting, json([ids.bm1, ids.tr1])]],
+        ["SELECT public.delete_meeting($1)", [meeting]],
+        ["SELECT public.add_agenda_item($1,'More','x')", [meeting]],
+        ["SELECT public.update_agenda_item($1,'Renamed','x')", [item]],
+        ["SELECT public.add_meeting_decision($1,'Another')", [item]],
+        ["SELECT public.update_meeting_decision($1,'Changed')", [decision]],
+        ["SELECT public.delete_meeting_decision($1)", [decision]],
+        ["SELECT public.add_meeting_file($1,'pdf','x.pdf')", [meeting]],
+        ["SELECT public.delete_meeting_file($1)", [file]],
+        ["SELECT public.carry_over_agenda($1,$2::jsonb)", [meeting, json({ items: [item] })]],
+      ];
+      for (const [sql, params] of refused)
+        await fails(sql, params, /Not allowed|not allowed|cannot/);
+      expect(
+        await one("SELECT public.list_meeting_carry_over('branch',$1,NULL) v", [ids.b1]),
+      ).toEqual([]);
+    }));
+
+  it("region meetings stay as for volunteers (invited or created only)", () =>
+    tx(async () => {
+      await as(ids.rd);
+      const meeting = await one<string>("SELECT public.create_meeting($1::jsonb) v", [
+        meetingIn({ scope: "region", branch_id: null, region_id: ids.region, invitee_ids: [] }),
+      ]);
+      await as(ids.tr1);
+      expect(await one("SELECT public.get_meeting($1) v", [meeting])).toBeNull();
     }));
 });
 
