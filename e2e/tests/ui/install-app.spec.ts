@@ -12,8 +12,7 @@ import { APP_LOAD_TIMEOUT } from "../../pages/app";
 const banner = (page: Page) => page.getByTestId("install-app-banner");
 const sheet = (page: Page) => page.getByTestId("install-app-sheet");
 /**
- * Waits until the open sheet holds the focus. Radix registers the dialog's Escape layer in an effect, before it moves
- * the focus in: an Escape sent earlier would reach the "More" sheet underneath and close both.
+ * Waits until the open sheet holds the focus (Radix moves it in from an effect once the dialog is ready for Escape).
  */
 const sheetFocused = (page: Page) =>
   expect
@@ -157,14 +156,15 @@ test.describe("Install app", () => {
       await expect(sheet(page)).toBeHidden();
       await expect(button).toBeFocused();
 
-      // The menu item (in the "More" sheet) opens the same steps; focus returns to it.
+      // The menu item in the "More" sheet: that sheet closes, the steps open on their own; focus returns to "More".
       const item = await navInstall(page, true);
       await item.click();
+      await expect(page.getByTestId("mobile-nav-more-sheet")).toBeHidden();
       await expect(sheet(page)).toHaveAttribute("data-variant", "ios-safari");
       await sheetFocused(page);
       await page.keyboard.press("Escape");
       await expect(sheet(page)).toBeHidden();
-      await expect(item).toBeFocused();
+      await expect(page.getByTestId("mobile-nav-more")).toBeFocused();
     } finally {
       await context.close();
     }

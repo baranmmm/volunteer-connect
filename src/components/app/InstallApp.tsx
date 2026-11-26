@@ -80,11 +80,22 @@ export function InstallAppBanner() {
   );
 }
 
-/** The permanent menu item (`nav-install-app`), shown whenever this browser can install the app. */
-export function InstallAppNavItem({ className }: { className: string }) {
+/**
+ * The permanent menu item (`nav-install-app`), shown whenever this browser can install the app. Inside another sheet
+ * (the mobile "More" sheet) pass `onOpenSheet`: that sheet closes and its owner shows `InstallAppSheet` instead, so two
+ * dialogs never stack.
+ */
+export function InstallAppNavItem({
+  className,
+  onOpenSheet,
+}: {
+  className: string;
+  onOpenSheet?: () => void;
+}) {
   const { t } = useTranslation();
   const { install, onClick, triggerRef, sheet } = useInstallTrigger();
   if (!install.showMenuItem) return null;
+  const hosted = !!onOpenSheet && install.mode !== "prompt";
   return (
     <>
       <button
@@ -92,13 +103,35 @@ export function InstallAppNavItem({ className }: { className: string }) {
         type="button"
         data-testid="nav-install-app"
         data-mode={install.mode ?? undefined}
-        onClick={onClick}
+        onClick={hosted ? onOpenSheet : onClick}
         className={className}
       >
         <Download className="h-5 w-5" aria-hidden /> {t("installApp.button")}
       </button>
-      {sheet}
+      {!hosted && sheet}
     </>
+  );
+}
+
+/** The instruction sheet for this browser, opened by its owner (see `InstallAppNavItem`'s `onOpenSheet`). */
+export function InstallAppSheet({
+  open,
+  onOpenChange,
+  returnFocus,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  returnFocus: () => void;
+}) {
+  const { mode } = useInstallApp();
+  if (!mode || mode === "prompt") return null;
+  return (
+    <InstallSheet
+      variant={mode}
+      open={open}
+      onOpenChange={onOpenChange}
+      returnFocus={returnFocus}
+    />
   );
 }
 
