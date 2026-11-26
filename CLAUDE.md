@@ -3,6 +3,7 @@
 # Dialogue Society Volunteer Hub
 
 Bilingual (EN/TR) volunteer hub for Dialogue Society branches, packaged as a PWA/native app.
+Published app: **https://ds-volunteer.lovable.app** (Lovable). Pre-launch status and settings: `docs/prelaunch.md`.
 TanStack Start + React 19 + Supabase. Public signed-out routes server-render for performance and link previews ("/",
 "/events", "/events/$id", "/sign-in", "/join", "/privacy/attendees"); everything signed-in stays client-only
 (`ssr: false`). Approved exception: the server never knows the session (localStorage), so server-rendered pages show
@@ -67,7 +68,9 @@ automatically.
   branch; E2E runs a chosen suite on `local` (default) or `qa` (migrates QA first).
 - `e2e-local.yml` (reusable): each of three shards starts its own local Supabase stack, then one merged report.
 - `task-reminders.yml` and `cleanup-deleted-events.yml` stay scheduled: they send the emails and run the retention
-  cleanup. Do not change their schedules without asking.
+  cleanup. Do not change their schedules without asking. They call the published app at the GitHub repository
+  **variable** `APP_URL` (`https://ds-volunteer.lovable.app`) and fail with a clear message when it is empty; never
+  hardcode the app URL in a workflow.
 - `cancel-superseded.yml` is switched off (manual trigger only) and can be deleted.
 - QA runs on a small instance with a limited disk IO budget: add nothing that runs on QA regularly.
 - Branch protection / required checks are not available on this private repository's plan, so nothing blocks

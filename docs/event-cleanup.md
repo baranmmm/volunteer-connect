@@ -8,7 +8,7 @@
 
 Production endpoint:
 
-`https://project--d60ecf19-db1a-4e44-b08c-c48c46fd1eaa.lovable.app/api/public/cleanup-deleted-events`
+`${APP_URL}/api/public/cleanup-deleted-events`, where `APP_URL` is the GitHub repository variable holding the published app URL (`https://ds-volunteer.lovable.app`); the workflow fails with a clear message when it is empty
 
 The workflow `.github/workflows/cleanup-deleted-events.yml` runs daily at **03:30 UTC** and also supports **Run workflow**. It sends a POST with `Authorization: Bearer <secret>`. Missing/incorrect authorization returns an empty 401. Do not print the secret or use shell tracing.
 
