@@ -6,7 +6,8 @@ import { createFileRoute } from "@tanstack/react-router";
 // person and London day (none when nothing is new; `digests` counts those emails), run_task_reminders nothing before
 // 09:00, enqueue_event_reminders queues one reminder per registration two days before the start. Each run then sends
 // what the daily email limit allows (transactional first, then notice emails, reminders, announcements and the daily
-// summaries last); the later runs drain the rest, and anything over the limit continues the next day. Only numbers are returned.
+// summaries last); the later runs drain the rest, and anything over the limit continues the next day. Then it sends the
+// push notifications still waiting (docs/push.md). Only numbers are returned.
 export const Route = createFileRoute("/api/public/task-reminders")({
   ssr: false,
   server: {
@@ -31,6 +32,9 @@ export const Route = createFileRoute("/api/public/task-reminders")({
           if (events.error) throw new Error("Event reminders unavailable");
           const { flushOutbox } = await import("@/lib/email/outbox.server");
           const emails = await flushOutbox({ maxPriority: 5, max: 300 });
+          // Pushes a member action could not send at once (the scheduled backstop).
+          const { flushPush } = await import("@/lib/push/sender.server");
+          const pushes = await flushPush({ max: 300, timeBudgetMs: 15000 });
           return Response.json(
             {
               reminders: result.data ?? 0,
@@ -39,6 +43,8 @@ export const Route = createFileRoute("/api/public/task-reminders")({
               emails_sent: emails.sent,
               emails_skipped: emails.skipped,
               emails_failed: emails.failed,
+              pushes_sent: pushes.sent,
+              pushes_failed: pushes.failed,
             },
             { headers: { "Cache-Control": "no-store" } },
           );
@@ -51,6 +57,8 @@ export const Route = createFileRoute("/api/public/task-reminders")({
               emails_sent: 0,
               emails_skipped: 0,
               emails_failed: 0,
+              pushes_sent: 0,
+              pushes_failed: 0,
             },
             { status: 500, headers: { "Cache-Control": "no-store" } },
           );

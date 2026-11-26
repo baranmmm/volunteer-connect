@@ -30,6 +30,7 @@ import { HappeningNowBadge } from "@/components/events/HappeningNowBadge";
 import { MyRegistrationsCard } from "@/components/events/MyRegistrations";
 import { RequestNotices, WaitingForYouCard } from "@/components/requests/RequestDashboard";
 import { InstallAppBanner } from "@/components/app/InstallApp";
+import { PushPromptCard } from "@/components/app/PushNotifications";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => pageHead("Dashboard", "Your volunteer dashboard."),
@@ -69,6 +70,9 @@ function Dashboard() {
   const welcome = follower && !!profile && !profile.welcome_seen_at;
   return (
     <div className="space-y-8">
+      {/* Installed app: "Turn on notifications" (members only; followers get no notices). Outside it: the install
+          banner. Never both: one needs the installed app, the other a browser tab. */}
+      {!follower && <PushPromptCard />}
       <InstallAppBanner />
       {welcome ? (
         <WelcomeScreen />

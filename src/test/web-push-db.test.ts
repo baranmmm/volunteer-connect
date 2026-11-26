@@ -368,10 +368,12 @@ describe("push settings and queueing", () => {
         language: string;
       };
       const claimed = (await db.query<Claimed>("SELECT * FROM public.claim_push_batch(10)")).rows;
-      expect(claimed.map((c) => [c.endpoint, c.kind, c.notification_id, c.p256dh, c.auth])).toEqual([
-        ["https://push.example.test/a", "task_assigned", first, KEY, AUTH],
-        ["https://push.example.test/b", "task_assigned", first, KEY, AUTH],
-      ]);
+      expect(claimed.map((c) => [c.endpoint, c.kind, c.notification_id, c.p256dh, c.auth])).toEqual(
+        [
+          ["https://push.example.test/a", "task_assigned", first, KEY, AUTH],
+          ["https://push.example.test/b", "task_assigned", first, KEY, AUTH],
+        ],
+      );
       expect(claimed[0]).toMatchObject({ link: "/tasks", language: "en" });
       expect(
         await one<string[]>(
@@ -403,9 +405,10 @@ describe("push settings and queueing", () => {
       expect(again).toHaveLength(1);
       await db.query("SELECT public.finish_push($1, 'gone')", [again[0]!.id]);
       expect(
-        await one<string[]>("SELECT array_agg(endpoint) v FROM push_subscriptions WHERE user_id=$1", [
-          ids.vol,
-        ]),
+        await one<string[]>(
+          "SELECT array_agg(endpoint) v FROM push_subscriptions WHERE user_id=$1",
+          [ids.vol],
+        ),
       ).toEqual(["https://push.example.test/a"]);
     }));
 

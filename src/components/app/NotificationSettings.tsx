@@ -11,6 +11,8 @@ import {
   setNotificationEmail,
   setNotificationSetting,
 } from "@/lib/notifications.functions";
+import { setNotificationPush } from "@/lib/push.functions";
+import { PushDevicePanel } from "@/components/app/PushNotifications";
 import { useWorkMember } from "@/lib/use-work-notices";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -18,11 +20,12 @@ import { Label } from "@/components/ui/label";
 type ChangeableType = "task_status" | "task_note" | "task_reminder" | "meeting" | "request_decided";
 
 /**
- * Profile > Notifications (volunteers and up): per type "In the app" on/off and "Email" on/off. Every notice that is on
+ * Profile > Notifications (volunteers and up): push on this device (PushDevicePanel), then per type "In the app",
+ * "Email" and "Push" on/off (push defaults: on for assignments, requests waiting and meetings). Every notice that is on
  * appears in the app at once. Email timing is fixed per type (shown under each row): assignments, requests waiting for
  * review, meeting invitations and task reminders at once, everything else in the 08:00 daily summary. Assignments,
  * mentions and requests waiting for review are always on in the app (disabled switch); their email can be turned off.
- * The database checks every change (set_notification_setting, set_notification_email).
+ * The database checks every change (set_notification_setting, set_notification_email, set_notification_push).
  */
 export function NotificationSettings() {
   const { t } = useTranslation();
@@ -31,7 +34,8 @@ export function NotificationSettings() {
   const qc = useQueryClient();
   const fetch = useServerFn(getNotificationSettings),
     saveInApp = useServerFn(setNotificationSetting),
-    saveEmail = useServerFn(setNotificationEmail);
+    saveEmail = useServerFn(setNotificationEmail),
+    savePush = useServerFn(setNotificationPush);
   const key = ["notification-settings", session?.user.id];
   const settings = useQuery({
     queryKey: key,
@@ -43,7 +47,7 @@ export function NotificationSettings() {
 
   async function change(
     setting: NotificationSetting,
-    next: { enabled?: boolean; email?: boolean },
+    next: { enabled?: boolean; email?: boolean; push?: boolean },
   ) {
     if (next.enabled !== undefined && setting.locked) return;
     const updated = { ...setting, ...next };
@@ -53,6 +57,8 @@ export function NotificationSettings() {
         await saveInApp({ data: { type: setting.type as ChangeableType, enabled: next.enabled } });
       else if (next.email !== undefined)
         await saveEmail({ data: { type: setting.type, on: next.email } });
+      else if (next.push !== undefined)
+        await savePush({ data: { type: setting.type, on: next.push } });
       qc.setQueryData<Settings>(key, (old) =>
         old
           ? {
@@ -86,6 +92,7 @@ export function NotificationSettings() {
         </h2>
         <p className="text-sm text-muted-foreground">{t("notifications.settings.intro")}</p>
       </div>
+      <PushDevicePanel />
       {settings.isLoading ? (
         <p className="text-muted-foreground">{t("common.loading")}</p>
       ) : settings.isError || !data ? (
@@ -115,7 +122,7 @@ function TypeRow({
 }: {
   setting: NotificationSetting;
   busy: boolean;
-  onChange: (next: { enabled?: boolean; email?: boolean }) => void;
+  onChange: (next: { enabled?: boolean; email?: boolean; push?: boolean }) => void;
 }) {
   const { t } = useTranslation();
   const id = `profile-notification-${s.type}`;
@@ -127,6 +134,7 @@ function TypeRow({
       data-locked={s.locked ? "true" : "false"}
       data-enabled={s.enabled ? "true" : "false"}
       data-email={s.email ? "true" : "false"}
+      data-push={s.push ? "true" : "false"}
       data-email-timing={s.email_timing}
       className="space-y-2 py-3"
     >
@@ -165,6 +173,19 @@ function TypeRow({
           />
           <Label htmlFor={`${id}-email`} className="font-normal">
             {t("notifications.settings.email")}
+          </Label>
+        </div>
+        <div className="flex min-h-11 items-center gap-3">
+          <Switch
+            id={`${id}-push`}
+            data-testid="profile-notification-push"
+            checked={s.push && s.enabled}
+            disabled={!s.enabled || busy}
+            aria-label={t("push.settings.pushOn", { label })}
+            onCheckedChange={(push) => onChange({ push })}
+          />
+          <Label htmlFor={`${id}-push`} className="font-normal">
+            {t("push.settings.push")}
           </Label>
         </div>
       </div>

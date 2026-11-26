@@ -129,6 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     const supabase = await loadSupabase();
+    // This browser stops receiving the member's push notifications (shared devices). Loaded only here, so public
+    // pages never load the push code; bounded and never throws.
+    await import("@/lib/push/client").then((m) => m.forgetPushDevice()).catch(() => undefined);
     try {
       const { error } = await supabase.auth.signOut();
       // If the server call failed, still drop the locally stored session.
