@@ -382,7 +382,7 @@ function TasksPage() {
             </select>
           </div>
           {!filters.archived && (
-            <div className="flex min-w-0 items-end">
+            <div className="col-span-2 flex min-w-0 items-end lg:col-span-1">
               <ArchiveDoneButton tasks={shown} testId="tasks-archive-done" />
             </div>
           )}
