@@ -11,14 +11,14 @@ import { dateLocale } from "@/lib/i18n";
 import { mapWhen } from "@/lib/events-map";
 import {
   clampStep,
-  framePosition,
-  mapFrame,
+  mapLayout,
   playStep,
   progressOfStep,
   stepAtProgress,
   startIndex,
   stepHeightVh,
   storySteps,
+  targetPosition,
   type BranchPoint,
   type StoryEvent,
 } from "@/lib/events-story";
@@ -74,7 +74,8 @@ export function EventsStory({
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
 
-  const frame = useMemo(() => mapFrame(UK_BOUNDS, branches), [branches]);
+  const layout = useMemo(() => mapLayout(UK_BOUNDS, branches), [branches]);
+  const ratio = layout.frame.w / layout.frame.h;
   const steps = useMemo(() => storySteps(events, branches, now), [events, branches, now]);
   const n = steps.length;
   // "Today": the next coming event (or the most recent past one). The story opens here and scrolling moves forward.
@@ -204,13 +205,12 @@ export function EventsStory({
     },
   };
 
-  const pos = shown
-    ? framePosition(frame, shown.target.point.latitude, shown.target.point.longitude)
-    : null;
+  const pos = shown ? targetPosition(layout, shown.target, branches) : null;
   const right = !pos || pos.left < 0.55;
   const overlayStyle: React.CSSProperties | undefined = pos
     ? {
-        top: `${Math.min(Math.max(pos.top * 100, 25), 75)}%`,
+        // The card (about 16rem tall, centred on the dot's height) stays inside the map box.
+        top: `clamp(8.5rem, ${pos.top * 100}%, calc(100% - 8.5rem))`,
         ...(right
           ? { left: `calc(${pos.left * 100}% + 18px)` }
           : { right: `calc(${(1 - pos.left) * 100}% + 18px)` }),
@@ -277,7 +277,7 @@ export function EventsStory({
             <div className="min-w-0">
               <p
                 data-testid="events-map-date"
-                className="text-3xl font-bold leading-tight tracking-tight sm:text-5xl"
+                className="text-2xl font-bold leading-tight tracking-tight min-[400px]:text-3xl sm:text-5xl"
               >
                 {shown ? monthYear(shown.day, i18n.language) : " "}
               </p>
@@ -300,14 +300,18 @@ export function EventsStory({
               </button>
             )}
           </div>
-          {/* Phones: the map is capped so the card and the timeline stay on screen below it. */}
+          {/* Phones: the map takes its own aspect ratio (no empty bands), capped by what the site header, the date, the
+              card and the timeline leave of the screen (24rem), so all of them fit in one viewport even at 568px.
+              Desktop: it fills the panel's height between the date and the timeline. */}
           <div
-            className="relative max-h-[50svh] min-h-0 flex-1 lg:max-h-none"
+            data-testid="events-map-area"
+            className="relative max-h-[min(50svh,calc(100svh-24rem))] min-h-0 w-full flex-none lg:max-h-none lg:flex-1 lg:[aspect-ratio:auto]"
+            style={{ aspectRatio: ratio.toFixed(4) }}
             {...pause}
             {...swipe}
           >
             <DotMap
-              frame={frame}
+              layout={layout}
               branches={branches}
               steps={steps}
               shown={shown}
