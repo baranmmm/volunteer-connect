@@ -404,6 +404,17 @@ describe("the production-like database", { timeout: 30000 }, () => {
         INSERT INTO storage.objects(bucket_id, name) VALUES ('media-library', '${ids.b1}/' || _ph || '.webp');
         INSERT INTO public.media_chapter_views(user_id, album_id) VALUES ('${ids.vol}', _al);
         INSERT INTO public.media_chapter_views(user_id, event_id) VALUES ('${ids.vol}', _ke), ('${ids.nc}', _ke);
+        -- Part 2 (20261217090000): stars on a library photo and on a KEPT imported photo (the star goes, the photo
+        -- stays), a download request for both, a nudge sent on a kept event.
+        INSERT INTO public.media_highlights(branch_id, library_photo_id, starred_by)
+          SELECT '${ids.b1}', id, '${ids.bm}' FROM public.media_photos WHERE album_id = _al;
+        INSERT INTO public.media_highlights(branch_id, event_media_id, starred_by)
+          SELECT '${ids.b1}', m.id, '${ids.bm}' FROM public.event_media m WHERE m.event_id = _ke LIMIT 1;
+        INSERT INTO public.media_download_requests(branch_id, requester_id, reason, status, expires_at, reviewer_id)
+        VALUES ('${ids.b1}', '${ids.vol}', 'For the newsletter', 'approved', now() + interval '1 day', '${ids.bm}') RETURNING id INTO _mr;
+        INSERT INTO public.media_download_items(request_id, library_photo_id) SELECT _mr, id FROM public.media_photos WHERE album_id = _al;
+        INSERT INTO public.media_download_items(request_id, event_media_id) SELECT _mr, m.id FROM public.event_media m WHERE m.event_id = _ke LIMIT 1;
+        INSERT INTO public.media_nudges_sent(event_id, user_id) VALUES (_ke, '${ids.vol}');
       END $$;`);
     // A task group ("@all") created through its RPC by the Branch Manager (tasks, assignees, notices).
     await as(ids.bm);

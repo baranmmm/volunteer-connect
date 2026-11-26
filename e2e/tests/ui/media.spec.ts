@@ -64,8 +64,8 @@ test.describe("Media", () => {
 
   test("a volunteer's upload request is approved in part: the photo shows, the deselected file is deleted", async ({ freshBranch, freshUser, pageAs }) => {
     const { branch, bm, vol } = await people(freshBranch, freshUser, "approve");
-    // A members-only event starting within the hour (upload targets include events up to a day ahead); never public.
-    const event = await createEventAs(bm.email, { title: `${EVENT_TITLE_PREFIX}media approve`, branchId: branch, status: "published", startInMinutes: 60 });
+    // A members-only event that started half an hour ago (only started events take photos); never public.
+    const event = await createEventAs(bm.email, { title: `${EVENT_TITLE_PREFIX}media approve`, branchId: branch, status: "published", startInMinutes: -30, durationMinutes: 180 });
     const volunteer = await pageAs(vol);
     await openMedia(volunteer);
     await openAdd(volunteer);

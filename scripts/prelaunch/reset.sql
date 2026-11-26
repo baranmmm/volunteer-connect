@@ -38,6 +38,8 @@
 --  10  meetings                      meetings.event_id is NO ACTION: must go before events
 --  11  meeting_series                meetings.series_id SET NULL: after meetings
 --  12  event_request_media, event_requests   event_requests.event_id SET NULL: before events
+--  12a media_download_items, media_download_requests, media_highlights (they reference media_photos and event_media,
+--      also of kept events), media_nudges_sent
 --  12b media_chapter_views, media_upload_files, media_upload_requests (album/event ids SET NULL), media_albums
 --      (CASCADE removes their photos), media_photos (the rest: photos of events, also of kept events; event_id SET
 --      NULL): all before events and accounts, so no SET NULL update runs on them
@@ -167,7 +169,12 @@ BEGIN
   -- 12 Event requests.
   DELETE FROM public.event_request_media; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' event_request_media=' || _n;
   DELETE FROM public.event_requests; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' event_requests=' || _n;
-  -- 12b Media library (members' albums and photos, upload requests, viewed markers): none of it is kept.
+  -- 12a-12b Media library (members' albums and photos, stars, download and upload requests, viewed markers, nudges):
+  -- none of it is kept (stars on kept imported photos go too; the photos stay).
+  DELETE FROM public.media_download_items; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_download_items=' || _n;
+  DELETE FROM public.media_download_requests; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_download_requests=' || _n;
+  DELETE FROM public.media_highlights; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_highlights=' || _n;
+  DELETE FROM public.media_nudges_sent; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_nudges_sent=' || _n;
   DELETE FROM public.media_chapter_views; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_chapter_views=' || _n;
   DELETE FROM public.media_upload_files; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_upload_files=' || _n;
   DELETE FROM public.media_upload_requests; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' media_upload_requests=' || _n;

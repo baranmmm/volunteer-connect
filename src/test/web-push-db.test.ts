@@ -260,6 +260,7 @@ describe("push settings and queueing", () => {
         task_reminder: false,
         meeting: true,
         request_decided: false,
+        media: true,
       });
       // Any type can be switched, locked ones included; the other keys stay.
       expect(await one("SELECT public.set_notification_push('task_assigned', false) v")).toEqual({
