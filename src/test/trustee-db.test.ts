@@ -4,8 +4,8 @@ import { initializeRecycleDatabase, PRIVACY_VERSION } from "./recycle-db-fixture
 
 // The trustee role (20261210090000_app_role_trustee.sql, 20261210090100_trustee_role.sql), against every migration in
 // PGlite: trustees read what a volunteer of their branch reads, write nothing (tasks, groups, meetings, agenda,
-// decisions, files, events, others' tasks, assignment, archive), change only the status of and notes on their own
-// tasks, are assigned only by the branch's Branch Manager, are never "@all" members, send requests like volunteers,
+// decisions, files, events, others' tasks, assignment, archive), change only the status of their own tasks, add notes
+// to every readable task of their branch (20261211090000_trustee_task_notes.sql), are assigned only by the branch's Branch Manager, are never "@all" members, send requests like volunteers,
 // are approved as trustees or switched by the Branch Manager (audited), and count separately for the NC.
 // Each test is rolled back.
 const db = new PGlite();
@@ -28,7 +28,13 @@ const ids = {
   fol: id(18),
 };
 type Row = Record<string, unknown>;
-type Task = { id: string; can_edit: boolean; can_set_status: boolean; can_archive: boolean };
+type Task = {
+  id: string;
+  can_edit: boolean;
+  can_set_status: boolean;
+  can_archive: boolean;
+  can_add_note: boolean;
+};
 
 async function as(user: string | null, aal = "aal1") {
   await db.exec("RESET ROLE");
@@ -342,9 +348,8 @@ describe("a trustee writes nothing", () => {
           [json({ title: "Branch day", scope: "branch", branch_id: ids.b1, status: "draft" })],
         ],
         ["SELECT public.update_event($1,$2::jsonb)", [event, json({ title: "Renamed" })]],
-        // Other people's tasks: no status and no notes.
+        // Other people's tasks: no status (notes are allowed since 20261211090000, tested below).
         ["SELECT public.set_task_status($1,'done')", [a.task]],
-        ["SELECT public.add_task_note($1,'Hello','[]'::jsonb)", [a.task]],
       ];
       for (const [sql, params] of refused)
         await fails(sql, params, /Not allowed|not allowed|cannot/);
@@ -403,6 +408,142 @@ describe("a trustee writes nothing", () => {
         [meeting, json({ title: "X" })],
         "Not allowed",
       );
+    }));
+});
+
+describe("trustee notes on branch tasks (20261211090000)", () => {
+  const noteNotices = async (user: string, task: string) =>
+    (await noticesOf(user))
+      .filter((n) => n.entity_id === task && n.kind.startsWith("task_note"))
+      .map((n) => n.kind);
+
+  it("a trustee adds a note to a branch task not assigned to them; assignees, creator and mentions are told", () =>
+    tx(async () => {
+      const a = await branchActivity();
+      await as(ids.tr1);
+      expect(await one<Task>("SELECT public.get_task($1) v", [a.task])).toMatchObject({
+        can_edit: false,
+        can_set_status: false,
+        can_archive: false,
+        can_add_note: true,
+      });
+      const note = await one<string>("SELECT public.add_task_note($1,'Looks good',$2::jsonb) v", [
+        a.task,
+        json([ids.vol1]),
+      ]);
+      expect(note).toBeTruthy();
+      // The assignee and the creator (the Branch Manager) get the note notice; the mentioned volunteer the mention.
+      expect(await noteNotices(ids.vol1b, a.task)).toEqual(["task_note_added"]);
+      expect(await noteNotices(ids.bm1, a.task)).toEqual(["task_note_added"]);
+      expect(await noteNotices(ids.vol1, a.task)).toEqual(["task_note_mention"]);
+      expect(await noteNotices(ids.tr1, a.task)).toEqual([]);
+      // Their own note: edit and delete as before.
+      await as(ids.tr1);
+      await one("SELECT public.update_task_note($1,'Looks very good','[]'::jsonb) v", [note]);
+      await as(null);
+      expect(await one("SELECT body v FROM task_notes WHERE id=$1", [note])).toBe(
+        "Looks very good",
+      );
+      await as(ids.tr1);
+      await db.query("SELECT public.delete_task_note($1)", [note]);
+      await as(null);
+      expect(await one("SELECT count(*)::int v FROM task_notes WHERE id=$1", [note])).toBe(0);
+    }));
+
+  it("other people's notes, another branch's tasks and region tasks stay refused", () =>
+    tx(async () => {
+      const a = await branchActivity();
+      const bmNote = await one<string>("SELECT public.add_task_note($1,'Plan','[]'::jsonb) v", [
+        a.task,
+      ]);
+      await as(ids.bm2);
+      const other = await createTask({ branch_id: ids.b2, title: "Branch two", assignee_ids: [] });
+      await as(ids.rd);
+      const region = await one<string>("SELECT public.create_task($1::jsonb) v", [
+        json({ scope: "region", region_id: ids.region, title: "Region plan", assignee_ids: [] }),
+      ]);
+      // The trustee of another branch cannot read or note branch One's task.
+      await as(ids.tr2);
+      expect(await one("SELECT public.get_task($1) v", [a.task])).toBeNull();
+      await fails("SELECT public.add_task_note($1,'Hello','[]'::jsonb)", [a.task], "Not allowed");
+      // The trustee of branch One: not branch Two's task, not a region task, not someone else's note.
+      await as(ids.tr1);
+      for (const task of [other, region])
+        await fails("SELECT public.add_task_note($1,'Hello','[]'::jsonb)", [task], "Not allowed");
+      await fails(
+        "SELECT public.update_task_note($1,'Changed','[]'::jsonb)",
+        [bmNote],
+        "Not allowed",
+      );
+      await fails("SELECT public.delete_task_note($1)", [bmNote], "Not allowed");
+    }));
+
+  it("notes only: title, description, assignees, due date, status and archive of the task stay refused", () =>
+    tx(async () => {
+      const a = await branchActivity();
+      await one("SELECT public.set_task_status($1,'done') v", [a.task]);
+      await as(ids.tr1);
+      for (const change of [
+        { title: "Renamed" },
+        { description: "New text" },
+        { assignee_ids: [ids.tr1] },
+        { due_date: "2027-01-01" },
+      ])
+        await fails(
+          "SELECT public.update_task($1,$2::jsonb)",
+          [a.task, json(change)],
+          "Not allowed",
+        );
+      await fails("SELECT public.set_task_status($1,'todo')", [a.task], "Not allowed");
+      await fails("SELECT public.archive_task($1,true)", [a.task], "Not allowed");
+      await fails("SELECT public.archive_done_tasks($1::jsonb)", [json([a.task])], "Not allowed");
+      await fails("SELECT public.delete_task($1)", [a.task], "Not allowed");
+      await as(null);
+      expect(
+        await q("SELECT title, description, status, due_date, archived_at FROM tasks WHERE id=$1", [
+          a.task,
+        ]),
+      ).toEqual([
+        { title: "Posters", description: null, status: "done", due_date: null, archived_at: null },
+      ]);
+      // Their own task: the status still changes, and notes are allowed.
+      await as(ids.tr1);
+      expect(await one<Task>("SELECT public.get_task($1) v", [a.own])).toMatchObject({
+        can_set_status: true,
+        can_add_note: true,
+      });
+      expect(await one("SELECT public.set_task_status($1,'blocked') v", [a.own])).toBe("blocked");
+    }));
+
+  it("volunteers keep today's rules: assignees, creators and managers write notes, other members do not", () =>
+    tx(async () => {
+      const a = await branchActivity();
+      // A volunteer of the branch who is not assigned reads the task but writes no note.
+      await as(ids.vol1);
+      expect(await one<Task>("SELECT public.get_task($1) v", [a.task])).toMatchObject({
+        can_set_status: false,
+        can_add_note: false,
+      });
+      await fails("SELECT public.add_task_note($1,'Hello','[]'::jsonb)", [a.task], "Not allowed");
+      // The assignee writes a note; the creator hears about it.
+      await as(ids.vol1b);
+      expect(await one<Task>("SELECT public.get_task($1) v", [a.task])).toMatchObject({
+        can_add_note: true,
+      });
+      await one("SELECT public.add_task_note($1,'On it','[]'::jsonb) v", [a.task]);
+      expect(await noteNotices(ids.bm1, a.task)).toEqual(["task_note_added"]);
+      // The creator (and manager) writes a note; the assignee hears about it.
+      await as(ids.bm1);
+      await one("SELECT public.add_task_note($1,'Thanks','[]'::jsonb) v", [a.task]);
+      expect(await noteNotices(ids.vol1b, a.task)).toEqual(["task_note_added"]);
+      // A volunteer's own task (created by them): notes allowed.
+      await as(ids.vol1);
+      const mine = await createTask({ title: "My poster" });
+      expect(await one<Task>("SELECT public.get_task($1) v", [mine])).toMatchObject({
+        can_edit: true,
+        can_add_note: true,
+      });
+      await one("SELECT public.add_task_note($1,'Draft ready','[]'::jsonb) v", [mine]);
     }));
 });
 
