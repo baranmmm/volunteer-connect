@@ -193,13 +193,13 @@ test.describe("Push notifications", () => {
     expect((await fake(page)).requestedWithGesture).toBe(true);
     await expect.poll(async () => (await devicesOf(volunteer.id)).length).toBe(1);
 
-    // Defaults: push on for assignments, requests waiting and meetings; off for the rest.
+    // Defaults: push on for assignments, mentions, requests waiting and meetings; off for the rest.
     await openAdvanced(page);
     for (const [type, on] of [
       ["task_assigned", "true"],
+      ["mention", "true"],
       ["review", "true"],
       ["meeting", "true"],
-      ["mention", "false"],
       ["task_status", "false"],
       ["task_note", "false"],
       ["task_reminder", "false"],

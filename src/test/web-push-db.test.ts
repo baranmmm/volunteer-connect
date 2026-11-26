@@ -245,7 +245,7 @@ describe("push_subscriptions access", () => {
 });
 
 describe("push settings and queueing", () => {
-  it("defaults: push on for assignments, requests waiting for review and meetings; off for the rest", () =>
+  it("defaults: push on for assignments, mentions, requests waiting for review and meetings; off for the rest", () =>
     tx(async () => {
       await as(ids.vol);
       const settings = await one<{ types: { type: string; push: boolean }[] }>(
@@ -253,7 +253,7 @@ describe("push settings and queueing", () => {
       );
       expect(Object.fromEntries(settings.types.map((s) => [s.type, s.push]))).toEqual({
         task_assigned: true,
-        mention: false,
+        mention: true,
         review: true,
         task_status: false,
         task_note: false,
@@ -268,9 +268,11 @@ describe("push settings and queueing", () => {
         email: true,
         push: false,
       });
-      expect(await one("SELECT public.set_notification_push('mention', true) v")).toMatchObject({
-        push: true,
-      });
+      expect(await one("SELECT public.set_notification_push('task_status', true) v")).toMatchObject(
+        {
+          push: true,
+        },
+      );
       await fails("SELECT public.set_notification_push('other', true)", [], "Not allowed");
       await fails("SELECT public.set_notification_push('meeting', NULL)", [], "Not allowed");
     }));
@@ -296,11 +298,11 @@ describe("push settings and queueing", () => {
         "task_group_created",
         "task_group_created",
       ]);
-      // Off by default (mention, task status): a notice and maybe an email, but no push.
+      // Off by default (task status, task notes): a notice and maybe an email, but no push.
       await system();
       await db.exec("DELETE FROM push_outbox");
-      expect(await notify(ids.bm, ids.vol, "task_note_mention")).not.toBeNull();
       expect(await notify(ids.bm, ids.vol, "task_status_changed")).not.toBeNull();
+      expect(await notify(ids.bm, ids.vol, "task_note_added")).not.toBeNull();
       expect(await pending(ids.vol)).toEqual([]);
       // The actor is never notified.
       await notify(ids.vol, ids.vol, "task_assigned");
@@ -321,6 +323,56 @@ describe("push settings and queueing", () => {
       expect(await pending(ids.vol)).toEqual([]);
       // Without devices nothing is queued and the notice is created as before.
       expect(await notify(ids.bm, ids.vol2, "task_assigned")).not.toBeNull();
+      expect(await pending(ids.vol2)).toEqual([]);
+    }));
+
+  it("a task note @mention pushes by default (20261215090000); a member who turned mention push off gets none", () =>
+    tx(async () => {
+      for (const [user, endpoint] of [
+        [ids.vol, "https://push.example.test/vol"],
+        [ids.vol2, "https://push.example.test/vol2"],
+      ] as const) {
+        await as(user);
+        await register(endpoint);
+      }
+      // vol has no saved preference; vol2 turned mention push off (an explicit choice is kept).
+      await as(ids.vol2);
+      expect(await one("SELECT public.set_notification_push('mention', false) v")).toMatchObject({
+        type: "mention",
+        push: false,
+      });
+      await system();
+      expect(
+        await one<boolean>(
+          "SELECT (types->'mention'->>'push')::boolean v FROM notification_preferences WHERE user_id = $1",
+          [ids.vol2],
+        ),
+      ).toBe(false);
+      expect(
+        await one<number>(
+          "SELECT count(*)::int v FROM notification_preferences WHERE user_id = $1",
+          [ids.vol],
+        ),
+      ).toBe(0);
+      await as(ids.bm);
+      const task = await one<string>("SELECT public.create_task($1::jsonb) v", [
+        JSON.stringify({ scope: "branch", branch_id: ids.b1, title: "Private title" }),
+      ]);
+      await one("SELECT public.add_task_note($1, 'Please check', $2::jsonb) v", [
+        task,
+        JSON.stringify([ids.vol, ids.vol2]),
+      ]);
+      // Both get the in-app notice; only vol gets a push.
+      await system();
+      expect(
+        await one<number>(
+          "SELECT count(*)::int v FROM notifications WHERE kind = 'task_note_mention' AND entity_id = $1",
+          [task],
+        ),
+      ).toBe(2);
+      expect(await pending(ids.vol)).toEqual([
+        { type: "mention", endpoint: "https://push.example.test/vol", kind: "task_note_mention" },
+      ]);
       expect(await pending(ids.vol2)).toEqual([]);
     }));
 
