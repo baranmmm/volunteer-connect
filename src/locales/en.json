@@ -2253,5 +2253,11 @@
     "mapKeys": "Up and down arrows move between the branches, from north to south, and show each branch's event; Enter goes to that event. Left and right arrows move through the events.",
     "pastButton": "Past events",
     "pastJump": "Go to the earliest past event"
+  },
+  "toolbar": {
+    "filters": "Filters",
+    "filtersActive": "Filters, {{count}} active",
+    "reset": "Reset",
+    "done": "Done"
   }
 }

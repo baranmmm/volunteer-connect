@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPrivacyStatus } from "@/lib/privacy.functions";
 import { PrivacyGate } from "@/components/app/PrivacyGate";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Clock, LogOut, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { primaryRole, isNationalCoordinator } from "@/lib/roles";
@@ -51,6 +51,7 @@ export function MemberShell() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const mobileHeader = useAppHeaderHeight();
   // The same total as the Requests page's "Waiting for my approval" tab.
   const waiting = useApprovalWaiting().total;
   const notices = useNotificationCounts().data;
@@ -185,7 +186,10 @@ export function MemberShell() {
         </button>
       </aside>
 
-      <header className="sticky top-0 z-30 grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
+      <header
+        ref={mobileHeader}
+        className="sticky top-0 z-30 grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b bg-background/95 px-4 py-2 backdrop-blur lg:hidden"
+      >
         <LogoLink size="sm" className="min-w-0 flex-1 text-primary" />
         <NotificationBell variant="sheet" />
       </header>
@@ -290,6 +294,25 @@ export function MemberShell() {
       </Sheet>
     </div>
   );
+}
+
+/**
+ * Publishes the phone top bar's height as `--app-header-h` (0 where it is hidden), so page headers can stick right
+ * below it (CompactHeader).
+ */
+function useAppHeaderHeight() {
+  return useCallback((el: HTMLElement | null) => {
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement;
+    const update = () => root.style.setProperty("--app-header-h", `${el.offsetHeight}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--app-header-h");
+    };
+  }, []);
 }
 
 /** A menu entry: an in-app link, or an external one (Donate) that opens in a new tab. */

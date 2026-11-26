@@ -9,7 +9,7 @@ import { test, expect, runId, type TestUser } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import { MEETING_TITLE_PREFIX, TASK_TITLE_PREFIX, createMeetingAs, createTaskAs, inDays, workRpc } from "../../api/work";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
-import { setStatusByMenu, showBoard } from "../../pages/components/tasks";
+import { setStatusByMenu, showBoard, withTaskFilters } from "../../pages/components/tasks";
 
 let n = 0;
 const title = (label: string) => `${TASK_TITLE_PREFIX}${runId} grpby-${Date.now().toString(36)}-${++n} ${label}`;
@@ -84,8 +84,11 @@ test.describe("Tasks: grouping and compact rows", () => {
     const page = await pageAs(s.volunteer);
     await page.goto("/tasks");
     await expect(page.getByTestId("tasks-view-list")).toHaveAttribute("aria-pressed", "true", { timeout: APP_LOAD_TIMEOUT });
-    await expect(page.getByTestId("tasks-group-by")).toHaveValue("meeting");
-    await expect(page.getByTestId("tasks-sort")).toHaveValue("status");
+    // Phones keep Group by and Sort in the Filters sheet.
+    await withTaskFilters(page, async () => {
+      await expect(page.getByTestId("tasks-group-by")).toHaveValue("meeting");
+      await expect(page.getByTestId("tasks-sort")).toHaveValue("status");
+    });
     await expect(page.locator("main")).toHaveAttribute("data-width", "wide");
 
     // Nesting: the newest meeting (open) > its agenda items > the task rows.
@@ -170,20 +173,23 @@ test.describe("Tasks: grouping and compact rows", () => {
     await expect(plan.getByTestId("tasks-section-progress")).toHaveAttribute("data-done", "0");
 
     // Due date grouping (remembered): Overdue, Next week, Later, No date; the names stay.
-    await page.getByTestId("tasks-group-by").selectOption("due");
+    await withTaskFilters(page, () => page.getByTestId("tasks-group-by").selectOption("due"));
     await expect(section(page, "due:nextWeek").locator(`[data-task-id="${s.tasks.planOther}"]`)).toBeVisible();
     await expect(section(page, "due:later").locator(`[data-task-id="${s.tasks.event}"]`)).toBeVisible();
     await expect(section(page, "due:none").locator(`[data-task-id="${s.tasks.other}"]`)).toBeVisible();
     await expect(names(s.tasks.mine)).toHaveAttribute("data-you", "true");
     await expect(row).toHaveAttribute("data-mine", "true");
     await page.reload();
-    await expect(page.getByTestId("tasks-group-by")).toHaveValue("due", { timeout: APP_LOAD_TIMEOUT });
-    // None: one plain list without headers and no Expand/Collapse all.
-    await page.getByTestId("tasks-group-by").selectOption("none");
+    await expect(page.getByTestId("tasks-section").first()).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await withTaskFilters(page, async () => {
+      await expect(page.getByTestId("tasks-group-by")).toHaveValue("due");
+      // None: one plain list without headers and no Expand/Collapse all.
+      await page.getByTestId("tasks-group-by").selectOption("none");
+      await expect(page.getByTestId("tasks-expand-all")).toHaveCount(0);
+    });
     await expect(page.getByTestId("tasks-section")).toHaveCount(1);
     await expect(page.getByTestId("tasks-section-toggle")).toHaveCount(0);
-    await expect(page.getByTestId("tasks-expand-all")).toHaveCount(0);
-    await page.getByTestId("tasks-group-by").selectOption("meeting");
+    await withTaskFilters(page, () => page.getByTestId("tasks-group-by").selectOption("meeting"));
 
     // Other pages keep the reading width.
     await page.goto("/dashboard");
@@ -203,12 +209,13 @@ test.describe("Tasks: grouping and compact rows", () => {
     const older = section(page, `meeting:${s.oldMeeting}`);
     await expect(meeting.locator(`[data-task-id="${s.tasks.mine}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
 
-    await page.getByTestId("tasks-collapse-all").click();
+    // On phones Expand/Collapse all are in the Filters sheet (it closes after either).
+    await withTaskFilters(page, () => page.getByTestId("tasks-collapse-all").click());
     for (const key of [`meeting:${s.meeting}`, `meeting:${s.oldMeeting}`, "events", "other"])
       await expect(section(page, key)).toHaveAttribute("data-collapsed", "true");
     await expect(listRow(page, s.tasks.mine)).toHaveCount(0);
 
-    await page.getByTestId("tasks-expand-all").click();
+    await withTaskFilters(page, () => page.getByTestId("tasks-expand-all").click());
     await expect(older).toHaveAttribute("data-collapsed", "false");
     await expect(listRow(page, s.tasks.old)).toBeVisible();
     await expect(listRow(page, s.tasks.hallDone1)).toBeVisible();
@@ -238,24 +245,26 @@ test.describe("Tasks: grouping and compact rows", () => {
     await page.goto("/tasks");
     const plan = section(page, `agenda:${s.plan}`);
     await expect(plan.locator(`[data-task-id="${s.tasks.mine}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    const sort = page.getByTestId("tasks-sort");
+    // On phones the Sort select is in the Filters sheet.
+    const sortBy = (value: string) => withTaskFilters(page, () => page.getByTestId("tasks-sort").selectOption(value));
     // "mine" was created before "plan other" and is due earlier.
     expect(await rowIds(plan)).toEqual([s.tasks.mine, s.tasks.planOther]);
-    await sort.selectOption("newest");
+    await sortBy("newest");
     await expect.poll(() => rowIds(plan)).toEqual([s.tasks.planOther, s.tasks.mine]);
-    await sort.selectOption("oldest");
+    await sortBy("oldest");
     await expect.poll(() => rowIds(plan)).toEqual([s.tasks.mine, s.tasks.planOther]);
     // Status first: a done task moves below the open one, whatever its date.
-    await sort.selectOption("newest");
+    await sortBy("newest");
     await expect.poll(() => rowIds(plan)).toEqual([s.tasks.planOther, s.tasks.mine]);
-    await sort.selectOption("status");
+    await sortBy("status");
     await setStatusByMenu(page, page.getByTestId("tasks-list-item").filter({ has: listRow(page, s.tasks.mine) }).getByTestId("tasks-list-row-status"), "done");
     await expect.poll(() => rowIds(plan)).toEqual([s.tasks.planOther, s.tasks.mine]);
-    await sort.selectOption("due");
+    await sortBy("due");
     await expect.poll(() => rowIds(plan)).toEqual([s.tasks.mine, s.tasks.planOther]);
     // Remembered per user.
     await page.reload();
-    await expect(page.getByTestId("tasks-sort")).toHaveValue("due", { timeout: APP_LOAD_TIMEOUT });
+    await expect(plan.locator(`[data-task-id="${s.tasks.mine}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await withTaskFilters(page, () => expect(page.getByTestId("tasks-sort")).toHaveValue("due"));
 
     // The drawer: "Created <date> by <name>".
     await listRow(page, s.tasks.planOther).click();

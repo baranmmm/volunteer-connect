@@ -9,7 +9,7 @@ import { test, expect, runId, type TestUser } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import { TASK_TITLE_PREFIX, createTaskAs, workRpc } from "../../api/work";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
-import { setStatusByMenu, showBoard } from "../../pages/components/tasks";
+import { closeFilters, isNarrow, openFilters, setStatusByMenu, showBoard, withTaskFilters } from "../../pages/components/tasks";
 import { RecycleBinPage } from "../../pages/RecycleBinPage";
 import { pickOption } from "../../pages/components/select";
 import { NotificationBell } from "../../pages/components/NotificationBell";
@@ -74,8 +74,12 @@ test.describe("Tasks", () => {
     await form.getByTestId("task-form-submit").click();
     await expect(managerPage.getByTestId("toast-success").first()).toBeVisible();
     const id = await openedTaskId(managerPage);
-    // Every task is shown by default (My tasks is off).
-    await expect(managerPage.getByTestId("tasks-filter-mine")).toHaveAttribute("aria-pressed", "false");
+    // Every task is shown by default (My tasks is off). Phones: close the task panel and look in the Filters sheet.
+    if (isNarrow(managerPage)) {
+      await managerPage.keyboard.press("Escape");
+      await expect(managerPage.getByTestId("task-panel")).toBeHidden();
+    }
+    await withTaskFilters(managerPage, () => expect(managerPage.getByTestId("tasks-filter-mine")).toHaveAttribute("aria-pressed", "false"));
     await expect(column(managerPage, "todo").locator(`[data-task-id="${id}"]`)).toHaveCount(1);
     const created = (await workRpc(manager, "get_task", { p_id: id })).data as { priority: string; due_date: string; assignees: { id: string }[]; reminders: { before_days: number[]; repeat_kind: string } };
     expect([created.priority, created.due_date, created.assignees.map((a) => a.id)]).toEqual(["medium", due, [volunteer.id]]);
@@ -121,7 +125,7 @@ test.describe("Tasks", () => {
     const mineFilter = page.getByTestId("tasks-filter-mine");
     // All tasks: mine is marked and first in its column, the other is not marked.
     await expect(card(page, other)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    await expect(mineFilter).toHaveAttribute("aria-pressed", "false");
+    await withTaskFilters(page, () => expect(mineFilter).toHaveAttribute("aria-pressed", "false"));
     await expect(card(page, mine)).toHaveAttribute("data-mine", "true");
     await expect(card(page, other)).toHaveAttribute("data-mine", "false");
     // No "Mine" pill taking title space: the accent bar and bold title mark it (and screen-reader text).
@@ -138,22 +142,24 @@ test.describe("Tasks", () => {
     // A volunteer works in one branch only: no scope labels on cards.
     await expect(card(page, mine).getByTestId("task-card-scope")).toHaveCount(0);
 
-    // "My tasks" narrows to mine.
-    await mineFilter.click();
-    await expect(mineFilter).toHaveAttribute("aria-pressed", "true");
+    // "My tasks" narrows to mine (phones: in the Filters sheet).
+    await withTaskFilters(page, async () => {
+      await mineFilter.click();
+      await expect(mineFilter).toHaveAttribute("aria-pressed", "true");
+    });
     await expect(card(page, mine)).toBeVisible();
     await expect(card(page, other)).toHaveCount(0);
 
     // List: the same marking (no pill); grouped by assignee, mine sits under the volunteer; no scope label.
-    await mineFilter.click();
+    await withTaskFilters(page, () => mineFilter.click());
     await page.getByTestId("tasks-view-list").click();
     await expect(listRow(page, mine)).toHaveAttribute("data-mine", "true");
     await expect(page.getByTestId("tasks-list-row-mine")).toHaveCount(0);
     await expect(listRow(page, other).getByTestId("tasks-list-row-scope")).toHaveCount(0);
-    await page.getByTestId("tasks-group-by").selectOption("assignee");
+    await withTaskFilters(page, () => page.getByTestId("tasks-group-by").selectOption("assignee"));
     await expect(page.locator(`[data-testid="tasks-section"][data-section-key="person:${volunteer.id}"]`).locator(`[data-task-id="${mine}"]`)).toBeVisible();
     await expect(page.locator('[data-testid="tasks-section"][data-section-key="unassigned"]').locator(`[data-task-id="${other}"]`)).toBeVisible();
-    await page.getByTestId("tasks-group-by").selectOption("meeting");
+    await withTaskFilters(page, () => page.getByTestId("tasks-group-by").selectOption("meeting"));
 
     // The view is remembered; My tasks starts off again.
     await page.reload();
@@ -161,7 +167,7 @@ test.describe("Tasks", () => {
     await expect(page.getByTestId("tasks-view-kanban")).toHaveAttribute("aria-pressed", "false");
     await expect(listRow(page, mine)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(listRow(page, other)).toBeVisible();
-    await expect(mineFilter).toHaveAttribute("aria-pressed", "false");
+    await withTaskFilters(page, () => expect(mineFilter).toHaveAttribute("aria-pressed", "false"));
 
     // Calendar: both on today's date (the agenda list on phones, the month grid on desktop), mine marked.
     await page.getByTestId("tasks-view-calendar").click();
@@ -171,7 +177,7 @@ test.describe("Tasks", () => {
     await expect(calendarItem(page, other).getByTestId("tasks-calendar-item-mine")).toHaveCount(0);
     await expect(day.locator(`[data-testid="tasks-calendar-item"][data-task-id="${other}"]`)).toHaveAttribute("data-mine", "false");
     await expect(calendarItem(page, other).getByTestId("tasks-calendar-item-scope")).toHaveCount(0);
-    await mineFilter.click();
+    await withTaskFilters(page, () => mineFilter.click());
     await expect(calendarItem(page, other)).toHaveCount(0);
     await expect(calendarItem(page, mine)).toBeVisible();
 
@@ -206,7 +212,9 @@ test.describe("Tasks", () => {
     const page = await pageAs(director);
     await openTasks(page);
     await expect(card(page, mineInB)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    // Phones: the branch filter and My tasks are in the Filters sheet.
     const branches = page.getByTestId("tasks-filter-branches");
+    await openFilters(page);
     await expect(branches).toHaveAttribute("data-count", "0");
     await branches.click();
     await expect(page.locator('[data-testid="tasks-filter-branches-option"][data-value="region-wide"]')).toBeVisible();
@@ -214,13 +222,15 @@ test.describe("Tasks", () => {
     await expect(page.locator(`[data-testid="tasks-filter-branches-option"][data-value="${branchA}"]`)).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
     await expect(branches).toHaveAttribute("data-count", "1");
+    await closeFilters(page);
     await expect(card(page, inA)).toBeVisible();
     await expect(card(page, mineInB)).toHaveCount(0);
 
     // My tasks shows every task assigned to me, in any branch; the branch filter is ignored and shown disabled.
-    await page.getByTestId("tasks-filter-mine").click();
+    await withTaskFilters(page, () => page.getByTestId("tasks-filter-mine").click());
     await expect(card(page, mineInB)).toBeVisible();
     await expect(card(page, inA)).toHaveCount(0);
+    await openFilters(page);
     await expect(branches).toHaveAttribute("data-disabled", "true");
     await expect(branches).toHaveAttribute("aria-disabled", "true");
     await expect(page.getByTestId("tasks-filter-scope-hint")).toBeVisible();
@@ -230,12 +240,13 @@ test.describe("Tasks", () => {
     await expect(page.getByTestId("tasks-filter-scope-hint")).toHaveCount(0);
     await expect(branches).not.toHaveAttribute("data-disabled", "true");
     await expect(branches).toHaveAttribute("data-count", "1");
+    await closeFilters(page);
     await expect(card(page, mineInB)).toHaveCount(0);
     await expect(card(page, inA)).toBeVisible();
     await page.reload();
     await showBoard(page);
     await expect(card(page, inA)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    await expect(page.getByTestId("tasks-filter-branches")).toHaveAttribute("data-count", "1");
+    await withTaskFilters(page, () => expect(page.getByTestId("tasks-filter-branches")).toHaveAttribute("data-count", "1"));
     await expect(card(page, mineInB)).toHaveCount(0);
   });
 
@@ -430,14 +441,16 @@ test.describe("Tasks", () => {
 
     // The Archived filter shows only archived tasks; Unarchive brings one back to the board.
     const archivedFilter = page.getByTestId("tasks-filter-archived");
-    await archivedFilter.click();
-    await expect(archivedFilter).toHaveAttribute("aria-pressed", "true");
+    await withTaskFilters(page, async () => {
+      await archivedFilter.click();
+      await expect(archivedFilter).toHaveAttribute("aria-pressed", "true");
+    });
     await expect(card(page, done1)).toHaveAttribute("data-archived", "true");
     await expect(card(page, open)).toHaveCount(0);
     await card(page, done1).getByTestId("task-card-unarchive").click();
     await expect(card(page, done1)).toHaveCount(0);
     await expect.poll(() => archivedAt(done1)).toBeNull();
-    await archivedFilter.click();
+    await withTaskFilters(page, () => archivedFilter.click());
     await expect(column(page, "done").locator(`[data-testid="task-card"][data-task-id="${done1}"]`)).toBeVisible();
 
     // From the panel: archive, then unarchive.

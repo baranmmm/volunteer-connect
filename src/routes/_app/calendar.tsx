@@ -26,6 +26,16 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CalendarLegend } from "@/components/events/EventStatus";
 import { RequestEventButton } from "@/components/requests/RequestEventButton";
+import { useNarrowScreen } from "@/hooks/use-narrow-screen";
+import { calendarToolbarChanges } from "@/lib/compact-toolbar";
+import { cn } from "@/lib/utils";
+import {
+  CompactHeader,
+  FAB_CLEARANCE,
+  FiltersSheet,
+  FloatingActionButton,
+  IconViewSwitch,
+} from "@/components/app/CompactToolbar";
 
 /** "Public events only" (managers): remembered on this device. */
 const PUBLIC_ONLY_KEY = "calendar.publicOnly";
@@ -55,7 +65,8 @@ function CalendarPage() {
     nc = isNationalCoordinator(roles),
     canCreate = isManager || nc;
   // Followed branches by default; National Coordinators see every branch by default.
-  const [branchScope, setBranchScope] = useState<"followed" | "all">(nc ? "all" : "followed");
+  const defaultBranchScope = nc ? "all" : "followed";
+  const [branchScope, setBranchScope] = useState<"followed" | "all">(defaultBranchScope);
   const followed = useFollowedBranches(session?.user.id);
   const fetch = useServerFn(listEvents),
     navigate = useNavigate();
@@ -116,160 +127,236 @@ function CalendarPage() {
   );
   const filtered = filterEvents(inScope, view === "month" ? null : past, category, organizer, now);
   const organizers = [...new Set((events.data ?? []).map((e) => e.organizer))].sort();
+  // Phones (< 640px): one slim header row, the filters in a bottom sheet, Create event as a floating button and the
+  // other actions in one row below the header.
+  const narrow = useNarrowScreen();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const changed = calendarToolbarChanges({
+    view,
+    past,
+    publicOnly: canCreate ? publicOnly : null,
+    branchScope,
+    defaultBranchScope,
+    category,
+    organizer,
+  });
+  const resetFilters = () => {
+    setPast(false);
+    if (canCreate) setPublicOnly(false);
+    setBranchScope(defaultBranchScope);
+    setCategory("all");
+    setOrganizer("all");
+  };
+  const myRequestsLink = !follower && !nc && (
+    <Button asChild variant="link" className="h-11">
+      <Link to="/requests" search={{ tab: "mine" }} data-testid="calendar-my-requests-link">
+        {t("requests.myTitle")}
+      </Link>
+    </Button>
+  );
+  const addPastButton = canCreate && (
+    <Button
+      data-testid="calendar-add-past-event-button"
+      variant="outline"
+      className="h-11"
+      onClick={() => setAddingPast(true)}
+    >
+      <History />
+      {t("pastEvents.add")}
+    </Button>
+  );
+  const publicOnlySwitch = canCreate && (
+    <div className="flex min-h-11 items-center gap-2">
+      <Switch
+        id="calendar-filter-public-only"
+        data-testid="calendar-filter-public-only"
+        checked={publicOnly}
+        onCheckedChange={setPublicOnly}
+      />
+      <Label htmlFor="calendar-filter-public-only">{t("events.publicOnly")}</Label>
+    </div>
+  );
+  const whenButtons = view === "list" && (
+    <div className="flex flex-wrap gap-2">
+      <Button
+        data-testid="calendar-filter-upcoming"
+        variant={!past ? "default" : "outline"}
+        aria-pressed={!past}
+        className={cn(narrow && "h-11")}
+        onClick={() => setPast(false)}
+      >
+        {t("events.upcoming")}
+      </Button>
+      <Button
+        data-testid="calendar-filter-past"
+        variant={past ? "default" : "outline"}
+        aria-pressed={past}
+        className={cn(narrow && "h-11")}
+        onClick={() => setPast(true)}
+      >
+        {t("events.past")}
+      </Button>
+    </div>
+  );
+  const filterSelects = (
+    <div className="grid gap-3 sm:grid-cols-3">
+      <Select
+        value={branchScope}
+        onValueChange={(v) => setBranchScope(v === "all" ? "all" : "followed")}
+      >
+        <SelectTrigger
+          data-testid="calendar-filter-branches"
+          aria-label={t("events.branchScope")}
+          className="h-11"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="followed" data-testid="calendar-filter-branches-option-followed">
+            {t("events.followedBranches")}
+          </SelectItem>
+          <SelectItem value="all" data-testid="calendar-filter-branches-option-all">
+            {t("events.allBranches")}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={category} onValueChange={setCategory}>
+        <SelectTrigger
+          data-testid="calendar-filter-category"
+          aria-label={t("events.category")}
+          className="h-11"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{t("events.allCategories")}</SelectItem>
+          {CALENDAR_CATEGORIES.map((c) => (
+            <SelectItem key={c} value={c}>
+              {t(`events.categories.${c}`)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={organizer} onValueChange={setOrganizer}>
+        <SelectTrigger
+          data-testid="calendar-filter-organizer"
+          aria-label={t("events.organizer")}
+          className="h-11"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{t("events.allOrganizers")}</SelectItem>
+          {organizers.map((o) => (
+            <SelectItem key={o} value={o}>
+              {o}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+  const requestButton = !follower && !nc && (
+    <RequestEventButton variant={isManager ? "outline" : "default"} />
+  );
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">{t("events.title")}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {!follower && !nc && (
-            <>
-              <Button asChild variant="link" className="h-11">
-                <Link
-                  to="/requests"
-                  search={{ tab: "mine" }}
-                  data-testid="calendar-my-requests-link"
-                >
-                  {t("requests.myTitle")}
-                </Link>
-              </Button>
-              <RequestEventButton variant={isManager ? "outline" : "default"} />
-            </>
-          )}
-          {canCreate && (
-            <Button
-              data-testid="calendar-add-past-event-button"
-              variant="outline"
-              className="h-11"
-              onClick={() => setAddingPast(true)}
-            >
-              <History />
-              {t("pastEvents.add")}
-            </Button>
-          )}
-          {canCreate && (
-            <Button
-              data-testid="calendar-create-event-button"
-              className="h-11"
-              onClick={() => setCreating(true)}
-            >
-              <Plus />
-              {t("events.create")}
-            </Button>
-          )}
-        </div>
-      </header>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
-        <div
-          data-testid="calendar-view-toggle"
-          role="group"
-          aria-label={t("events.title")}
-          className="flex gap-1"
-        >
-          <Button
-            variant={view === "month" ? "secondary" : "ghost"}
-            aria-pressed={view === "month"}
-            onClick={() => setView("month")}
-          >
-            <CalendarDays />
-            {t("events.month")}
-          </Button>
-          <Button
-            variant={view === "list" ? "secondary" : "ghost"}
-            aria-pressed={view === "list"}
-            onClick={() => setView("list")}
-          >
-            <List />
-            {t("events.list")}
-          </Button>
-        </div>
-        {canCreate && (
-          <div className="flex min-h-11 items-center gap-2">
-            <Switch
-              id="calendar-filter-public-only"
-              data-testid="calendar-filter-public-only"
-              checked={publicOnly}
-              onCheckedChange={setPublicOnly}
+    <div className={narrow ? cn("space-y-4", canCreate && FAB_CLEARANCE) : "space-y-6"}>
+      {narrow ? (
+        <>
+          <CompactHeader title={t("events.title")} testId="calendar-compact-header">
+            <IconViewSwitch
+              label={t("events.title")}
+              testId="calendar-view-toggle"
+              value={view}
+              onChange={setView}
+              options={[
+                {
+                  value: "month",
+                  icon: CalendarDays,
+                  label: t("events.month"),
+                  testId: "calendar-view-month",
+                },
+                {
+                  value: "list",
+                  icon: List,
+                  label: t("events.list"),
+                  testId: "calendar-view-list",
+                },
+              ]}
             />
-            <Label htmlFor="calendar-filter-public-only">{t("events.publicOnly")}</Label>
-          </div>
-        )}
-        {view === "list" && (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              data-testid="calendar-filter-upcoming"
-              variant={!past ? "default" : "outline"}
-              aria-pressed={!past}
-              onClick={() => setPast(false)}
+            <FiltersSheet
+              testId="calendar-filters"
+              count={changed}
+              open={sheetOpen}
+              onOpenChange={setSheetOpen}
+              onReset={resetFilters}
             >
-              {t("events.upcoming")}
-            </Button>
-            <Button
-              data-testid="calendar-filter-past"
-              variant={past ? "default" : "outline"}
-              aria-pressed={past}
-              onClick={() => setPast(true)}
+              {whenButtons}
+              {publicOnlySwitch}
+              {filterSelects}
+            </FiltersSheet>
+          </CompactHeader>
+          {(requestButton || addPastButton || myRequestsLink) && (
+            <div
+              data-testid="calendar-compact-actions"
+              className="-mx-4 flex min-w-0 items-center gap-2 overflow-x-auto px-4 [&>*]:shrink-0"
             >
-              {t("events.past")}
-            </Button>
+              {requestButton}
+              {addPastButton}
+              {myRequestsLink}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <header className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-3xl font-bold">{t("events.title")}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              {myRequestsLink}
+              {requestButton}
+              {addPastButton}
+              {canCreate && (
+                <Button
+                  data-testid="calendar-create-event-button"
+                  className="h-11"
+                  onClick={() => setCreating(true)}
+                >
+                  <Plus />
+                  {t("events.create")}
+                </Button>
+              )}
+            </div>
+          </header>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+            <div
+              data-testid="calendar-view-toggle"
+              role="group"
+              aria-label={t("events.title")}
+              className="flex gap-1"
+            >
+              <Button
+                variant={view === "month" ? "secondary" : "ghost"}
+                aria-pressed={view === "month"}
+                onClick={() => setView("month")}
+              >
+                <CalendarDays />
+                {t("events.month")}
+              </Button>
+              <Button
+                variant={view === "list" ? "secondary" : "ghost"}
+                aria-pressed={view === "list"}
+                onClick={() => setView("list")}
+              >
+                <List />
+                {t("events.list")}
+              </Button>
+            </div>
+            {publicOnlySwitch}
+            {whenButtons}
           </div>
-        )}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Select
-          value={branchScope}
-          onValueChange={(v) => setBranchScope(v === "all" ? "all" : "followed")}
-        >
-          <SelectTrigger
-            data-testid="calendar-filter-branches"
-            aria-label={t("events.branchScope")}
-            className="h-11"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="followed" data-testid="calendar-filter-branches-option-followed">
-              {t("events.followedBranches")}
-            </SelectItem>
-            <SelectItem value="all" data-testid="calendar-filter-branches-option-all">
-              {t("events.allBranches")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger
-            data-testid="calendar-filter-category"
-            aria-label={t("events.category")}
-            className="h-11"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("events.allCategories")}</SelectItem>
-            {CALENDAR_CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {t(`events.categories.${c}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={organizer} onValueChange={setOrganizer}>
-          <SelectTrigger
-            data-testid="calendar-filter-organizer"
-            aria-label={t("events.organizer")}
-            className="h-11"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("events.allOrganizers")}</SelectItem>
-            {organizers.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          {filterSelects}
+        </>
+      )}
       {events.isLoading ? (
         <p className="py-10 text-center text-muted-foreground">{t("common.loading")}</p>
       ) : events.isError ? (
@@ -289,6 +376,13 @@ function CalendarPage() {
             <p className="border-y py-12 text-center text-muted-foreground">{t("events.empty")}</p>
           )}
         </section>
+      )}
+      {narrow && canCreate && (
+        <FloatingActionButton
+          testId="calendar-create-event-button"
+          label={t("events.create")}
+          onClick={() => setCreating(true)}
+        />
       )}
       {createForm}
       {addingPast && (
