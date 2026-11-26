@@ -23,7 +23,9 @@ function testVapidKeys(): { publicKey: string; privateKey: string } {
   if (reuseBuild && existsSync(storedVapid)) return JSON.parse(readFileSync(storedVapid, "utf8"));
   const ecdh = createECDH("prime256v1");
   ecdh.generateKeys();
-  return { publicKey: ecdh.getPublicKey("base64url"), privateKey: ecdh.getPrivateKey("base64url") };
+  // getPrivateKey() drops leading zero bytes (about 1 key in 256): a raw P-256 scalar is always 32 bytes.
+  const privateKey = Buffer.concat([Buffer.alloc(32), ecdh.getPrivateKey()]).subarray(-32).toString("base64url");
+  return { publicKey: ecdh.getPublicKey("base64url"), privateKey };
 }
 const vapid = testVapidKeys();
 const projectId = isLocalTarget() ? "local" : QA_REF;

@@ -12,7 +12,10 @@ vi.mock("@/lib/push/config", async () => {
   pair.generateKeys();
   return {
     VAPID_PUBLIC_KEY: pair.getPublicKey("base64url"),
-    TEST_VAPID_PRIVATE_KEY: pair.getPrivateKey("base64url"),
+    // getPrivateKey() drops leading zero bytes (about 1 key in 256): a raw P-256 scalar is always 32 bytes.
+    TEST_VAPID_PRIVATE_KEY: Buffer.concat([Buffer.alloc(32), pair.getPrivateKey()])
+      .subarray(-32)
+      .toString("base64url"),
     DEFAULT_VAPID_PUBLIC_KEY: pair.getPublicKey("base64url"),
   };
 });
