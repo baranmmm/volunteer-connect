@@ -2259,5 +2259,40 @@
     "done": "Tamam: “{{label}}” e-postalarını artık almayacaksınız.",
     "invalid": "Bu bağlantı geçersiz veya süresi dolmuş. E-postalarınızı profilinizde, Bildirimler bölümünden değiştirebilirsiniz.",
     "settings": "Bildirim ayarları"
+  },
+  "installApp": {
+    "button": "Uygulamayı yükle",
+    "title": "Uygulamayı yükleyin",
+    "bannerTitle": "Hızlı erişim için uygulamayı yükleyin",
+    "bannerText": "Merkezi diğer uygulamalar gibi ana ekranınızdan açın.",
+    "dismiss": "Kapat",
+    "done": "Tamam",
+    "shareIcon": "Paylaş simgesi",
+    "openInSafariTitle": "Safari'de açın",
+    "copyLink": "Bağlantıyı kopyala",
+    "linkCopied": "Bağlantı kopyalandı. Safari'nin adres çubuğuna yapıştırın.",
+    "linkCopyFailed": "Bağlantı kopyalanamadı. Lütfen adres çubuğundan kopyalayın.",
+    "iosSafari": {
+      "intro": "Merkezi üç adımda ana ekranınıza ekleyin.",
+      "step1": "Safari'de Paylaş düğmesine dokunun (iPhone'da ekranın altında, iPad'de üstte):",
+      "step2": "Aşağı kaydırın ve Ana Ekrana Ekle'ye dokunun:",
+      "step3": "Ekle'ye dokunun. Uygulama ana ekranınızda görünür."
+    },
+    "iosOther": {
+      "intro": "iPhone ve iPad'de uygulama Safari'den yüklenir. Lütfen önce bu sayfayı Safari'de açın.",
+      "step1": "Bu sayfanın bağlantısını kopyalayın.",
+      "step2": "Safari'yi açın ve bağlantıyı adres çubuğuna yapıştırın.",
+      "step3": "Paylaş'a, ardından Ana Ekrana Ekle'ye dokunun:"
+    },
+    "androidMenu": {
+      "intro": "Merkezi tarayıcı menüsünden ana ekranınıza ekleyin.",
+      "step1": "Tarayıcı menüsünü (⋮) açın.",
+      "step2": "Yükle'ye veya Ana ekrana ekle'ye dokunun."
+    },
+    "macSafari": {
+      "intro": "Merkezi Safari'den Dock'unuza ekleyin.",
+      "step1": "Menü çubuğunda Dosya'yı, ardından Dock'a Ekle'yi seçin.",
+      "step2": "Ekle'yi tıklayın. Uygulama Dock'unuzdan açılır."
+    }
   }
 }
