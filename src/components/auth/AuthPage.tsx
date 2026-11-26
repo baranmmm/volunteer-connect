@@ -215,11 +215,11 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const mismatch = confirm.length > 0 && password !== confirm;
-  // The privacy notice must be confirmed (the server refuses the account otherwise); the two consents are optional.
+  // The privacy notice must be confirmed (the server refuses the account otherwise); email updates are optional.
+  // Photos at events are covered by the notice (legitimate interests, v1.6): no photo consent is asked or sent.
   const [privacyRead, setPrivacyRead] = useState(false),
     [privacyError, setPrivacyError] = useState(false);
-  const [photoConsent, setPhotoConsent] = useState(false),
-    [updatesConsent, setUpdatesConsent] = useState(false);
+  const [updatesConsent, setUpdatesConsent] = useState(false);
   // Follower or volunteer: no default, the form is not sent until one is chosen. The volunteer choice adds the
   // application answers (the database checks the same rules and creates the application with the account).
   const [choice, setChoice] = useState<JoinChoice | null>(null),
@@ -283,7 +283,6 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
           branch_id,
           preferred_language: currentLang(),
           privacy_notice_version: version.data,
-          photo_consent: photoConsent,
           updates_email_consent: updatesConsent,
           ...(choice === "volunteer" ? { volunteer_application: signUpApplication(answers) } : {}),
         },
@@ -537,17 +536,6 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
           </p>
         )}
         <p className="text-xs text-muted-foreground">{t("privacy.optionalIntro")}</p>
-        <div className="flex items-start gap-3">
-          <Checkbox
-            id="signup-photo"
-            data-testid="signup-photo-consent"
-            checked={photoConsent}
-            onCheckedChange={(v) => setPhotoConsent(v === true)}
-          />
-          <Label htmlFor="signup-photo" className="leading-snug">
-            {t("privacy.photoConsent")}
-          </Label>
-        </div>
         <div className="flex items-start gap-3">
           <Checkbox
             id="signup-updates"

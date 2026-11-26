@@ -10,7 +10,7 @@ import { toast } from "@/lib/toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-/** Profile: the confirmed notice version and date, and the two optional consents (off by default). */
+/** Profile: the confirmed notice version and date, and the optional email updates consent (off by default). */
 export function PrivacyPreferences() {
   const { t } = useTranslation();
   const { session } = useAuth();
@@ -23,7 +23,7 @@ export function PrivacyPreferences() {
     staleTime: 300000,
   });
   const [busy, setBusy] = useState(false);
-  async function change(next: { photo: boolean; updates: boolean }) {
+  async function change(next: { updates: boolean }) {
     setBusy(true);
     try {
       const updated = await save({ data: next });
@@ -63,30 +63,18 @@ export function PrivacyPreferences() {
             : t("privacy.notConfirmed")}
         </p>
       )}
-      {(["photo", "updates"] as const).map((key) => {
-        const id = key === "photo" ? "profile-photo-consent" : "profile-updates-consent";
-        const checked = key === "photo" ? !!s?.photo_consent : !!s?.updates_email_consent;
-        return (
-          <div key={key} className="flex min-h-11 items-start gap-3">
-            <Switch
-              id={id}
-              data-testid={id}
-              checked={checked}
-              disabled={!s || busy}
-              onCheckedChange={(v) =>
-                s &&
-                void change({
-                  photo: key === "photo" ? v : s.photo_consent,
-                  updates: key === "updates" ? v : s.updates_email_consent,
-                })
-              }
-            />
-            <Label htmlFor={id} className="leading-snug">
-              {t(key === "photo" ? "privacy.photoConsent" : "privacy.updatesConsent")}
-            </Label>
-          </div>
-        );
-      })}
+      <div className="flex min-h-11 items-start gap-3">
+        <Switch
+          id="profile-updates-consent"
+          data-testid="profile-updates-consent"
+          checked={!!s?.updates_email_consent}
+          disabled={!s || busy}
+          onCheckedChange={(v) => s && void change({ updates: v })}
+        />
+        <Label htmlFor="profile-updates-consent" className="leading-snug">
+          {t("privacy.updatesConsent")}
+        </Label>
+      </div>
     </section>
   );
 }

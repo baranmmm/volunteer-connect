@@ -124,6 +124,28 @@ export function formatDate(
 }
 
 const ERROR_KEYS: Record<string, string> = {
+  // Media tab (20261216090000_media_library.sql)
+  "Album title is required": "media.errors.albumTitle",
+  "Invalid album values": "media.errors.invalidAlbum",
+  "Choose an album or an event": "media.errors.chooseTarget",
+  "Album not found": "media.errors.albumNotFound",
+  "Event not found": "media.errors.eventNotFound",
+  "Invalid media file": "media.errors.invalidFile",
+  "Image copies are missing": "media.errors.copiesMissing",
+  "Invalid media selection": "media.errors.invalidSelection",
+  "Invalid photo order": "media.errors.invalidOrder",
+  "Chapter not found": "media.errors.chapterNotFound",
+  "Maximum 20 photos per request": "media.errors.maxPhotos",
+  "Add at least one photo": "media.errors.addPhoto",
+  "Select at least one photo": "media.errors.selectPhoto",
+  "Request is already decided": "media.errors.decided",
+  "Album title confirmation required": "media.errors.albumConfirm",
+  "Change the event cover first": "media.errors.eventCover",
+  "Event page photos can only be moved to an album": "media.errors.eventPageToAlbum",
+  "A public event must keep at least one photo": "media.errors.publicKeepsPhoto",
+  "Copied files are missing": "media.errors.moveFailed",
+  "Moving the photo failed": "media.errors.moveFailed",
+  "Invalid album cover": "media.errors.invalidCover",
   "Choose a branch to follow": "errors.chooseFollowBranch",
   "Only followers can apply to volunteer": "errors.notFollower",
   "You already have an open application": "errors.openApplication",

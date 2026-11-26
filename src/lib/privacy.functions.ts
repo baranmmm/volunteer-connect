@@ -36,10 +36,13 @@ export const acceptPrivacyNotice = createServerFn({ method: "POST" })
   });
 export const setConsentPreferences = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ photo: z.boolean(), updates: z.boolean() }))
+  .inputValidator(z.object({ updates: z.boolean() }))
   .handler(async ({ data, context }) => {
+    // Photo consent is no longer asked (privacy notice 1.6): the stored value is passed back unchanged, never set.
+    const current = await context.supabase.rpc("get_privacy_status");
+    fail(current.error);
     const result = await context.supabase.rpc("set_consent_preferences", {
-      p_photo_consent: data.photo,
+      p_photo_consent: privacyStatus.parse(current.data).photo_consent,
       p_updates_email_consent: data.updates,
     });
     fail(result.error);

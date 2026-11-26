@@ -23,6 +23,8 @@ export const NOTIFICATION_KINDS = [
   "email_budget_warning",
   "volunteer_application_approved",
   "volunteer_application_declined",
+  "media_upload_approved",
+  "media_upload_declined",
 ] as const;
 
 export const notification = z.object({
@@ -37,6 +39,7 @@ export const notification = z.object({
     "digest",
     "volunteer_application",
     "email_budget",
+    "media_upload_request",
   ]),
   entity_id: z.string().uuid(),
   title: z.string(),
@@ -63,6 +66,9 @@ export const notification = z.object({
     count: z.number().optional(),
     kinds: z.record(z.string(), z.number()).optional(),
     day: z.string().optional(),
+    /** media_upload_approved: photos added and duplicates skipped. */
+    added: z.number().optional(),
+    skipped: z.number().optional(),
     /** email_budget_warning: emails sent today and the provider's daily limit. */
     sent: z.number().optional(),
     limit: z.number().optional(),

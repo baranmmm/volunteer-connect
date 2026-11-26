@@ -20,6 +20,7 @@
     "local:down": "E2E_TARGET=local tsx setup/local.ts down",
     "local:migrate": "E2E_TARGET=local tsx setup/migrate.ts",
     "local:seed": "E2E_TARGET=local tsx setup/seed.ts",
+    "local:seed-media": "E2E_TARGET=local tsx setup/seed-media.ts",
     "local:dryrun": "E2E_TARGET=local tsx setup/dryrun.ts",
     "local:test": "E2E_TARGET=local playwright test",
     "smoke": "playwright test --grep @smoke",

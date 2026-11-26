@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 // Nightly cleanup (pg_cron job 'recycle-bin-cleanup' at 03:30 UTC, and the manual "Cleanup Recycle Bin" workflow, with
 // SCHEDULED_JOBS_SECRET: src/lib/scheduled-jobs.server.ts): expired Recycle Bin items, then the
 // guest/subscriber retention rules (purge_guest_data; pg_cron runs it too where available), then YouTube poster files
-// no video points at any more. Only counts are returned.
+// no video points at any more, then Media files that must go (src/lib/media-cleanup.server.ts). Only counts are
+// returned.
 const GUEST_COUNTS = [
   "guest_registrations",
   "pending_guests",
@@ -44,14 +45,29 @@ export const Route = createFileRoute("/api/public/cleanup-deleted-events")({
           } catch {
             postersFailed = true;
           }
-          const failed = result.failed || guest.error !== null || postersFailed;
+          const { sweepMediaLibrary } = await import("@/lib/media-cleanup.server");
+          let mediaFiles = 0,
+            mediaFailed = false;
+          try {
+            mediaFiles = await sweepMediaLibrary(supabaseAdmin);
+          } catch {
+            mediaFailed = true;
+          }
+          const failed = result.failed || guest.error !== null || postersFailed || mediaFailed;
           return Response.json(
-            { ...result.counts, ...guestCounts, video_posters: posters },
+            { ...result.counts, ...guestCounts, video_posters: posters, media_files: mediaFiles },
             { status: failed ? 500 : 200, headers: { "Cache-Control": "no-store" } },
           );
         } catch {
           return Response.json(
-            { events: 0, users: 0, files: 0, ...emptyGuestCounts(), video_posters: 0 },
+            {
+              events: 0,
+              users: 0,
+              files: 0,
+              ...emptyGuestCounts(),
+              video_posters: 0,
+              media_files: 0,
+            },
             { status: 500, headers: { "Cache-Control": "no-store" } },
           );
         }

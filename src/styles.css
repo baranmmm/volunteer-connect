@@ -82,6 +82,8 @@
   --color-status-cancelled-bg: var(--status-cancelled-bg);
   --color-status-live: var(--status-live);
   --color-status-live-bg: var(--status-live-bg);
+  --color-media-amber: var(--media-amber);
+  --color-media-amber-text: var(--media-amber-text);
 }
 
 :root {
@@ -137,6 +139,14 @@
   --status-cancelled-bg: oklch(0.96 0.02 27); /* #FFEDEB */
   --status-live: oklch(0.47 0.11 152); /* #1B6C3A */
   --status-live-bg: oklch(0.955 0.045 152); /* #DBF9E2 */
+  /*
+   * Media tab: one warm accent for highlights and "new" markers (timeline dots, story rings, slideshow progress).
+   * --media-amber #E9A43C is for shapes only (3:1 against the black slideshow and the navy card overlay, not for text
+   * on white); text in amber uses --media-amber-text #8F5206 (5.9:1 on white, 5.5:1 on the page background). On dark
+   * photo overlays the amber fill is used for text (8.9:1 on black).
+   */
+  --media-amber: #e9a43c;
+  --media-amber-text: #8f5206;
 }
 
 @layer base {
@@ -259,3 +269,11 @@
    see the signed-out content flash before their redirect or member view; visitors never see the members' placeholder. */
 html[data-session] [data-signed-out-only] { display: none !important; }
 html:not([data-session]) [data-session-only] { display: none !important; }
+
+/* Media tab viewers: story progress segments, slideshow crossfade and the slideshow's photo progress bar. */
+@keyframes media-story { from { width: 0; } to { width: 100%; } }
+@keyframes media-progress { from { width: 0; } to { width: 100%; } }
+@keyframes media-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[media-fade"] { animation: none !important; }
+}

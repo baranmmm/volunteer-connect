@@ -976,6 +976,14 @@ const DIGEST_LINES: Record<string, { en: [string, string]; tr: string }> = {
     en: ["{n} volunteer application approved", "{n} volunteer applications approved"],
     tr: "{n} gönüllü başvurusu onaylandı",
   },
+  media_upload_approved: {
+    en: ["{n} of your photo uploads was approved", "{n} of your photo uploads were approved"],
+    tr: "{n} fotoğraf yükleme isteğiniz onaylandı",
+  },
+  media_upload_declined: {
+    en: ["{n} of your photo uploads was declined", "{n} of your photo uploads were declined"],
+    tr: "{n} fotoğraf yükleme isteğiniz reddedildi",
+  },
   volunteer_application_declined: {
     en: ["{n} volunteer application declined", "{n} volunteer applications declined"],
     tr: "{n} gönüllü başvurusu reddedildi",

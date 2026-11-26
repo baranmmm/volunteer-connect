@@ -40,6 +40,8 @@ export const PUSH_TITLE_KINDS = [
   "meeting_request_declined",
   "volunteer_application_approved",
   "volunteer_application_declined",
+  "media_upload_approved",
+  "media_upload_declined",
 ] as const;
 
 /** A same-origin path, or the notifications page when the stored link is not one. */
