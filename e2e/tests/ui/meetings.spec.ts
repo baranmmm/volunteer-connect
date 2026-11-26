@@ -345,6 +345,8 @@ test.describe("Meetings", () => {
     const taskId = (await link.getAttribute("data-task-id"))!;
     await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-decisions", "1");
     await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-tasks", "1");
+    // The assignee by full name (the manager is looking, so not "You").
+    await expect(decision.getByTestId("meeting-decision-task-assignees")).toHaveAttribute("title", volunteer.fullName);
 
     // The row toggles by click and keyboard; "Expand all / Collapse all" opens and closes every item.
     const toggle = item.getByTestId("meeting-agenda-item-toggle");

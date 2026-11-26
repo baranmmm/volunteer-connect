@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import pg from "pg";
 import { isLocalTarget, requireEnv } from "./env";
+import { acquireLocalStackLock } from "./local-lock";
 import { assertQaEnvironment } from "./guard";
 
 assertQaEnvironment(process.env, { requireDb: true });
@@ -22,6 +23,8 @@ if (!isLocalTarget()) {
   const running = execFileSync("gh", ["run", "list", "--limit", "10", "--json", "status", "-q", '[.[] | select(.status!="completed")] | length'], { encoding: "utf8" }).trim();
   if (running !== "0") { console.error(`[dryrun] ${running} CI run(s) in progress on QA — try again when CI is idle.`); process.exit(2); }
 }
+
+if (isLocalTarget()) acquireLocalStackLock("local:dryrun");
 
 function connectionConfig(): pg.ClientConfig {
   if (isLocalTarget()) return { connectionString: requireEnv("SUPABASE_DB_URL") };

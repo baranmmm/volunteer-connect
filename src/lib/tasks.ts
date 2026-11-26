@@ -99,6 +99,8 @@ export const taskSummary = z.object({
       status: z.enum(TASK_STATUSES),
       priority: z.enum(TASK_PRIORITIES),
       due_date: isoDate.nullable(),
+      /** Added by the dashboard server function (not the RPC): who the task is assigned to. */
+      assignees: z.array(z.object({ id: z.string(), full_name: z.string().nullable() })).optional(),
     }),
   ),
 });

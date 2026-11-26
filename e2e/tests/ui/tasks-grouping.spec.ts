@@ -1,8 +1,9 @@
-// The Tasks page layout: full content width, List by default, "Group by" (Source by default: meeting agenda item,
-// event, Other tasks; also Due date and Assignee) with done/total, collapsible headers remembered per user (all-done
-// sections start collapsed), compact one-line rows with a status menu, the "mine" highlight without a pill, @all groups
-// as one row in their source group, and the Board with the same sections as swimlanes (drag still changes the status).
-// Fresh users in a temporary branch; checks look at own ids only.
+// The Tasks page layout: full content width, List by default, "Group by" Meeting by default (meeting > agenda item >
+// tasks, with the decision under each task; then Events > event and Other tasks), done/total per level, only the
+// newest meeting open by default and all-done sections closed, Expand all / Collapse all, collapse remembered per user,
+// the Sort inside sections, assignee names ("Medway Manager", phones "Medway M.", "You", "+1"), the Created column
+// (desktop only) and the drawer's "Created … by …"; compact one-line rows with a status menu, @all groups as one row,
+// and the Board with the same sections as swimlanes. Fresh users in a temporary branch; checks look at own ids only.
 import type { Page } from "@playwright/test";
 import { test, expect, runId, type TestUser } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
@@ -18,7 +19,17 @@ const section = (page: Page, key: string) => page.locator(`[data-testid="tasks-s
 const listRow = (page: Page, id: string) => page.locator(`[data-testid="tasks-list-row"][data-task-id="${id}"]`);
 const status = async (id: string) => (await adminClient().from("tasks").select("status").eq("id", id).single()).data?.status;
 
-/** A branch team with a meeting (two agenda items, decisions) and an event, and tasks from each source. */
+const topKeys = (page: Page) =>
+  page.locator('[data-testid="tasks-section"][data-depth="0"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-section-key")));
+const rowIds = (scope: ReturnType<typeof section>) =>
+  scope.locator(':scope > div > ul [data-testid="tasks-list-row"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-task-id")));
+/** "26 Nov": today's London date as the Created column shows it (English, current year). */
+const createdToday = () => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", day: "numeric", month: "short" }).format(new Date());
+
+/**
+ * A branch team: an older meeting (one agenda item), the newest meeting (two agenda items with decisions, the second
+ * all done, plus a task linked to the meeting but no decision), an event and tasks from each place.
+ */
 async function setup(
   freshBranch: (label: string) => Promise<string>,
   freshUser: (o: { role: "branch_manager" | "volunteer" | "regional_director"; branch?: string }) => Promise<TestUser>,
@@ -27,12 +38,23 @@ async function setup(
   const branch = await freshBranch("grpby");
   const manager = await freshUser({ role: "branch_manager", branch });
   const volunteer = await freshUser({ role: "volunteer", branch });
+  const colleague = await freshUser({ role: "volunteer", branch });
+  // Readable names for the assignee display.
+  for (const [u, name] of [[manager, "Medway Manager"], [colleague, "Kent Volunteer"]] as const) {
+    const r = await adminClient().from("profiles").update({ full_name: name }).eq("id", u.id);
+    expect(r.error).toBeNull();
+  }
   const meetingTitle = `${MEETING_TITLE_PREFIX}${runId} grpby committee`;
-  const meeting = await createMeetingAs(manager, { scope: "branch", branch_id: branch, title: meetingTitle, starts_at: inDays(-3), ends_at: inDays(-3, 1), invitee_ids: [volunteer.id] });
-  const item = async (t: string) => (await workRpc(manager, "add_agenda_item", { p_meeting: meeting, p_title: t })).data as string;
+  const oldTitle = `${MEETING_TITLE_PREFIX}${runId} grpby older`;
+  const invitees = [volunteer.id, colleague.id];
+  const oldMeeting = await createMeetingAs(manager, { scope: "branch", branch_id: branch, title: oldTitle, starts_at: inDays(-10), ends_at: inDays(-10, 1), invitee_ids: invitees });
+  const meeting = await createMeetingAs(manager, { scope: "branch", branch_id: branch, title: meetingTitle, starts_at: inDays(-3), ends_at: inDays(-3, 1), invitee_ids: invitees });
+  const item = async (m: string, t: string) => (await workRpc(manager, "add_agenda_item", { p_meeting: m, p_title: t })).data as string;
   const decision = async (i: string, t: string) => (await workRpc(manager, "add_meeting_decision", { p_item: i, p_text: t })).data as string;
-  const plan = await item("Iftar plan");
-  const hall = await item("Hall booking");
+  const budget = await item(oldMeeting, "Budget");
+  const approve = await decision(budget, "Approve the budget");
+  const plan = await item(meeting, "Iftar plan");
+  const hall = await item(meeting, "Hall booking");
   const caterer = await decision(plan, "Book a caterer");
   const quotes = await decision(hall, "Ask for quotes");
   const event = await freshEvent(manager, { label: "grpby dinner", status: "published", startInMinutes: 20 * 1440 });
@@ -44,86 +66,200 @@ async function setup(
     planOther: await t("plan other", { decision_id: caterer, assignee_ids: [manager.id], due_date: londonDay(9) }),
     hallDone1: await t("hall done 1", { decision_id: quotes, assignee_ids: [manager.id], status: "done", due_date: londonDay(-10) }),
     hallDone2: await t("hall done 2", { decision_id: quotes, assignee_ids: [manager.id], status: "done" }),
+    direct: await t("meeting direct", { assignee_ids: [manager.id, colleague.id] }),
+    old: await t("older meeting", { decision_id: approve, assignee_ids: [manager.id] }),
     event: await t("event flyers", { event_id: event.id, assignee_ids: [volunteer.id], due_date: londonDay(30) }),
     other: await t("noticeboard", { assignee_ids: [manager.id] }),
   };
-  return { branch, manager, volunteer, meeting, meetingTitle, plan, hall, caterer, event, tasks };
+  // Linked to the meeting but to no decision (test setup: the app links tasks to a meeting through its decisions).
+  const linked = await adminClient().from("tasks").update({ meeting_id: meeting }).eq("id", tasks.direct);
+  expect(linked.error).toBeNull();
+  return { branch, manager, volunteer, colleague, meeting, oldMeeting, meetingTitle, plan, hall, budget, caterer, event, tasks };
 }
 
 test.describe("Tasks: grouping and compact rows", () => {
-  test("List by default, full width, grouped by source with done/total; collapse is remembered; all-done sections start collapsed", { tag: "@smoke" }, async ({ freshUser, freshBranch, freshEvent, pageAs, isMobile }) => {
-    test.setTimeout(120_000);
+  test("Meeting grouping by default: meeting > agenda item > tasks with the decision line; Events and Other tasks; newest meeting open; names and Created column", { tag: "@smoke" }, async ({ freshUser, freshBranch, freshEvent, pageAs, isMobile }) => {
+    test.setTimeout(150_000);
     const s = await setup(freshBranch, freshUser, freshEvent);
     const page = await pageAs(s.volunteer);
     await page.goto("/tasks");
     await expect(page.getByTestId("tasks-view-list")).toHaveAttribute("aria-pressed", "true", { timeout: APP_LOAD_TIMEOUT });
-    await expect(page.getByTestId("tasks-group-by")).toHaveValue("source");
+    await expect(page.getByTestId("tasks-group-by")).toHaveValue("meeting");
+    await expect(page.getByTestId("tasks-sort")).toHaveValue("status");
     await expect(page.locator("main")).toHaveAttribute("data-width", "wide");
 
-    // Source sections: "<agenda item> · <meeting> (<date>)", the event, then Other tasks; each with done/total.
-    const plan = section(page, `agenda:${s.plan}`);
+    // Nesting: the newest meeting (open) > its agenda items > the task rows.
+    const meeting = section(page, `meeting:${s.meeting}`);
+    const plan = meeting.locator(`[data-testid="tasks-section"][data-section-key="agenda:${s.plan}"]`);
     await expect(plan.locator(`[data-task-id="${s.tasks.mine}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    await expect(plan.locator(`[data-task-id="${s.tasks.planOther}"]`)).toBeVisible();
-    await expect(plan.getByTestId("tasks-section-label")).toContainText(`Iftar plan · ${s.meetingTitle} (`);
+    await expect(meeting).toHaveAttribute("data-collapsed", "false");
+    await expect(meeting).toHaveAttribute("data-depth", "0");
+    await expect(plan).toHaveAttribute("data-depth", "1");
+    await expect(meeting.getByTestId("tasks-section-label").first()).toContainText(s.meetingTitle);
+    await expect(meeting.getByTestId("tasks-section-date").first()).toBeVisible();
+    await expect(meeting.getByTestId("tasks-section-progress").first()).toHaveAttribute("data-total", "5");
+    await expect(meeting.getByTestId("tasks-section-progress").first()).toHaveAttribute("data-done", "2");
+    await expect(plan.getByTestId("tasks-section-label")).toHaveText("Iftar plan");
     await expect(plan.getByTestId("tasks-section-progress")).toHaveAttribute("data-total", "2");
-    await expect(section(page, `event:${s.event.id}`).locator(`[data-task-id="${s.tasks.event}"]`)).toBeVisible();
-    await expect(section(page, `event:${s.event.id}`).getByTestId("tasks-section-label")).toContainText(s.event.title);
-    await expect(section(page, "other").locator(`[data-task-id="${s.tasks.other}"]`)).toBeVisible();
-    const order = await page.getByTestId("tasks-section").evaluateAll((els) => els.map((e) => e.getAttribute("data-section-key")));
-    expect(order.indexOf(`agenda:${s.plan}`)).toBeLessThan(order.indexOf(`event:${s.event.id}`));
-    expect(order.indexOf(`event:${s.event.id}`)).toBeLessThan(order.indexOf("other"));
-
-    // Every task in "Hall booking" is done: it starts collapsed, with 2/2.
+    // Status, then due date: the overdue one first.
+    expect(await rowIds(plan)).toEqual([s.tasks.mine, s.tasks.planOther]);
+    // The decision as a muted second line, the full text in the tooltip.
+    const mineItem = page.getByTestId("tasks-list-item").filter({ has: listRow(page, s.tasks.mine) });
+    await expect(mineItem.getByTestId("tasks-list-row-decision")).toHaveText("Decision: Book a caterer");
+    await expect(mineItem.getByTestId("tasks-list-row-decision")).toHaveAttribute("title", "Decision: Book a caterer");
+    // A task linked to the meeting but no agenda item: directly under the meeting, after its agenda items.
+    const directRow = listRow(page, s.tasks.direct);
+    await expect(meeting.locator(':scope > div > ul').locator(`[data-task-id="${s.tasks.direct}"]`)).toBeVisible();
+    await expect(page.getByTestId("tasks-list-item").filter({ has: directRow }).getByTestId("tasks-list-row-decision")).toHaveCount(0);
     const hall = section(page, `agenda:${s.hall}`);
+    expect((await directRow.boundingBox())!.y).toBeGreaterThan((await hall.boundingBox())!.y);
+    // Every task in "Hall booking" is done: it starts collapsed, with 2/2.
     await expect(hall).toHaveAttribute("data-collapsed", "true");
+    await expect(hall.getByTestId("tasks-section-toggle")).toHaveAttribute("aria-expanded", "false");
     await expect(hall.getByTestId("tasks-section-progress")).toHaveAttribute("data-done", "2");
     await expect(hall.locator(`[data-task-id="${s.tasks.hallDone1}"]`)).toHaveCount(0);
+    // Only the newest meeting is open: the older one starts collapsed.
+    const older = section(page, `meeting:${s.oldMeeting}`);
+    await expect(older).toHaveAttribute("data-collapsed", "true");
+    await expect(older.locator(`[data-task-id="${s.tasks.old}"]`)).toHaveCount(0);
+    // Not linked to a meeting: Events > the event, then Other tasks.
+    const events = section(page, "events");
+    await expect(events.locator(`[data-testid="tasks-section"][data-section-key="event:${s.event.id}"]`).locator(`[data-task-id="${s.tasks.event}"]`)).toBeVisible();
+    await expect(section(page, `event:${s.event.id}`).getByTestId("tasks-section-label")).toContainText(s.event.title);
+    await expect(section(page, "other").locator(`[data-task-id="${s.tasks.other}"]`)).toBeVisible();
+    expect(await topKeys(page)).toEqual([`meeting:${s.meeting}`, `meeting:${s.oldMeeting}`, "events", "other"]);
 
-    // Compact rows: one line, the long title gets most of the row; mine: accent bar and bold, no pill.
+    // Assignee names: "You", the full name (phones: "First L."), "+1" with every name in the tooltip.
+    const names = (id: string) => page.getByTestId("tasks-list-item").filter({ has: listRow(page, id) }).getByTestId("tasks-list-row-assignees");
+    await expect(names(s.tasks.mine)).toHaveAttribute("data-you", "true");
+    await expect(names(s.tasks.mine).getByTestId(isMobile ? "tasks-list-row-assignees-short" : "tasks-list-row-assignees-full")).toHaveText("You");
+    await expect(names(s.tasks.planOther)).toHaveAttribute("title", "Medway Manager");
+    if (isMobile) {
+      await expect(names(s.tasks.planOther).getByTestId("tasks-list-row-assignees-short")).toHaveText("Medway M.");
+      await expect(names(s.tasks.planOther).getByTestId("tasks-list-row-assignees-full")).toBeHidden();
+    } else {
+      await expect(names(s.tasks.planOther).getByTestId("tasks-list-row-assignees-full")).toHaveText("Medway Manager");
+      await expect(names(s.tasks.planOther).getByTestId("tasks-list-row-assignees-short")).toBeHidden();
+    }
+    await expect(names(s.tasks.direct).getByTestId("tasks-list-row-assignees-more")).toHaveText("+1");
+    await expect(names(s.tasks.direct)).toHaveAttribute("title", /Medway Manager/);
+    await expect(names(s.tasks.direct)).toHaveAttribute("title", /Kent Volunteer/);
+    await expect(names(s.tasks.direct)).toContainText(/Assigned to: .*Kent Volunteer/);
+
+    // The Created column: desktop rows only.
+    const created = page.getByTestId("tasks-list-item").filter({ has: listRow(page, s.tasks.planOther) }).getByTestId("task-created");
+    if (isMobile) await expect(created).toBeHidden();
+    else await expect(created).toHaveText(`Created ${createdToday()}`);
+
+    // Compact rows: one line plus the decision, the long title gets most of the row; mine: accent bar and bold.
     const row = listRow(page, s.tasks.mine);
     await expect(row).toHaveAttribute("data-mine", "true");
     const box = (await row.boundingBox())!;
-    expect(box.height).toBeLessThanOrEqual(48);
+    expect(box.height).toBeLessThanOrEqual(52);
     const titleBox = (await row.getByTestId("tasks-list-row-title").boundingBox())!;
     expect(titleBox.width / box.width).toBeGreaterThan(isMobile ? 0.3 : 0.5);
     expect(await row.getByTestId("tasks-list-row-title").evaluate((el) => Number(getComputedStyle(el).fontWeight))).toBeGreaterThanOrEqual(700);
-    expect(await page.getByTestId("tasks-list-item").filter({ has: row }).evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe("4px");
+    expect(await mineItem.evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe("4px");
     await expect(page.getByTestId("tasks-list-row-mine")).toHaveCount(0);
     // No horizontal page scroll (phones included).
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
     // The status pill opens a menu.
-    const pill = page.locator(`[data-testid="tasks-list-item"]`).filter({ has: row }).getByTestId("tasks-list-row-status");
-    await setStatusByMenu(page, pill, "in_progress");
+    await setStatusByMenu(page, mineItem.getByTestId("tasks-list-row-status"), "in_progress");
     await expect.poll(() => status(s.tasks.mine)).toBe("in_progress");
     await expect(plan.getByTestId("tasks-section-progress")).toHaveAttribute("data-done", "0");
 
-    // Collapse and open are remembered per user.
-    await plan.getByTestId("tasks-section-toggle").click();
-    await expect(plan).toHaveAttribute("data-collapsed", "true");
-    await expect(plan.getByTestId("tasks-section-toggle")).toHaveAttribute("aria-expanded", "false");
-    await hall.getByTestId("tasks-section-toggle").click();
-    await expect(hall.locator(`[data-task-id="${s.tasks.hallDone1}"]`)).toBeVisible();
-    await page.reload();
-    await expect(section(page, `agenda:${s.plan}`)).toHaveAttribute("data-collapsed", "true", { timeout: APP_LOAD_TIMEOUT });
-    await expect(section(page, `agenda:${s.hall}`)).toHaveAttribute("data-collapsed", "false");
-
-    // Due date grouping (remembered): Overdue, Next week, Later, No date.
+    // Due date grouping (remembered): Overdue, Next week, Later, No date; the names stay.
     await page.getByTestId("tasks-group-by").selectOption("due");
     await expect(section(page, "due:nextWeek").locator(`[data-task-id="${s.tasks.planOther}"]`)).toBeVisible();
     await expect(section(page, "due:later").locator(`[data-task-id="${s.tasks.event}"]`)).toBeVisible();
     await expect(section(page, "due:none").locator(`[data-task-id="${s.tasks.other}"]`)).toBeVisible();
+    await expect(names(s.tasks.mine)).toHaveAttribute("data-you", "true");
+    await expect(row).toHaveAttribute("data-mine", "true");
     await page.reload();
     await expect(page.getByTestId("tasks-group-by")).toHaveValue("due", { timeout: APP_LOAD_TIMEOUT });
-    // None: one plain list without headers.
+    // None: one plain list without headers and no Expand/Collapse all.
     await page.getByTestId("tasks-group-by").selectOption("none");
     await expect(page.getByTestId("tasks-section")).toHaveCount(1);
     await expect(page.getByTestId("tasks-section-toggle")).toHaveCount(0);
-    await page.getByTestId("tasks-group-by").selectOption("source");
+    await expect(page.getByTestId("tasks-expand-all")).toHaveCount(0);
+    await page.getByTestId("tasks-group-by").selectOption("meeting");
 
     // Other pages keep the reading width.
     await page.goto("/dashboard");
     await expect(page.locator("main")).toHaveAttribute("data-width", "default", { timeout: APP_LOAD_TIMEOUT });
+    // The dashboard's My tasks names the assignee too: "You".
+    const dashItem = page.locator(`[data-testid="dashboard-my-task-item"][data-task-id="${s.tasks.mine}"]`);
+    await expect(dashItem.getByTestId("dashboard-my-task-assignees")).toHaveAttribute("data-you", "true", { timeout: APP_LOAD_TIMEOUT });
+    await expect(dashItem.getByTestId("dashboard-my-task-assignees")).toHaveAttribute("title", "You");
+  });
+
+  test("Expand all / Collapse all and section toggles (keyboard) are remembered after a reload", async ({ freshUser, freshBranch, freshEvent, pageAs }) => {
+    test.setTimeout(150_000);
+    const s = await setup(freshBranch, freshUser, freshEvent);
+    const page = await pageAs(s.volunteer);
+    await page.goto("/tasks");
+    const meeting = section(page, `meeting:${s.meeting}`);
+    const older = section(page, `meeting:${s.oldMeeting}`);
+    await expect(meeting.locator(`[data-task-id="${s.tasks.mine}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+
+    await page.getByTestId("tasks-collapse-all").click();
+    for (const key of [`meeting:${s.meeting}`, `meeting:${s.oldMeeting}`, "events", "other"])
+      await expect(section(page, key)).toHaveAttribute("data-collapsed", "true");
+    await expect(listRow(page, s.tasks.mine)).toHaveCount(0);
+
+    await page.getByTestId("tasks-expand-all").click();
+    await expect(older).toHaveAttribute("data-collapsed", "false");
+    await expect(listRow(page, s.tasks.old)).toBeVisible();
+    await expect(listRow(page, s.tasks.hallDone1)).toBeVisible();
+    await expect(section(page, `agenda:${s.budget}`)).toHaveAttribute("data-collapsed", "false");
+
+    // Keyboard: the header is a real button with aria-expanded and aria-controls.
+    const toggle = older.getByTestId("tasks-section-toggle").first();
+    const controls = await toggle.getAttribute("aria-controls");
+    expect(controls).toBeTruthy();
+    await expect(page.locator(`[id="${controls}"]`)).toBeVisible();
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator(`[id="${controls}"]`)).toBeHidden();
+
+    await page.reload();
+    await expect(section(page, `meeting:${s.meeting}`)).toHaveAttribute("data-collapsed", "false", { timeout: APP_LOAD_TIMEOUT });
+    await expect(section(page, `meeting:${s.oldMeeting}`)).toHaveAttribute("data-collapsed", "true");
+    await expect(section(page, `agenda:${s.hall}`)).toHaveAttribute("data-collapsed", "false");
+    await expect(listRow(page, s.tasks.hallDone2)).toBeVisible();
+  });
+
+  test("Sort: Status, Due date, Newest first, Oldest first inside each section; the drawer shows Created … by …", async ({ freshUser, freshBranch, freshEvent, pageAs }) => {
+    test.setTimeout(150_000);
+    const s = await setup(freshBranch, freshUser, freshEvent);
+    const page = await pageAs(s.volunteer);
+    await page.goto("/tasks");
+    const plan = section(page, `agenda:${s.plan}`);
+    await expect(plan.locator(`[data-task-id="${s.tasks.mine}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    const sort = page.getByTestId("tasks-sort");
+    // "mine" was created before "plan other" and is due earlier.
+    expect(await rowIds(plan)).toEqual([s.tasks.mine, s.tasks.planOther]);
+    await sort.selectOption("newest");
+    await expect.poll(() => rowIds(plan)).toEqual([s.tasks.planOther, s.tasks.mine]);
+    await sort.selectOption("oldest");
+    await expect.poll(() => rowIds(plan)).toEqual([s.tasks.mine, s.tasks.planOther]);
+    // Status first: a done task moves below the open one, whatever its date.
+    await sort.selectOption("newest");
+    await expect.poll(() => rowIds(plan)).toEqual([s.tasks.planOther, s.tasks.mine]);
+    await sort.selectOption("status");
+    await setStatusByMenu(page, page.getByTestId("tasks-list-item").filter({ has: listRow(page, s.tasks.mine) }).getByTestId("tasks-list-row-status"), "done");
+    await expect.poll(() => rowIds(plan)).toEqual([s.tasks.planOther, s.tasks.mine]);
+    await sort.selectOption("due");
+    await expect.poll(() => rowIds(plan)).toEqual([s.tasks.mine, s.tasks.planOther]);
+    // Remembered per user.
+    await page.reload();
+    await expect(page.getByTestId("tasks-sort")).toHaveValue("due", { timeout: APP_LOAD_TIMEOUT });
+
+    // The drawer: "Created <date> by <name>".
+    await listRow(page, s.tasks.planOther).click();
+    await expect(page.getByTestId("task-panel-created")).toHaveText(`Created ${createdToday()} by Medway Manager`, { timeout: APP_LOAD_TIMEOUT });
   });
 
   test("Board: the same sections as collapsible swimlanes; drag between columns and the card menu change the status", async ({ freshUser, freshBranch, freshEvent, pageAs, isMobile }) => {

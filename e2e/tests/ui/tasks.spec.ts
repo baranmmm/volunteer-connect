@@ -153,7 +153,7 @@ test.describe("Tasks", () => {
     await page.getByTestId("tasks-group-by").selectOption("assignee");
     await expect(page.locator(`[data-testid="tasks-section"][data-section-key="person:${volunteer.id}"]`).locator(`[data-task-id="${mine}"]`)).toBeVisible();
     await expect(page.locator('[data-testid="tasks-section"][data-section-key="unassigned"]').locator(`[data-task-id="${other}"]`)).toBeVisible();
-    await page.getByTestId("tasks-group-by").selectOption("source");
+    await page.getByTestId("tasks-group-by").selectOption("meeting");
 
     // The view is remembered; My tasks starts off again.
     await page.reload();

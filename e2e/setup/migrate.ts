@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import pg from "pg";
 import { E2E_DIR, REPO_ROOT, isLocalTarget, requireEnv } from "./env";
+import { acquireLocalStackLock } from "./local-lock";
 import { assertQaEnvironment } from "./guard";
 
 function databaseUrl(): string {
@@ -55,6 +56,7 @@ function pendingMigrations(dbUrl: string): string[] | null {
 }
 
 async function main() {
+  if (isLocalTarget()) acquireLocalStackLock("local:migrate");
   assertQaEnvironment(process.env, { requireDb: true });
   const dbUrl = databaseUrl();
   const host = new URL(dbUrl).hostname;

@@ -23,7 +23,7 @@ import { useTaskArchive } from "./use-task-archive";
 import { ReminderLines } from "./ReminderFields";
 import { TaskMyReminders } from "./TaskMyReminders";
 import { useWorkScopes } from "@/components/work/use-work-scopes";
-import { formatDay, scopeText, selectClass } from "./task-display";
+import { createdDay, formatDay, scopeText, selectClass } from "./task-display";
 
 /** The task detail side panel (full width on phones). `taskId` null closes it. */
 export function TaskPanel({
@@ -248,8 +248,15 @@ function PanelDetail({
             {scopeText(t, task)}
           </Row>
         )}
-        <Row label={t("tasks.panel.createdBy")} testId="task-panel-creator">
-          {task.created_by_name ?? t("common.formerMember")}
+        <Row label={t("tasks.panel.created")} testId="task-panel-creator">
+          <span data-testid="task-panel-created">
+            {task.created_by_name
+              ? t("tasks.createdBy", {
+                  date: createdDay(task.created_at, today),
+                  name: task.created_by_name,
+                })
+              : t("tasks.created", { date: createdDay(task.created_at, today) })}
+          </span>
         </Row>
         <Row label={t("tasks.form.assignees")} testId="task-panel-assignees">
           {task.assignees.length ? (
