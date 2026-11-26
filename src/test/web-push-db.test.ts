@@ -367,7 +367,11 @@ describe("push settings and queueing", () => {
         notification_id: string;
         language: string;
       };
-      const claimed = (await db.query<Claimed>("SELECT * FROM public.claim_push_batch(10)")).rows;
+      // Rows queued in one transaction share created_at, so the claim order between them follows their random ids:
+      // compare in endpoint order.
+      const claimed = (
+        await db.query<Claimed>("SELECT * FROM public.claim_push_batch(10)")
+      ).rows.sort((x, y) => x.endpoint.localeCompare(y.endpoint));
       expect(claimed.map((c) => [c.endpoint, c.kind, c.notification_id, c.p256dh, c.auth])).toEqual(
         [
           ["https://push.example.test/a", "task_assigned", first, KEY, AUTH],
