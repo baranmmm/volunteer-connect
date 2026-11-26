@@ -67,6 +67,20 @@ import {
 import { selectClass } from "@/components/tasks/task-display";
 import { useWorkScopes } from "@/components/work/use-work-scopes";
 import { cn } from "@/lib/utils";
+import { useNarrowScreen } from "@/hooks/use-narrow-screen";
+import {
+  DEFAULT_TASK_GROUPING,
+  DEFAULT_TASK_ROW_SORT,
+  taskToolbarChanges,
+} from "@/lib/compact-toolbar";
+import {
+  CompactHeader,
+  FAB_CLEARANCE,
+  FiltersSheet,
+  FloatingActionButton,
+  IconViewSwitch,
+  SheetField,
+} from "@/components/app/CompactToolbar";
 
 const tasksSearch = z.object({
   task: z.string().uuid().optional().catch(undefined),
@@ -152,6 +166,9 @@ function TasksPage() {
     saveTaskRowSort(uid, v);
   };
   const [creating, setCreating] = useState(false);
+  // Phones (< 640px): one slim header row, the settings in the Filters sheet and New task as a floating button.
+  const narrow = useNarrowScreen();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const today = londonDay();
   const all = useMemo(
     () => collapseGroups(tasks.data ?? [], groups.data ?? []),
@@ -271,157 +288,284 @@ function TasksPage() {
     </div>
   );
 
-  return (
-    <div className="min-w-0 space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">{t("navigation.tasks")}</h1>
-        {work.canCreate && (
-          <Button data-testid="tasks-new" className="h-11" onClick={() => setCreating(true)}>
-            <Plus />
-            {t("tasks.new")}
-          </Button>
-        )}
-      </header>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
-        <div role="group" aria-label={t("tasks.viewLabel")} className="flex flex-wrap gap-1">
-          {(["kanban", "list", "calendar"] as const).map((v) => {
-            const Icon = VIEW_ICONS[v];
-            return (
-              <Button
-                key={v}
-                data-testid={`tasks-view-${v}`}
-                variant={view === v ? "secondary" : "ghost"}
-                aria-pressed={view === v}
-                className="h-11"
-                onClick={() => setView(v)}
-              >
-                <Icon />
-                {t(`tasks.views.${v}`)}
-              </Button>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {view !== "calendar" && (
-            <div className="flex items-center gap-2">
-              <Label htmlFor="tasks-group-by" className="text-sm text-muted-foreground">
-                {t("tasks.grouping.label")}
-              </Label>
-              <select
-                id="tasks-group-by"
-                data-testid="tasks-group-by"
-                className={cn(selectClass, "h-11 w-auto")}
-                value={grouping}
-                onChange={(e) => setGrouping(e.target.value as TaskGrouping)}
-              >
-                {TASK_GROUPINGS.map((g) => (
-                  <option key={g} value={g}>
-                    {t(`tasks.grouping.by.${g}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {view !== "calendar" && (
-            <div className="flex items-center gap-2">
-              <Label htmlFor="tasks-sort" className="text-sm text-muted-foreground">
-                {t("tasks.filters.sort")}
-              </Label>
-              <select
-                id="tasks-sort"
-                data-testid="tasks-sort"
-                className={cn(selectClass, "h-11 w-auto")}
-                value={sort}
-                onChange={(e) => setSort(e.target.value as TaskRowSort)}
-              >
-                {TASK_ROW_SORTS.map((v) => (
-                  <option key={v} value={v}>
-                    {t(`tasks.filters.sortBy.${v}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <Button
-            data-testid="tasks-filter-mine"
-            variant={filters.mine ? "default" : "outline"}
-            aria-pressed={filters.mine}
-            className="h-11 rounded-full"
-            onClick={() => set("mine", !filters.mine)}
-          >
-            {t("dashboard.tasksTitle")}
-          </Button>
-          <Button
-            data-testid="tasks-filter-archived"
-            variant={filters.archived ? "default" : "outline"}
-            aria-pressed={!!filters.archived}
-            className="h-11 rounded-full"
-            onClick={() => set("archived", !filters.archived)}
-          >
-            <Archive />
-            {t("tasks.archive.filter")}
-          </Button>
-        </div>
-      </div>
-      {(showRegionFilter || showBranchFilter) && (
-        <div className="flex min-w-0 flex-wrap items-end gap-3">
-          {showRegionFilter && (
-            <TaskScopeFilter
-              testId="tasks-filter-regions"
-              label={t("tasks.filters.regions")}
-              options={regionOptions}
-              selected={regions}
-              onChange={(v) => setScope("regions", v)}
-              disabled={filters.mine}
-              describedBy={filters.mine ? "tasks-filter-scope-hint" : undefined}
-            />
-          )}
-          {showBranchFilter && (
-            <TaskScopeFilter
-              testId="tasks-filter-branches"
-              label={t("tasks.filters.branches")}
-              options={branchOptions}
-              selected={branches}
-              onChange={(v) => setScope("branches", v)}
-              disabled={filters.mine}
-              describedBy={filters.mine ? "tasks-filter-scope-hint" : undefined}
-            />
-          )}
-          {filters.mine && (
-            <p
-              id="tasks-filter-scope-hint"
-              data-testid="tasks-filter-scope-hint"
-              className="min-w-0 pb-3 text-sm text-muted-foreground"
-            >
-              {t("tasks.filters.scopeHint")}
-            </p>
-          )}
+  // Trustees and others without create rights get neither the button nor the floating +.
+  const canCreate = work.canCreate;
+  const groupBySelect = (className: string) => (
+    <select
+      id="tasks-group-by"
+      data-testid="tasks-group-by"
+      className={cn(selectClass, className)}
+      value={grouping}
+      onChange={(e) => setGrouping(e.target.value as TaskGrouping)}
+    >
+      {TASK_GROUPINGS.map((g) => (
+        <option key={g} value={g}>
+          {t(`tasks.grouping.by.${g}`)}
+        </option>
+      ))}
+    </select>
+  );
+  const sortSelect = (className: string) => (
+    <select
+      id="tasks-sort"
+      data-testid="tasks-sort"
+      className={cn(selectClass, className)}
+      value={sort}
+      onChange={(e) => setSort(e.target.value as TaskRowSort)}
+    >
+      {TASK_ROW_SORTS.map((v) => (
+        <option key={v} value={v}>
+          {t(`tasks.filters.sortBy.${v}`)}
+        </option>
+      ))}
+    </select>
+  );
+  const mineToggle = (
+    <Button
+      data-testid="tasks-filter-mine"
+      variant={filters.mine ? "default" : "outline"}
+      aria-pressed={filters.mine}
+      className="h-11 rounded-full"
+      onClick={() => set("mine", !filters.mine)}
+    >
+      {t("dashboard.tasksTitle")}
+    </Button>
+  );
+  const archivedToggle = (
+    <Button
+      data-testid="tasks-filter-archived"
+      variant={filters.archived ? "default" : "outline"}
+      aria-pressed={!!filters.archived}
+      className="h-11 rounded-full"
+      onClick={() => set("archived", !filters.archived)}
+    >
+      <Archive />
+      {t("tasks.archive.filter")}
+    </Button>
+  );
+  const scopeFilterRow = (showRegionFilter || showBranchFilter) && (
+    <div className="flex min-w-0 flex-wrap items-end gap-3">
+      {showRegionFilter && (
+        <TaskScopeFilter
+          testId="tasks-filter-regions"
+          label={t("tasks.filters.regions")}
+          options={regionOptions}
+          selected={regions}
+          onChange={(v) => setScope("regions", v)}
+          disabled={filters.mine}
+          describedBy={filters.mine ? "tasks-filter-scope-hint" : undefined}
+        />
+      )}
+      {showBranchFilter && (
+        <TaskScopeFilter
+          testId="tasks-filter-branches"
+          label={t("tasks.filters.branches")}
+          options={branchOptions}
+          selected={branches}
+          onChange={(v) => setScope("branches", v)}
+          disabled={filters.mine}
+          describedBy={filters.mine ? "tasks-filter-scope-hint" : undefined}
+        />
+      )}
+      {filters.mine && (
+        <p
+          id="tasks-filter-scope-hint"
+          data-testid="tasks-filter-scope-hint"
+          className="min-w-0 pb-3 text-sm text-muted-foreground"
+        >
+          {t("tasks.filters.scopeHint")}
+        </p>
+      )}
+    </div>
+  );
+  const listFilters = view === "list" && (
+    <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
+      {filterSelect(
+        "status",
+        t("tasks.form.status"),
+        TASK_STATUSES.map((s) => [s, t(`tasks.status.${s}`)]),
+      )}
+      {filterSelect(
+        "priority",
+        t("tasks.form.priority"),
+        TASK_PRIORITIES.map((p) => [p, t(`tasks.priority.${p}`)]),
+      )}
+      {filterSelect("assignee", t("tasks.form.assignees"), assigneeOptions)}
+      {filterSelect("due", t("tasks.form.dueDate"), [
+        ["overdue", t("tasks.filters.dueOverdue")],
+        ["week", t("tasks.filters.dueWeek")],
+        ["none", t("tasks.filters.dueNone")],
+      ])}
+      {!filters.archived && (
+        <div className="col-span-2 flex min-w-0 items-end lg:col-span-1">
+          <ArchiveDoneButton tasks={shown} testId="tasks-archive-done" />
         </div>
       )}
-      {view === "list" && (
-        <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
-          {filterSelect(
-            "status",
-            t("tasks.form.status"),
-            TASK_STATUSES.map((s) => [s, t(`tasks.status.${s}`)]),
-          )}
-          {filterSelect(
-            "priority",
-            t("tasks.form.priority"),
-            TASK_PRIORITIES.map((p) => [p, t(`tasks.priority.${p}`)]),
-          )}
-          {filterSelect("assignee", t("tasks.form.assignees"), assigneeOptions)}
-          {filterSelect("due", t("tasks.form.dueDate"), [
-            ["overdue", t("tasks.filters.dueOverdue")],
-            ["week", t("tasks.filters.dueWeek")],
-            ["none", t("tasks.filters.dueNone")],
-          ])}
-          {!filters.archived && (
-            <div className="col-span-2 flex min-w-0 items-end lg:col-span-1">
-              <ArchiveDoneButton tasks={shown} testId="tasks-archive-done" />
+    </div>
+  );
+  // Expand all / Collapse all: only with sections to fold (List and Board, grouped, tasks loaded and shown).
+  const canFold =
+    !tasks.isLoading &&
+    !groups.isLoading &&
+    !tasks.isError &&
+    shown.length > 0 &&
+    view !== "calendar" &&
+    grouping !== "none" &&
+    sections.length > 0;
+  const expandButtons = (className: string, onDone?: () => void) => (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className={className}
+        data-testid="tasks-expand-all"
+        onClick={() => {
+          setAllSections(false);
+          onDone?.();
+        }}
+      >
+        <ChevronsUpDown aria-hidden />
+        {t("tasks.grouping.expandAll")}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className={className}
+        data-testid="tasks-collapse-all"
+        onClick={() => {
+          setAllSections(true);
+          onDone?.();
+        }}
+      >
+        <ChevronsDownUp aria-hidden />
+        {t("tasks.grouping.collapseAll")}
+      </Button>
+    </>
+  );
+  const changed = taskToolbarChanges({
+    view,
+    grouping,
+    sort,
+    filters,
+    regions: showRegionFilter ? regions : [],
+    branches: showBranchFilter ? branches : [],
+  });
+  const resetToolbar = () => {
+    setGrouping(DEFAULT_TASK_GROUPING);
+    setSort(DEFAULT_TASK_ROW_SORT);
+    setFilters({ ...DEFAULT_FILTERS });
+    saveTaskScopeFilter(uid, { branches: [], regions: [] });
+  };
+
+  return (
+    <div
+      className={cn("min-w-0", narrow ? cn("space-y-4", canCreate && FAB_CLEARANCE) : "space-y-6")}
+    >
+      {narrow ? (
+        <CompactHeader title={t("navigation.tasks")} testId="tasks-compact-header">
+          <IconViewSwitch
+            label={t("tasks.viewLabel")}
+            value={view}
+            onChange={setView}
+            options={(["list", "kanban", "calendar"] as const).map((v) => ({
+              value: v,
+              icon: VIEW_ICONS[v],
+              label: t(`tasks.views.${v}`),
+              testId: `tasks-view-${v}`,
+            }))}
+          />
+          <FiltersSheet
+            testId="tasks-filters"
+            count={changed}
+            open={sheetOpen}
+            onOpenChange={setSheetOpen}
+            onReset={resetToolbar}
+          >
+            {view !== "calendar" && (
+              <div className="grid grid-cols-2 gap-3">
+                <SheetField>
+                  <Label htmlFor="tasks-group-by" className="text-xs text-muted-foreground">
+                    {t("tasks.grouping.label")}
+                  </Label>
+                  {groupBySelect("h-11")}
+                </SheetField>
+                <SheetField>
+                  <Label htmlFor="tasks-sort" className="text-xs text-muted-foreground">
+                    {t("tasks.filters.sort")}
+                  </Label>
+                  {sortSelect("h-11")}
+                </SheetField>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {mineToggle}
+              {archivedToggle}
             </div>
-          )}
-        </div>
+            {scopeFilterRow}
+            {listFilters}
+            {canFold && (
+              <div className="flex flex-wrap gap-2" data-testid="tasks-expand-controls">
+                {expandButtons("h-11 flex-1", () => setSheetOpen(false))}
+              </div>
+            )}
+          </FiltersSheet>
+        </CompactHeader>
+      ) : (
+        <>
+          <header className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-3xl font-bold">{t("navigation.tasks")}</h1>
+            {canCreate && (
+              <Button data-testid="tasks-new" className="h-11" onClick={() => setCreating(true)}>
+                <Plus />
+                {t("tasks.new")}
+              </Button>
+            )}
+          </header>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+            <div role="group" aria-label={t("tasks.viewLabel")} className="flex flex-wrap gap-1">
+              {(["kanban", "list", "calendar"] as const).map((v) => {
+                const Icon = VIEW_ICONS[v];
+                return (
+                  <Button
+                    key={v}
+                    data-testid={`tasks-view-${v}`}
+                    variant={view === v ? "secondary" : "ghost"}
+                    aria-pressed={view === v}
+                    className="h-11"
+                    onClick={() => setView(v)}
+                  >
+                    <Icon />
+                    {t(`tasks.views.${v}`)}
+                  </Button>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {view !== "calendar" && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tasks-group-by" className="text-sm text-muted-foreground">
+                    {t("tasks.grouping.label")}
+                  </Label>
+                  {groupBySelect("h-11 w-auto")}
+                </div>
+              )}
+              {view !== "calendar" && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tasks-sort" className="text-sm text-muted-foreground">
+                    {t("tasks.filters.sort")}
+                  </Label>
+                  {sortSelect("h-11 w-auto")}
+                </div>
+              )}
+              {mineToggle}
+              {archivedToggle}
+            </div>
+          </div>
+          {scopeFilterRow}
+          {listFilters}
+        </>
       )}
       {tasks.isLoading || groups.isLoading ? (
         <p className="py-10 text-center text-muted-foreground">{t("common.loading")}</p>
@@ -459,30 +603,9 @@ function TasksPage() {
         </div>
       ) : (
         <>
-          {view !== "calendar" && grouping !== "none" && sections.length > 0 && (
+          {!narrow && canFold && (
             <div className="flex flex-wrap justify-end gap-2" data-testid="tasks-expand-controls">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-10"
-                data-testid="tasks-expand-all"
-                onClick={() => setAllSections(false)}
-              >
-                <ChevronsUpDown aria-hidden />
-                {t("tasks.grouping.expandAll")}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-10"
-                data-testid="tasks-collapse-all"
-                onClick={() => setAllSections(true)}
-              >
-                <ChevronsDownUp aria-hidden />
-                {t("tasks.grouping.collapseAll")}
-              </Button>
+              {expandButtons("h-10")}
             </div>
           )}
           {view === "kanban" ? (
@@ -515,6 +638,13 @@ function TasksPage() {
             <CalendarView tasks={shown} today={today} onOpen={open} showScope={showScope} />
           )}
         </>
+      )}
+      {narrow && canCreate && (
+        <FloatingActionButton
+          testId="tasks-new"
+          label={t("tasks.new")}
+          onClick={() => setCreating(true)}
+        />
       )}
       <TaskPanel taskId={openTask ?? null} highlightNote={highlightNote} onClose={close} />
       <TaskGroupPanel groupId={openTask ? null : (openGroup ?? null)} onClose={close} />

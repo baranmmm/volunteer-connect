@@ -1,5 +1,6 @@
 // Past events: a manager records an event that already took place, with photos (per-photo public gallery tick) and a
 // YouTube link. The landing data shows only the ticked photo.
+import { clickCalendarAction } from "../../pages/CalendarPage";
 import { test, expect, runId } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import { EVENT_TITLE_PREFIX, TINY_PNG, deleteEvents } from "../../api/events";
@@ -17,7 +18,7 @@ test.describe("Past events", () => {
     const manager = await freshUser({ role: "branch_manager" });
     const page = await pageAs(manager);
     await page.goto("/calendar?view=list");
-    await page.getByTestId("calendar-add-past-event-button").click({ timeout: APP_LOAD_TIMEOUT });
+    await clickCalendarAction(page, "calendar-add-past-event-button", { timeout: APP_LOAD_TIMEOUT });
     const dialog = new PastEventDialog(page);
     const title = `${EVENT_TITLE_PREFIX}${runId} past ${Date.now()}`;
     await dialog.title().fill(title);

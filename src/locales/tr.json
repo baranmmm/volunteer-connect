@@ -2304,5 +2304,12 @@
       "step1": "Menü çubuğunda Dosya'yı, ardından Dock'a Ekle'yi seçin.",
       "step2": "Ekle'yi tıklayın. Uygulama Dock'unuzdan açılır."
     }
+  },
+  "toolbar": {
+    "filters": "Filtreler",
+    "filtersActive": "Filtreler, {{count}} etkin",
+    "reset": "Sıfırla",
+    "done": "Tamam",
+    "moreActions": "Diğer işlemler"
   }
 }

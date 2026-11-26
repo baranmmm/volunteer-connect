@@ -1,4 +1,5 @@
 // A3 revision through the UI: an external request with a leaflet, reviewed, edited and published by a manager.
+import { clickCalendarAction } from "../../pages/CalendarPage";
 import { test, expect } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import {
@@ -41,7 +42,7 @@ test.describe("External event requests", () => {
 
     const page = await pageAs(volunteer);
     await page.goto("/calendar?view=list");
-    await page.getByTestId("event-request-open-button").click();
+    await clickCalendarAction(page, "event-request-open-button");
     const form = new EventRequestFormDialog(page);
     await form.chooseType("external");
     const name = token; // contained in the existing event's title, so the duplicate warning shows

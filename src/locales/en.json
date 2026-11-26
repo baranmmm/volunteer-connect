@@ -2304,5 +2304,12 @@
       "step1": "In the menu bar, choose File, then Add to Dock.",
       "step2": "Click Add. The app opens from your Dock."
     }
+  },
+  "toolbar": {
+    "filters": "Filters",
+    "filtersActive": "Filters, {{count}} active",
+    "reset": "Reset",
+    "done": "Done",
+    "moreActions": "More actions"
   }
 }
