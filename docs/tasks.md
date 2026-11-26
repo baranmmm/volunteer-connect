@@ -26,7 +26,9 @@ nothing.
   volunteer; they may also choose other volunteers of their own branch (`list_task_people` offers exactly those). Anyone
   else is refused with "This person cannot be assigned".
 - **Trustees** (`docs/roles.md#trustees`). They see what a volunteer of the branch sees but create and edit nothing.
-  On tasks assigned to them they change the status and write notes only (no archive: `can_archive` is false). Only the
+  On tasks assigned to them they change the status only (no archive: `can_archive` is false). They write notes on
+  every task of their branch they can read, assigned to them or not (`can_add_task_note`, task flag `can_add_note`;
+  `20261211090000_trustee_task_notes.sql`), and edit/delete only their own notes. Only the
   branch's Branch Manager assigns them (`list_task_people` offers them only to that BM); Regional Directors and
   volunteers cannot. "@all" groups never include them (`task_group_people`, `task_group_member_ok`,
   `task_group_add_member`). New task and Add task are hidden for them.
@@ -143,14 +145,18 @@ Schema and RPCs: `supabase/migrations/20261205090000_task_groups.sql`.
 
 Every task has a notes thread in the side panel (oldest first; author, time, "edited", mentioned people). In the note
 box Enter saves the note and Shift+Enter adds a new line (Enter is ignored while an input method is composing text).
-- **Who writes.** Assignees, the creator and the scope's managers (`can_set_task_status`). Everyone who can see the
+- **Who writes.** Assignees, the creator and the scope's managers, plus trustees on every readable task of their branch
+  (`can_add_task_note`; the panel shows the note box when the task's `can_add_note` flag is true). Everyone who can see the
   task reads the notes. Authors edit and delete their own notes (deleting asks for confirmation). At most 500 notes per
   task and 4000 characters per note.
 - **Mentions.** Typing "@" or the Mention button opens a picker of the people who can see the task
   (`list_task_mention_people`); chosen people show as chips and are sent with the note (at most 20). The database
   refuses anyone who cannot see the task. Mentioned people get `task_note_mention` (an edit notifies only newly added
   people).
-- **Creator notice.** The creator gets `task_note_added` when an assignee writes a note (unless mentioned in it).
+- **Creator notice.** The creator gets `task_note_added` when an assignee or a trustee writes a note (unless mentioned in
+  it or an assignee).
+  When a trustee writes a note on a task with no active creator (account deleted or no longer active), the branch's
+  Branch Managers get it instead (`20261211090100_trustee_note_creator_fallback.sql`; never the author, nobody twice).
 - **Cards** show the note count when there is at least one.
 - **Dashboard.** The "My tasks" card (volunteer and up) shows open and overdue counts and the next 5 tasks by due date,
   with due-tomorrow and overdue tasks highlighted.
@@ -214,7 +220,7 @@ see [notifications.md](notifications.md). For tasks in short:
 | A task is created with assignees, or an assignee is added | Each new assignee, never someone who assigned themselves | `task_assigned` (always on) |
 | A task moves to Blocked or Done (by someone else) | The creator | `task_status_changed` |
 | Someone is @mentioned in a note | The mentioned person | `task_note_mention` (always on) |
-| An assignee writes a note | The creator (unless mentioned) | `task_note_added` |
+| An assignee or a trustee writes a note | The creator (unless mentioned); for a trustee's note on a task with no active creator, the branch's Branch Managers | `task_note_added` |
 | A reminder is due (reminders turned on) | The assignee | `task_reminder` |
 | A task request waits for review | The target, in one grouped notice | `review_waiting` (always on) |
 | A task request is accepted or declined | The requester | `task_request_accepted` / `task_request_declined` |

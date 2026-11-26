@@ -7,6 +7,7 @@ import { Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   TASK_STATUSES,
+  canAddNote,
   canArchive,
   isOverdue,
   londonDay,
@@ -363,7 +364,7 @@ function PanelDetail({
           )}
         </div>
       )}
-      <TaskNotes taskId={task.id} canWrite={task.can_set_status} highlightId={highlightNote} />
+      <TaskNotes taskId={task.id} canWrite={canAddNote(task)} highlightId={highlightNote} />
       {task.can_edit && (
         <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row">
           <Button
