@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { londonToIso } from "@/lib/event-rules";
+import { londonToIso } from "@/lib/london-time";
 
 /**
  * RFC 5545 RRULE helpers for recurring events. Rules are evaluated in Europe/London wall-clock time by the

@@ -1,4 +1,5 @@
-import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { formatInTimeZone } from "date-fns-tz";
+import { LONDON, londonInput, londonToIso } from "@/lib/london-time";
 import type { Database } from "@/integrations/supabase/types";
 import { googleRecur, LONDON_VTIMEZONE, seriesIcsLines, type SeriesInfo } from "@/lib/recurrence";
 
@@ -93,16 +94,8 @@ export type EventInput = {
   capacity: number | null;
   status: string;
 };
-export const LONDON = "Europe/London";
-export function londonInput(value: string | Date) {
-  return formatInTimeZone(value, LONDON, "yyyy-MM-dd'T'HH:mm");
-}
-export function londonToIso(value: string) {
-  const date = fromZonedTime(value, LONDON);
-  if (!Number.isFinite(date.getTime()) || londonInput(date) !== value)
-    throw new Error("Invalid London time");
-  return date.toISOString();
-}
+// London wall-clock helpers live in a leaf module (recurrence.ts needs them too, without importing this file back).
+export { LONDON, londonInput, londonToIso };
 export function imageDimensions(width: number, height: number) {
   const ratio = Math.min(1, MAX_IMAGE_SIDE / Math.max(width, height));
   return {

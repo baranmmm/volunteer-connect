@@ -1,7 +1,7 @@
 // Playwright webServer command: starts the app's Vite dev server pointed at the QA project.
 // Variables already present in the process environment take precedence over the committed
 // repo-root .env (production), both for Vite's VITE_* injection and for server functions.
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { E2E_EMAIL_LINK_SECRET, e2eCronSecret } from "./email-capture";
@@ -43,8 +43,29 @@ if (!existsSync(vite)) {
   process.exit(1);
 }
 
-console.log(`[start-app] Starting app on ${url.origin} against ${env["SUPABASE_URL"]}`);
-const child = spawn(vite, ["dev", "--port", url.port || "3100", "--strictPort"], { cwd: REPO_ROOT, env, stdio: "inherit" });
+// E2E_APP_BUILD=prod: a production build (Nitro node-server preset) instead of the dev server, so a fault that only
+// shows in built bundles (chunking, tree shaking, SSR/client split) fails the specs too. E2E_APP_BUILD_SKIP=1 reuses
+// an existing .output.
+const prod = process.env["E2E_APP_BUILD"] === "prod";
+const port = url.port || "3100";
+let child;
+if (prod) {
+  const buildEnv = { ...env, NITRO_PRESET: "node-server" };
+  if (process.env["E2E_APP_BUILD_SKIP"] !== "1") {
+    console.log("[start-app] Building the app (production, node-server preset)...");
+    const build = spawnSync(vite, ["build"], { cwd: REPO_ROOT, env: buildEnv, stdio: "inherit" });
+    if (build.status) process.exit(build.status);
+  }
+  console.log(`[start-app] Starting the production build on ${url.origin} against ${env["SUPABASE_URL"]}`);
+  child = spawn("node", [path.join(REPO_ROOT, ".output", "server", "index.mjs")], {
+    cwd: REPO_ROOT,
+    env: { ...buildEnv, PORT: port, HOST: url.hostname },
+    stdio: "inherit",
+  });
+} else {
+  console.log(`[start-app] Starting app on ${url.origin} against ${env["SUPABASE_URL"]}`);
+  child = spawn(vite, ["dev", "--port", port, "--strictPort", ...(process.env["E2E_VITE_FORCE"] === "1" ? ["--force"] : [])], { cwd: REPO_ROOT, env, stdio: "inherit" });
+}
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => child.kill(signal));
 child.on("exit", (code) => process.exit(code ?? 0));

@@ -18,7 +18,12 @@ import {
   type BranchPoint,
   type StoryEvent,
 } from "@/lib/events-story";
-import { EW_BOUNDS, EW_DOTS } from "@/components/public/events-map/england-wales-dots";
+import { readFileSync } from "node:fs";
+import {
+  EW_BOUNDS,
+  EW_DOT_COUNT,
+  EW_SVG_BOX,
+} from "@/components/public/events-map/england-wales-dots";
 
 // The /events map story: event order, where an event lights up, stepping (keys, Play, scroll) and the fixed frame.
 const NOW = new Date("2026-11-24T12:00:00Z");
@@ -218,6 +223,14 @@ describe("the fixed map frame", () => {
     expect(x).toBeLessThan(EW_BOUNDS.maxX);
     expect(y).toBeGreaterThan(EW_BOUNDS.minY);
     expect(y).toBeLessThan(EW_BOUNDS.maxY);
-    expect(EW_DOTS.join("").match(/h0/g)!.length).toBeGreaterThan(1000);
+    // The dots are a static asset (out of the JS module graph) whose box frames the land bounds.
+    const svg = readFileSync("public/maps/england-wales-dots.svg", "utf8");
+    expect(svg.match(/h0/g)!.length).toBe(EW_DOT_COUNT);
+    expect(EW_DOT_COUNT).toBeGreaterThan(1000);
+    expect(svg).toContain(
+      `viewBox="${EW_SVG_BOX.x} ${EW_SVG_BOX.y} ${EW_SVG_BOX.w} ${EW_SVG_BOX.h}"`,
+    );
+    expect(EW_SVG_BOX.x).toBeLessThan(EW_BOUNDS.minX);
+    expect(EW_SVG_BOX.x + EW_SVG_BOX.w).toBeGreaterThan(EW_BOUNDS.maxX);
   });
 });

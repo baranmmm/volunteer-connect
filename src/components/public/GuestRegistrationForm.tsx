@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ type FieldErrors = Partial<Record<"name" | "email", string>>;
  * email": the confirmation link takes the seat (or a waitlist place), so nobody learns who is registered.
  */
 export function GuestRegistrationForm({ event }: { event: PublicEvent }) {
+  const hydrated = useHydrated();
   const { t } = useTranslation();
   const uid = useId();
   const config = usePublicFormConfig();
@@ -137,6 +139,7 @@ export function GuestRegistrationForm({ event }: { event: PublicEvent }) {
       </div>
       <form
         data-testid="guest-form"
+        method="post"
         data-state={full ? "full" : "open"}
         noValidate
         onSubmit={onSubmit}
@@ -274,7 +277,7 @@ export function GuestRegistrationForm({ event }: { event: PublicEvent }) {
           type="submit"
           data-testid="guest-form-submit"
           className="h-11"
-          disabled={busy || config.isPending}
+          disabled={busy || !hydrated || config.isPending}
           aria-describedby={formError ? ids.error : undefined}
         >
           {busy ? t("guest.sending") : t(full ? "guest.submitWaitlist" : "guest.submit")}
