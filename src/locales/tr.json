@@ -992,7 +992,6 @@
     "confirmedOn": "{{version}} sürümünü {{date}} tarihinde onayladınız.",
     "notConfirmed": "Güncel Gizlilik Bildirimi'ni henüz onaylamadınız.",
     "preferencesSaved": "Gizlilik tercihleri kaydedildi",
-    "back": "Merkeze dön",
     "errors": {
       "mustAccept": "Lütfen Gizlilik Bildirimi'ni okuduğunuzu onaylayın.",
       "outdated": "Gizlilik Bildirimi güncellendi. Lütfen yeni sürümü okuyun.",
@@ -1017,8 +1016,6 @@
   "publicEvents": {
     "title": "Etkinlikler",
     "intro": "Dialogue Society'nin yaklaşan herkese açık etkinlikleri. Şube veya bölge seçin ya da takvime abone olun.",
-    "navLabel": "Herkese açık sayfalar",
-    "signIn": "Giriş yap",
     "privacyLink": "Gizlilik bildirimi",
     "filters": "Filtreler",
     "region": "Bölge",
@@ -1844,7 +1841,6 @@
     "loadError": "Sayfa yüklenemedi. Lütfen tekrar deneyin.",
     "nav": {
       "label": "Ana menü",
-      "home": "Dialogue Society ana sayfa",
       "events": "Etkinlikler",
       "signIn": "Giriş yap",
       "join": "Katıl"
@@ -1992,8 +1988,7 @@
     }
   },
   "attendeePrivacy": {
-    "link": "Etkinlik katılımcıları gizlilik bildirimi",
-    "back": "Etkinlikler"
+    "link": "Etkinlik katılımcıları gizlilik bildirimi"
   },
   "pastEvents": {
     "wholeRegion": "Tüm bölge",

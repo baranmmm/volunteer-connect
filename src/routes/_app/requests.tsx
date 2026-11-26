@@ -14,7 +14,6 @@ import {
   REVIEW_WAITING_KEY,
   useMarkNoticesRead,
   useRequestTargets,
-  useReviewWaiting,
   useWorkRequestCount,
 } from "@/lib/use-work-notices";
 import { MeetingRequestForm, TaskRequestForm } from "@/components/requests/WorkRequestForms";
@@ -27,11 +26,8 @@ import {
 import { useMyApplications } from "@/lib/volunteer-applications";
 import { requestViewSearch, resolveRequestView } from "@/lib/request-view";
 import { ManagerEventRequests } from "@/components/requests/ManagerEventRequests";
-import {
-  DeletionRequests,
-  PendingVolunteers,
-  useAccountApprovals,
-} from "@/components/requests/AccountApprovals";
+import { DeletionRequests, PendingVolunteers } from "@/components/requests/AccountApprovals";
+import { useApprovalWaiting } from "@/lib/use-approval-waiting";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MyEventRequests } from "@/components/requests/MyEventRequests";
 import {
@@ -73,15 +69,14 @@ function RequestsPage() {
   const pending = usePendingRequestCount();
   const workPending = useWorkRequestCount(reviewer);
   const targets = useRequestTargets(!follower && !nc);
-  // One count everywhere: the same get_review_waiting() as the Requests badge, the dashboard card and the grouped
-  // "waiting for you" notice (task/meeting requests, event requests and volunteer applications).
-  const waiting = useReviewWaiting();
-  const reviewTotal = reviewer ? (waiting.data?.total ?? 0) : 0;
+  // One count everywhere: the menu's Requests badge uses the same total. get_review_waiting() (task/meeting requests,
+  // event requests and volunteer applications) plus the former Approvals page's pending sign-ups and account deletion
+  // requests, which are part of "Waiting for my approval" too.
+  const waiting = useApprovalWaiting();
+  const reviewTotal = reviewer ? waiting.total : 0;
   const { tab: requested } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  // The former Approvals page (pending sign-ups, account deletion requests) is part of "Waiting for my approval".
-  const approvals = useAccountApprovals();
-  const view = resolveRequestView(requested, reviewer, nc, reviewTotal + approvals.count);
+  const view = resolveRequestView(requested, reviewer, nc, reviewTotal);
   // Opening Requests marks the task and meeting request notices read (the menu badge).
   useMarkNoticesRead(REQUEST_NOTICES, "requests", !follower);
   useMarkNoticesRead(REVIEW_NOTICES, "review", reviewer && view === "review");
@@ -138,7 +133,7 @@ function RequestsPage() {
           </Button>
         )}
       </header>
-      {reviewer && !requested && (waiting.data === undefined || !approvals.settled) ? (
+      {reviewer && !requested && !waiting.settled ? (
         // The default tab depends on what waits: decide once the count is known (no flash of another tab).
         <p data-testid="requests-loading" className="text-muted-foreground">
           {t("common.loading")}

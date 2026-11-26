@@ -16,6 +16,12 @@ test.describe("National Coordinators", () => {
     await page.goto("/dashboard");
     await expect(page.getByTestId("mfa-verify")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(page.getByTestId("app-sidebar")).toHaveCount(0);
+    // The public top bar (logo, Events, language) without account links: no Sign in or Join, no Dashboard yet.
+    const bar = page.getByTestId("public-topbar");
+    await expect(bar.getByTestId("public-topbar-events")).toBeVisible();
+    await expect(bar.getByTestId("public-topbar-sign-in")).toHaveCount(0);
+    await expect(bar.getByTestId("public-topbar-join")).toHaveCount(0);
+    await expect(bar.getByTestId("public-topbar-dashboard")).toHaveCount(0);
     await page.goto("/users");
     await expect(page.getByTestId("mfa-verify")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await page.getByTestId("mfa-code-input").fill(totp(nc.totpSecret!));

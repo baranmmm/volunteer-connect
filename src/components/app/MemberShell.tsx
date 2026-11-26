@@ -23,7 +23,8 @@ import { LogoLink } from "@/components/app/LogoLink";
 import { NotificationBell } from "@/components/app/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useNotificationCounts, useReviewWaiting } from "@/lib/use-work-notices";
+import { useNotificationCounts } from "@/lib/use-work-notices";
+import { useApprovalWaiting } from "@/lib/use-approval-waiting";
 
 function useSignOut() {
   const queryClient = useQueryClient();
@@ -47,11 +48,12 @@ export function MemberShell() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const waiting = useReviewWaiting().data?.total ?? 0;
+  // The same total as the Requests page's "Waiting for my approval" tab.
+  const waiting = useApprovalWaiting().total;
   const notices = useNotificationCounts().data;
-  // Requests: everything waiting for my review (task/meeting requests, event requests, volunteer applications) plus
-  // unread decisions on my own task/meeting requests; Tasks: new assignments; Meetings: meeting notices. Followers have
-  // none of these (the queries are off for them).
+  // Requests: everything waiting for my approval (task/meeting requests, event requests, volunteer applications and,
+  // for managers, pending sign-ups and account deletion requests) plus unread decisions on my own task/meeting
+  // requests; Tasks: new assignments; Meetings: meeting notices. Followers have none of these (the queries are off).
   const badgeCounts: Record<NavBadge, number> = {
     requests: waiting + (notices?.requests ?? 0),
     tasks: notices?.tasks ?? 0,

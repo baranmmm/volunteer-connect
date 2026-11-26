@@ -51,6 +51,17 @@ export async function fetchPendingMembers(selfId: string): Promise<Profile[]> {
   return rows;
 }
 
+/** How many accounts wait for approval (the same rows as fetchPendingMembers, counted only: menu badge). */
+export async function countPendingMembers(selfId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending")
+    .neq("id", selfId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function setStatus(userId: string, status: "active" | "inactive") {
   const { error } = await supabase.rpc("set_user_status", { _target: userId, _status: status });
   if (error) throw error;
@@ -142,6 +153,17 @@ export async function fetchPendingDeletionRequests(selfId: string): Promise<Dele
     .order("requested_at");
   if (error) throw error;
   return (data ?? []) as DeletionRequest[];
+}
+
+/** How many deletion requests wait (the same rows as fetchPendingDeletionRequests, counted only: menu badge). */
+export async function countPendingDeletionRequests(selfId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("account_deletion_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending")
+    .neq("user_id", selfId);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function fetchMyDeletionRequest(selfId: string) {

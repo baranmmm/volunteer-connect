@@ -992,7 +992,6 @@
     "confirmedOn": "You confirmed version {{version}} on {{date}}.",
     "notConfirmed": "You have not confirmed the current Privacy Notice yet.",
     "preferencesSaved": "Privacy preferences saved",
-    "back": "Back to the Hub",
     "errors": {
       "mustAccept": "Please confirm that you have read the Privacy Notice.",
       "outdated": "The Privacy Notice has been updated. Please read the new version.",
@@ -1017,8 +1016,6 @@
   "publicEvents": {
     "title": "Events",
     "intro": "Upcoming public events of the Dialogue Society. Choose branches or a region, or subscribe to the calendar.",
-    "navLabel": "Public pages",
-    "signIn": "Sign in",
     "privacyLink": "Privacy notice",
     "filters": "Filters",
     "region": "Region",
@@ -1844,7 +1841,6 @@
     "loadError": "The page could not be loaded. Please try again.",
     "nav": {
       "label": "Main",
-      "home": "Dialogue Society home",
       "events": "Events",
       "signIn": "Sign in",
       "join": "Join"
@@ -1992,8 +1988,7 @@
     }
   },
   "attendeePrivacy": {
-    "link": "Event attendee privacy notice",
-    "back": "Events"
+    "link": "Event attendee privacy notice"
   },
   "pastEvents": {
     "wholeRegion": "Whole region",
