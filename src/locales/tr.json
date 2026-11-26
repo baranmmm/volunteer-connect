@@ -1906,6 +1906,26 @@
       "created": "Görev her üye için oluşturuldu.",
       "allOption": "@all: şubenin her üyesi",
       "allHint": "Şubenin her aktif üyesine şimdi kendi görevi verilir. Üyeleri daha sonra ekleyip çıkarabilirsiniz."
+    },
+    "grouping": {
+      "label": "Grupla",
+      "by": {
+        "source": "Kaynak",
+        "assignee": "Atanan kişi",
+        "due": "Bitiş tarihi",
+        "none": "Yok"
+      },
+      "due": {
+        "overdue": "Gecikmiş",
+        "thisWeek": "Bu hafta",
+        "nextWeek": "Gelecek hafta",
+        "later": "Daha sonra",
+        "earlier": "Daha önce",
+        "none": "Tarih yok"
+      },
+      "other": "Diğer görevler",
+      "allMembers": "Tüm üyeler (@all)",
+      "progress": "{{total}} görevin {{done}} tanesi tamamlandı"
     }
   },
   "landing": {

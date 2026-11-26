@@ -1,5 +1,6 @@
 // The signed-in app shell (sidebar, bottom navigation, pending / MFA / privacy gates). Loaded only once a session
 // exists, so the public event page (/events/:id, signed out) never downloads it.
+import { cn } from "@/lib/utils";
 import { Link, Navigate, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -41,6 +42,8 @@ function useSignOut() {
 }
 
 /** Rendered by the /_app layout only for a signed-in session (it handles loading and signed-out visitors). */
+const WIDE_PAGES = ["/tasks"];
+
 export function MemberShell() {
   const { loading, session, profile, roles, refresh } = useAuth();
   const signOut = useSignOut();
@@ -146,6 +149,9 @@ export function MemberShell() {
   const more = items.filter((i) => !primary.includes(i));
   const moreCount = moreBadgeCount(more, badgeCounts);
   const active = (to: string) => pathname === to || pathname.startsWith(to + "/");
+  // Pages that use the whole content width (boards and long rows); every other page keeps the reading width.
+  const wide = WIDE_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const width = wide ? "max-w-none" : "max-w-5xl";
 
   return (
     <div className="min-h-screen lg:flex">
@@ -186,11 +192,17 @@ export function MemberShell() {
         {/* Desktop top bar: the notification bell, top-right above the page. */}
         <header
           data-testid="app-top-bar"
-          className="mx-auto hidden w-full max-w-5xl justify-end px-10 pt-4 lg:flex"
+          className={cn("mx-auto hidden w-full justify-end px-10 pt-4 lg:flex", width)}
         >
           <NotificationBell variant="popover" />
         </header>
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-10 lg:pt-2">
+        <main
+          data-width={wide ? "wide" : "default"}
+          className={cn(
+            "mx-auto w-full flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-10 lg:pt-2",
+            width,
+          )}
+        >
           <Outlet />
         </main>
       </div>

@@ -17,6 +17,7 @@ import {
   TASK_STATUSES,
   WORK_SCOPES,
 } from "./tasks";
+import { taskSources } from "./task-grouping";
 
 // Every write is a SECURITY DEFINER RPC (no client write grants on tasks); the database checks every permission.
 const fail = (error: { message: string } | null) => {
@@ -30,6 +31,15 @@ export const listTasks = createServerFn({ method: "GET" })
     const result = await context.supabase.rpc("list_tasks");
     fail(result.error);
     return z.array(task).parse(result.data ?? []);
+  });
+
+/** Labels for the source groups of the Tasks page (agenda items, meetings, events of the visible tasks). */
+export const listTaskSources = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .handler(async ({ context }) => {
+    const result = await context.supabase.rpc("list_task_sources");
+    fail(result.error);
+    return taskSources.parse(result.data ?? {});
   });
 
 export const getTask = createServerFn({ method: "GET" })

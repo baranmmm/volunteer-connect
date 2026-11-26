@@ -4,9 +4,11 @@ import {
   Archive,
   ArchiveRestore,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   MessageSquare,
+  MoreHorizontal,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -14,17 +16,23 @@ import {
   TASK_STATUSES,
   addDays,
   archivableDoneIds,
-  groupTasks,
   isOverdue,
   mineFirst,
   type Person,
   type Task,
-  type TaskGroup,
   type TaskStatus,
 } from "@/lib/tasks";
+import { isCollapsed, type TaskGrouping, type TaskSection } from "@/lib/task-grouping";
 import { dateLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TaskPriorityBadge, TaskStatusBadge } from "./TaskBadges";
 import { useSetTaskStatus } from "./use-task-status";
 import { useTaskArchive } from "./use-task-archive";
@@ -36,16 +44,16 @@ import {
   TASK_STATUS_CARD,
   TASK_STATUS_COLUMN,
 } from "./task-status-colors";
-import { formatDay, initials, scopeText } from "./task-display";
+import { formatDay, initials, scopeText, sectionLabel } from "./task-display";
 import { TaskGroupMembers, TaskGroupProgress } from "./TaskGroupParts";
 
 /**
  * `showScope`: scope labels (branch, region, national) are shown only to someone who can work in more than one place
  * (useWorkScopes().single is false); with a single scope every task comes from there.
  *
- * Every view uses compact one-line rows: title, a "Mine" marker, link icons (meeting, event), due date, assignee
- * initials and the status pill. The caller's own tasks stand out: an accent bar on the left, a light tint, a bold
- * title and the "Mine" marker.
+ * Every view uses compact rows: title, link icons (meeting, event), due date, assignee initials and the status. The
+ * caller's own tasks stand out by an accent bar on the left, a light tint and a bold title (screen readers hear
+ * "your task"); the calendar adds a small icon.
  */
 type ViewProps = {
   tasks: Task[];
@@ -198,12 +206,20 @@ function DueText({ task, today }: { task: Task; today: string }) {
       data-testid="task-due"
       data-overdue={overdue}
       className={cn(
-        "whitespace-nowrap text-xs",
+        "relative whitespace-nowrap text-xs",
         overdue ? "font-semibold text-destructive" : "text-muted-foreground dark:text-inherit",
       )}
     >
-      {formatDay(task.due_date)}
-      {overdue && ` · ${t("tasks.overdue")}`}
+      <span className="sm:hidden">
+        {formatDay(task.due_date, { day: "numeric", month: "short" })}
+      </span>
+      <span className="hidden sm:inline">{formatDay(task.due_date)}</span>
+      {overdue && (
+        <>
+          <span className="hidden sm:inline">{` · ${t("tasks.overdue")}`}</span>
+          <span className="sr-only sm:hidden">{` · ${t("tasks.overdue")}`}</span>
+        </>
+      )}
     </span>
   );
 }
@@ -232,102 +248,286 @@ function LoudPriority({ task }: { task: Task }) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Kanban
+// Sections (Group by): a collapsible header with done/total and a mini progress bar
+
+const SECTION_ICONS = { agenda: Users, meeting: Users, event: CalendarDays } as const;
+
+function SectionHeader({
+  section,
+  collapsed,
+  onToggle,
+  bodyId,
+  className,
+}: {
+  section: TaskSection;
+  collapsed: boolean;
+  onToggle: () => void;
+  bodyId: string;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  const label = sectionLabel(t, section);
+  const Icon =
+    section.kind === "agenda" || section.kind === "meeting" || section.kind === "event"
+      ? SECTION_ICONS[section.kind]
+      : null;
+  const pct = section.total ? Math.round((section.done / section.total) * 100) : 0;
+  return (
+    <h2 className={cn("min-w-0", className)}>
+      <button
+        type="button"
+        data-testid="tasks-section-toggle"
+        aria-expanded={!collapsed}
+        aria-controls={bodyId}
+        onClick={onToggle}
+        className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <ChevronRight
+          aria-hidden
+          className={cn(
+            "size-4 shrink-0 transition-transform motion-reduce:transition-none",
+            !collapsed && "rotate-90",
+          )}
+        />
+        {Icon && <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />}
+        <span
+          data-testid="tasks-section-label"
+          className="min-w-0 flex-1 truncate text-sm font-semibold"
+          title={label}
+        >
+          {label}
+        </span>
+        <span
+          data-testid="tasks-section-progress"
+          data-done={section.done}
+          data-total={section.total}
+          className="relative flex shrink-0 items-center gap-2 text-xs font-normal text-muted-foreground"
+        >
+          <span
+            aria-hidden
+            className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-muted sm:block"
+          >
+            <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+          </span>
+          <span aria-hidden>
+            {section.done}/{section.total}
+          </span>
+          <span className="sr-only">
+            {t("tasks.grouping.progress", { done: section.done, total: section.total })}
+          </span>
+        </span>
+      </button>
+    </h2>
+  );
+}
+
+type SectionProps = {
+  sections: TaskSection[];
+  /** The section keys the user collapsed or opened (anything else: collapsed only when all done). */
+  remembered: Record<string, boolean>;
+  onToggle: (key: string, collapsed: boolean) => void;
+  grouping: TaskGrouping;
+  /** All-done sections start collapsed (off in the Archived view). */
+  autoCollapse: boolean;
+};
+
+/** The status of a task as a small menu: a pill (list rows) or a "…" button (board cards). */
+function StatusMenu({
+  task,
+  onStatus,
+  testId,
+  variant,
+}: {
+  task: Task;
+  onStatus: (s: TaskStatus) => void;
+  testId: string;
+  variant: "pill" | "more";
+}) {
+  const { t } = useTranslation();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {variant === "pill" ? (
+          <button
+            type="button"
+            data-testid={testId}
+            data-status={task.status}
+            aria-label={t("tasks.changeStatus", { title: task.title })}
+            className={cn(
+              "inline-flex h-7 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full border px-2 text-[11px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              TASK_STATUS_BADGE[task.status],
+            )}
+          >
+            {t(`tasks.status.${task.status}`)}
+            <ChevronDown aria-hidden className="size-3" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            data-testid={testId}
+            aria-label={t("tasks.changeStatus", { title: task.title })}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-inherit"
+          >
+            <MoreHorizontal aria-hidden className="size-4" />
+          </button>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuRadioGroup
+          value={task.status}
+          onValueChange={(v) => v !== task.status && onStatus(v as TaskStatus)}
+        >
+          {TASK_STATUSES.map((s) => (
+            <DropdownMenuRadioItem
+              key={s}
+              value={s}
+              data-testid="task-status-option"
+              data-status={s}
+            >
+              {t(`tasks.status.${s}`)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** Screen-reader text for the caller's own task (seen as the accent bar and bold title). */
+function MineText() {
+  const { t } = useTranslation();
+  return <span className="sr-only">{` (${t("tasks.mineHint")})`}</span>;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Board: the four status columns; with a grouping, one collapsible swimlane per section across them
 
 export function KanbanView({
   tasks,
   today,
   onOpen,
-  markMine,
   showScope,
-}: ViewProps & { markMine: boolean }) {
+  sections,
+  remembered,
+  onToggle,
+  grouping,
+  autoCollapse,
+}: ViewProps & SectionProps) {
   const { t } = useTranslation();
   const setStatus = useSetTaskStatus();
   const [dragging, setDragging] = useState<Task | null>(null);
-  const [over, setOver] = useState<TaskStatus | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const cell = (section: TaskSection, status: TaskStatus) => {
+    // The caller's own tasks first in every cell.
+    const column = mineFirst(section.tasks.filter((x) => x.status === status));
+    const id = `${section.key}|${status}`;
+    return (
+      <div
+        key={status}
+        data-testid="tasks-kanban-column"
+        data-status={status}
+        data-section={section.key}
+        aria-label={`${t(`tasks.status.${status}`)}${grouping === "none" ? "" : ` · ${sectionLabel(t, section)}`}`}
+        role="group"
+        onDragOver={(e) => {
+          if (!dragging) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          setOver(id);
+        }}
+        onDragLeave={() => setOver((cur) => (cur === id ? null : cur))}
+        onDrop={(e) => {
+          e.preventDefault();
+          const task = dragging;
+          setDragging(null);
+          setOver(null);
+          if (task && task.can_set_status && task.status !== status)
+            void setStatus(task.id, status);
+        }}
+        className={cn(
+          "flex min-h-14 min-w-0 flex-col gap-1.5 rounded-xl border p-1.5",
+          TASK_STATUS_COLUMN[status],
+          over === id && "ring-2 ring-primary",
+        )}
+      >
+        {column.map((task) =>
+          task.group ? (
+            <GroupCard
+              key={task.id}
+              task={task}
+              showScope={showScope}
+              today={today}
+              onOpen={onOpen}
+            />
+          ) : (
+            <TaskCard
+              key={task.id}
+              task={task}
+              showScope={showScope}
+              today={today}
+              onOpen={onOpen}
+              onDragStart={() => setDragging(task)}
+              onDragEnd={() => {
+                setDragging(null);
+                setOver(null);
+              }}
+              onStatus={(s) => void setStatus(task.id, s)}
+            />
+          ),
+        )}
+      </div>
+    );
+  };
+  const totals = TASK_STATUSES.map((s) => tasks.filter((x) => x.status === s));
   return (
-    <div
-      data-testid="tasks-kanban"
-      className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-    >
-      {TASK_STATUSES.map((status) => {
-        // The caller's own tasks first in every column.
-        const column = mineFirst(tasks.filter((x) => x.status === status));
+    <div data-testid="tasks-kanban" data-grouping={grouping} className="min-w-0 space-y-2">
+      <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4">
+        {TASK_STATUSES.map((status, i) => (
+          <div
+            key={status}
+            data-testid="tasks-kanban-heading"
+            data-status={status}
+            className="flex min-w-0 flex-wrap items-center justify-between gap-2 px-1.5"
+          >
+            <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+              {t(`tasks.status.${status}`)}
+              <span className="font-normal text-muted-foreground" data-testid="tasks-kanban-count">
+                {totals[i]!.length}
+              </span>
+            </span>
+            {status === "done" && (
+              <ArchiveDoneButton tasks={totals[i]!} testId="tasks-kanban-archive-done" />
+            )}
+          </div>
+        ))}
+      </div>
+      {sections.map((section) => {
+        const collapsed = grouping !== "none" && isCollapsed(section, remembered, autoCollapse);
+        const bodyId = `tasks-lane-${section.key.replace(/[^a-z0-9-]/gi, "-")}`;
         return (
           <section
-            key={status}
-            data-testid="tasks-kanban-column"
-            data-status={status}
-            aria-labelledby={`tasks-kanban-${status}`}
-            onDragOver={(e) => {
-              if (!dragging) return;
-              e.preventDefault();
-              e.dataTransfer.dropEffect = "move";
-              setOver(status);
-            }}
-            onDragLeave={() => setOver((cur) => (cur === status ? null : cur))}
-            onDrop={(e) => {
-              e.preventDefault();
-              const task = dragging;
-              setDragging(null);
-              setOver(null);
-              if (task && task.can_set_status && task.status !== status)
-                void setStatus(task.id, status);
-            }}
-            className={cn(
-              "flex min-w-0 flex-col gap-2 rounded-2xl border p-2.5",
-              TASK_STATUS_COLUMN[status],
-              over === status && "ring-2 ring-primary",
-            )}
+            key={section.key}
+            data-testid="tasks-section"
+            data-section-key={section.key}
+            data-collapsed={collapsed}
+            className="min-w-0 space-y-1.5"
           >
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 px-1">
-              <h2
-                id={`tasks-kanban-${status}`}
-                className="flex min-w-0 items-center gap-2 font-semibold"
-              >
-                {t(`tasks.status.${status}`)}
-                <span
-                  className="text-sm font-normal text-muted-foreground dark:text-inherit"
-                  data-testid="tasks-kanban-count"
-                >
-                  {column.length}
-                </span>
-              </h2>
-              {status === "done" && (
-                <ArchiveDoneButton tasks={column} testId="tasks-kanban-archive-done" />
-              )}
+            {grouping !== "none" && (
+              <SectionHeader
+                section={section}
+                collapsed={collapsed}
+                bodyId={bodyId}
+                onToggle={() => onToggle(section.key, !collapsed)}
+                className="border-b"
+              />
+            )}
+            <div
+              id={bodyId}
+              hidden={collapsed}
+              className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4"
+            >
+              {!collapsed && TASK_STATUSES.map((status) => cell(section, status))}
             </div>
-            {column.length === 0 && (
-              <p className="px-1 py-3 text-center text-sm text-muted-foreground">
-                {t("tasks.columnEmpty")}
-              </p>
-            )}
-            {column.map((task) =>
-              task.group ? (
-                <GroupCard
-                  key={task.id}
-                  task={task}
-                  showScope={showScope}
-                  today={today}
-                  onOpen={onOpen}
-                />
-              ) : (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  markMine={markMine}
-                  showScope={showScope}
-                  today={today}
-                  onOpen={onOpen}
-                  onDragStart={() => setDragging(task)}
-                  onDragEnd={() => {
-                    setDragging(null);
-                    setOver(null);
-                  }}
-                  onStatus={(s) => void setStatus(task.id, s)}
-                />
-              ),
-            )}
           </section>
         );
       })}
@@ -335,40 +535,12 @@ export function KanbanView({
   );
 }
 
-/** The status pill of a card: a small select in the status colours (the keyboard alternative to dragging). */
-function StatusPillSelect({
-  task,
-  onStatus,
-  testId,
-}: {
-  task: Task;
-  onStatus: (s: TaskStatus) => void;
-  testId: string;
-}) {
-  const { t } = useTranslation();
-  return (
-    <select
-      data-testid={testId}
-      aria-label={t("tasks.changeStatus", { title: task.title })}
-      className={cn(
-        "h-9 max-w-[9rem] shrink-0 cursor-pointer rounded-full border px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        TASK_STATUS_BADGE[task.status],
-      )}
-      value={task.status}
-      onChange={(e) => onStatus(e.target.value as TaskStatus)}
-    >
-      {TASK_STATUSES.map((s) => (
-        <option key={s} value={s}>
-          {t(`tasks.status.${s}`)}
-        </option>
-      ))}
-    </select>
-  );
-}
-
+/**
+ * A board card: the title (up to two lines, never cut to a few characters), then due date, link icons and initials,
+ * and a "…" menu for the status (the column is the status; dragging between columns changes it too).
+ */
 function TaskCard({
   task,
-  markMine,
   showScope,
   today,
   onOpen,
@@ -377,7 +549,6 @@ function TaskCard({
   onStatus,
 }: {
   task: Task;
-  markMine: boolean;
   showScope: boolean;
   today: string;
   onOpen: (id: string) => void;
@@ -403,30 +574,37 @@ function TaskCard({
       }}
       onDragEnd={onDragEnd}
       className={cn(
-        "min-w-0 rounded-lg border px-2.5 py-1.5 shadow-sm",
+        "min-w-0 rounded-lg border px-2 py-1 shadow-sm",
         TASK_STATUS_CARD[task.status],
         task.mine ? TASK_MINE : TASK_OTHER,
         changeable && "cursor-grab active:cursor-grabbing",
       )}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-start gap-1">
         <button
           type="button"
           data-testid="task-card-open"
           onClick={() => onOpen(task.id)}
           className={cn(
-            "block min-h-9 min-w-0 flex-1 text-left text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "relative block min-h-8 min-w-0 flex-1 py-0.5 text-left text-sm leading-snug hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
           )}
         >
-          <span className="block truncate" title={task.title}>
+          <span
+            data-testid="task-card-title"
+            className="line-clamp-2 break-words"
+            title={task.title}
+          >
             {task.title}
           </span>
+          {task.mine && <MineText />}
         </button>
-        {markMine && task.mine && <MineBadge testId="task-card-mine" />}
+        {changeable && (
+          <StatusMenu task={task} onStatus={onStatus} testId="task-card-menu" variant="more" />
+        )}
       </div>
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           <TaskLinkIcons task={task} />
           <LoudPriority task={task} />
           <DueText task={task} today={today} />
@@ -443,14 +621,9 @@ function TaskCard({
           )}
         </span>
         <AssigneeAvatars people={task.assignees} testId="task-card-assignees" />
-        {changeable ? (
-          <StatusPillSelect task={task} onStatus={onStatus} testId="task-card-status" />
-        ) : (
-          <TaskStatusBadge status={task.status} className="rounded-full" />
-        )}
       </div>
       {task.archived_at && task.can_set_status && (
-        <div className="pt-1.5">
+        <div className="pt-1">
           <UnarchiveButton task={task} />
         </div>
       )}
@@ -459,7 +632,7 @@ function TaskCard({
 }
 
 /**
- * One card for a whole "@all" group (Kanban): placed by its derived status, not draggable (each member changes their
+ * One card for a whole "@all" group (Board): placed by its derived status, not draggable (each member changes their
  * own task). It opens the group panel.
  */
 function GroupCard({
@@ -483,7 +656,7 @@ function GroupCard({
       data-overdue={isOverdue(task, today)}
       data-archived={!!task.archived_at}
       className={cn(
-        "min-w-0 rounded-lg border border-dashed px-2.5 py-1.5",
+        "min-w-0 rounded-lg border border-dashed px-2 py-1",
         TASK_STATUS_CARD[task.status],
         TASK_OTHER,
       )}
@@ -493,15 +666,15 @@ function GroupCard({
         data-testid="task-group-card-open"
         onClick={() => onOpen(group.id)}
         className={cn(
-          "block min-h-9 w-full min-w-0 text-left text-sm font-normal hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "block min-h-8 w-full min-w-0 py-0.5 text-left text-sm font-normal leading-snug hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           TASK_OTHER_TEXT,
         )}
       >
-        <span className="block truncate" title={task.title}>
+        <span className="line-clamp-2 break-words" title={task.title}>
           {task.title}
         </span>
       </button>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pb-1">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pb-0.5">
         <TaskGroupProgress group={group} compact className="flex-1" />
         <TaskLinkIcons task={task} />
         <DueText task={task} today={today} />
@@ -553,7 +726,7 @@ function GroupListRow({
             title: task.title,
           })}
           onClick={() => setOpen((v) => !v)}
-          className="flex size-11 shrink-0 items-center justify-center hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex size-10 shrink-0 items-center justify-center hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronRight
             className={cn("size-4 transition-transform", open && "rotate-90")}
@@ -564,40 +737,30 @@ function GroupListRow({
           type="button"
           data-testid="task-group-row-open"
           onClick={() => onOpen(group.id)}
-          className="flex min-h-11 w-full min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1.5 pr-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex-nowrap"
+          className="flex min-h-10 w-full min-w-0 flex-1 items-center gap-2 py-1 pr-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="flex min-w-0 flex-[1_1_12rem] items-center gap-2">
+          <span
+            className={cn("min-w-0 flex-1 truncate text-sm font-normal", TASK_OTHER_TEXT)}
+            title={task.title}
+          >
+            {task.title}
+          </span>
+          {showScope && (
             <span
-              className={cn("min-w-0 truncate text-sm font-normal", TASK_OTHER_TEXT)}
-              title={task.title}
+              className="hidden min-w-0 max-w-[12rem] shrink truncate text-xs text-muted-foreground lg:inline"
+              data-testid="tasks-list-row-scope"
+              data-scope={task.scope}
             >
-              {task.title}
+              {scopeText(t, task)}
             </span>
-            {showScope && (
-              <span
-                className="min-w-0 shrink truncate text-xs text-muted-foreground"
-                data-testid="tasks-list-row-scope"
-                data-scope={task.scope}
-              >
-                {scopeText(t, task)}
-              </span>
-            )}
-          </span>
-          <span className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
-            <TaskGroupProgress group={group} compact />
-            <TaskLinkIcons task={task} />
-            {task.due_date ? (
-              <DueText task={task} today={today} />
-            ) : (
-              <span className="whitespace-nowrap text-xs text-muted-foreground">
-                {t("tasks.noDueDate")}
-              </span>
-            )}
-            <TaskStatusBadge status={task.status} className="rounded-full" />
-          </span>
+          )}
+          <TaskGroupProgress group={group} compact className="hidden shrink-0 sm:flex" />
+          <TaskLinkIcons task={task} />
+          <DueText task={task} today={today} />
+          <TaskStatusBadge status={task.status} className="rounded-full px-2 py-0 text-[11px]" />
         </button>
       </div>
-      <div id={bodyId} hidden={!open} className="px-3 pb-2 pl-11">
+      <div id={bodyId} hidden={!open} className="px-3 pb-2 pl-10">
         {open && (
           <TaskGroupMembers
             group={group}
@@ -610,129 +773,139 @@ function GroupListRow({
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// List
+// List: one line per task inside collapsible sections
 
 export function ListView({
-  tasks,
   today,
   onOpen,
-  group,
-  markMine,
   showScope,
-}: ViewProps & { group: TaskGroup; markMine: boolean }) {
+  sections,
+  remembered,
+  onToggle,
+  grouping,
+  autoCollapse,
+}: ViewProps & SectionProps) {
   const { t } = useTranslation();
-  const groups = groupTasks(tasks, group, t("tasks.unassigned"));
+  const setStatus = useSetTaskStatus();
   return (
-    <div data-testid="tasks-list" className="min-w-0 space-y-6">
-      {groups.map((g) => (
-        <section
-          key={g.key}
-          data-testid="tasks-list-group"
-          data-group={g.key}
-          className="min-w-0 space-y-2"
-        >
-          {group !== "none" && (
-            <h2 className="flex min-w-0 items-center gap-2 font-semibold">
-              <span className="min-w-0 truncate" title={group === "assignee" ? g.label : undefined}>
-                {group === "status"
-                  ? t(`tasks.status.${g.key}`)
-                  : group === "mine"
-                    ? t(g.label)
-                    : g.label}
-              </span>
-              <span className="shrink-0 text-sm font-normal text-muted-foreground">
-                ({g.tasks.length})
-              </span>
-              {group === "status" && g.key === "done" && (
-                <span className="ml-auto">
-                  <ArchiveDoneButton tasks={g.tasks} testId="tasks-list-archive-done" />
-                </span>
-              )}
-            </h2>
-          )}
-          <ul className="min-w-0 divide-y overflow-hidden rounded-2xl border bg-card">
-            {g.tasks.map((task) =>
-              task.group ? (
-                <GroupListRow
-                  key={task.id}
-                  task={task}
-                  today={today}
-                  showScope={showScope}
-                  onOpen={onOpen}
-                />
-              ) : (
-                <li
-                  key={task.id}
-                  className={cn("flex min-w-0 items-center", task.mine ? TASK_MINE : TASK_OTHER)}
-                >
-                  <button
-                    type="button"
-                    data-testid="tasks-list-row"
-                    data-task-id={task.id}
-                    data-status={task.status}
-                    data-overdue={isOverdue(task, today)}
-                    data-mine={task.mine}
-                    data-archived={!!task.archived_at}
-                    onClick={() => onOpen(task.id)}
-                    className="flex min-h-11 w-full min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex-nowrap"
-                  >
-                    <span className="flex min-w-0 flex-[1_1_12rem] items-center gap-2">
-                      <span
-                        className={cn(
-                          "min-w-0 truncate text-sm",
-                          task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
-                        )}
-                        title={task.title}
+    <div data-testid="tasks-list" data-grouping={grouping} className="min-w-0 space-y-3">
+      {sections.map((section) => {
+        const collapsed = grouping !== "none" && isCollapsed(section, remembered, autoCollapse);
+        const bodyId = `tasks-section-${section.key.replace(/[^a-z0-9-]/gi, "-")}`;
+        return (
+          <section
+            key={section.key}
+            data-testid="tasks-section"
+            data-section-key={section.key}
+            data-collapsed={collapsed}
+            className="min-w-0"
+          >
+            {grouping !== "none" && (
+              <SectionHeader
+                section={section}
+                collapsed={collapsed}
+                bodyId={bodyId}
+                onToggle={() => onToggle(section.key, !collapsed)}
+              />
+            )}
+            <ul
+              id={bodyId}
+              hidden={collapsed}
+              className="mt-1 min-w-0 divide-y overflow-hidden rounded-xl border bg-card"
+            >
+              {!collapsed &&
+                section.tasks.map((task) =>
+                  task.group ? (
+                    <GroupListRow
+                      key={task.id}
+                      task={task}
+                      today={today}
+                      showScope={showScope}
+                      onOpen={onOpen}
+                    />
+                  ) : (
+                    <li
+                      key={task.id}
+                      data-testid="tasks-list-item"
+                      className={cn(
+                        "flex min-w-0 items-center gap-1 pr-2",
+                        task.mine ? TASK_MINE : TASK_OTHER,
+                      )}
+                    >
+                      <button
+                        type="button"
+                        data-testid="tasks-list-row"
+                        data-task-id={task.id}
+                        data-status={task.status}
+                        data-overdue={isOverdue(task, today)}
+                        data-mine={task.mine}
+                        data-archived={!!task.archived_at}
+                        onClick={() => onOpen(task.id)}
+                        className="flex min-h-10 w-full min-w-0 flex-1 items-center gap-2 py-1 pl-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        {task.title}
-                      </span>
-                      {markMine && task.mine && <MineBadge testId="tasks-list-row-mine" />}
-                      {showScope && (
                         <span
-                          className="min-w-0 shrink truncate text-xs text-muted-foreground"
-                          data-testid="tasks-list-row-scope"
-                          data-scope={task.scope}
-                          title={scopeText(t, task)}
+                          data-testid="tasks-list-row-title"
+                          className={cn(
+                            "relative min-w-0 flex-1 truncate text-sm",
+                            task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
+                          )}
+                          title={task.title}
                         >
-                          {scopeText(t, task)}
+                          {task.title}
+                          {task.mine && <MineText />}
                         </span>
-                      )}
-                    </span>
-                    <span className="ml-auto flex shrink-0 items-center gap-2">
-                      <TaskLinkIcons task={task} />
-                      <LoudPriority task={task} />
-                      <NoteCount task={task} />
-                      {task.due_date ? (
+                        {showScope && (
+                          <span
+                            className="hidden min-w-0 max-w-[12rem] shrink truncate text-xs text-muted-foreground lg:inline"
+                            data-testid="tasks-list-row-scope"
+                            data-scope={task.scope}
+                            title={scopeText(t, task)}
+                          >
+                            {scopeText(t, task)}
+                          </span>
+                        )}
+                        <span className="hidden sm:contents">
+                          <TaskLinkIcons task={task} />
+                          <LoudPriority task={task} />
+                          <NoteCount task={task} />
+                        </span>
                         <DueText task={task} today={today} />
-                      ) : (
-                        <span className="whitespace-nowrap text-xs text-muted-foreground">
-                          {t("tasks.noDueDate")}
-                        </span>
-                      )}
-                      {task.assignees.length ? (
-                        <AssigneeAvatars
-                          people={task.assignees}
-                          testId="tasks-list-row-assignees"
+                        {task.assignees.length ? (
+                          <AssigneeAvatars
+                            people={task.assignees}
+                            testId="tasks-list-row-assignees"
+                          />
+                        ) : (
+                          <span className="hidden text-xs text-muted-foreground sm:inline">
+                            {t("tasks.unassigned")}
+                          </span>
+                        )}
+                      </button>
+                      {task.can_set_status && !task.archived_at ? (
+                        <StatusMenu
+                          task={task}
+                          onStatus={(s) => void setStatus(task.id, s)}
+                          testId="tasks-list-row-status"
+                          variant="pill"
                         />
                       ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {t("tasks.unassigned")}
-                        </span>
+                        <TaskStatusBadge
+                          status={task.status}
+                          className="shrink-0 rounded-full px-2 py-0 text-[11px]"
+                        />
                       )}
-                      <TaskStatusBadge status={task.status} className="rounded-full" />
-                    </span>
-                  </button>
-                  {task.archived_at && task.can_set_status && (
-                    <div className="shrink-0 pr-3">
-                      <UnarchiveButton task={task} />
-                    </div>
-                  )}
-                </li>
-              ),
-            )}
-          </ul>
-        </section>
-      ))}
+                      {task.archived_at && task.can_set_status && (
+                        <div className="shrink-0">
+                          <UnarchiveButton task={task} />
+                        </div>
+                      )}
+                    </li>
+                  ),
+                )}
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
 }

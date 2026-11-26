@@ -3407,6 +3407,7 @@ export type Database = {
         Args: { p_filter?: string }
         Returns: Json
       }
+      list_task_sources: { Args: never; Returns: Json }
       list_tasks: { Args: never; Returns: Json }
       list_volunteer_applications: {
         Args: { p_filter?: string }

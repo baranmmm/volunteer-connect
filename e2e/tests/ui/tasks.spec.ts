@@ -9,6 +9,7 @@ import { test, expect, runId, type TestUser } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import { TASK_TITLE_PREFIX, createTaskAs, workRpc } from "../../api/work";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
+import { setStatusByMenu, showBoard } from "../../pages/components/tasks";
 import { RecycleBinPage } from "../../pages/RecycleBinPage";
 import { pickOption } from "../../pages/components/select";
 import { NotificationBell } from "../../pages/components/NotificationBell";
@@ -35,11 +36,12 @@ async function pickAssignees(page: Page, userIds: string[]) {
     await expect(page.getByTestId("task-form").locator(`[data-testid="task-form-assignees-chip"][data-user-id="${id}"]`)).toBeVisible();
 }
 
-/** /tasks (optionally with the panel of one task open), once the page has loaded. */
-async function openTasks(page: Page, taskId?: string) {
+/** /tasks (optionally with the panel of one task open), once the page has loaded; on the Board unless `list`. */
+async function openTasks(page: Page, taskId?: string, view: "board" | "list" = "board") {
   await page.goto(taskId ? `/tasks?task=${taskId}` : "/tasks");
   await expect(page.getByTestId("tasks-view-kanban")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
   if (taskId) await expect(page.getByTestId("task-panel-detail")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+  if (view === "board" && !taskId) await showBoard(page);
 }
 /** The id of the task whose panel is open (the form opens the new task's panel after saving). */
 async function openedTaskId(page: Page) {
@@ -79,17 +81,18 @@ test.describe("Tasks", () => {
     expect([created.priority, created.due_date, created.assignees.map((a) => a.id)]).toEqual(["medium", due, [volunteer.id]]);
     expect(created.reminders).toMatchObject({ before_days: [], repeat_kind: "none" });
 
-    // The assignee moves it: drag and drop on desktop, the keyboard-friendly status select on phones.
+    // The assignee moves it: drag and drop on desktop, the card's status menu on phones.
     const page = await pageAs(volunteer);
     await openTasks(page);
     await expect(card(page, id)).toBeVisible();
     await expect(card(page, id)).toHaveAttribute("data-status", "todo");
-    if (isMobile) await card(page, id).getByTestId("task-card-status").selectOption("in_progress");
+    if (isMobile) await setStatusByMenu(page, card(page, id).getByTestId("task-card-menu"), "in_progress");
     // Compact cards: grab the card by its padding (its middle is the title or a control).
     else await card(page, id).dragTo(column(page, "in_progress"), { sourcePosition: { x: 6, y: 3 } });
     await expect(column(page, "in_progress").locator(`[data-testid="task-card"][data-task-id="${id}"]`)).toBeVisible();
     await expect.poll(async () => (await adminClient().from("tasks").select("status").eq("id", id).single()).data?.status).toBe("in_progress");
     await page.reload();
+    await showBoard(page);
     await expect(column(page, "in_progress").locator(`[data-testid="task-card"][data-task-id="${id}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
 
     // The assignee's panel: status only, no edit or delete.
@@ -120,17 +123,18 @@ test.describe("Tasks", () => {
     await expect(card(page, other)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(mineFilter).toHaveAttribute("aria-pressed", "false");
     await expect(card(page, mine)).toHaveAttribute("data-mine", "true");
-    await expect(card(page, mine).getByTestId("task-card-mine")).toBeVisible();
     await expect(card(page, other)).toHaveAttribute("data-mine", "false");
-    await expect(card(page, other).getByTestId("task-card-mine")).toHaveCount(0);
+    // No "Mine" pill taking title space: the accent bar and bold title mark it (and screen-reader text).
+    await expect(page.getByTestId("task-card-mine")).toHaveCount(0);
     await expect(column(page, "todo").getByTestId("task-card").first()).toHaveAttribute("data-task-id", mine);
-    // Compact cards: mine stands out with a bold title and the accent bar; the status pill is on the same card.
+    // Compact cards: mine stands out with a bold title and the accent bar; the status is a "…" menu, not a select.
     const weight = (id: string) =>
       card(page, id).getByTestId("task-card-open").evaluate((el) => Number(getComputedStyle(el).fontWeight));
     expect(await weight(mine)).toBeGreaterThanOrEqual(700);
     expect(await weight(other)).toBeLessThan(600);
     expect(await card(page, mine).evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe("4px");
-    await expect(card(page, mine).getByTestId("task-card-status")).toHaveValue("todo");
+    await expect(card(page, mine).getByTestId("task-card-menu")).toBeVisible();
+    await expect(page.getByTestId("task-card-status")).toHaveCount(0);
     // A volunteer works in one branch only: no scope labels on cards.
     await expect(card(page, mine).getByTestId("task-card-scope")).toHaveCount(0);
 
@@ -140,16 +144,16 @@ test.describe("Tasks", () => {
     await expect(card(page, mine)).toBeVisible();
     await expect(card(page, other)).toHaveCount(0);
 
-    // List: the same marking; "Mine first" grouping; no scope label.
+    // List: the same marking (no pill); grouped by assignee, mine sits under the volunteer; no scope label.
     await mineFilter.click();
     await page.getByTestId("tasks-view-list").click();
     await expect(listRow(page, mine)).toHaveAttribute("data-mine", "true");
-    await expect(listRow(page, mine).getByTestId("tasks-list-row-mine")).toBeVisible();
-    await expect(listRow(page, other).getByTestId("tasks-list-row-mine")).toHaveCount(0);
+    await expect(page.getByTestId("tasks-list-row-mine")).toHaveCount(0);
     await expect(listRow(page, other).getByTestId("tasks-list-row-scope")).toHaveCount(0);
-    await page.getByTestId("tasks-group").selectOption("mine");
-    await expect(page.locator('[data-testid="tasks-list-group"][data-group="mine"]').locator(`[data-task-id="${mine}"]`)).toBeVisible();
-    await expect(page.locator('[data-testid="tasks-list-group"][data-group="others"]').locator(`[data-task-id="${other}"]`)).toBeVisible();
+    await page.getByTestId("tasks-group-by").selectOption("assignee");
+    await expect(page.locator(`[data-testid="tasks-section"][data-section-key="person:${volunteer.id}"]`).locator(`[data-task-id="${mine}"]`)).toBeVisible();
+    await expect(page.locator('[data-testid="tasks-section"][data-section-key="unassigned"]').locator(`[data-task-id="${other}"]`)).toBeVisible();
+    await page.getByTestId("tasks-group-by").selectOption("source");
 
     // The view is remembered; My tasks starts off again.
     await page.reload();
@@ -229,6 +233,7 @@ test.describe("Tasks", () => {
     await expect(card(page, mineInB)).toHaveCount(0);
     await expect(card(page, inA)).toBeVisible();
     await page.reload();
+    await showBoard(page);
     await expect(card(page, inA)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(page.getByTestId("tasks-filter-branches")).toHaveAttribute("data-count", "1");
     await expect(card(page, mineInB)).toHaveCount(0);
@@ -412,7 +417,7 @@ test.describe("Tasks", () => {
     await openTasks(page);
     await expect(card(page, done1)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(card(page, done1)).toHaveAttribute("data-archived", "false");
-    const archiveAll = column(page, "done").getByTestId("tasks-kanban-archive-done");
+    const archiveAll = page.locator('[data-testid="tasks-kanban-heading"][data-status="done"]').getByTestId("tasks-kanban-archive-done");
     await expect(archiveAll).toHaveAttribute("data-count", "2");
     await archiveAll.click();
     await expect(page.getByTestId("toast-success").first()).toBeVisible();

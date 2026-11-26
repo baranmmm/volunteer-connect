@@ -290,26 +290,26 @@ describe("readTaskView / saveTaskView", () => {
     vi.restoreAllMocks();
     localStorage.clear();
   });
-  it("remembers the view per user and defaults to kanban", () => {
-    expect(readTaskView("u1")).toBe("kanban");
+  it("remembers the view per user and defaults to list", () => {
+    expect(readTaskView("u1")).toBe("list");
     saveTaskView("u1", "calendar");
     expect(readTaskView("u1")).toBe("calendar");
-    expect(readTaskView("u2")).toBe("kanban");
-    expect(readTaskView(undefined)).toBe("kanban");
+    expect(readTaskView("u2")).toBe("list");
+    expect(readTaskView(undefined)).toBe("list");
   });
   it("ignores unknown stored values", () => {
     localStorage.setItem("dsvh-tasks-view:u1", "table");
-    expect(readTaskView("u1")).toBe("kanban");
+    expect(readTaskView("u1")).toBe("list");
   });
-  it("falls back to kanban when storage throws", () => {
+  it("falls back to list when storage throws", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("blocked");
     });
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("blocked");
     });
-    expect(() => saveTaskView("u1", "list")).not.toThrow();
-    expect(readTaskView("u1")).toBe("kanban");
+    expect(() => saveTaskView("u1", "kanban")).not.toThrow();
+    expect(readTaskView("u1")).toBe("list");
   });
 });
 

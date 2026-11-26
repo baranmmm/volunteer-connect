@@ -625,12 +625,12 @@ export const TASK_VIEWS = ["kanban", "list", "calendar"] as const;
 export type TaskView = (typeof TASK_VIEWS)[number];
 const viewKey = (userId: string) => `dsvh-tasks-view:${userId}`;
 export function readTaskView(userId: string | undefined): TaskView {
-  if (!userId || typeof window === "undefined") return "kanban";
+  if (!userId || typeof window === "undefined") return "list";
   try {
     const v = window.localStorage.getItem(viewKey(userId));
-    return (TASK_VIEWS as readonly string[]).includes(v ?? "") ? (v as TaskView) : "kanban";
+    return (TASK_VIEWS as readonly string[]).includes(v ?? "") ? (v as TaskView) : "list";
   } catch {
-    return "kanban";
+    return "list";
   }
 }
 export function saveTaskView(userId: string | undefined, view: TaskView) {

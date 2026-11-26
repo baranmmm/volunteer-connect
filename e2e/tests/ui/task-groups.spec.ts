@@ -9,6 +9,7 @@ import { adminClient } from "../../api/SupabaseClient";
 import { MEETING_TITLE_PREFIX, TASK_TITLE_PREFIX, createMeetingAs, inDays, workRpc } from "../../api/work";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { pickOption } from "../../pages/components/select";
+import { setStatusByMenu, showBoard } from "../../pages/components/tasks";
 
 let n = 0;
 const title = (label: string) => `${TASK_TITLE_PREFIX}${runId} grp-${Date.now().toString(36)}-${++n} ${label}`;
@@ -20,6 +21,7 @@ const column = (page: Page, status: string) => page.locator(`[data-testid="tasks
 async function openTasks(page: Page, query = "") {
   await page.goto(`/tasks${query}`);
   await expect(page.getByTestId("tasks-view-kanban")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+  if (!query) await showBoard(page);
 }
 async function team(freshBranch: (label: string) => Promise<string>, freshUser: (o: { role: "branch_manager" | "volunteer"; branch: string }) => Promise<TestUser>, label: string) {
   const branch = await freshBranch(label);
@@ -66,7 +68,7 @@ test.describe("Task groups (@all)", () => {
     await expect(groupCard(asV1, groupId)).toHaveCount(0);
     for (const m of g!.members.filter((x) => x.user_id !== v1.id))
       await expect(asV1.locator(`[data-testid="task-card"][data-task-id="${m.task_id}"]`)).toHaveCount(0);
-    await asV1.locator(`[data-testid="task-card"][data-task-id="${v1Task}"]`).getByTestId("task-card-status").selectOption("in_progress");
+    await setStatusByMenu(asV1, asV1.locator(`[data-testid="task-card"][data-task-id="${v1Task}"]`).getByTestId("task-card-menu"), "in_progress");
     await expect.poll(async () => (await adminClient().from("tasks").select("status").eq("id", v1Task).single()).data?.status).toBe("in_progress");
 
     // The manager is a member too (their own task). The group row is for people outside the group: a volunteer who
@@ -78,8 +80,8 @@ test.describe("Task groups (@all)", () => {
     await expect(column(asOutsider, "in_progress").locator(`[data-testid="task-group-card"][data-group-id="${groupId}"]`)).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     await expect(card.getByTestId("task-group-members-label")).toHaveAttribute("data-count", "3");
     await expect(card.getByTestId("task-group-progress")).toHaveAttribute("data-done", "0");
-    // Not draggable and no status select: each member changes their own task.
-    await expect(card.getByTestId("task-card-status")).toHaveCount(0);
+    // Not draggable and no status menu: each member changes their own task.
+    await expect(card.getByTestId("task-card-menu")).toHaveCount(0);
     await asOutsider.getByTestId("tasks-view-list").click();
     const row = asOutsider.locator(`[data-testid="task-group-row"][data-group-id="${groupId}"]`);
     await row.getByTestId("task-group-row-toggle").click();

@@ -1906,6 +1906,26 @@
       "created": "Task created for every member.",
       "allOption": "@all: every member of the branch",
       "allHint": "Each active member of the branch gets their own task now. You can add or remove members later."
+    },
+    "grouping": {
+      "label": "Group by",
+      "by": {
+        "source": "Source",
+        "assignee": "Assignee",
+        "due": "Due date",
+        "none": "None"
+      },
+      "due": {
+        "overdue": "Overdue",
+        "thisWeek": "This week",
+        "nextWeek": "Next week",
+        "later": "Later",
+        "earlier": "Earlier",
+        "none": "No date"
+      },
+      "other": "Other tasks",
+      "allMembers": "All members (@all)",
+      "progress": "{{done}} of {{total}} done"
     }
   },
   "landing": {
