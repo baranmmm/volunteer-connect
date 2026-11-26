@@ -18,6 +18,7 @@ import {
 import { EventDialog } from "@/components/events/EventDialog";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { TaskStatusBadge } from "@/components/tasks/TaskBadges";
+import { AssigneeNames } from "@/components/tasks/AssigneeNames";
 import { deleteTask, getTask } from "@/lib/tasks.functions";
 import { linkedRows, type TaskDetail, type TaskGroupData } from "@/lib/tasks";
 import {
@@ -699,6 +700,9 @@ function DecisionTaskRow({
         <span className="min-w-0 flex-1 truncate" title={task.title}>
           {task.title}
         </span>
+        {detail.data && (
+          <AssigneeNames people={detail.data.assignees} testId="meeting-decision-task-assignees" />
+        )}
         <TaskStatusBadge status={task.status} className="rounded-full" />
       </Link>
       {canEdit && detail.data && (
