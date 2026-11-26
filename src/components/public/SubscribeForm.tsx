@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -36,6 +37,7 @@ export function SubscribeForm({
 }) {
   const { t } = useTranslation();
   const uid = useId();
+  const hydrated = useHydrated();
   const config = usePublicFormConfig();
   const send = useServerFn(subscribe);
   const fetchStructure = useServerFn(getPublicStructure);
@@ -117,6 +119,7 @@ export function SubscribeForm({
   return (
     <form
       data-testid="subscribe-form"
+      method="post"
       noValidate
       onSubmit={onSubmit}
       aria-describedby={ids.consent}
@@ -218,7 +221,7 @@ export function SubscribeForm({
         type="submit"
         data-testid="subscribe-form-submit"
         className="h-11"
-        disabled={busy || config.isPending}
+        disabled={busy || !hydrated || config.isPending}
         aria-describedby={formError ? ids.error : undefined}
       >
         {busy ? t("guest.sending") : t("subscribe.submit")}

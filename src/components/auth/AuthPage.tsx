@@ -3,6 +3,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRedirect } from "@/lib/use-redirect";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "@/lib/toast";
 import { loadSupabase } from "@/lib/supabase-lazy";
@@ -140,6 +141,7 @@ function Field({
 }
 
 function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
+  const hydrated = useHydrated();
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -155,7 +157,7 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
     if (error) toast.error(translateError(error));
   }
   return (
-    <form data-testid="auth-sign-in-form" onSubmit={submit} className="space-y-5">
+    <form data-testid="auth-sign-in-form" method="post" onSubmit={submit} className="space-y-5">
       <div>
         <p data-testid="auth-signin-welcome" className="text-lg text-muted-foreground">
           {t("auth.signInWelcome")}
@@ -187,7 +189,7 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
         type="submit"
         size="lg"
         className="h-12 w-full rounded-xl"
-        disabled={busy}
+        disabled={busy || !hydrated}
       >
         {busy ? t("auth.signingIn") : t("auth.signIn")}
       </Button>
@@ -214,6 +216,7 @@ function SignIn({ setMode }: { setMode: (m: Mode) => void }) {
 }
 
 function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
+  const hydrated = useHydrated();
   const { t } = useTranslation();
   const [groups, setGroups] = useState<RegionGroup[]>([]);
   const [busy, setBusy] = useState(false);
@@ -321,7 +324,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
   }
 
   return (
-    <form data-testid="auth-sign-up-form" onSubmit={submit} className="space-y-4">
+    <form data-testid="auth-sign-up-form" method="post" onSubmit={submit} className="space-y-4">
       <section
         data-testid="auth-join-intro"
         aria-labelledby="auth-join-title"
@@ -571,7 +574,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
         type="submit"
         size="lg"
         className="h-12 w-full rounded-xl"
-        disabled={busy || password !== confirm}
+        disabled={busy || !hydrated || password !== confirm}
       >
         {busy ? t("auth.creatingAccount") : t("auth.createAccount")}
       </Button>
@@ -588,6 +591,7 @@ function SignUp({ setMode }: { setMode: (m: Mode) => void }) {
 }
 
 function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
+  const hydrated = useHydrated();
   const { t } = useTranslation();
   const [sent, setSent] = useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -601,7 +605,7 @@ function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
     else setSent(true);
   }
   return (
-    <form data-testid="auth-forgot-form" onSubmit={submit} className="space-y-5">
+    <form data-testid="auth-forgot-form" method="post" onSubmit={submit} className="space-y-5">
       <div>
         <h1 className="text-3xl font-semibold">{t("auth.resetTitle")}</h1>
         <p
@@ -627,6 +631,7 @@ function Forgot({ setMode }: { setMode: (m: Mode) => void }) {
           type="submit"
           size="lg"
           className="h-12 w-full rounded-xl"
+          disabled={!hydrated}
         >
           {t("auth.sendReset")}
         </Button>
