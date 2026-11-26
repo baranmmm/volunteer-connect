@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { FolderInput, ImageIcon, Trash2 } from "lucide-react";
@@ -31,36 +31,64 @@ import {
   useMediaRefresh,
   type MediaFilters,
 } from "@/components/media/use-media";
+import { getMediaPhotos, markMediaChapterViewed, setMediaAlbumCover } from "@/lib/media.functions";
 import {
-  getMediaChapter,
-  getMediaPhotos,
-  markMediaChapterViewed,
-  setMediaAlbumCover,
-} from "@/lib/media.functions";
-import type { ChapterKind, MediaChapter, MediaPhoto, MediaTarget } from "@/lib/media";
+  chapterRef,
+  parseChapterRef,
+  type ChapterKind,
+  type MediaChapter,
+  type MediaPhoto,
+  type MediaTarget,
+} from "@/lib/media";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Everything open on the Media screen lives in the URL, so the phone's Back button closes it and a shared or reloaded
+ * link opens the same view (for members who can see it):
+ *   album / event  the full chapter view (notice links use these)
+ *   story          the story viewer: "album:<id>" | "event:<id>"
+ *   photo, pc, lb  the lightbox: the photo, its chapter ("album:<id>"), and "grid" when it browses the phone grid
+ *   slideshow      "gallery" (the branch's newest photos) | "album:<id>" | "event:<id>"
+ *   menu           "1": the ⋯ menu on phones
+ *   branch         the Regional Director's branch choice
+ */
 type MediaSearch = {
   branch?: string | undefined;
   album?: string | undefined;
   event?: string | undefined;
+  story?: string | undefined;
+  photo?: string | undefined;
+  pc?: string | undefined;
+  lb?: "grid" | undefined;
+  slideshow?: string | undefined;
+  menu?: "1" | undefined;
 };
+const OVERLAY_KEYS = ["story", "photo", "pc", "lb", "slideshow", "menu"] as const;
 
 export const Route = createFileRoute("/_app/media")({
   ssr: false,
-  // ?album= / ?event= open a chapter (notice links use them); ?branch= is the Regional Director's branch choice.
   validateSearch: (s: Record<string, unknown>): MediaSearch => {
     const pick = (v: unknown) => (typeof v === "string" && UUID.test(v) ? v : undefined);
-    return { branch: pick(s["branch"]), album: pick(s["album"]), event: pick(s["event"]) };
+    const ref = (v: unknown) => (typeof v === "string" && parseChapterRef(v) ? v : undefined);
+    return {
+      branch: pick(s["branch"]),
+      album: pick(s["album"]),
+      event: pick(s["event"]),
+      story: ref(s["story"]),
+      photo: pick(s["photo"]),
+      pc: ref(s["pc"]),
+      lb: s["lb"] === "grid" ? "grid" : undefined,
+      slideshow: s["slideshow"] === "gallery" ? "gallery" : ref(s["slideshow"]),
+      menu: s["menu"] === "1" || s["menu"] === 1 ? "1" : undefined,
+    };
   },
   head: () => pageHead("Media", "Your branch's photos from events and albums (members only)."),
   component: MediaPage,
 });
 
-type LightboxState = { photos: ViewerPhoto[]; index: number; chapter: MediaChapter | null };
-type SlideshowState = { photos: ViewerPhoto[]; start: number };
 type Dialog =
   | { kind: "upload"; initial: { kind: ChapterKind; id: string } | null }
   | { kind: "new-album" }
@@ -76,16 +104,24 @@ const withCaption = (
     ...p,
     caption: { title: chapter.title, date: chapter.date, venue: chapter.venue },
   }));
+const gridCaption = (photos: MediaPhoto[]): ViewerPhoto[] =>
+  photos.map((p) => ({
+    ...p,
+    caption: { title: p.chapter_title ?? "", date: p.chapter_date ?? null },
+  }));
+
+/** History entries the Media screen pushed for an open view carry this flag, so closing can go back instead. */
+type OverlayState = { mediaOverlay?: boolean };
 
 function MediaPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const router = useRouter();
   const desktop = useMediaDesktop();
   const qc = useQueryClient();
   const refresh = useMediaRefresh();
-  const fetchChapter = useServerFn(getMediaChapter),
-    fetchPhotos = useServerFn(getMediaPhotos),
+  const fetchPhotos = useServerFn(getMediaPhotos),
     markViewed = useServerFn(markMediaChapterViewed),
     setCover = useServerFn(setMediaAlbumCover);
   const home = useMediaHome(search.branch ?? null);
@@ -104,13 +140,42 @@ function MediaPage() {
   const openKind: ChapterKind | null = search.album ? "album" : search.event ? "event" : null;
   const openId = search.album ?? search.event ?? null;
   const chapter = useMediaChapter(openKind, openId);
-  const [lightbox, setLightbox] = useState<LightboxState | null>(null);
-  const [slideshow, setSlideshow] = useState<SlideshowState | null>(null);
-  const [story, setStory] = useState<number | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
 
   const chapterList = useMemo(() => chapters.data?.pages.flat() ?? [], [chapters.data]);
+  const storyChapters = useMemo(() => chapterList.filter((c) => c.photo_count > 0), [chapterList]);
   const gridPhotos = useMemo(() => grid.data?.pages.flat() ?? [], [grid.data]);
+
+  // ---- History: opening pushes an entry (flagged); moving inside a viewer replaces it; closing goes back. ----
+  const open = (patch: Partial<MediaSearch>) =>
+    void navigate({
+      search: (prev) => ({ ...prev, ...patch }),
+      resetScroll: false,
+      state: (s) => ({ ...s, mediaOverlay: true }),
+    });
+  const replace = (patch: Partial<MediaSearch>) =>
+    void navigate({
+      search: (prev) => ({ ...prev, ...patch }),
+      replace: true,
+      resetScroll: false,
+      state: (s) => s,
+    });
+  const close = (keys: readonly (keyof MediaSearch)[]) => {
+    // Opened from this screen: Back returns exactly to it (scroll, filters), and a second Back never reopens it.
+    // Opened from a link or a reload: there is nothing of ours to go back to, so the view is removed in place.
+    if ((router.state.location.state as OverlayState).mediaOverlay) router.history.back();
+    else
+      void navigate({
+        search: (prev) => {
+          const next = { ...prev };
+          for (const k of keys) delete next[k];
+          return next;
+        },
+        replace: true,
+        resetScroll: false,
+      });
+  };
+  const closeOverlay = () => close(OVERLAY_KEYS);
 
   // Opening a chapter marks it viewed (the amber story ring goes until new photos arrive).
   const viewed = useCallback(
@@ -126,61 +191,90 @@ function MediaPage() {
   }, [chapter.data, viewed]);
 
   const openChapter = (c: Pick<MediaChapter, "kind" | "id">) =>
-    void navigate({ search: { branch: search.branch, [c.kind]: c.id } });
-  const closeChapter = () => void navigate({ search: { branch: search.branch } });
-  const afterMove = (target: MediaTarget) =>
     void navigate({
-      search: {
-        branch: search.branch,
-        ...("album_id" in target ? { album: target.album_id } : { event: target.event_id }),
-      },
+      search: { branch: search.branch, [c.kind]: c.id },
+      state: (s) => ({ ...s, mediaOverlay: true }),
     });
+  const closeChapter = () => close(["album", "event", ...OVERLAY_KEYS]);
+  // After a move or an upload the target chapter opens: in place of a view already open, so Back leads to the
+  // timeline, or as a new entry from the timeline.
+  const showTarget = (target: MediaTarget) => {
+    const next = {
+      branch: search.branch,
+      ...("album_id" in target ? { album: target.album_id } : { event: target.event_id }),
+    };
+    const inView = !!openKind || !!search.photo;
+    void navigate({
+      search: next,
+      replace: inView,
+      state: (s) => ({ ...s, mediaOverlay: inView ? (s as OverlayState).mediaOverlay : true }),
+    });
+  };
 
-  const loadChapter = (c: Pick<MediaChapter, "kind" | "id">) =>
-    qc.fetchQuery({
-      queryKey: [MEDIA_KEY, "chapter", c.kind, c.id],
-      queryFn: () => fetchChapter({ data: { kind: c.kind, id: c.id } }),
-      staleTime: 4 * 60_000,
-    });
-  const openPhoto = async (c: Pick<MediaChapter, "kind" | "id">, photoId: string) => {
-    try {
-      const full = await loadChapter(c);
-      if (!full) return;
-      const photos = withCaption(full, full.photos);
-      setLightbox({
-        photos,
-        index: Math.max(
-          0,
-          photos.findIndex((p) => p.id === photoId),
-        ),
-        chapter: full,
-      });
-      viewed(full);
-    } catch (e) {
-      toast.error(translateError(e));
-    }
+  // ---- Lightbox (?photo=&pc=[&lb=grid]) ----
+  const pcRef = search.photo && search.pc ? parseChapterRef(search.pc) : null;
+  const pcChapter = useMediaChapter(pcRef?.kind ?? null, pcRef?.id ?? null);
+  const gridHasPhoto = search.lb === "grid" && gridPhotos.some((p) => p.id === search.photo);
+  const lightboxPhotos: ViewerPhoto[] | null = !search.photo
+    ? null
+    : gridHasPhoto
+      ? gridCaption(gridPhotos)
+      : pcChapter.data
+        ? withCaption(pcChapter.data, pcChapter.data.photos)
+        : null;
+  const lightboxIndex = lightboxPhotos?.findIndex((p) => p.id === search.photo) ?? -1;
+  const openPhoto = (c: Pick<MediaChapter, "kind" | "id">, photoId: string, fromGrid = false) => {
+    open({ photo: photoId, pc: chapterRef(c), lb: fromGrid ? "grid" : undefined });
+    viewed(c);
   };
-  const playGallery = async () => {
-    if (!branchId) return;
-    try {
-      // The newest photos of the branch (events and albums), each captioned with its chapter.
-      const photos = await fetchPhotos({
-        data: { branchId, source: debounced.source, year: debounced.year },
-      });
-      const list = photos.map((p) => ({
-        ...p,
-        caption: { title: p.chapter_title ?? "", date: p.chapter_date ?? null },
-      }));
-      if (list.length) setSlideshow({ photos: list, start: 0 });
-    } catch (e) {
-      toast.error(translateError(e));
-    }
-  };
+  // A photo that is gone (deleted, moved, not visible) closes the lightbox instead of showing nothing.
+  const lightboxMissing =
+    !!search.photo &&
+    !pcChapter.isLoading &&
+    !(search.lb === "grid" && grid.isLoading) &&
+    (lightboxPhotos === null || lightboxIndex < 0);
+  useEffect(() => {
+    if (lightboxMissing) close(["photo", "pc", "lb"]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxMissing]);
+
+  // ---- Story viewer (?story=album:<id>) ----
+  const storyRef = search.story ? parseChapterRef(search.story) : null;
+  const storyIndex = storyRef ? storyChapters.findIndex((c) => c.id === storyRef.id) : -1;
+  // A shared or reloaded story link whose chapter is not in the row (filters, more chapters): that chapter alone.
+  const storyAlone = useMediaChapter(
+    storyRef && storyIndex < 0 && !chapters.isLoading ? storyRef.kind : null,
+    storyRef?.id ?? null,
+  );
+  const storyList = storyIndex >= 0 ? storyChapters : storyAlone.data ? [storyAlone.data] : null;
+
+  // ---- Slideshow (?slideshow=gallery | album:<id>) ----
+  const slideRef =
+    search.slideshow && search.slideshow !== "gallery" ? parseChapterRef(search.slideshow) : null;
+  const slideChapter = useMediaChapter(slideRef?.kind ?? null, slideRef?.id ?? null);
+  const galleryShow = useQuery({
+    queryKey: [MEDIA_KEY, "slideshow", branchId, debounced.source, debounced.year],
+    enabled: search.slideshow === "gallery" && !!branchId,
+    // The newest photos of the branch (events and albums), each captioned with its chapter.
+    queryFn: async () =>
+      gridCaption(
+        await fetchPhotos({
+          data: { branchId: branchId!, source: debounced.source, year: debounced.year },
+        }),
+      ),
+    staleTime: 4 * 60_000,
+  });
+  const slidePhotos: ViewerPhoto[] | null =
+    search.slideshow === "gallery"
+      ? (galleryShow.data ?? null)
+      : slideChapter.data
+        ? withCaption(slideChapter.data, slideChapter.data.photos)
+        : null;
 
   const canManage = !!home.data?.can_manage;
   const canAdd = canManage || !!home.data?.can_request;
   const lightboxActions = (photo: ViewerPhoto) => {
-    const c = lightbox?.chapter;
+    const c = pcChapter.data;
     if (!canManage || !c) return null;
     return (
       <>
@@ -192,11 +286,6 @@ function MediaPage() {
               void setCover({ data: { albumId: c.id, photoId: photo.id } })
                 .then(async () => {
                   await refresh();
-                  setLightbox((l) =>
-                    l && l.chapter
-                      ? { ...l, chapter: { ...l.chapter, cover_photo_id: photo.id } }
-                      : l,
-                  );
                   toast.success(t("media.coverSet"));
                 })
                 .catch((e) => toast.error(translateError(e)))
@@ -270,16 +359,8 @@ function MediaPage() {
             branchId={data.branch.id}
             canManage={canManage}
             onBack={closeChapter}
-            onOpenPhoto={(i) =>
-              setLightbox({
-                photos: withCaption(chapter.data!, chapter.data!.photos),
-                index: i,
-                chapter: chapter.data!,
-              })
-            }
-            onSlideshow={() =>
-              setSlideshow({ photos: withCaption(chapter.data!, chapter.data!.photos), start: 0 })
-            }
+            onOpenPhoto={(i) => openPhoto(chapter.data!, chapter.data!.photos[i]!.id)}
+            onSlideshow={() => open({ slideshow: chapterRef(chapter.data!) })}
             onAdd={
               canAdd
                 ? () =>
@@ -289,7 +370,7 @@ function MediaPage() {
                     })
                 : null
             }
-            onMoved={afterMove}
+            onMoved={showTarget}
           />
         ) : (
           <div data-testid="media-chapter-missing" className="space-y-3">
@@ -312,9 +393,9 @@ function MediaPage() {
           hasMore={!!chapters.hasNextPage}
           loadingMore={chapters.isFetchingNextPage}
           onLoadMore={() => void chapters.fetchNextPage()}
-          onOpenPhoto={(c, id) => void openPhoto(c, id)}
+          onOpenPhoto={(c, id) => openPhoto(c, id)}
           onOpenChapter={openChapter}
-          onSlideshow={() => void playGallery()}
+          onSlideshow={() => open({ slideshow: "gallery" })}
           onAdd={canAdd ? () => setDialog({ kind: "upload", initial: null }) : null}
           loading={chapters.isLoading}
         />
@@ -328,48 +409,55 @@ function MediaPage() {
           hasMore={!!grid.hasNextPage}
           loadingMore={grid.isFetchingNextPage}
           onLoadMore={() => void grid.fetchNextPage()}
-          onOpenStory={setStory}
-          onOpenGridPhoto={(i) =>
-            setLightbox({
-              photos: gridPhotos.map((p) => ({
-                ...p,
-                caption: { title: p.chapter_title ?? "", date: p.chapter_date ?? null },
-              })),
-              index: i,
-              chapter: null,
-            })
-          }
-          onSlideshow={() => void playGallery()}
+          onOpenStory={(i) => storyChapters[i] && open({ story: chapterRef(storyChapters[i]!) })}
+          onOpenGridPhoto={(i) => {
+            const p = gridPhotos[i];
+            if (p?.chapter_kind && p.chapter_id)
+              openPhoto({ kind: p.chapter_kind, id: p.chapter_id }, p.id, true);
+          }}
+          onSlideshow={() => open({ slideshow: "gallery" })}
           onAdd={canAdd ? () => setDialog({ kind: "upload", initial: null }) : null}
           onNewAlbum={canManage ? () => setDialog({ kind: "new-album" }) : null}
+          menuOpen={search.menu === "1"}
+          onMenuOpenChange={(v) => (v ? open({ menu: "1" }) : search.menu && close(["menu"]))}
           loading={grid.isLoading}
         />
       )}
 
-      {lightbox && (
+      {lightboxPhotos && lightboxIndex >= 0 && (
         <Lightbox
-          photos={lightbox.photos}
-          index={lightbox.index}
-          onIndex={(i) => setLightbox({ ...lightbox, index: i })}
-          onClose={() => setLightbox(null)}
+          photos={lightboxPhotos}
+          index={lightboxIndex}
+          onIndex={(i) => {
+            const p = lightboxPhotos[i];
+            if (!p) return;
+            // The next photo replaces this entry (one Back always closes the lightbox); in the grid the photo's
+            // chapter changes with it (actions and a reload use it).
+            replace({
+              photo: p.id,
+              ...(gridHasPhoto && p.chapter_kind && p.chapter_id
+                ? { pc: chapterRef({ kind: p.chapter_kind, id: p.chapter_id }) }
+                : {}),
+            });
+          }}
+          onClose={closeOverlay}
           actions={canManage ? lightboxActions : undefined}
         />
       )}
-      {story !== null && (
+      {storyList && storyRef && (
         <StoryViewer
-          chapters={chapterList.filter((c) => c.photo_count > 0)}
-          start={story}
-          onClose={() => setStory(null)}
+          chapters={storyList}
+          index={Math.max(
+            0,
+            storyList.findIndex((c) => c.id === storyRef.id),
+          )}
+          onIndex={(i) => storyList[i] && replace({ story: chapterRef(storyList[i]!) })}
+          onClose={closeOverlay}
           onViewed={viewed}
         />
       )}
-      {slideshow && (
-        <Slideshow
-          photos={slideshow.photos}
-          start={slideshow.start}
-          branchName={data.branch.name}
-          onClose={() => setSlideshow(null)}
-        />
+      {slidePhotos && slidePhotos.length > 0 && (
+        <Slideshow photos={slidePhotos} branchName={data.branch.name} onClose={closeOverlay} />
       )}
       {dialog?.kind === "upload" && (
         <UploadDialog
@@ -379,7 +467,7 @@ function MediaPage() {
           onClose={() => setDialog(null)}
           onDone={(target) => {
             setDialog(null);
-            if (target) afterMove(target);
+            if (target) showTarget(target);
           }}
         />
       )}
@@ -402,8 +490,7 @@ function MediaPage() {
           onClose={() => setDialog(null)}
           onMoved={(target) => {
             setDialog(null);
-            setLightbox(null);
-            afterMove(target);
+            showTarget(target);
           }}
         />
       )}
@@ -414,7 +501,7 @@ function MediaPage() {
           onClose={() => setDialog(null)}
           onDeleted={() => {
             setDialog(null);
-            setLightbox(null);
+            closeOverlay();
           }}
         />
       )}

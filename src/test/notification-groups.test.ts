@@ -5,7 +5,7 @@ import tr from "@/locales/tr.json";
 import type { Notification } from "@/lib/notifications";
 import { entryNotices, groupNotifications } from "@/lib/notification-groups";
 import { branchList, groupText, notificationText } from "@/lib/notification-text";
-import { moreBadgeCount, navItemsFor, MOBILE_PRIMARY } from "@/components/app/nav";
+import { mobileNavFor, moreBadgeCount, navItemsFor } from "@/components/app/nav";
 
 type Tree = { [key: string]: string | Tree };
 const keys = (o: Tree, p = ""): string[] =>
@@ -169,11 +169,34 @@ describe("notification texts", () => {
 describe("mobile More badge", () => {
   it("sums the badges of the items under More", () => {
     const items = navItemsFor("branch_manager");
-    const primary = items.filter((i) => MOBILE_PRIMARY.includes(i.to)).slice(0, 4);
-    const more = items.filter((i) => !primary.includes(i));
+    const { more } = mobileNavFor("branch_manager", items);
     expect(more.some((i) => i.badge === "requests")).toBe(true);
-    expect(moreBadgeCount(more, { requests: 3, tasks: 5, meetings: 2 })).toBe(3);
+    // Meetings is under More now: its invitations count towards the More badge with the requests.
+    expect(moreBadgeCount(more, { requests: 3, tasks: 5, meetings: 2 })).toBe(5);
     expect(moreBadgeCount(items, { requests: 3, tasks: 5, meetings: 2 })).toBe(10);
     expect(moreBadgeCount(more, { requests: 0, tasks: 0, meetings: 0 })).toBe(0);
+  });
+});
+
+describe("mobile bottom bar", () => {
+  const bar = (role: Parameters<typeof mobileNavFor>[0]) => {
+    const { primary, more } = mobileNavFor(role);
+    return { primary: primary.map((i) => i.to), firstMore: more[0]?.to };
+  };
+  it("members: Dashboard · Calendar · Tasks · Media, Meetings first under More", () => {
+    for (const role of ["volunteer", "trustee", "branch_manager", "regional_director"] as const)
+      expect(bar(role)).toEqual({
+        primary: ["/dashboard", "/calendar", "/tasks", "/media"],
+        firstMore: "/meetings",
+      });
+  });
+  it("roles without Media keep their bar", () => {
+    expect(bar("national_coordinator").primary).toEqual([
+      "/dashboard",
+      "/calendar",
+      "/tasks",
+      "/meetings",
+    ]);
+    expect(bar("follower").primary).toEqual(["/dashboard", "/calendar", "/requests"]);
   });
 });

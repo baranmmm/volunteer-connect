@@ -8,7 +8,7 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/roles";
-import { Sidebar } from "../../pages/components/Sidebar";
+import { NC_MOBILE_PRIMARY, Sidebar } from "../../pages/components/Sidebar";
 import { RegionsPage } from "../../pages/RegionsPage";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { baseUrl, REPO_ROOT } from "../../setup/env";
@@ -56,7 +56,7 @@ test.describe("Translations on every first load", () => {
     test(`signed-in pages (${lang}): /dashboard and /regions show translated labels and respond to clicks`, { tag: lang === "en" ? "@smoke" : undefined }, async ({ freshUser, pageAs, isMobile }) => {
       const nc = await freshUser({ role: "national_coordinator", language: lang });
       const page = await pageAs(nc, { language: lang });
-      const sidebar = new Sidebar(page, !!isMobile);
+      const sidebar = new Sidebar(page, !!isMobile, NC_MOBILE_PRIMARY);
 
       // Hard load of a deep link with a stored session.
       await page.goto("/dashboard");

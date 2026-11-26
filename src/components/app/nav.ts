@@ -126,14 +126,32 @@ export const forbiddenItem = (role: AppRole, pathname: string) =>
       (pathname === i.to || pathname.startsWith(`${i.to}/`)),
   );
 
+/**
+ * The phone bottom bar (< 1024 px): the first four of these the role has, then "More" with the rest. Members who see
+ * Media: Dashboard · Calendar · Tasks · Media (Meetings is the first item under More). National Coordinators (no
+ * branch gallery) and followers keep Dashboard · Calendar · Tasks · Meetings / Requests.
+ */
 export const MOBILE_PRIMARY = [
   "/dashboard",
   "/calendar",
   "/tasks",
+  "/media",
   "/meetings",
   "/requests",
   "/regions",
 ];
+const MOBILE_PRIMARY_NO_MEDIA = MOBILE_PRIMARY.filter((to) => to !== "/media");
+
+/** The bottom bar's items for a role and the items under "More" (in menu order: Meetings first for members). */
+export function mobileNavFor(role: AppRole, items: NavItem[] = navItemsFor(role)) {
+  const order = role === "national_coordinator" ? MOBILE_PRIMARY_NO_MEDIA : MOBILE_PRIMARY;
+  // In the bar's own order (Media before Meetings), not the sidebar's.
+  const primary = order
+    .map((to) => items.find((i) => i.to === to))
+    .filter((i): i is NavItem => !!i)
+    .slice(0, 4);
+  return { primary, more: items.filter((i) => !primary.includes(i)) };
+}
 
 /** The mobile "More" tab's count: the sum of the badges of the items it holds (hidden at zero). */
 export const moreBadgeCount = (items: NavItem[], counts: Record<NavBadge, number>) =>

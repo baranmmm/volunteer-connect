@@ -247,3 +247,14 @@ export function masonrySpan(
   const ratio = width && height ? height / width : 3 / 4;
   return Math.max(1, Math.round((columnWidth * ratio + MASONRY_GAP) / MASONRY_ROW));
 }
+
+/** "album:<id>" / "event:<id>": a chapter in a URL (story viewer, lightbox, slideshow). */
+export function chapterRef(c: { kind: ChapterKind; id: string }): string {
+  return `${c.kind}:${c.id}`;
+}
+const CHAPTER_REF =
+  /^(album|event):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+export function parseChapterRef(value: string): { kind: ChapterKind; id: string } | null {
+  const m = CHAPTER_REF.exec(value);
+  return m ? { kind: m[1]!.toLowerCase() as ChapterKind, id: m[2]!.toLowerCase() } : null;
+}

@@ -35,3 +35,15 @@ Private bucket `media-library`: `<branch id>/<photo id>.webp` plus `.w640.webp` 
 placeholder photos, a Brighton event that must never show in Medway's gallery, and a pending upload request.
 The sample events are past records, which are public (they appear on the public events page and map), so reset the
 stack (`npm run local:reset && npm run local:seed`) before running the Playwright suite.
+
+## Back button and links
+Every view opened on the Media screen is in the URL: `?album=`/`?event=` (chapter view), `?story=album:<id>` (story
+viewer), `?photo=<id>&pc=album:<id>[&lb=grid]` (lightbox), `?slideshow=gallery|album:<id>`, `?menu=1` (⋯ menu on phones).
+Opening one pushes a history entry, so the phone's Back button closes it and returns to the same place (scroll,
+filters); closing with X, swipe down or Esc goes back too. Moving between photos or chapters replaces the entry. A
+shared or reloaded link opens the same view for members who can see it.
+
+## Phone navigation
+The bottom bar is Dashboard · Calendar · Tasks · Media for members; Meetings is the first item under More (its badge
+counts towards More's). National Coordinators and followers keep their bar (`mobileNavFor` in
+`src/components/app/nav.ts`).

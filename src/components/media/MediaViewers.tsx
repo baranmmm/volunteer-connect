@@ -218,18 +218,24 @@ const STORY_SECONDS = 5;
  */
 export function StoryViewer({
   chapters,
-  start,
+  index: ci,
+  onIndex,
   onClose,
   onViewed,
 }: {
   chapters: MediaChapter[];
-  start: number;
+  /** The chapter shown (controlled: the page keeps it in the URL, so Back closes the viewer). */
+  index: number;
+  /** Another chapter (the page replaces the history entry: one Back always closes the viewer). */
+  onIndex: (i: number) => void;
   onClose: () => void;
   onViewed: (c: MediaChapter) => void;
 }) {
   const { t } = useTranslation();
-  const [ci, setCi] = useState(start);
   const [pi, setPi] = useState(0);
+  const setCi = (i: number) => onIndex(i);
+  // A new chapter starts at its first photo.
+  useEffect(() => setPi(0), [ci]);
   const preview = chapters[ci];
   const full = useMediaChapter(preview?.kind ?? null, preview?.id ?? null);
   const photos = full.data?.photos ?? preview?.photos ?? [];
