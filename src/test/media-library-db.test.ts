@@ -305,7 +305,7 @@ describe("direct uploads and albums (managers only)", () => {
           "Not allowed",
         );
         await fails("SELECT public.delete_media_photos($1)", [[p.id]], "Not allowed");
-        await fails("SELECT public.delete_media_album($1)", [album], "Not allowed");
+        await fails("SELECT public.delete_media_album($1, 'Peace Walk')", [album], "Not allowed");
         await fails("SELECT public.set_media_album_cover($1, $2)", [album, p.id], "Not allowed");
         await fails(
           "SELECT public.update_media_album($1, $2::jsonb)",
@@ -377,9 +377,16 @@ describe("direct uploads and albums (managers only)", () => {
       expect(await removeFiles(del.paths)).toMatchObject({ photos: 1 });
 
       await as(ids.bm1);
-      const gone = await one<{ paths: string[] }>("SELECT public.delete_media_album($1) v", [
-        album,
-      ]);
+      // The album's title must be typed to confirm.
+      await fails(
+        "SELECT public.delete_media_album($1, 'Christmas')",
+        [album],
+        "Album title confirmation required",
+      );
+      const gone = await one<{ paths: string[] }>(
+        "SELECT public.delete_media_album($1, ' Christmas Dinner ') v",
+        [album],
+      );
       expect(gone.paths).toHaveLength(3);
       await fails("SELECT public.get_media_chapter('album', $1)", [album], "Chapter not found");
       expect(await removeFiles(gone.paths)).toMatchObject({ photos: 1, albums: 1 });
@@ -608,6 +615,197 @@ describe("upload requests", () => {
       const sweep = await one<{ paths: string[] }>("SELECT public.media_cleanup_paths() v");
       expect(sweep.paths.sort()).toEqual([files[0]!.path, ...variants(files[0]!.path)].sort());
       expect(await removeFiles(sweep.paths)).toMatchObject({ files: 1 });
+    }));
+});
+
+describe("moving photos (managers, one branch)", () => {
+  type Move = {
+    moved: number;
+    skipped: { id: string; reason: string }[];
+    copies: { from_bucket: string; from: string; to_bucket: string; to: string }[];
+    remove: { bucket: string; path: string }[];
+  };
+  const move = (items: { source: string; id: string }[], target: Row, commit = false) =>
+    one<Move>("SELECT public.move_media_photos($1::jsonb, $2::jsonb, $3) v", [
+      json(items),
+      json(target),
+      commit,
+    ]);
+  const album = (title: string, branch = ids.b1) =>
+    one<string>("SELECT public.create_media_album($1, $2::jsonb) v", [branch, json({ title })]);
+  const ids_ = async (kind: string, chapterId: string) =>
+    (
+      await one<Chapter>(`SELECT public.get_media_chapter('${kind}', $1) v`, [chapterId])
+    ).photos.map((p) => p.id);
+  /** A second photo on the event page of ev1 (the first one is its cover), stored with its copies. */
+  async function eventPagePhoto(n: number) {
+    await as(null);
+    const path = `${ev1}/${id(n)}.jpg`;
+    await db.query(
+      "INSERT INTO event_media(id, event_id, storage_path, kind, position, has_variants, width, height, content_hash) VALUES ($1,$2,$3,'image',1,true,1600,1200,$4)",
+      [id(n), ev1, path, hash(n)],
+    );
+    for (const name of [path, ...variants(path)])
+      await db.query("INSERT INTO storage.objects(bucket_id, name) VALUES ('event-media', $1)", [
+        name,
+      ]);
+    return { id: id(n), path };
+  }
+
+  it("album → album: the parent changes, the files stay, the cover falls back, the target shows as new", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const from = await album("Iftar 2026");
+      const to = await album("Ramadan 2026");
+      const a = await bmPhoto({ album_id: from }, 120);
+      const b = await bmPhoto({ album_id: from }, 121);
+      await db.query("SELECT public.set_media_album_cover($1, $2)", [from, a.id]);
+      await as(ids.vol1);
+      await db.query("SELECT public.mark_media_chapter_viewed('album', $1)", [to]);
+      await as(ids.bm1);
+      const plan = await move([{ source: "library", id: a.id }], { album_id: to });
+      expect(plan).toMatchObject({ moved: 1, copies: [] });
+      expect(await ids_("album", from)).toEqual([a.id, b.id]); // the plan changes nothing
+      const done = await move([{ source: "library", id: a.id }], { album_id: to }, true);
+      expect(done).toMatchObject({ moved: 1, remove: [] });
+      expect(await ids_("album", from)).toEqual([b.id]);
+      expect(await ids_("album", to)).toEqual([a.id]);
+      await as(null);
+      expect(await one("SELECT cover_photo_id v FROM media_albums WHERE id=$1", [from])).toBeNull();
+      expect(await one("SELECT storage_path v FROM media_photos WHERE id=$1", [a.id])).toBe(a.path);
+      expect((await chapters(ids.vol1)).find((c) => c.id === to)!.unseen).toBe(true);
+      // Moving it again to where it is: unchanged.
+      await as(ids.bm1);
+      expect(
+        (await move([{ source: "library", id: a.id }], { album_id: to }, true)).skipped,
+      ).toEqual([{ id: a.id, reason: "unchanged" }]);
+    }));
+
+  it("album ↔ event chapter (Media-only), with duplicates skipped and reported", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const al = await album("Meet-ups");
+      const p = await bmPhoto({ album_id: al }, 130);
+      const dupInEvent = await bmPhoto({ event_id: ev1 }, 131);
+      const dup = await bmPhoto({ album_id: al }, 131);
+      const r = await move(
+        [
+          { source: "library", id: p.id },
+          { source: "library", id: dup.id },
+        ],
+        { event_id: ev1 },
+        true,
+      );
+      expect(r.moved).toBe(1);
+      expect(r.skipped).toEqual([{ id: dup.id, reason: "duplicate" }]);
+      expect(await ids_("event", ev1)).toEqual(
+        expect.arrayContaining([p.id, dupInEvent.id, id(101)]),
+      );
+      expect(await ids_("album", al)).toEqual([dup.id]);
+      // ...and back to the album.
+      expect((await move([{ source: "library", id: p.id }], { album_id: al }, true)).moved).toBe(1);
+      expect(await ids_("album", al)).toEqual([dup.id, p.id]);
+    }));
+
+  it("event page → album: copies first; without them nothing changes; then the event row goes, the id stays", () =>
+    tx(async () => {
+      const ep = await eventPagePhoto(140);
+      await as(ids.bm1);
+      const al = await album("From the event");
+      const plan = await move([{ source: "event", id: ep.id }], { album_id: al });
+      const to = `${ids.b1}/${ep.id}.jpg`;
+      expect(plan.copies).toEqual(
+        [ep.path, ...variants(ep.path)].map((from, i) => ({
+          from_bucket: "event-media",
+          from,
+          to_bucket: "media-library",
+          to: [to, ...variants(to)][i],
+        })),
+      );
+      // A copy failed (only one of three stored): the commit refuses and nothing changes.
+      await as(null);
+      await db.query("INSERT INTO storage.objects(bucket_id, name) VALUES ('media-library', $1)", [
+        to,
+      ]);
+      await as(ids.bm1);
+      await fails(
+        "SELECT public.move_media_photos($1::jsonb, $2::jsonb, true)",
+        [json([{ source: "event", id: ep.id }]), json({ album_id: al })],
+        "Copied files are missing",
+      );
+      expect(await ids_("event", ev1)).toContain(ep.id);
+      expect(await ids_("album", al)).toEqual([]);
+      // All copies stored (the server's service-role copy): the move commits.
+      await as(null);
+      for (const name of variants(to))
+        await db.query(
+          "INSERT INTO storage.objects(bucket_id, name) VALUES ('media-library', $1)",
+          [name],
+        );
+      await as(ids.bm1);
+      const done = await move([{ source: "event", id: ep.id }], { album_id: al }, true);
+      expect(done.moved).toBe(1);
+      expect(done.remove.map((x) => x.path).sort()).toEqual([ep.path, ...variants(ep.path)].sort());
+      expect(await ids_("album", al)).toEqual([ep.id]);
+      expect(await ids_("event", ev1)).not.toContain(ep.id);
+      await as(null);
+      expect(
+        await one<number>("SELECT count(*)::int v FROM event_media WHERE id=$1", [ep.id]),
+      ).toBe(0);
+      expect(await one<number>("SELECT position v FROM event_media WHERE id=$1", [id(101)])).toBe(
+        0,
+      );
+      // Now members-only: volunteers read the copies only.
+      await as(ids.vol1);
+      expect(await readable([to, ...variants(to)])).toEqual(variants(to).sort());
+    }));
+
+  it("refused: the event cover, album → event page, other branches, volunteers and trustees", () =>
+    tx(async () => {
+      const ep = await eventPagePhoto(150);
+      await as(ids.bm1);
+      const al = await album("Here");
+      const lib = await bmPhoto({ album_id: al }, 151);
+      await fails(
+        "SELECT public.move_media_photos($1::jsonb, $2::jsonb)",
+        [json([{ source: "event", id: id(101) }]), json({ album_id: al })],
+        "Change the event cover first",
+      );
+      // An event page photo goes only to an album (never to another event); album photos never onto an event page.
+      await fails(
+        "SELECT public.move_media_photos($1::jsonb, $2::jsonb)",
+        [json([{ source: "event", id: ep.id }]), json({ event_id: ev1 })],
+        "only be moved to an album",
+      );
+      // The other branch: not as BM of Medway, and not even as the RD who manages both branches.
+      await as(ids.bm2);
+      const there = await album("Other album", ids.b2);
+      for (const user of [ids.bm1, ids.rd]) {
+        await as(user);
+        await fails(
+          "SELECT public.move_media_photos($1::jsonb, $2::jsonb)",
+          [json([{ source: "library", id: lib.id }]), json({ album_id: there })],
+          "Not allowed",
+        );
+        await fails(
+          "SELECT public.move_media_photos($1::jsonb, $2::jsonb)",
+          [json([{ source: "library", id: lib.id }]), json({ event_id: ev2 })],
+          "Not allowed",
+        );
+      }
+      for (const user of [ids.vol1, ids.tr1]) {
+        await as(user);
+        await fails(
+          "SELECT public.move_media_photos($1::jsonb, $2::jsonb, true)",
+          [json([{ source: "library", id: lib.id }]), json({ event_id: ev1 })],
+          "Not allowed",
+        );
+      }
+      // The RD of the region may move within Medway.
+      await as(ids.rd);
+      expect((await move([{ source: "library", id: lib.id }], { event_id: ev1 }, true)).moved).toBe(
+        1,
+      );
     }));
 });
 

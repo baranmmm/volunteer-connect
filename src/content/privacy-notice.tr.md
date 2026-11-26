@@ -42,7 +42,7 @@ Bir şey isteğe bağlıdır ve yalnızca onayınızla kullanılır; onayınız�
 
 ## Etkinliklerimizdeki fotoğraflar
 
-Dialogue Society etkinliklerinde ve faaliyetlerinde fotoğraf çekiyoruz. Bu fotoğraflar Merkezin üyelere özel Medya alanında (yalnızca şubenin üyeleri görür) ve herkese açık etkinlik sayfalarında paylaşılabilir. Bunu, hayır kurumumuzun çalışmalarını kayıt altına alma ve gösterme konusundaki meşru menfaatimize dayanarak yaparız. Fotoğrafınızın çekilmesini kabul etmek, katılmanın bir koşulu değildir.
+Dialogue Society etkinliklerinde ve faaliyetlerinde fotoğraf çekiyoruz. Bu fotoğraflar Merkezin üyelere özel Medya alanında (yalnızca şubenin üyeleri görür) ve herkese açık etkinlik sayfalarında paylaşılabilir. Bunu, hayır kurumumuzun çalışmalarını kayıt altına alma ve gösterme konusundaki meşru menfaatimize dayanarak yaparız. Fotoğrafınızın çekilmesini kabul etmek, Merkeze üye olmanın bir koşulu değildir.
 
 - Fotoğrafınızın çekilmesini istemiyorsanız, lütfen etkinlikte düzenleyiciye söyleyin.
 - Sizin yer aldığınız bir fotoğrafın kaldırılmasını isterseniz medway@dialoguesociety.org adresine e-posta gönderin; fotoğrafı kaldırırız.

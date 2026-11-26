@@ -30,6 +30,12 @@
 -- Duplicates: every file carries a SHA-256 of its bytes (content_hash); a photo already in the same album or event (a
 -- library photo, or an event file with a hash) is refused at reservation ({duplicate: true}) and skipped at approval.
 -- "Viewed" markers per member and chapter feed the amber rings of the mobile stories row.
+-- Moving photos (managers, within one branch): album → album, album ↔ an event's Media-only chapter (the parent
+-- changes, the files stay), and an event page photo (event_media) → album (copied to media-library by the server, then
+-- the event row and old files go; never the event's cover). Never album → event page. Two phases: a plan (what the
+-- server must copy), then the commit, which refuses unless every copy is stored, so a failed copy changes nothing.
+-- Photo ids are kept, so later per-photo marks (highlight stars) follow the photo. Album deletion needs the album's
+-- title typed as confirmation.
 --
 -- Also: event_media.content_hash (nullable; set by the event upload from now on), notification kinds and entity type,
 -- review_waiting_for counts 'media', a soft-deleted person's open upload requests are withdrawn, privacy notice 1.6
@@ -74,6 +80,8 @@ CREATE TABLE public.media_photos (
   approved_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   request_id uuid,  -- the upload request it came from (no FK: requests are removed independently)
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  -- When it was placed in its current album or event (a move sets it again, so the chapter shows it as new).
+  added_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   -- Set when deletion starts: hidden at once; the row goes after its files.
   deleting_at timestamptz,
   CONSTRAINT media_photos_one_target CHECK (album_id IS NULL OR event_id IS NULL),
@@ -315,11 +323,11 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   FROM public.event_media m JOIN ev ON ev.id = m.event_id
   WHERE m.kind = 'image' AND EXISTS (SELECT 1 FROM storage.objects o WHERE o.bucket_id = 'event-media' AND o.name = m.storage_path)
   UNION ALL
-  SELECT 'library', p.id, 'event', p.event_id, p.storage_path, true, p.width, p.height, 1000 + p.position, p.created_at
+  SELECT 'library', p.id, 'event', p.event_id, p.storage_path, true, p.width, p.height, 1000 + p.position, p.added_at
   FROM public.media_photos p JOIN ev ON ev.id = p.event_id
   WHERE p.branch_id = _branch AND p.ready AND p.deleting_at IS NULL
   UNION ALL
-  SELECT 'library', p.id, 'album', p.album_id, p.storage_path, true, p.width, p.height, p.position, p.created_at
+  SELECT 'library', p.id, 'album', p.album_id, p.storage_path, true, p.width, p.height, p.position, p.added_at
   FROM public.media_photos p JOIN public.media_albums a ON a.id = p.album_id AND a.deleted_at IS NULL
   WHERE p.branch_id = _branch AND a.branch_id = _branch AND p.ready AND p.deleting_at IS NULL
 $$;
@@ -537,13 +545,16 @@ END $$;
 
 -- Hard delete: hidden at once; returns every stored path (originals and copies) for the server to delete through
 -- Storage, after which clear_deleted_media() removes the rows.
-CREATE FUNCTION public.delete_media_album(p_id uuid) RETURNS jsonb
+CREATE FUNCTION public.delete_media_album(p_id uuid, p_title text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE _a public.media_albums; _paths jsonb;
 BEGIN
   PERFORM public.require_privacy_accepted();
   SELECT * INTO _a FROM public.media_albums WHERE id = p_id FOR UPDATE;
   IF NOT FOUND OR NOT public.can_manage_media(_a.branch_id) THEN RAISE EXCEPTION 'Not allowed'; END IF;
+  IF _a.deleted_at IS NULL AND btrim(coalesce(p_title, '')) IS DISTINCT FROM btrim(_a.title) THEN
+    RAISE EXCEPTION 'Album title confirmation required';
+  END IF;
   UPDATE public.media_albums SET deleted_at = coalesce(deleted_at, now()) WHERE id = p_id;
   UPDATE public.media_photos SET deleting_at = coalesce(deleting_at, now()) WHERE album_id = p_id;
   SELECT coalesce(jsonb_agg(x ORDER BY x), '[]'::jsonb) INTO _paths FROM (
@@ -660,6 +671,139 @@ BEGIN
     RAISE EXCEPTION 'Invalid photo order';
   END IF;
   UPDATE public.media_photos p SET position = a.ord - 1 FROM unnest(p_ids) WITH ORDINALITY a(id, ord) WHERE p.id = a.id;
+END $$;
+
+-- Moves photos to another album or event chapter of the same branch (Branch Manager / Regional Director only).
+-- p_items: [{"source": "library" | "event", "id": uuid}, ...] (at most 200); p_target: {album_id} | {event_id}.
+--   * library photo (album or an event's Media-only chapter) → any album or event chapter: the parent changes, the
+--     files stay where they are.
+--   * event page photo (event_media image) → album only (it leaves the event page and becomes members-only): its
+--     original and both copies are copied by the server from event-media/<event>/<id>.<ext> to
+--     media-library/<branch>/<id>.<ext>; the event's cover cannot be moved, a public event keeps at least one photo,
+--     the event must be one the caller manages and the photo must have its copies.
+--   * never album → event page, never across branches, never by volunteers or trustees.
+-- Same content hash already in the target: skipped and reported ('duplicate'); already there: 'unchanged'.
+-- p_commit = false: checks everything and returns the plan ({copies: [{from_bucket, from, to_bucket, to}]}); nothing
+-- changes. The server makes the copies (removing them again if any copy fails), then calls with p_commit = true: the
+-- same checks run again, every copy must be stored, the rows change in one transaction and the old event-media paths
+-- are returned ({remove: [{bucket, path}]}) for the server to delete. A source album whose cover moved falls back to
+-- its first photo; the target chapter's "viewed" markers are cleared so the move shows as new. Ids are kept.
+CREATE FUNCTION public.move_media_photos(p_items jsonb, p_target jsonb, p_commit boolean DEFAULT false) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE _branch uuid; _album uuid; _event uuid; _t record; _item jsonb; _src text; _id uuid;
+  _p public.media_photos; _m public.event_media; _e public.events; _ext text; _to text; _pos integer;
+  _moved integer := 0; _skipped jsonb := '[]'::jsonb; _copies jsonb := '[]'::jsonb; _remove jsonb := '[]'::jsonb;
+  _hashes text[] := '{}'; _events uuid[] := '{}'; _from text[]; _dest text[]; i integer;
+BEGIN
+  PERFORM public.require_privacy_accepted();
+  IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 OR jsonb_array_length(p_items) > 200
+     OR p_target IS NULL OR jsonb_typeof(p_target) <> 'object' THEN
+    RAISE EXCEPTION 'Invalid media selection';
+  END IF;
+  BEGIN
+    _album := nullif(p_target->>'album_id', '')::uuid;
+    _event := nullif(p_target->>'event_id', '')::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN RAISE EXCEPTION 'Choose an album or an event';
+  END;
+  _branch := CASE WHEN _album IS NOT NULL THEN (SELECT branch_id FROM public.media_albums WHERE id = _album)
+                  ELSE (SELECT branch_id FROM public.events WHERE id = _event AND scope = 'branch') END;
+  IF _branch IS NULL OR NOT public.can_manage_media(_branch) THEN RAISE EXCEPTION 'Not allowed'; END IF;
+  _t := public.media_target(_branch, p_target);  -- validates and locks the target album
+  SELECT coalesce(max(position) + 1, 0) INTO _pos FROM public.media_photos
+  WHERE (album_id = _album OR event_id = _event) AND deleting_at IS NULL;
+
+  FOR _item IN SELECT x FROM jsonb_array_elements(p_items) x LOOP
+    _src := _item->>'source';
+    BEGIN
+      _id := (_item->>'id')::uuid;
+    EXCEPTION WHEN invalid_text_representation THEN RAISE EXCEPTION 'Invalid media selection';
+    END;
+    IF _src = 'library' THEN
+      SELECT * INTO _p FROM public.media_photos WHERE id = _id FOR UPDATE;
+      IF NOT FOUND OR _p.branch_id IS DISTINCT FROM _branch OR NOT _p.ready OR _p.deleting_at IS NOT NULL
+         OR NOT ((_p.album_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.media_albums a WHERE a.id = _p.album_id AND a.deleted_at IS NULL))
+              OR (_p.event_id IS NOT NULL AND public.media_event_ok(_p.event_id, _branch))) THEN
+        RAISE EXCEPTION 'Not allowed';
+      END IF;
+      IF _p.album_id IS NOT DISTINCT FROM _album AND _p.event_id IS NOT DISTINCT FROM _event THEN
+        _skipped := _skipped || jsonb_build_object('id', _id, 'reason', 'unchanged');
+        CONTINUE;
+      END IF;
+      IF (_p.content_hash IS NOT NULL AND (_p.content_hash = ANY (_hashes) OR EXISTS (SELECT 1 FROM public.media_photos x
+            WHERE x.id <> _id AND x.content_hash = _p.content_hash AND x.deleting_at IS NULL
+              AND ((_album IS NOT NULL AND x.album_id = _album) OR (_event IS NOT NULL AND x.event_id = _event)))
+          OR (_event IS NOT NULL AND EXISTS (SELECT 1 FROM public.event_media m WHERE m.event_id = _event AND m.content_hash = _p.content_hash)))) THEN
+        _skipped := _skipped || jsonb_build_object('id', _id, 'reason', 'duplicate');
+        CONTINUE;
+      END IF;
+      IF _p.content_hash IS NOT NULL THEN _hashes := _hashes || _p.content_hash; END IF;
+      IF p_commit THEN
+        UPDATE public.media_albums SET cover_photo_id = NULL WHERE cover_photo_id = _id AND id IS DISTINCT FROM _album;
+        UPDATE public.media_photos SET album_id = _album, event_id = _event, position = _pos, added_at = clock_timestamp() WHERE id = _id;
+        _pos := _pos + 1;
+      END IF;
+      _moved := _moved + 1;
+    ELSIF _src = 'event' THEN
+      SELECT * INTO _m FROM public.event_media WHERE id = _id;
+      IF NOT FOUND THEN RAISE EXCEPTION 'Not allowed'; END IF;
+      SELECT * INTO _e FROM public.events WHERE id = _m.event_id FOR UPDATE;
+      PERFORM 1 FROM public.event_media WHERE id = _id FOR UPDATE;
+      IF _m.kind <> 'image' OR _e.branch_id IS DISTINCT FROM _branch OR NOT public.media_event_ok(_e.id, _branch)
+         OR NOT public.can_manage_event(_e.id) THEN
+        RAISE EXCEPTION 'Not allowed';
+      END IF;
+      IF _album IS NULL THEN RAISE EXCEPTION 'Event page photos can only be moved to an album'; END IF;
+      IF _id = (SELECT x.id FROM public.event_media x WHERE x.event_id = _e.id AND x.kind = 'image' ORDER BY x.position, x.id LIMIT 1) THEN
+        RAISE EXCEPTION 'Change the event cover first';
+      END IF;
+      IF NOT _m.has_variants THEN RAISE EXCEPTION 'Image copies are missing'; END IF;
+      _ext := public.media_ext(split_part(_m.storage_path, '.', array_length(string_to_array(_m.storage_path, '.'), 1)));
+      IF _ext IS NULL THEN RAISE EXCEPTION 'Invalid media file'; END IF;
+      IF _m.content_hash IS NOT NULL AND (_m.content_hash = ANY (_hashes) OR public.media_is_duplicate(_album, NULL, _m.content_hash)) THEN
+        _skipped := _skipped || jsonb_build_object('id', _id, 'reason', 'duplicate');
+        CONTINUE;
+      END IF;
+      IF _m.content_hash IS NOT NULL THEN _hashes := _hashes || _m.content_hash; END IF;
+      _events := _events || _e.id;
+      -- A public event keeps at least one photo (the cover stays anyway; checked for every event moved from).
+      IF _e.audience = 'public' AND (SELECT count(*) FROM public.event_media x WHERE x.event_id = _e.id AND x.kind = 'image')
+           - (SELECT count(*) FROM unnest(_events) v WHERE v = _e.id) < 1 THEN
+        RAISE EXCEPTION 'A public event must keep at least one photo';
+      END IF;
+      _to := _branch::text || '/' || _id::text || '.' || _ext;
+      _from := _m.storage_path || public.event_media_variant_paths(_m.storage_path);
+      _dest := _to || public.event_media_variant_paths(_to);
+      IF NOT p_commit THEN
+        FOR i IN 1..3 LOOP
+          _copies := _copies || jsonb_build_object('from_bucket', 'event-media', 'from', _from[i], 'to_bucket', 'media-library', 'to', _dest[i]);
+        END LOOP;
+      ELSE
+        IF (SELECT count(*) FROM storage.objects WHERE bucket_id = 'media-library' AND name = ANY (_dest)) < 3 THEN
+          RAISE EXCEPTION 'Copied files are missing';
+        END IF;
+        INSERT INTO public.media_photos (id, branch_id, album_id, storage_path, original_name, content_hash, width, height,
+          position, ready, uploaded_by, created_at)
+        VALUES (_id, _branch, _album, _to, _m.original_name, _m.content_hash, _m.width, _m.height, _pos, true, _m.uploaded_by, _m.created_at);
+        DELETE FROM public.event_media WHERE id = _id;
+        WITH ordered AS (SELECT x.id, row_number() OVER (ORDER BY CASE WHEN x.kind = 'image' THEN 0 ELSE 1 END, x.position, x.id) - 1 AS pos
+                         FROM public.event_media x WHERE x.event_id = _e.id)
+        UPDATE public.event_media x SET position = ordered.pos, updated_at = now() FROM ordered WHERE x.id = ordered.id AND x.position <> ordered.pos;
+        FOR i IN 1..3 LOOP
+          _remove := _remove || jsonb_build_object('bucket', 'event-media', 'path', _from[i]);
+        END LOOP;
+        _pos := _pos + 1;
+      END IF;
+      _moved := _moved + 1;
+    ELSE
+      RAISE EXCEPTION 'Invalid media selection';
+    END IF;
+  END LOOP;
+
+  IF p_commit AND _moved > 0 THEN
+    DELETE FROM public.media_chapter_views WHERE album_id = _album OR event_id = _event;
+  END IF;
+  RETURN jsonb_build_object('album_id', _album, 'event_id', _event, 'moved', _moved, 'skipped', _skipped,
+    'copies', _copies, 'remove', _remove, 'committed', coalesce(p_commit, false));
 END $$;
 
 -- "Viewed" marker for the stories ring.
@@ -1098,7 +1242,7 @@ REVOKE ALL ON FUNCTION
   public.get_media_chapters(uuid, text, integer, text, timestamptz, uuid, integer), public.get_media_chapter(text, uuid),
   public.get_media_photos(uuid, text, integer, timestamptz, uuid, integer), public.list_media_targets(uuid),
   public.media_album_fields(jsonb), public.create_media_album(uuid, jsonb), public.update_media_album(uuid, jsonb),
-  public.set_media_album_cover(uuid, uuid), public.delete_media_album(uuid), public.media_target(uuid, jsonb),
+  public.set_media_album_cover(uuid, uuid), public.delete_media_album(uuid, text), public.media_target(uuid, jsonb),
   public.media_is_duplicate(uuid, uuid, text), public.media_hash(text), public.add_media_photo(uuid, jsonb, text, text, text),
   public.finish_media_photo(uuid, integer, integer), public.delete_media_photos(uuid[]), public.reorder_media_photos(uuid, uuid[]),
   public.mark_media_chapter_viewed(text, uuid), public.media_upload_request_json(public.media_upload_requests, boolean),
@@ -1107,6 +1251,7 @@ REVOKE ALL ON FUNCTION
   public.submit_media_upload_request(uuid), public.withdraw_media_upload_request(uuid), public.list_media_upload_requests(text),
   public.get_media_upload_request(uuid), public.approve_media_upload_request(uuid, uuid[], text),
   public.decline_media_upload_request(uuid, text), public.media_cleanup_paths(), public.clear_deleted_media(),
+  public.move_media_photos(jsonb, jsonb, boolean),
   public.media_upload_requests_review_refresh(), public.profiles_media_sync()
 FROM PUBLIC, anon, authenticated;
 
@@ -1117,13 +1262,14 @@ GRANT EXECUTE ON FUNCTION
   public.get_media_home(uuid), public.get_media_chapters(uuid, text, integer, text, timestamptz, uuid, integer),
   public.get_media_chapter(text, uuid), public.get_media_photos(uuid, text, integer, timestamptz, uuid, integer),
   public.list_media_targets(uuid), public.create_media_album(uuid, jsonb), public.update_media_album(uuid, jsonb),
-  public.set_media_album_cover(uuid, uuid), public.delete_media_album(uuid), public.add_media_photo(uuid, jsonb, text, text, text),
+  public.set_media_album_cover(uuid, uuid), public.delete_media_album(uuid, text), public.add_media_photo(uuid, jsonb, text, text, text),
   public.finish_media_photo(uuid, integer, integer), public.delete_media_photos(uuid[]), public.reorder_media_photos(uuid, uuid[]),
   public.mark_media_chapter_viewed(text, uuid), public.create_media_upload_request(jsonb),
   public.add_media_upload_file(uuid, text, text, text), public.finish_media_upload_file(uuid, integer, integer),
   public.remove_media_upload_file(uuid), public.submit_media_upload_request(uuid), public.withdraw_media_upload_request(uuid),
   public.list_media_upload_requests(text), public.get_media_upload_request(uuid),
-  public.approve_media_upload_request(uuid, uuid[], text), public.decline_media_upload_request(uuid, text)
+  public.approve_media_upload_request(uuid, uuid[], text), public.decline_media_upload_request(uuid, text),
+  public.move_media_photos(jsonb, jsonb, boolean)
 TO authenticated;
 
 GRANT EXECUTE ON FUNCTION public.media_cleanup_paths(), public.clear_deleted_media() TO service_role;
