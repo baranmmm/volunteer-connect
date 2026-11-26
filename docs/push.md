@@ -10,7 +10,7 @@ SDK or cost. Everything runs on Web Crypto (Cloudflare Workers compatible; no No
 | --- | --- |
 | Service worker: `push` and `notificationclick` only. No fetch handler, no cache, no precache, so it never serves a stale app. `SW_VERSION` constant, `skipWaiting()` + `clients.claim()`, scope `/` | `public/sw.js` |
 | Browser side: support check, the service worker registration (only when a member turns push on), subscribe / unsubscribe, one store per page | `src/lib/push/client.ts`, rules in `src/lib/push/support.ts` |
-| UI: Profile > Notifications ("this device" panel, a Push switch per type), the dashboard card in the installed app | `src/components/app/PushNotifications.tsx`, `src/components/app/NotificationSettings.tsx` |
+| UI: Profile > Notifications (one On/Off switch for this device at the top; the Push column per type and the other devices in Advanced settings), the dashboard card in the installed app | `src/components/app/PushNotifications.tsx`, `src/components/app/NotificationSettings.tsx` |
 | Database: `push_subscriptions`, `push_outbox`, the RPCs, the queueing in `notify()` | `supabase/migrations/20261212090000_web_push.sql` |
 | Encryption (RFC 8291, `aes128gcm`) and VAPID (RFC 8292, ES256 JWT) | `src/lib/push/webpush.ts` |
 | The VAPID key check | `src/lib/push/vapid.server.ts`, `src/lib/push/p256.ts` |
@@ -22,8 +22,10 @@ load or on public pages.
 
 ## Opting in (never on page load)
 
-- **Profile > Notifications**: "Enable push on this device" / "Disable push on this device" with the state for this
-  device, the member's other devices (label such as "Chrome on Android", Remove), and a **Push** switch per type.
+- **Profile > Notifications**: "Phone notifications (push)", one On/Off switch for this device (on asks for
+  permission from the click and registers this device; off unregisters it). In Advanced settings: a **Push** checkbox
+  per type (the member's setting, independent of this device) and the member's other devices (label such as "Chrome on
+  Android", Remove).
 - **Dashboard card, installed app only** (`push-prompt`): "Turn on notifications to hear about your tasks" with one
   button that asks for permission from the click itself. It stays until push is on or "Not now"; after a first "Not
   now" it comes back once after 7 days, after the second never again (Profile stays). Remembered per device
@@ -34,7 +36,7 @@ load or on public pages.
   (Settings > Notifications > DS Volunteers > Allow Notifications), Android (touch and hold the app icon > App info >
   Notifications, or the browser's site settings), computers (site settings next to the address bar).
 - **iPhone / iPad**: Safari offers Web Push only to the installed app (iOS 16.4 or later): outside it Profile shows
-  that message instead of the button.
+  that message instead of the switch.
 - **Unavailable**: no service worker / Push API / Notification, a cross-origin frame (the Lovable preview) or a failed
   registration: shown as unavailable, never an error.
 - **Sign-out** removes this browser's subscription (server and browser) first, so the next person on a shared device
@@ -105,8 +107,8 @@ re-registers. Devices that do not open the app again stop receiving pushes; thei
 ## Test ids
 
 `profile-push` (`data-state` `loading` / `unsupported` / `ios-install` / `denied` / `off` / `on`),
-`profile-push-enable`, `profile-push-disable`, `profile-push-status`, `profile-push-unsupported`,
-`profile-push-ios-install`, `profile-push-denied`, `profile-push-denied-help` (`data-platform`), `profile-push-device`
-(`data-device-id`), `profile-push-device-remove`, `profile-notification-push` (and `data-push` on
-`profile-notification-type`); dashboard card `push-prompt` (`data-mode` `ask` / `denied`), `push-prompt-enable`,
+`profile-push-switch` (shown only for `loading` / `off` / `on`), `profile-push-unsupported`,
+`profile-push-ios-install`, `profile-push-denied`, `profile-push-denied-help` (`data-platform`); in Advanced settings
+`profile-push-device` (`data-device-id`), `profile-push-device-remove`, `profile-notification-push` (and `data-push` on
+`profile-notification-row`); dashboard card `push-prompt` (`data-mode` `ask` / `denied`), `push-prompt-enable`,
 `push-prompt-not-now`, `push-prompt-help` (`data-platform`).
