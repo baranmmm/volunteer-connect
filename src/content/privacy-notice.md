@@ -1,6 +1,6 @@
 # Privacy Notice: Dialogue Society Volunteer Hub
 
-Version 1.4 · 26 November 2026
+Version 1.5 · 26 November 2026
 
 This notice explains what personal information the Dialogue Society Volunteer Hub collects, why we use it, who can see it and what rights you have. You need to read it before creating an account.
 
@@ -25,6 +25,7 @@ The Volunteer Hub is run by the Dialogue Society, a registered charity in Englan
 | Meetings you create or are invited to, agendas, decisions and files added to them | When you or a manager organise a meeting |
 | Requests you send for a task or a meeting, and the reply | When you send or answer such a request |
 | Notices about these (for example "X assigned you a task" or "X mentioned you in a note") | When they happen |
+| Push notifications (optional): if you turn them on, we store a technical address for each of your devices so we can send notifications to it. It is deleted when you turn push off, sign out on that device, or delete your account. | When you turn on push notifications on a device |
 | A record of important changes (for example role changes and deletions) | When those changes happen, for security and accountability |
 
 We do not collect special category data (such as health, religion or ethnicity) in the Hub. Please do not include it in free text fields.
