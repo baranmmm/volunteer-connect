@@ -1,5 +1,5 @@
-// Generates the dotted (halftone) map of the United Kingdom (England, Wales, Scotland, Northern Ireland) for the public
-// events map:
+// Generates the dotted (halftone) map of the United Kingdom (England, Wales, Scotland, Northern Ireland; without Orkney and
+// Shetland) for the public events map:
 //   node scripts/uk-map/generate.mjs <ne_50m_admin_0_map_units.geojson>
 // writes public/maps/uk-dots.svg (the dots, a static asset) and src/components/public/events-map/uk-dots.ts
 // (its geometry only). See README.md for the source data (Natural Earth,
@@ -11,6 +11,9 @@ import { fileURLToPath } from "node:url";
 const K = Math.cos((54.5 * Math.PI) / 180);
 /** Same as project() in src/lib/events-story.ts: [x, y] in map units (100 per degree of latitude). */
 const project = (lon, lat) => [(lon + 9) * K * 100, (61 - lat) * 100];
+
+/** Polygons lying entirely north of this latitude (Orkney, Shetland) are not drawn. */
+const NORTHERN_ISLES_LAT = 58.7;
 
 const source = process.argv[2];
 if (!source) {
@@ -27,8 +30,12 @@ if (units.length !== 4) throw new Error("The four UK nations were not found in t
 const rings = [];
 for (const f of units) {
   const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
-  for (const poly of polys)
+  for (const poly of polys) {
+    // Orkney and Shetland are left out (every point north of 58.7°N; mainland Scotland ends at 58.65°N), so the frame
+    // is mainland Great Britain, Northern Ireland and the Hebrides (which fit inside Northern Ireland's west edge).
+    if (Math.min(...poly[0].map(([, lat]) => lat)) > NORTHERN_ISLES_LAT) continue;
     for (const ring of poly) rings.push(ring.map(([lon, lat]) => project(lon, lat)));
+  }
 }
 
 function inside(x, y) {

@@ -83,7 +83,19 @@ test.describe("Public events map", () => {
     await expect(map.story()).toHaveAttribute("data-active", String(firstComing));
     await expect(map.card()).toHaveAttribute("data-past", "false");
 
-    // One fixed frame around the whole UK: the four capitals are inside it.
+    // No empty band: the dotted land fills the map box (a tight frame), and with every branch on the mainland there is
+    // no inset box. Map, card and timeline fit in one viewport.
+    const land = (await page.getByTestId("events-map-land").boundingBox())!;
+    const canvasBox = (await map.canvas().boundingBox())!;
+    expect(Math.abs(land.y - canvasBox.y)).toBeLessThanOrEqual(3);
+    expect(Math.abs(land.y + land.height - (canvasBox.y + canvasBox.height))).toBeLessThanOrEqual(3);
+    await expect(page.getByTestId("events-map-inset")).toHaveCount(0);
+    const viewport = page.viewportSize()!;
+    expect((await page.getByTestId("events-map-timeline").boundingBox())!.y + 40).toBeLessThanOrEqual(viewport.height);
+    const cardBox = (await map.card().boundingBox())!;
+    expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(canvasBox.y + canvasBox.height + 1);
+
+    // One fixed frame around mainland Great Britain and Northern Ireland: the four capitals are inside it.
     const [fx, fy, fw, fh] = (await map.canvas().getAttribute("data-frame"))!.split(" ").map(Number) as [number, number, number, number];
     for (const [name, lat, lon] of CAPITALS) {
       const [x, y] = project(lat, lon);
@@ -281,6 +293,8 @@ test.describe("Public events map", () => {
     const cardBox = (await card.boundingBox())!;
     const bar = (await map.slider().boundingBox())!;
     expect(cardBox.y).toBeGreaterThanOrEqual(canvas.y + canvas.height - 1);
+    // All three fit in one viewport.
+    expect(bar.y + bar.height).toBeLessThanOrEqual(page.viewportSize()!.height);
     expect(bar.y).toBeGreaterThanOrEqual(cardBox.y + cardBox.height - 1);
 
     // Scrolling the page moves to later events while the map stays put (sticky). From the first event, a third of a

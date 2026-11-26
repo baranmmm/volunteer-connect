@@ -1,7 +1,9 @@
 # United Kingdom dot map
 
-Generates the halftone dots of the United Kingdom (England, Wales, Scotland and Northern Ireland) for the public events
-map (`/events`):
+Generates the halftone dots of the United Kingdom for the public events map (`/events`): mainland Great Britain,
+Northern Ireland and the Hebrides. Orkney and Shetland are left out (every polygon entirely north of 58.7°N; the
+mainland ends at 58.65°N), so the frame stays tight; a branch there (or anywhere outside the frame) is drawn in a small
+inset box in the map's top-right corner instead of enlarging the map (`mapLayout` in `src/lib/events-story.ts`).
 
 - `public/maps/uk-dots.svg`: the dots, a static asset the page shows as an image. It stays out of the JS module graph
   and the server-rendered HTML (a large generated module slowed the dev server's compiles and the page chunk), and the
@@ -34,5 +36,5 @@ The script is deterministic (same input, same output). The projection in it (100
 longitudes scaled by cos 54.5°) must match `project()` in `src/lib/events-story.ts`; Vitest checks the capitals of the
 four nations fall inside the dotted bounds.
 
-The map frame is fixed: the United Kingdom plus a margin, extended once (by `mapFrame`) if a branch ever lies outside
-it. It never zooms, pans or re-centres on an event.
+The map frame is fixed: the drawn land plus a small margin (`mapFrame`). It never zooms, pans, grows or re-centres on an
+event.
