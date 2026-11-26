@@ -19,9 +19,12 @@ jobs:
       - name: Purge expired events and users
         env:
           CLEANUP_CRON_SECRET: ${{ secrets.CLEANUP_CRON_SECRET }}
-          CLEANUP_URL: https://project--d60ecf19-db1a-4e44-b08c-c48c46fd1eaa.lovable.app/api/public/cleanup-deleted-events
+          # The published app (repository variable APP_URL, e.g. https://ds-volunteer.lovable.app; no trailing path).
+          APP_URL: ${{ vars.APP_URL }}
         run: |
           test -n "$CLEANUP_CRON_SECRET" || { echo 'CLEANUP_CRON_SECRET is not configured'; exit 1; }
+          test -n "$APP_URL" || { echo '::error::Repository variable APP_URL is empty: set it to the published app URL (Settings → Secrets and variables → Actions → Variables).'; exit 1; }
+          CLEANUP_URL="${APP_URL%/}/api/public/cleanup-deleted-events"
           status=$(curl --silent --show-error --max-time 540 \
             --output /tmp/cleanup-result.json --write-out '%{http_code}' \
             --request POST --header "Authorization: Bearer $CLEANUP_CRON_SECRET" "$CLEANUP_URL")
