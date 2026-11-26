@@ -40,6 +40,11 @@ npm run local:down
 Never run the full suite locally; when the full suite is needed, start **E2E (local)** by hand with `suite: full`
 (Actions minutes are limited, so nothing e2e runs automatically).
 
+**Production build instead of the dev server:** `E2E_APP_BUILD=prod` makes the app server a `vite build` (Nitro
+node-server preset) served by Node, so faults that only show in built bundles fail the specs too; add
+`E2E_APP_BUILD_SKIP=1` to reuse the last `.output`. Example, the signed-in shell check:
+`E2E_APP_BUILD=prod npm run local:test -- tests/ui/app-shell-fresh-load.spec.ts`.
+
 To reproduce CI's parallel shards locally (only when asked), give each shard its own app port with `E2E_LOCAL_PORT`.
 Seed state stays shared; sessions go to `e2e/.auth/local/port-<port>/`.
 
