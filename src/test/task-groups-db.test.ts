@@ -21,6 +21,7 @@ const ids = {
   vol2: id(14),
   vol1c: id(15),
   nc: id(16),
+  fol: id(17),
 };
 type Row = Record<string, unknown>;
 type Group = {
@@ -82,7 +83,7 @@ const visibleTasks = async () =>
 
 beforeAll(async () => {
   await initializeRecycleDatabase(db);
-  const members = [ids.rd, ids.bm1, ids.vol1, ids.vol1b, ids.vol1c, ids.vol2, ids.nc];
+  const members = [ids.rd, ids.bm1, ids.vol1, ids.vol1b, ids.vol1c, ids.vol2, ids.nc, ids.fol];
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}');
     INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.3')
@@ -94,6 +95,9 @@ beforeAll(async () => {
     UPDATE user_roles SET role='branch_manager' WHERE user_id='${ids.bm1}';
     UPDATE user_roles SET role='regional_director', region_id='${ids.region}' WHERE user_id='${ids.rd}';
     UPDATE user_roles SET role='national_coordinator' WHERE user_id='${ids.nc}';
+    -- fol is a follower (no branch, no member rights).
+    UPDATE profiles SET branch_id=NULL WHERE id='${ids.fol}';
+    UPDATE user_roles SET role='follower' WHERE user_id='${ids.fol}';
     -- vol1c is inactive: not a member of a new group.
     UPDATE profiles SET status='inactive' WHERE id='${ids.vol1c}';`);
 }, 60000);
@@ -133,9 +137,11 @@ describe("@all creates a task group with one task per active member", () => {
       expect(notices.map((n) => n.user_id).sort()).toEqual([ids.vol1, ids.vol1b].sort());
     }));
 
-  it("only the branch's managers create groups; branch scope only", () =>
+  // Volunteers of the branch create groups too (20261207090000, task-groups-volunteer-db.test.ts); another branch's
+  // volunteer may not.
+  it("only the branch's managers and volunteers create groups; their own branch, branch scope only", () =>
     tx(async () => {
-      await as(ids.vol1);
+      await as(ids.vol2);
       await fails(
         "SELECT public.create_task_group($1::jsonb)",
         [JSON.stringify({ scope: "branch", branch_id: ids.b1, title: "X" })],
@@ -563,4 +569,230 @@ describe("grants", () => {
       await one("SELECT has_table_privilege('authenticated','public.task_groups','INSERT') v"),
     ).toBe(false);
   });
+});
+
+// Every new function: SECURITY DEFINER with a pinned search path; the client RPCs are executable by authenticated only
+// (never PUBLIC or anon), the internal helpers by nobody but their owner.
+const CLIENT_RPCS = [
+  "can_view_task_group(uuid)",
+  "can_edit_task_group(uuid)",
+  "create_task_group(jsonb)",
+  "update_task_group(uuid,jsonb)",
+  "delete_task_group(uuid)",
+  "set_task_group_members(uuid,jsonb,jsonb)",
+  "get_task_group(uuid)",
+  "list_task_groups()",
+  "list_meeting_carry_over(text,uuid,uuid)",
+  "carry_over_agenda(uuid,jsonb)",
+  "list_task_sources()",
+];
+const INTERNAL = [
+  "task_group_status(uuid)",
+  "task_group_locked(uuid)",
+  "task_group_people(uuid,uuid)",
+  "task_group_body(task_groups)",
+  "task_group_add_member(task_groups,uuid)",
+  "task_group_trash_task(uuid)",
+  "task_group_json(task_groups)",
+];
+
+describe("security attributes of the new functions", () => {
+  it("all are SECURITY DEFINER with search_path=public; EXECUTE only for authenticated (client) or nobody (internal)", async () => {
+    await as(null);
+    for (const fn of [...CLIENT_RPCS, ...INTERNAL]) {
+      const row = (
+        await q<{ secdef: boolean; config: string[] | null; public_exec: boolean }>(
+          `SELECT p.prosecdef secdef, p.proconfig config,
+             EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+                     WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE') public_exec
+           FROM pg_proc p WHERE p.oid = 'public.${fn}'::regprocedure`,
+        )
+      )[0]!;
+      expect(row.secdef, fn).toBe(true);
+      expect(row.config, fn).toContain("search_path=public");
+      expect(row.public_exec, `${fn}: PUBLIC must not execute`).toBe(false);
+      expect(
+        await one(`SELECT has_function_privilege('anon','public.${fn}','EXECUTE') v`),
+        fn,
+      ).toBe(false);
+      expect(
+        await one(`SELECT has_function_privilege('authenticated','public.${fn}','EXECUTE') v`),
+        fn,
+      ).toBe(CLIENT_RPCS.includes(fn));
+    }
+  });
+});
+
+// The write RPCs check the caller in the database: a volunteer of another branch, a follower, a volunteer of the same
+// branch (not a manager), a National Coordinator (no branch rights) and anon are refused; the branch's Branch Manager
+// and the region's Regional Director may do everything.
+describe("write RPC permissions", () => {
+  const pastMeeting = {
+    scope: "branch",
+    branch_id: ids.b1,
+    title: "Committee",
+    starts_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+    ends_at: new Date(Date.now() - 7 * 86400000 + 3600000).toISOString(),
+    location_type: "in_person",
+    location: "Hall",
+  };
+  const nextMeeting = {
+    ...pastMeeting,
+    title: "Next committee",
+    starts_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+    ends_at: new Date(Date.now() + 7 * 86400000 + 3600000).toISOString(),
+  };
+  /** As `owner`: a group in b1, a past meeting with one open agenda item, and an upcoming meeting to carry it to. */
+  async function fixture(owner: string) {
+    await as(owner);
+    const group = await createGroup({});
+    const source = await one<string>("SELECT public.create_meeting($1::jsonb) v", [
+      JSON.stringify(pastMeeting),
+    ]);
+    const item = await one<string>(
+      "SELECT public.add_agenda_item($1,'Hall booking','Call the council') v",
+      [source],
+    );
+    const target = await one<string>("SELECT public.create_meeting($1::jsonb) v", [
+      JSON.stringify(nextMeeting),
+    ]);
+    return { group, item, target };
+  }
+  const calls = (f: { group: string; item: string; target: string }) =>
+    [
+      [
+        "create_task_group",
+        "SELECT public.create_task_group($1::jsonb)",
+        [JSON.stringify({ scope: "branch", branch_id: ids.b1, title: "Sneaky" })],
+      ],
+      [
+        "update_task_group",
+        "SELECT public.update_task_group($1,$2::jsonb)",
+        [f.group, JSON.stringify({ title: "Changed" })],
+      ],
+      [
+        "set_task_group_members (add)",
+        "SELECT public.set_task_group_members($1,$2::jsonb,'[]'::jsonb)",
+        [f.group, JSON.stringify([ids.vol1c])],
+      ],
+      [
+        "set_task_group_members (remove)",
+        "SELECT public.set_task_group_members($1,'[]'::jsonb,$2::jsonb)",
+        [f.group, JSON.stringify([ids.vol1])],
+      ],
+      ["delete_task_group", "SELECT public.delete_task_group($1)", [f.group]],
+      [
+        "carry_over_agenda",
+        "SELECT public.carry_over_agenda($1,$2::jsonb)",
+        [f.target, JSON.stringify([{ item_id: f.item, decision_ids: [], task_ids: [] }])],
+      ],
+    ] as const;
+
+  for (const [who, label] of [
+    ["vol2", "a volunteer of another branch"],
+    ["fol", "a follower"],
+    ["vol1", "a volunteer of the same branch (on a group they did not create)"],
+    ["nc", "a National Coordinator"],
+  ] as const) {
+    it(`${label} is refused by every write RPC, and nothing changed`, () =>
+      tx(async () => {
+        const f = await fixture(ids.bm1);
+        await as(ids[who], who === "nc" ? "aal2" : "aal1");
+        // A volunteer of the branch may create a group of their own (20261207090000); everything else is refused.
+        const refused = calls(f).filter(
+          ([name]) => !(who === "vol1" && name === "create_task_group"),
+        );
+        for (const [name, sql, params] of refused)
+          await fails(sql, [...params], "Not allowed").catch((e) => {
+            throw new Error(`${name} as ${who}: ${(e as Error).message}`);
+          });
+        await as(null);
+        expect(await one("SELECT title v FROM task_groups WHERE id=$1", [f.group])).toBe(
+          "Bring a friend",
+        );
+        // The Branch Manager, vol1 and vol1b (vol1c is inactive): three member tasks, still all there.
+        expect(
+          await one("SELECT count(*)::int v FROM tasks WHERE group_id=$1 AND deleted_at IS NULL", [
+            f.group,
+          ]),
+        ).toBe(3);
+        expect(
+          await one("SELECT carried_to v FROM meeting_agenda_items WHERE id=$1", [f.item]),
+        ).toBeNull();
+        expect(await one("SELECT count(*)::int v FROM task_groups")).toBe(1);
+      }));
+  }
+
+  it("anon is refused by every write RPC (no EXECUTE)", () =>
+    tx(async () => {
+      const f = await fixture(ids.bm1);
+      await db.exec("RESET ROLE");
+      await db.exec("SET LOCAL ROLE anon");
+      for (const [, sql, params] of calls(f)) await fails(sql, [...params], "permission denied");
+    }));
+
+  for (const [who, label] of [
+    ["bm1", "the Branch Manager"],
+    ["rd", "the region's Regional Director"],
+  ] as const) {
+    it(`${label} creates, edits, changes members, carries over and deletes`, () =>
+      tx(async () => {
+        const f = await fixture(ids[who]);
+        await as(ids[who]);
+        expect(
+          await one("SELECT public.update_task_group($1,$2::jsonb) v", [
+            f.group,
+            JSON.stringify({ title: "Changed" }),
+          ]),
+        ).toBe(f.group);
+        expect(
+          await one("SELECT public.set_task_group_members($1,'[]'::jsonb,$2::jsonb) v", [
+            f.group,
+            JSON.stringify([ids.vol1]),
+          ]),
+        ).toEqual({ added: 0, removed: 1 });
+        expect(
+          await one("SELECT public.set_task_group_members($1,$2::jsonb,'[]'::jsonb) v", [
+            f.group,
+            JSON.stringify([ids.vol1]),
+          ]),
+        ).toEqual({ added: 1, removed: 0 });
+        expect(
+          await one("SELECT public.carry_over_agenda($1,$2::jsonb) v", [
+            f.target,
+            JSON.stringify([{ item_id: f.item, decision_ids: [], task_ids: [] }]),
+          ]),
+        ).toBe(1);
+        expect(
+          await one<number>("SELECT public.delete_task_group($1) v", [f.group]),
+        ).toBeGreaterThan(0);
+        await as(null);
+        expect(await one("SELECT count(*)::int v FROM task_groups WHERE id=$1", [f.group])).toBe(0);
+        expect(
+          await one("SELECT carried_to IS NOT NULL v FROM meeting_agenda_items WHERE id=$1", [
+            f.item,
+          ]),
+        ).toBe(true);
+      }));
+  }
+
+  it("a volunteer of the branch reads the group; other branches, followers and anon read nothing", () =>
+    tx(async () => {
+      const f = await fixture(ids.bm1);
+      await as(ids.vol1);
+      expect((await getGroup(f.group))?.id).toBe(f.group);
+      expect((await getGroup(f.group))?.can_edit).toBe(false);
+      for (const who of ["vol2", "fol"] as const) {
+        await as(ids[who]);
+        expect(await getGroup(f.group), who).toBeNull();
+        expect(await one("SELECT jsonb_array_length(public.list_task_groups()) v"), who).toBe(0);
+        expect(await one("SELECT count(*)::int v FROM task_groups"), who).toBe(0);
+      }
+      await as(ids.nc, "aal2");
+      expect(await getGroup(f.group), "nc").toBeNull();
+      await db.exec("RESET ROLE");
+      await db.exec("SET LOCAL ROLE anon");
+      await fails("SELECT public.get_task_group($1)", [f.group], "permission denied");
+      await fails("SELECT 1 FROM public.task_groups", [], "permission denied");
+    }));
 });
