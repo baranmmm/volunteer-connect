@@ -1,5 +1,6 @@
 -- Pre-launch reset: READ-ONLY report (SELECT only, nothing is changed). Run it in the Supabase SQL editor on
--- production and send the output back; the reset migration is written only after that.
+-- production and check the numbers before and after the reset (scripts/prelaunch/reset.sql uses exactly these keep
+-- rules; after the reset every "DELETE rows" and "DELETE storage" line must be 0 and section 8 must be empty).
 --
 -- Keep rules
 --   * the National Coordinator account with the DOTTED email (a "." before the @): auth user, profile, role,
@@ -18,6 +19,8 @@
 --   5 DELETE rows           per table: rows the reset would delete (detail: total / kept)
 --   6 DELETE storage        per bucket: objects the reset would delete (detail: total / kept)
 --   7 FK CHECK              keep-rule rows that point at something being deleted, and how the reset avoids it
+--   8 NOT COVERED           public tables this report (and the reset) does not know; must be empty, otherwise update
+--                           both scripts first (the reset aborts while such a table holds rows)
 
 WITH
 keep_nc AS (
@@ -46,6 +49,9 @@ counts(tbl, total, kept) AS (
   UNION ALL SELECT 'auth.sessions', (SELECT count(*) FROM auth.sessions), (SELECT count(*) FROM auth.sessions WHERE user_id IN (SELECT id FROM keep_nc))
   UNION ALL SELECT 'auth.mfa_factors', (SELECT count(*) FROM auth.mfa_factors), (SELECT count(*) FROM auth.mfa_factors WHERE user_id IN (SELECT id FROM keep_nc))
   UNION ALL SELECT 'auth.one_time_tokens', (SELECT count(*) FROM auth.one_time_tokens), (SELECT count(*) FROM auth.one_time_tokens WHERE user_id IN (SELECT id FROM keep_nc))
+  UNION ALL SELECT 'auth.refresh_tokens', (SELECT count(*) FROM auth.refresh_tokens), (SELECT count(*) FROM auth.refresh_tokens WHERE user_id IN (SELECT id::text FROM keep_nc))
+  UNION ALL SELECT 'auth.flow_state', (SELECT count(*) FROM auth.flow_state), (SELECT count(*) FROM auth.flow_state WHERE user_id IN (SELECT id FROM keep_nc))
+  UNION ALL SELECT 'auth.audit_log_entries', (SELECT count(*) FROM auth.audit_log_entries), (SELECT count(*) FROM auth.audit_log_entries WHERE (payload ->> 'actor_id') IN (SELECT id::text FROM keep_nc))
   UNION ALL SELECT 'profiles', (SELECT count(*) FROM public.profiles), (SELECT count(*) FROM public.profiles WHERE id IN (SELECT id FROM keep_nc))
   UNION ALL SELECT 'user_roles', (SELECT count(*) FROM public.user_roles), (SELECT count(*) FROM public.user_roles WHERE user_id IN (SELECT id FROM keep_nc))
   UNION ALL SELECT 'user_followed_branches', (SELECT count(*) FROM public.user_followed_branches), (SELECT count(*) FROM public.user_followed_branches WHERE user_id IN (SELECT id FROM keep_nc))
@@ -78,6 +84,7 @@ counts(tbl, total, kept) AS (
   UNION ALL SELECT 'public_rate_limits', (SELECT count(*) FROM public.public_rate_limits), 0
   UNION ALL SELECT 'recycle_bin_audit_log', (SELECT count(*) FROM public.recycle_bin_audit_log), 0
   UNION ALL SELECT 'subscribers', (SELECT count(*) FROM public.subscribers), 0
+  UNION ALL SELECT 'task_groups', (SELECT count(*) FROM public.task_groups), 0
   UNION ALL SELECT 'task_assignees', (SELECT count(*) FROM public.task_assignees), 0
   UNION ALL SELECT 'task_notes', (SELECT count(*) FROM public.task_notes), 0
   UNION ALL SELECT 'task_reminder_log', (SELECT count(*) FROM public.task_reminder_log), 0
@@ -167,8 +174,23 @@ report(ord, section, name, detail, n) AS (
     'profiles.deleted_by / user_roles of the NC pointing elsewhere; SET NULL, harmless',
     (SELECT count(*) FROM public.profiles p WHERE p.id IN (SELECT id FROM keep_nc) AND p.deleted_by IS NOT NULL)
   UNION ALL
+  SELECT 7, 'FK CHECK', 'kept NC MFA factors',
+    'the reset aborts without one and verifies the count is unchanged; must be >= 1',
+    (SELECT count(*) FROM auth.mfa_factors f WHERE f.user_id IN (SELECT id FROM keep_nc))
+  UNION ALL
+  SELECT 7, 'FK CHECK', 'kept events that are series templates or meetings',
+    'must be 0 (the reset aborts otherwise)',
+    (SELECT count(*) FROM public.events e WHERE e.id IN (SELECT id FROM keep_events) AND (e.series_template OR e.category = 'meeting'))
+  UNION ALL
   SELECT 7, 'FK CHECK', 'last-active-NC protection',
     'triggers protect the last active NC; the kept NC must be active so deleting the others is allowed',
     (SELECT count(*) FROM public.profiles p WHERE p.id IN (SELECT id FROM keep_nc) AND p.status = 'active' AND p.deleted_at IS NULL)
+  -- 8. Public tables neither kept nor counted above (a table added after this report was written).
+  UNION ALL
+  SELECT 8, 'NOT COVERED', c.relname, 'public table unknown to the report and the reset: update both before resetting', NULL::bigint
+  FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace s ON s.oid = c.relnamespace
+  WHERE s.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+    AND c.relname NOT IN ('regions', 'branches', 'postcode_geocodes')
+    AND 'public.' || c.relname NOT IN (SELECT CASE WHEN tbl LIKE 'auth.%' THEN tbl ELSE 'public.' || tbl END FROM counts)
 )
 SELECT section, name, detail, n FROM report ORDER BY ord, section, name;
