@@ -221,6 +221,8 @@ test.describe("Tasks", () => {
     await page.locator(`[data-testid="tasks-filter-branches-option"][data-value="${branchA}"]`).click();
     await expect(page.locator(`[data-testid="tasks-filter-branches-option"][data-value="${branchA}"]`)).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
+    // The list has closed (otherwise the next Escape would go to it instead of the Filters sheet on phones).
+    await expect(page.getByTestId("tasks-filter-branches-option")).toHaveCount(0);
     await expect(branches).toHaveAttribute("data-count", "1");
     await closeFilters(page);
     await expect(card(page, inA)).toBeVisible();
