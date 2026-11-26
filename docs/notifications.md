@@ -78,7 +78,8 @@ the per-type RPCs below and nothing else (`src/components/app/NotificationSettin
   (`types.<type>.delivery`, "Immediately" / "Daily summary") is no longer read; nothing stored was rewritten, and
   everyone starts with every email on (`20261208090100_notification_emails.sql`).
 - **Push** (`set_notification_push`, any type, locked ones included): a third switch per type, default **on** for
-  `task_assigned`, `review` and `meeting`, **off** for the others. When it is on, every notice of that type is pushed at
+  `task_assigned`, `mention`, `review` and `meeting` (`mention` since `20261215090000_mention_push_default.sql`; a saved
+  choice is kept), **off** for the others. When it is on, every notice of that type is pushed at
   once to each device where the member turned push on (the Profile > Notifications switch, or the dashboard card in the
   installed app); off means nothing is queued and waiting pushes of the type are skipped. The in-app switch off means no notice
   and so no push. The push shows only a generic title per kind, never the item's title or names. See `docs/push.md`.

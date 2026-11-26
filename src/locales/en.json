@@ -2354,7 +2354,7 @@
     },
     "device": {
       "title": "Phone notifications (push)",
-      "intro": "When a task is assigned to you, a meeting invite arrives or a request needs your review.",
+      "intro": "When a task is assigned to you, you are mentioned in a task note, a meeting invite arrives or a request needs your review.",
       "unsupported": "This browser cannot show push notifications. Try the installed app or another browser.",
       "iosInstall": "On iPhone and iPad, push works only in the installed app (iOS 16.4 or later): Share, then Add to Home Screen, then turn it on here.",
       "denied": "Notifications are blocked on this device. To allow them again:",
@@ -2370,7 +2370,7 @@
     },
     "card": {
       "title": "Turn on notifications to hear about your tasks",
-      "text": "Get a notification on this phone when a task is assigned to you, you are invited to a meeting or requests wait for your review. You can change this any time in Profile.",
+      "text": "Get a notification on this phone when a task is assigned to you, you are mentioned in a task note, you are invited to a meeting or requests wait for your review. You can change this any time in Profile.",
       "button": "Turn on notifications",
       "notNow": "Not now",
       "deniedTitle": "Notifications are blocked",
