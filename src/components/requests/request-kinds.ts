@@ -1,4 +1,4 @@
-import { CalendarDays, HandHeart, ListChecks, Users2, type LucideIcon } from "lucide-react";
+import { CalendarDays, HandHeart, Images, ListChecks, Users2, type LucideIcon } from "lucide-react";
 import { isOpenRequest, type RequestStatus } from "@/lib/event-requests";
 
 /**
@@ -7,7 +7,7 @@ import { isOpenRequest, type RequestStatus } from "@/lib/event-requests";
  */
 /** volunteer: a follower's application to become a volunteer (the only kind available to followers). */
 export type RequestKind = {
-  id: "event" | "task" | "meeting" | "volunteer";
+  id: "event" | "task" | "meeting" | "volunteer" | "media";
   icon: LucideIcon;
   enabled: boolean;
 };
@@ -16,6 +16,8 @@ export const REQUEST_KINDS: RequestKind[] = [
   { id: "task", icon: ListChecks, enabled: true },
   { id: "meeting", icon: Users2, enabled: true },
   { id: "volunteer", icon: HandHeart, enabled: true },
+  /** Photos for the branch's Media area (volunteers only; trustees and managers do not request uploads). */
+  { id: "media", icon: Images, enabled: true },
 ];
 
 export const REQUEST_LIST_FILTERS = ["all", "open", "decided"] as const;

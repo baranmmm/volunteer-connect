@@ -31,6 +31,12 @@ export function notificationText(n: Notification, t: TFunction, lang: Lang = cur
     });
   if (n.kind === "daily_digest")
     return t("notifications.kinds.daily_digest", { count: p.count ?? 0 });
+  if (n.kind === "media_upload_approved")
+    return t("notifications.kinds.media_upload_approved", {
+      actor: n.actor_name || t("notifications.someone"),
+      title: n.title,
+      count: p.added ?? 0,
+    });
   // Several notes on one task while unread: one updating notice.
   if (n.kind === "task_note_added" && (p.count ?? 1) > 1)
     return t("notifications.kinds.task_note_added_many", { count: p.count, title: n.title });

@@ -36,7 +36,8 @@ test.describe("Privacy notice", () => {
       await page.getByTestId("auth-confirm-password-input").fill(userPassword());
       await page.getByTestId("signup-branch-select").selectOption(readSeedState().branches.Medway);
       await page.getByTestId("signup-choice-follower").click();
-      await expect(page.getByTestId("signup-photo-consent")).not.toBeChecked();
+      // Photos at events are covered by the notice (1.6): no photo consent is asked.
+      await expect(page.getByTestId("signup-photo-consent")).toHaveCount(0);
       await expect(page.getByTestId("signup-updates-consent")).not.toBeChecked();
       await auth.submit().click();
       await expect(page.locator("#signup-privacy-error")).toBeVisible();
@@ -49,11 +50,12 @@ test.describe("Privacy notice", () => {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: randomUUID(), email: address, user_metadata: sent.data ?? {} }) });
       });
       await page.getByTestId("signup-privacy-checkbox").click();
-      await page.getByTestId("signup-photo-consent").click();
+      await page.getByTestId("signup-updates-consent").click();
       await auth.submit().click();
       await expect(auth.checkEmailScreen()).toBeVisible();
       const { data: version } = await adminClient().rpc("privacy_notice_version");
-      expect(sent!.data).toMatchObject({ privacy_notice_version: version, photo_consent: true, updates_email_consent: false });
+      expect(sent!.data).toMatchObject({ privacy_notice_version: version, updates_email_consent: true });
+      expect(sent!.data).not.toHaveProperty("photo_consent");
     } finally {
       const user = (await listAllUsers()).find((u) => u.email?.toLowerCase() === address.toLowerCase());
       if (user) await deleteAuthUser(user.id);
@@ -75,11 +77,11 @@ test.describe("Privacy notice", () => {
     await expect(page.getByTestId("dashboard-welcome")).toBeVisible();
     await page.goto("/profile");
     await expect(page.getByTestId("profile-privacy-version")).toHaveAttribute("data-version", /^\d+\.\d+$/);
-    await page.getByTestId("profile-photo-consent").click();
+    await expect(page.getByTestId("profile-photo-consent")).toHaveCount(0);
+    await page.getByTestId("profile-updates-consent").click();
     await expect(page.getByTestId("toast-success").last()).toBeVisible();
     await page.reload();
-    await expect(page.getByTestId("profile-photo-consent")).toHaveAttribute("data-state", "checked");
-    await expect(page.getByTestId("profile-updates-consent")).toHaveAttribute("data-state", "unchecked");
+    await expect(page.getByTestId("profile-updates-consent")).toHaveAttribute("data-state", "checked");
   });
 
   test("a member who does not want to confirm can ask for account deletion from the confirmation screen, and cancel it", async ({ freshUser, pageAs }) => {

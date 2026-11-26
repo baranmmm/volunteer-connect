@@ -37,6 +37,9 @@ import {
   type RequestListFilter,
 } from "@/components/requests/request-kinds";
 import { useCanRequestEvents, usePendingRequestCount } from "@/lib/use-event-requests";
+import { MyMediaRequests, ReviewMediaRequests } from "@/components/media/MediaRequests";
+import { UploadDialog } from "@/components/media/MediaDialogs";
+import { useMediaHome } from "@/components/media/use-media";
 
 // Decisions on my own task and meeting requests: unread ones are counted on the "My requests" tab and in the menu's
 // Requests badge; showing that list (the page without tabs, or its "My requests" tab) marks them read.
@@ -94,8 +97,12 @@ function RequestsPage() {
       void navigate({ to: "/requests", search: { tab }, replace: true, resetScroll: false });
   };
   const [choosing, setChoosing] = useState(false),
-    [form, setForm] = useState<"event" | "volunteer" | "task" | "meeting" | null>(null),
+    [form, setForm] = useState<"event" | "volunteer" | "task" | "meeting" | "media" | null>(null),
     [filter, setFilter] = useState<RequestListFilter>("all");
+  // Media upload requests: volunteers of a branch only (the database decides; trustees and managers never request).
+  const volunteer = roles.includes("volunteer") && !isManager && !nc;
+  const media = useMediaHome(null);
+  const canRequestMedia = volunteer && !!media.data?.can_request;
   function mineList() {
     return (
       <>
@@ -118,6 +125,7 @@ function RequestsPage() {
         </div>
         {!follower && !director && <MyEventRequests filter={filter} />}
         {!follower && <MyWorkRequests filter={filter} showEmpty={director} />}
+        {!follower && !nc && <MyMediaRequests filter={filter} />}
         <MyVolunteerApplications />
       </>
     );
@@ -212,6 +220,7 @@ function RequestsPage() {
                     <ReviewVolunteerApplications filter="open" />
                     <PendingVolunteers />
                     <ManagerEventRequests group="review" />
+                    <ReviewMediaRequests filter="open" />
                   </>
                 )}
                 <ReviewWorkRequests filter="open" showEmpty={nc} />
@@ -222,6 +231,7 @@ function RequestsPage() {
                   <>
                     <ReviewVolunteerApplications filter="decided" />
                     <ManagerEventRequests group="decided" />
+                    <ReviewMediaRequests filter="decided" />
                   </>
                 )}
                 <ReviewWorkRequests filter="decided" showEmpty={nc} />
@@ -244,22 +254,26 @@ function RequestsPage() {
             const available =
               kind.id === "volunteer"
                 ? follower && !hasOpenApplication
-                : kind.enabled &&
-                  !follower &&
-                  !nc &&
-                  (work ? hasTargets : kind.id !== "event" || canRequestEvents);
+                : kind.id === "media"
+                  ? canRequestMedia
+                  : kind.enabled &&
+                    !follower &&
+                    !nc &&
+                    (work ? hasTargets : kind.id !== "event" || canRequestEvents);
             const hint =
               kind.id === "volunteer"
                 ? follower
                   ? "applications.alreadyOpen"
                   : "applications.onlyFollowers"
-                : follower
-                  ? "applications.followersApply"
-                  : !work
-                    ? "requests.errors.directorsCreate"
-                    : targets.isLoading
-                      ? "common.loading"
-                      : "workRequests.noTargets";
+                : kind.id === "media"
+                  ? "media.requests.onlyVolunteers"
+                  : follower
+                    ? "applications.followersApply"
+                    : !work
+                      ? "requests.errors.directorsCreate"
+                      : targets.isLoading
+                        ? "common.loading"
+                        : "workRequests.noTargets";
             const Icon = kind.icon;
             return (
               <li key={kind.id}>
@@ -307,6 +321,18 @@ function RequestsPage() {
         <MeetingRequestForm
           onClose={() => setForm(null)}
           onSaved={() => {
+            setForm(null);
+            setFilter("all");
+            selectView("mine");
+          }}
+        />
+      )}
+      {form === "media" && media.data && (
+        <UploadDialog
+          branchId={media.data.branch.id}
+          mode="request"
+          onClose={() => setForm(null)}
+          onDone={() => {
             setForm(null);
             setFilter("all");
             selectView("mine");

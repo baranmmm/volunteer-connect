@@ -35,7 +35,8 @@ SECURITY DEFINER functions; the menus and screens only reflect it.
 | Task / meeting requests | — | To own BM or RD | To own RD; review those sent to them | To an NC; review those sent to them | Review those sent to them |
 | Meetings: see | — | Created by them or invited (trustees: every meeting of their branch, read only) | Same + meetings of own branch | Same + meetings in the region | Same + national meetings |
 | Meetings: create / invite (single or recurring) | — | Own branch; branch members | Own branch; branch members and the RD | Region or a branch in it; people in the region | National; RDs, BMs and NCs only |
-| Media, Training | Hidden and refused | Yes | Yes | Yes | Yes |
+| Media (`docs/media.md`) | Hidden and refused | Own branch: view; upload requests (trustees view only) | Own branch: albums, uploads, moves, request review | Branches of the region (same as BM) | Nothing (no branch gallery) |
+| Training | Hidden and refused | Yes | Yes | Yes | Yes |
 | Requests (`/requests`) | "My requests" (volunteer application) | "My requests" | "My requests" and "Waiting for my approval": volunteer applications, pending sign-ups, account deletion requests, event, task and meeting requests of own branch | Same, for the region | "Waiting for my approval" only: task and meeting requests sent to them |
 | Delete own account | Directly (type full name) | Request to manager | Request to RD | Contact the office | Contact the office (never in the app) |
 | Donate (external link) | Menu and dashboard | Menu | Menu | Menu | Menu |

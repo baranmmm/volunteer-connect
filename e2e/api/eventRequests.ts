@@ -148,6 +148,14 @@ export async function deleteTempBranch(id: string, fallbackBranch?: string): Pro
   // "@all" task groups reference the branch without ON DELETE.
   const groups = await db.from("task_groups").delete().eq("branch_id", id);
   if (groups.error) throw new Error(`delete task groups: ${groups.error.message}`);
+  // Media library files of the branch (<branch>/...: originals, copies, pending request files); their rows go with the
+  // branch (ON DELETE CASCADE).
+  for (;;) {
+    const listed = await db.storage.from("media-library").list(id, { limit: 1000 });
+    if (listed.error || !listed.data?.length) break;
+    const removed = await db.storage.from("media-library").remove(listed.data.map((o) => `${id}/${o.name}`));
+    if (removed.error) throw new Error(`delete media files: ${removed.error.message}`);
+  }
   await db.from("events").delete().eq("branch_id", id);
   await db.from("event_series").delete().eq("branch_id", id);
   // Volunteer applications reference the branch without ON DELETE (they would block the delete and leave the

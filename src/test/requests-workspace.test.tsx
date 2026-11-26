@@ -91,6 +91,18 @@ vi.mock("@/lib/notifications.functions", () => ({
     };
   },
 }));
+// Media upload requests (none here): a volunteer may request uploads, others not.
+vi.mock("@/lib/media.functions", () => ({
+  getMediaHome: async () =>
+    mocks.role === "volunteer"
+      ? { branch: { id: "b", name: "Medway" }, can_request: true, can_manage: false }
+      : null,
+  listMediaUploadRequests: async () => [],
+  approveMediaUploadRequest: vi.fn(),
+  declineMediaUploadRequest: vi.fn(),
+  withdrawMediaUploadRequest: vi.fn(),
+}));
+vi.mock("@/components/media/MediaDialogs", () => ({ UploadDialog: () => null }));
 vi.mock("@/components/meetings/MeetingFormDialog", () => ({
   MeetingFormDialog: () => <div data-testid="test-meeting-form" />,
 }));
