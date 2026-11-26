@@ -1,4 +1,4 @@
-// /events: the scroll-driven map story (past and coming events on the fixed map of England and Wales), then the Online
+// /events: the scroll-driven map story (past and coming events on the fixed map of the United Kingdom), then the Online
 // panel and the list (or month) of the coming events. Everything here is server-rendered; no map library loads.
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
