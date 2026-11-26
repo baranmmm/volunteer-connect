@@ -145,12 +145,12 @@ const outbox = async (user: string, template?: string) => {
 };
 
 describe("settings: in-app on/off, email on/off", () => {
-  it("every email is on by default for every role; locked types stay on in the app; delivery is no longer a choice", () =>
+  it("every email is on by default for every role (except the 'media' nudge, 20261217090000); locked types stay on in the app; delivery is no longer a choice", () =>
     tx(async () => {
       for (const user of [ids.bm1, ids.vol1]) {
         const s = await settings(user);
-        expect(s.map((x) => x.email)).toEqual(Array(8).fill(true));
-        expect(s.map((x) => x.enabled)).toEqual(Array(8).fill(true));
+        expect(s.map((x) => x.email)).toEqual([...Array(8).fill(true), false]);
+        expect(s.map((x) => x.enabled)).toEqual(Array(9).fill(true));
       }
       const s = await settings(ids.bm1);
       expect(Object.fromEntries(s.map((x) => [x.type, x.email_timing]))).toEqual({
@@ -162,6 +162,7 @@ describe("settings: in-app on/off, email on/off", () => {
         task_reminder: "immediate",
         meeting: "mixed",
         request_decided: "digest",
+        media: "digest",
       });
       expect(s.find((x) => x.type === "task_assigned")).toMatchObject({ locked: true });
       await as(ids.bm1);
@@ -506,7 +507,7 @@ describe("unsubscribe from one type (signed link, service role)", () => {
         "unsubscribed",
       );
       const s = await settings(ids.vol1);
-      expect(s.filter((x) => !x.email).map((x) => x.type)).toEqual(["meeting"]);
+      expect(s.filter((x) => !x.email).map((x) => x.type)).toEqual(["meeting", "media"]); // media: off by default
       expect(s.find((x) => x.type === "meeting")).toMatchObject({ enabled: true });
       await as(null);
       expect(
