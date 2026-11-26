@@ -37,9 +37,9 @@ import { EventDialog } from "@/components/events/EventDialog";
 type Mention = { id: string; full_name: string | null };
 
 /**
- * The notes thread of a task (oldest first). Assignees, the creator and the scope's managers write notes (`canWrite`
- * mirrors can_set_status); authors edit and delete their own. "@" or the Mention button opens a picker of the people
- * who can see the task; chosen people are sent as `mentions` (the database checks them and sends the notices).
+ * The notes thread of a task (oldest first). Assignees, the creator, the scope's managers and the branch's trustees
+ * write notes (`canWrite` mirrors can_add_note); authors edit and delete their own. "@" or the Mention button opens a
+ * picker of the people who can see the task; chosen people are sent as `mentions` (the database checks them and sends the notices).
  */
 export function TaskNotes({
   taskId,

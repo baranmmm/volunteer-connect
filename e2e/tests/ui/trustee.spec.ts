@@ -1,6 +1,6 @@
 // The trustee role in the UI (docs/roles.md#trustees): the Branch Manager approves an application as a trustee, switches
 // a member between Volunteer and Trustee on the user page (both audited in the history), trustees read meetings and
-// tasks with no create or edit controls (status and notes on their own task only), and they send task requests to
+// tasks with no create or edit controls (status on their own task only; notes on every task of their branch), and they send task requests to
 // their Branch Manager. Every person and item is created for this test in a temporary branch (cleaned up by the
 // fixtures); every check looks at this test's own ids.
 import type { Page } from "@playwright/test";
@@ -75,7 +75,7 @@ test.describe("trustees", () => {
     await expect(details.historyPanel().locator('[data-testid="history-entry"][data-action="role_change"]')).toHaveCount(2);
   });
 
-  test("meeting and task pages are read-only for a trustee (status and notes on their own task only)", async ({ freshUser, freshBranch, pageAs }) => {
+  test("meeting and task pages are read-only for a trustee (status on their own task, notes on every branch task)", async ({ freshUser, freshBranch, pageAs }) => {
     const branch = await freshBranch("trustee-readonly");
     const manager = await freshUser({ role: "branch_manager", branch });
     const volunteer = await freshUser({ role: "volunteer", branch });
@@ -128,10 +128,17 @@ test.describe("trustees", () => {
     await asVolunteer.goto(`/meetings/${uninvited}`);
     await expect(asVolunteer.getByTestId("meeting-not-found")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
 
+    // A branch task assigned to someone else: the note box, and no edit controls.
     await openTask(page, other);
     await expect(page.getByTestId("tasks-new")).toHaveCount(0);
-    for (const id of ["task-panel-status", "task-panel-edit", "task-panel-delete", "task-note-input"])
+    for (const id of ["task-panel-status", "task-panel-edit", "task-panel-delete", "task-panel-archive"])
       await expect(page.getByTestId(id), id).toHaveCount(0);
+    await page.getByTestId("task-note-input").fill("Noted by the trustee.");
+    await page.getByTestId("task-note-submit").click();
+    await expect(page.locator('[data-testid="task-note"][data-mine="true"]')).toHaveCount(1);
+    const { data: notes } = await adminClient().from("task_notes").select("author_id, body").eq("task_id", other);
+    expect(notes).toEqual([{ author_id: trustee.id, body: "Noted by the trustee." }]);
+    await expect(page.getByTestId("task-panel-status")).toHaveCount(0);
 
     await openTask(page, own);
     await expect(page.getByTestId("task-panel-edit")).toHaveCount(0);

@@ -223,7 +223,8 @@ export const listTaskNotes = createServerFn({ method: "GET" })
     fail(result.error);
     return z.array(taskNote).parse(result.data ?? []);
   });
-/** Assignees, the creator and the scope's managers. Mentioned people (who must see the task) get a notice. */
+/** Assignees, the creator, the scope's managers and the branch's trustees (can_add_task_note). Mentioned people (who
+ * must see the task) get a notice. */
 export const addTaskNote = createServerFn({ method: "POST" })
   .middleware([requireMember])
   .inputValidator(taskId.extend({ body: noteBody, mentions: mentionIds }))
