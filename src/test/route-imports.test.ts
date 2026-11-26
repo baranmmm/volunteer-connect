@@ -92,6 +92,9 @@ describe("route import graphs", () => {
     expect(sw).not.toMatch(/addEventListener\(\s*["']fetch["']|caches\.|importScripts/);
     expect(sw).toMatch(/addEventListener\("push"/);
     expect(sw).toMatch(/addEventListener\("notificationclick"/);
+    // Status-bar badge: a transparent silhouette (an opaque one shows as a white square on Android).
+    expect(sw).toContain('badge: "/push-badge.png"');
+    expect(sw).toContain('icon: "/push-icon.png"');
   });
   it("the map data is a static asset, not a module (/events imports only its geometry)", () => {
     const files = staticGraph("routes/events.index.tsx");
