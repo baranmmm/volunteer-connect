@@ -15,6 +15,10 @@ import {
 } from "./meetings";
 import { person, WORK_SCOPES } from "./tasks";
 
+/** Sends the notice emails an action just queued (assignments, invitations, requests waiting). */
+const flushNoticeEmails = async () =>
+  (await import("@/lib/notice-emails.server")).flushNoticeEmails();
+
 // Every write is a SECURITY DEFINER RPC; reads go through visibility-checked RPCs (creator, invitees, scope managers).
 const fail = (error: { message: string } | null) => {
   if (error) throw new Error(error.message);
@@ -70,6 +74,7 @@ export const createMeeting = createServerFn({ method: "POST" })
     // Creates the calendar entry too; with recurrence, every occurrence (each with its own entry).
     const result = await context.supabase.rpc("create_meeting", { p: data });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 
@@ -79,6 +84,7 @@ export const updateMeeting = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("update_meeting", { p_id: data.id, p: data.meeting });
     fail(result.error);
+    await flushNoticeEmails();
     return { ok: true };
   });
 
@@ -309,6 +315,7 @@ export const setMeetingInvitees = createServerFn({ method: "POST" })
       p_invitee_ids: data.inviteeIds,
     });
     fail(result.error);
+    await flushNoticeEmails();
     return { added: z.number().parse(result.data) };
   });
 /** Every task created from a decision in the meeting's series (visible ones only). */

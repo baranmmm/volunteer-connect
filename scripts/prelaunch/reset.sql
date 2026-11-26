@@ -24,8 +24,8 @@
 --
 -- Deletion order (children before parents; every statement is explicit so no ON DELETE SET NULL action has to update
 -- a row that is about to be deleted anyway, which would fire that table's UPDATE triggers):
---   1  email_outbox                  references notifications (SET NULL), registrations, subscribers, events, profiles
---   2  notification_digest_log       references notifications (SET NULL)
+--   1  notification_digest_log       references notifications and email_outbox (both SET NULL)
+--   2  email_outbox                  references notifications (SET NULL), registrations, subscribers, events, profiles
 --   3  notifications                 self-reference digest_id (SET NULL) is resolved in the same statement
 --   4  task_reminder_log, task_notes, task_assignees   children of tasks (CASCADE anyway)
 --   5  task_requests                 task_id SET NULL: deleted before tasks so no UPDATE runs on them
@@ -140,8 +140,8 @@ BEGIN
   SELECT count(*) INTO _n_media FROM public.event_media m WHERE m.event_id = ANY (_keep_events);
 
   -- 1-3 Email and notifications.
-  DELETE FROM public.email_outbox; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' email_outbox=' || _n;
   DELETE FROM public.notification_digest_log; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' notification_digest_log=' || _n;
+  DELETE FROM public.email_outbox; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' email_outbox=' || _n;
   DELETE FROM public.notifications; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' notifications=' || _n;
   -- 4-7 Tasks.
   DELETE FROM public.task_reminder_log; GET DIAGNOSTICS _n = ROW_COUNT; _log := _log || ' task_reminder_log=' || _n;

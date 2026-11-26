@@ -19,6 +19,10 @@ import {
 } from "./tasks";
 import { taskSources } from "./task-grouping";
 
+/** Sends the notice emails an action just queued (assignments, invitations, requests waiting). */
+const flushNoticeEmails = async () =>
+  (await import("@/lib/notice-emails.server")).flushNoticeEmails();
+
 // Every write is a SECURITY DEFINER RPC (no client write grants on tasks); the database checks every permission.
 const fail = (error: { message: string } | null) => {
   if (error) throw new Error(error.message);
@@ -74,6 +78,7 @@ export const createTask = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("create_task", { p: data });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 
@@ -83,6 +88,7 @@ export const updateTask = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("update_task", { p_id: data.id, p: data.task });
     fail(result.error);
+    await flushNoticeEmails();
     return { ok: true };
   });
 
@@ -228,6 +234,7 @@ export const addTaskNote = createServerFn({ method: "POST" })
       p_mentions: data.mentions,
     });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 /** The author only. Newly mentioned people get a notice. */
@@ -241,6 +248,7 @@ export const updateTaskNote = createServerFn({ method: "POST" })
       p_mentions: data.mentions,
     });
     fail(result.error);
+    await flushNoticeEmails();
     return { ok: true };
   });
 export const deleteTaskNote = createServerFn({ method: "POST" })
@@ -316,6 +324,7 @@ export const createTaskGroup = createServerFn({ method: "POST" })
       p: { ...data, scope: "branch" },
     });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 
@@ -329,6 +338,7 @@ export const updateTaskGroup = createServerFn({ method: "POST" })
       p: data.group,
     });
     fail(result.error);
+    await flushNoticeEmails();
     return { ok: true };
   });
 

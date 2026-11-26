@@ -45,6 +45,27 @@ describe("route import graphs", () => {
       files.filter((f) => /events-map|events-story|uk-dots|leaflet|branch-map/.test(f)),
     ).toEqual([]);
   });
+  it("public routes never reach the install-app code (signed-in only, loaded with the member shell)", () => {
+    const publicRoutes = [
+      "routes/__root.tsx",
+      "routes/index.tsx",
+      "routes/events.index.tsx",
+      "routes/sign-in.tsx",
+      "routes/join.tsx",
+      "routes/privacy_.attendees.tsx",
+      "routes/_app/route.tsx",
+      "routes/_app/events_.$id.tsx",
+    ];
+    for (const route of publicRoutes) {
+      expect(
+        staticGraph(route).filter((f) => /install-app|InstallApp/.test(f)),
+        route,
+      ).toEqual([]);
+    }
+    // The member shell (a lazy chunk) and the dashboard do load it.
+    expect(staticGraph("components/app/MemberShell.tsx")).toContain("lib/install-app-store.ts");
+    expect(staticGraph("routes/_app/dashboard.tsx")).toContain("components/app/InstallApp.tsx");
+  });
   it("the map data is a static asset, not a module (/events imports only its geometry)", () => {
     const files = staticGraph("routes/events.index.tsx");
     expect(files).toContain("components/public/events-map/uk-dots.ts");

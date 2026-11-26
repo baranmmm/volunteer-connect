@@ -130,7 +130,7 @@ describe(
         // Runs before the auth.* stubs exist: the no-op path reads only auth.users and public tables, so the script is
         // safe as a migration in the PGlite fixture too. An undotted NC (like the e2e seed's) is not keep data.
         await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES
-        ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.3'));
+        ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.4'));
         UPDATE public.user_roles SET role = 'national_coordinator' WHERE user_id = '${id(90)}';
         UPDATE public.profiles SET status = 'active' WHERE id = '${id(90)}';`);
         const before = await snapshot();
@@ -156,6 +156,7 @@ describe(
 
 describe("the production-like database", { timeout: 30000 }, () => {
   let keptEvents: string[] = [];
+  let keptVideoEvents: string[] = [];
   let keptMedia: string[] = [];
   let keptVideos: string[] = [];
   let deleteObjects: string[] = [];
@@ -186,15 +187,17 @@ describe("the production-like database", { timeout: 30000 }, () => {
     await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
       INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}'),
         ('${ids.bGone}','Closed','${ids.region}');
-      ${people.map((p) => `INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${p}', '${email[p]}', jsonb_build_object('full_name','Person ${p.slice(0, 2)}','privacy_notice_version','1.3','branch_id','${ids.b1}'));`).join("\n")}
+      ${people.map((p) => `INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${p}', '${email[p]}', jsonb_build_object('full_name','Person ${p.slice(0, 2)}','privacy_notice_version','1.4','branch_id','${ids.b1}'));`).join("\n")}
       INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${ids.fol}', 'follower@x.test',
-        jsonb_build_object('full_name','Follower','privacy_notice_version','1.3','branch_id','${ids.b1}','follower',true,
+        jsonb_build_object('full_name','Follower','privacy_notice_version','1.4','branch_id','${ids.b1}','follower',true,
           'photo_consent',true,'updates_email_consent',true));
       UPDATE profiles SET status='active' WHERE id <> '${ids.pend}' AND id <> '${ids.fol}';
       UPDATE profiles SET branch_id=NULL WHERE id IN ('${ids.nc}','${ids.nc2}','${ids.rd}');
       UPDATE user_roles SET role='national_coordinator' WHERE user_id IN ('${ids.nc}','${ids.nc2}');
       UPDATE user_roles SET role='regional_director', region_id='${ids.region}' WHERE user_id='${ids.rd}';
       UPDATE user_roles SET role='branch_manager' WHERE user_id='${ids.bm}';
+      -- A branch trustee (20261210090000): deleted like every other account.
+      UPDATE user_roles SET role='trustee' WHERE user_id='${ids.vol2}';
       INSERT INTO user_followed_branches(user_id, branch_id) VALUES ('${ids.nc}','${ids.b2}');
       INSERT INTO notification_preferences(user_id) VALUES ('${ids.nc}'), ('${ids.vol}');
       INSERT INTO consent_preferences(user_id) VALUES ('${ids.nc}') ON CONFLICT DO NOTHING;
@@ -246,6 +249,9 @@ describe("the production-like database", { timeout: 30000 }, () => {
     keptEvents = (
       await q<{ id: string }>("SELECT id FROM events WHERE past_record ORDER BY id")
     ).map((r) => r.id);
+    keptVideoEvents = (
+      await q<{ event_id: string }>("SELECT event_id FROM event_videos WHERE event_id IS NOT NULL")
+    ).map((r) => r.event_id);
     keptMedia = (await q<{ id: string }>("SELECT id FROM event_media ORDER BY id")).map(
       (r) => r.id,
     );
@@ -257,7 +263,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
     await db.exec("BEGIN");
     await db.exec(`DO $$
       DECLARE _e uuid; _pub uuid; _mem uuid; _s uuid; _m uuid; _a1 uuid; _a2 uuid; _d uuid; _t uuid; _r uuid; _v uuid;
-        _ua uuid; _req uuid; _n uuid; _sub uuid; _ms uuid;
+        _ua uuid; _req uuid; _n uuid; _sub uuid; _ms uuid; _mail uuid;
       BEGIN
         -- A past record without an imported photo, and an imported-looking one in the Recycle Bin (both deleted).
         PERFORM set_config('app.past_event', 'on', true);
@@ -343,10 +349,13 @@ describe("the production-like database", { timeout: 30000 }, () => {
         -- Notifications (also the kept NC's own), digest log, requests of every kind, audit and log rows.
         INSERT INTO public.notifications(user_id, kind, entity_type, entity_id, title, link, actor_id)
         VALUES ('${ids.nc}', 'meeting_invited', 'meeting', _m, 'Branch meeting', '/meetings/' || _m, '${ids.bm}') RETURNING id INTO _n;
-        INSERT INTO public.notifications(user_id, kind, entity_type, entity_id, title, link, digest_id)
-        VALUES ('${ids.vol}', 'task_assigned', 'task', _t, 'Book the hall', '/tasks/' || _t, _n);
+        INSERT INTO public.notifications(user_id, kind, entity_type, entity_id, title, link, digest_id, email_digest, email_digested_at)
+        VALUES ('${ids.vol}', 'task_status_changed', 'task', _t, 'Book the hall', '/tasks/' || _t, _n, true, now());
+        -- A daily summary email (the log points at it) and an immediate notice email.
+        INSERT INTO public.email_outbox(template, user_id, payload) VALUES ('daily_digest', '${ids.vol}', '{"count":1}') RETURNING id INTO _mail;
+        INSERT INTO public.notification_digest_log(user_id, day, notification_id, email_id) VALUES ('${ids.vol}', current_date, _n, _mail);
         INSERT INTO public.notification_digest_log(user_id, day, notification_id) VALUES ('${ids.nc}', current_date, _n);
-        INSERT INTO public.email_outbox(template, user_id, notification_id) VALUES ('notification_digest', '${ids.nc}', _n);
+        INSERT INTO public.email_outbox(template, user_id, notification_id, payload) VALUES ('notice', '${ids.nc}', _n, '{"type":"meeting"}');
         INSERT INTO public.event_requests(requester_id, scope, branch_id, region_id, title, proposed_start, proposed_end, last_edited_by)
         VALUES ('${ids.vol}', 'branch', '${ids.b1}', '${ids.region}', 'Iftar', now() + interval '20 days', now() + interval '20 days 2 hours', '${ids.vol}')
         RETURNING id INTO _req;
@@ -532,7 +541,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
   it("aborts with nothing changed when a second dotted NC exists", () =>
     tx(async () => {
       await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${id(30)}', 'other.nc@x.test',
-          jsonb_build_object('privacy_notice_version','1.3'));
+          jsonb_build_object('privacy_notice_version','1.4'));
         UPDATE user_roles SET role='national_coordinator' WHERE user_id='${id(30)}';
         UPDATE profiles SET status='active' WHERE id='${id(30)}';`);
       const before = await snapshot();
@@ -542,8 +551,10 @@ describe("the production-like database", { timeout: 30000 }, () => {
 
   it("aborts with nothing changed when only 14 imported events are found", () =>
     tx(async () => {
+      // An imported event without an attached video (ids are random: the one with the video would also drop a video).
+      const noVideo = keptEvents.find((e) => !keptVideoEvents.includes(e))!;
       await db.query("DELETE FROM event_media WHERE event_id=$1 AND source_url IS NOT NULL", [
-        keptEvents[0],
+        noVideo,
       ]);
       const before = await snapshot();
       await resetFails("found 1, 14, 6");

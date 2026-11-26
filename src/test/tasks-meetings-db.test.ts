@@ -75,9 +75,9 @@ beforeAll(async () => {
   const members = [ids.rd, ids.bm1, ids.vol1, ids.vol1b, ids.vol2, ids.bm2, ids.nc, ids.vol3];
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region'),('${ids.region2}','Region two');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}'),('${ids.b3}','Three','${ids.region2}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.3')
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.4')
       FROM unnest(ARRAY['${members.join("','")}']::uuid[]) x;
-    INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${ids.follower}', jsonb_build_object('full_name','Follower','privacy_notice_version','1.3','follower',true,'branch_id','${ids.b1}'));
+    INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${ids.follower}', jsonb_build_object('full_name','Follower','privacy_notice_version','1.4','follower',true,'branch_id','${ids.b1}'));
     UPDATE profiles SET status='active';
     UPDATE profiles SET branch_id='${ids.b1}' WHERE id IN ('${ids.bm1}','${ids.vol1}','${ids.vol1b}');
     UPDATE profiles SET branch_id='${ids.b2}' WHERE id IN ('${ids.vol2}','${ids.bm2}');
@@ -429,7 +429,8 @@ describe("task reminders", () => {
   };
   const outbox = () =>
     q<{ user_id: string; template: string }>(
-      "SELECT user_id, template FROM email_outbox ORDER BY user_id",
+      // Task reminder emails only (assignments queue their own immediate notice emails).
+      "SELECT user_id, template FROM email_outbox WHERE template='task_reminder' ORDER BY user_id",
     );
 
   it("3 days before by default: a notice and an email outbox row per assignee, at most once per day", () =>

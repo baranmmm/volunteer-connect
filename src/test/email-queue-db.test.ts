@@ -35,7 +35,7 @@ type Claimed = {
   to_email: string | null;
   skip_reason: string | null;
 };
-const claim = (max = 20, maxPriority = 3) =>
+const claim = (max = 20, maxPriority = 5) =>
   q<Claimed>("SELECT * FROM public.claim_email_batch($1, $2)", [max, maxPriority]);
 const outbox = (template: string, email: string, extra = "") =>
   one<string>(
@@ -86,15 +86,15 @@ beforeAll(async () => {
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.branch}','Camden','${ids.region}');
     INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES
-      ('${ids.member}', 'member@example.org', jsonb_build_object('full_name','Member','privacy_notice_version','1.3')),
-      ('${ids.inactive}', 'inactive@example.org', jsonb_build_object('full_name','Inactive','privacy_notice_version','1.3'));
+      ('${ids.member}', 'member@example.org', jsonb_build_object('full_name','Member','privacy_notice_version','1.4')),
+      ('${ids.inactive}', 'inactive@example.org', jsonb_build_object('full_name','Inactive','privacy_notice_version','1.4'));
     UPDATE profiles SET status='active', branch_id='${ids.branch}' WHERE id='${ids.member}';
     UPDATE profiles SET status='inactive', branch_id='${ids.branch}' WHERE id='${ids.inactive}';`);
 }, 60000);
 afterAll(async () => db.close());
 
 describe("email queue", () => {
-  it("claims by priority (transactional, reminders, announcements), then oldest first", () =>
+  it("claims by priority (transactional, reminders, announcements; 20261208090200), then oldest first", () =>
     tx(async () => {
       const announce = await outbox("event_announcement", "a@example.org");
       const reminder = await outbox("event_reminder", "r@example.org");
@@ -104,8 +104,8 @@ describe("email queue", () => {
         "created_at=now() - interval '1 minute'",
       );
       const second = await outbox("registration_confirmed", "t2@example.org");
-      expect(await one("SELECT priority v FROM email_outbox WHERE id=$1", [announce])).toBe(3);
-      expect(await one("SELECT priority v FROM email_outbox WHERE id=$1", [reminder])).toBe(2);
+      expect(await one("SELECT priority v FROM email_outbox WHERE id=$1", [announce])).toBe(4);
+      expect(await one("SELECT priority v FROM email_outbox WHERE id=$1", [reminder])).toBe(3);
       const rows = await claim();
       expect(rows.map((r) => r.id)).toEqual([first, second, reminder, announce]);
       expect(rows.every((r) => r.attempts === 1)).toBe(true);
@@ -120,10 +120,10 @@ describe("email queue", () => {
       expect(await status(announce)).toBe("pending");
     }));
 
-  it("the daily limit (300) counts today's sent and in-flight rows", () =>
+  it("the daily limit (280: 20 of Brevo's 300 stay for Supabase Auth) counts today's sent and in-flight rows", () =>
     tx(async () => {
       await db.exec(`INSERT INTO email_outbox (template, to_email, status, sent_at)
-        SELECT 'guest_confirm', 'x' || g || '@example.org', 'sent', now() FROM generate_series(1, 298) g;
+        SELECT 'guest_confirm', 'x' || g || '@example.org', 'sent', now() FROM generate_series(1, 278) g;
         INSERT INTO email_outbox (template, to_email, status, sent_at)
         SELECT 'guest_confirm', 'old' || g || '@example.org', 'sent', now() - interval '2 days' FROM generate_series(1, 50) g;
         INSERT INTO email_outbox (template, to_email, status, claimed_at) VALUES ('guest_confirm', 'inflight@example.org', 'sending', now());`);
@@ -289,7 +289,7 @@ describe("email queue", () => {
       expect(await one("SELECT public.enqueue_event_reminders() v")).toBe(0);
       expect(
         await one(
-          "SELECT count(*)::int v FROM email_outbox WHERE template='event_reminder' AND priority=2",
+          "SELECT count(*)::int v FROM email_outbox WHERE template='event_reminder' AND priority=3",
         ),
       ).toBe(1);
     }));

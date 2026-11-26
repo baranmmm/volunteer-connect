@@ -13,6 +13,7 @@ import { closeFilters, isNarrow, openFilters, setStatusByMenu, showBoard, withTa
 import { RecycleBinPage } from "../../pages/RecycleBinPage";
 import { pickOption } from "../../pages/components/select";
 import { NotificationBell } from "../../pages/components/NotificationBell";
+import { linkFrom, waitForEmail } from "../../api/outbox";
 
 let n = 0;
 const title = (label: string) => `${TASK_TITLE_PREFIX}${runId} ui-${Date.now().toString(36)}-${++n} ${label}`;
@@ -74,6 +75,11 @@ test.describe("Tasks", () => {
     await form.getByTestId("task-form-submit").click();
     await expect(managerPage.getByTestId("toast-success").first()).toBeVisible();
     const id = await openedTaskId(managerPage);
+    // The assignee's email goes out at once (no scheduled run), with the task link and a stop link.
+    const email = await waitForEmail({ template: "notice", userId: volunteer.id });
+    expect(email.captured.subject).toBe(`New task: ${name}`);
+    expect(new URL(linkFrom(email, "/tasks")).searchParams.get("task")).toBe(id);
+    expect(linkFrom(email, "/e/notices")).toContain("t=");
     // Every task is shown by default (My tasks is off). Phones: close the task panel and look in the Filters sheet.
     if (isNarrow(managerPage)) {
       await managerPage.keyboard.press("Escape");

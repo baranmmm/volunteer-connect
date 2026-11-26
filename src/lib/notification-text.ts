@@ -24,6 +24,11 @@ export function notificationText(n: Notification, t: TFunction, lang: Lang = cur
           : "notifications.kinds.review_waiting_branches";
     return t(key, { count: p.total ?? 0, branches: branchList(branches, lang) });
   }
+  if (n.kind === "email_budget_warning")
+    return t("notifications.kinds.email_budget_warning", {
+      sent: p.sent ?? 0,
+      limit: p.limit ?? 300,
+    });
   if (n.kind === "daily_digest")
     return t("notifications.kinds.daily_digest", { count: p.count ?? 0 });
   // Several notes on one task while unread: one updating notice.

@@ -1579,7 +1579,8 @@
       "daily_digest_other": "Your daily summary: {{count}} updates",
       "task_note_added_many": "{{count}} new notes on: “{{title}}”",
       "volunteer_application_approved": "You're now a Dialogue Society volunteer at {{branch}}!",
-      "volunteer_application_declined": "Your volunteer application to {{branch}} was not approved. Note: {{reason}}"
+      "volunteer_application_declined": "Your volunteer application to {{branch}} was not approved. Note: {{reason}}",
+      "email_budget_warning": "{{sent}} of {{limit}} emails were sent today. Emails over the daily limit wait until tomorrow (sign-up and password emails always go out). Consider a paid email plan."
     },
     "taskStatus": {
       "todo": "To do",
@@ -1592,13 +1593,6 @@
       "tasks": "{{count}} new tasks",
       "meetings": "{{count}} meeting updates",
       "more": "{{count}} updates under More"
-    },
-    "preferences": {
-      "title": "Task reminders",
-      "taskEmails": "Email reminders for tasks",
-      "taskEmailsOn": "We'll email you task reminders. Reminders also appear in the app.",
-      "taskEmailsOff": "Task reminders appear in the app only.",
-      "saved": "Reminder preference saved"
     },
     "groups": {
       "task_assigned": "{{count}} tasks were assigned to you",
@@ -1631,14 +1625,17 @@
     },
     "settings": {
       "title": "Notifications",
-      "intro": "Choose which notices you get in the app and when. The daily summary arrives at 08:00 (UK time).",
-      "defaultImmediate": "Unless you change it, notices arrive immediately.",
-      "defaultDigest": "Unless you change it, notices come in the daily summary.",
+      "intro": "Every notice appears in the app straight away. Choose which notices you get in the app and which also come by email: some emails come at once, the rest in one daily summary at 08:00 (UK time), only on days with something new.",
+      "inApp": "In the app",
+      "email": "Email",
+      "emailOn": "Email for {{label}}",
+      "timing": {
+        "immediate": "Email right away",
+        "digest": "Email in the daily summary",
+        "mixed": "Invitations by email right away, changes in the daily summary"
+      },
       "enabled": "On",
-      "delivery": "Delivery",
-      "immediate": "Immediately",
-      "digest": "Daily summary",
-      "locked": "Always on and immediate, so nothing waiting for you is missed.",
+      "locked": "Always on in the app, so nothing waiting for you is missed. Its email can be turned off.",
       "saved": "Notification setting saved",
       "loadError": "Notification settings could not be loaded.",
       "types": {
@@ -2253,6 +2250,50 @@
     "mapKeys": "Up and down arrows move between the branches, from north to south, and show each branch's event; Enter goes to that event. Left and right arrows move through the events.",
     "pastButton": "Past events",
     "pastJump": "Go to the earliest past event"
+  },
+  "noticeEmails": {
+    "title": "Email notifications",
+    "intro": "Stop emails for “{{label}}”? You will no longer get these emails.",
+    "inApp": "Your notices in the app do not change. You can turn these emails back on in your profile, under Notifications.",
+    "button": "Stop these emails",
+    "done": "Done: you will no longer get emails for “{{label}}”.",
+    "invalid": "This link is not valid or has expired. You can change your emails in your profile, under Notifications.",
+    "settings": "Notification settings"
+  },
+  "installApp": {
+    "button": "Install app",
+    "title": "Install the app",
+    "bannerTitle": "Install the app for quick access",
+    "bannerText": "Open the hub from your home screen, like any other app.",
+    "dismiss": "Dismiss",
+    "done": "Got it",
+    "shareIcon": "Share icon",
+    "openInSafariTitle": "Open in Safari",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied. Paste it into Safari's address bar.",
+    "linkCopyFailed": "The link could not be copied. Please copy it from the address bar.",
+    "iosSafari": {
+      "intro": "Add the hub to your home screen in three steps.",
+      "step1": "Tap the Share button in Safari (at the bottom of the screen on iPhone, at the top on iPad):",
+      "step2": "Scroll down and tap Add to Home Screen:",
+      "step3": "Tap Add. The app appears on your home screen."
+    },
+    "iosOther": {
+      "intro": "On iPhone and iPad the app can be installed from Safari. Please open this page in Safari first.",
+      "step1": "Copy the link to this page.",
+      "step2": "Open Safari and paste the link into the address bar.",
+      "step3": "Tap Share, then Add to Home Screen:"
+    },
+    "androidMenu": {
+      "intro": "Add the hub to your home screen from the browser menu.",
+      "step1": "Open the browser menu (⋮).",
+      "step2": "Tap Install or Add to Home screen."
+    },
+    "macSafari": {
+      "intro": "Add the hub to your Dock from Safari.",
+      "step1": "In the menu bar, choose File, then Add to Dock.",
+      "step2": "Click Add. The app opens from your Dock."
+    }
   },
   "toolbar": {
     "filters": "Filters",

@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPrivacyStatus } from "@/lib/privacy.functions";
 import { PrivacyGate } from "@/components/app/PrivacyGate";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Clock, LogOut, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { primaryRole, isNationalCoordinator } from "@/lib/roles";
@@ -26,6 +26,12 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNotificationCounts } from "@/lib/use-work-notices";
 import { useApprovalWaiting } from "@/lib/use-approval-waiting";
+import { startInstallCapture } from "@/lib/install-app-store";
+import { InstallAppNavItem, InstallAppSheet } from "@/components/app/InstallApp";
+
+// Listen for the browser's install prompt as soon as this chunk loads (before the dashboard mounts): Chrome fires
+// `beforeinstallprompt` once per page load and it is lost when nobody listens.
+startInstallCapture();
 
 function useSignOut() {
   const queryClient = useQueryClient();
@@ -52,6 +58,9 @@ export function MemberShell() {
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const mobileHeader = useAppHeaderHeight();
+  // "Install app" from the More sheet: the More sheet closes and the steps open on their own; focus returns to "More".
+  const [installOpen, setInstallOpen] = useState(false);
+  const moreButton = useRef<HTMLButtonElement>(null);
   // The same total as the Requests page's "Waiting for my approval" tab.
   const waiting = useApprovalWaiting().total;
   const notices = useNotificationCounts().data;
@@ -177,6 +186,7 @@ export function MemberShell() {
             </NavLink>
           ))}
         </nav>
+        <InstallAppNavItem className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent" />
         <button
           data-testid="nav-sign-out"
           onClick={signOut}
@@ -240,6 +250,7 @@ export function MemberShell() {
           </Link>
         ))}
         <button
+          ref={moreButton}
           data-testid="mobile-nav-more"
           onClick={() => setMoreOpen(true)}
           aria-label={
@@ -282,6 +293,13 @@ export function MemberShell() {
                 {item.badge && <NavCount kind={item.badge} count={badgeCounts[item.badge]} />}
               </NavLink>
             ))}
+            <InstallAppNavItem
+              className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted"
+              onOpenSheet={() => {
+                setMoreOpen(false);
+                setInstallOpen(true);
+              }}
+            />
             <button
               data-testid="mobile-nav-sign-out"
               onClick={signOut}
@@ -292,6 +310,11 @@ export function MemberShell() {
           </div>
         </SheetContent>
       </Sheet>
+      <InstallAppSheet
+        open={installOpen}
+        onOpenChange={setInstallOpen}
+        returnFocus={() => moreButton.current?.focus()}
+      />
     </div>
   );
 }
