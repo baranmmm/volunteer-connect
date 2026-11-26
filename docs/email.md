@@ -83,10 +83,12 @@ text with a heading, no images) and a plain-text part. Times are Europe/London.
     side by side with the waiting push notifications (which never count toward the email limit); each part about 10
     seconds. This replaces the GitHub workflow as the sender of priorities 3–5. Setup and checks: `docs/push.md`
     "Production setup / troubleshooting";
-  - in the scheduled run (`/api/public/task-reminders`, the "Task reminders" GitHub workflow: now a manual fallback,
-    still scheduled at 07:05, 08:05, 09:05, 13:05 and 18:05 UTC with `SCHEDULED_JOBS_SECRET`): it queues the daily
-    summaries (from 08:00 London), task and event reminders, then sends up to 300 of every priority and the waiting
-    push notifications. Announcements over the daily limit continue the next day.
+  - the queueing runs on pg_cron: `notification-digest` (daily summaries, from 08:00 London), `task-reminders` (from
+    09:00 London) and `event-reminders` (`enqueue_event_reminders()`, 2 days before, at :20 past 07, 08, 09, 13 and
+    18 UTC); all idempotent. Announcements over the daily limit continue the next day.
+  - by hand only, the "Task reminders" GitHub workflow (`/api/public/task-reminders`, manual fallback with
+    `SCHEDULED_JOBS_SECRET`): it queues the same summaries and reminders, then sends up to 300 of every priority and
+    the waiting push notifications.
 - Each call is bounded (at most 300 rows, about 20 seconds) and never throws. Logs contain only template names and
   error codes, never addresses or content.
 
@@ -115,7 +117,7 @@ GitHub secret is needed. Tests read emails with `e2e/api/outbox.ts` (`waitForEma
 
 ## Retention
 
-`purge_guest_data()` (nightly: pg_cron where available, and the "Cleanup Recycle Bin" workflow through
-`/api/public/cleanup-deleted-events`) deletes guest registrations 12 months after the event ended, unconfirmed guests
+`purge_guest_data()` (nightly: pg_cron `purge-guest-data`, and again from `/api/public/cleanup-deleted-events`, which
+pg_cron `recycle-bin-cleanup` calls nightly) deletes guest registrations 12 months after the event ended, unconfirmed guests
 after 48 hours, unconfirmed subscribers after 7 days, finished outbox rows after 30 days and rate-limit windows after
 2 days.

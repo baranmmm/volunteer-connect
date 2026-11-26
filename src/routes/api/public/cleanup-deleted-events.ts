@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// Nightly cleanup (the "Cleanup Recycle Bin" workflow, with SCHEDULED_JOBS_SECRET: src/lib/scheduled-jobs.server.ts): expired Recycle Bin items, then the
+// Nightly cleanup (pg_cron job 'recycle-bin-cleanup' at 03:30 UTC, and the manual "Cleanup Recycle Bin" workflow, with
+// SCHEDULED_JOBS_SECRET: src/lib/scheduled-jobs.server.ts): expired Recycle Bin items, then the
 // guest/subscriber retention rules (purge_guest_data; pg_cron runs it too where available), then YouTube poster files
 // no video points at any more. Only counts are returned.
 const GUEST_COUNTS = [

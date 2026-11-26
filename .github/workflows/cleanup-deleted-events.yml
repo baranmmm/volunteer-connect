@@ -1,8 +1,9 @@
 name: Cleanup Recycle Bin
 
+# Manual fallback only. pg_cron job 'recycle-bin-cleanup' (03:30 UTC) calls the same route in production
+# (docs/event-cleanup.md). Run it by hand (Run workflow) to drain a backlog sooner or when pg_cron is down; repeat runs
+# are safe.
 on:
-  schedule:
-    - cron: '30 3 * * *'
   workflow_dispatch:
 
 permissions: {}
