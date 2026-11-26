@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/reset-password")({
 });
 
 function ResetPassword() {
+  const hydrated = useHydrated();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -48,7 +50,7 @@ function ResetPassword() {
     <div className="min-h-screen bg-background">
       <PublicTopBar />
       <div className="flex justify-center px-5 py-12 sm:py-16">
-        <form onSubmit={submit} className="w-full max-w-md space-y-5">
+        <form method="post" onSubmit={submit} className="w-full max-w-md space-y-5">
           <h1 className="text-3xl font-bold">{t("auth.setNewTitle")}</h1>
           <div className="space-y-2">
             <Label htmlFor="password">{t("auth.newPassword")}</Label>
@@ -98,7 +100,7 @@ function ResetPassword() {
             type="submit"
             size="lg"
             className="h-12 w-full rounded-xl"
-            disabled={busy || password !== confirm}
+            disabled={busy || !hydrated || password !== confirm}
           >
             {t("auth.updatePassword")}
           </Button>

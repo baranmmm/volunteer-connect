@@ -311,10 +311,11 @@ function DraftsCard({ drafts }: { drafts: HubEvent[] }) {
               params={{ id: draft.id }}
               className="min-w-0 flex-1 focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <p className="flex flex-wrap items-center gap-2 break-words font-semibold">
+              {/* A div, not a p: the status badge is a div, which a paragraph may not contain. */}
+              <div className="flex flex-wrap items-center gap-2 break-words font-semibold">
                 {draft.title}
                 <EventStatusBadge status="draft" />
-              </p>
+              </div>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 {draft.start_at || draft.start_date
                   ? eventDateText(draft, t)
