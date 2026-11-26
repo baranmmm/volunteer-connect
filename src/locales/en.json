@@ -1631,14 +1631,17 @@
     },
     "settings": {
       "title": "Notifications",
-      "intro": "Choose which notices you get. Every notice appears in the app straight away. For some you can also get a daily summary email at 08:00 (UK time).",
-      "defaultImmediate": "Unless you change it, notices appear only in the app (no email).",
-      "defaultDigest": "Unless you change it, you also get these notices in the daily summary email.",
+      "intro": "Every notice appears in the app straight away. Choose which notices you get in the app and which also come by email: some emails come at once, the rest in one daily summary at 08:00 (UK time), only on days with something new.",
+      "inApp": "In the app",
+      "email": "Email",
+      "emailOn": "Email for {{label}}",
+      "timing": {
+        "immediate": "Email right away",
+        "digest": "Email in the daily summary",
+        "mixed": "Invitations by email right away, changes in the daily summary"
+      },
       "enabled": "On",
-      "delivery": "Email",
-      "immediate": "No email (in the app only)",
-      "digest": "Daily summary email",
-      "locked": "Always on and immediate, so nothing waiting for you is missed.",
+      "locked": "Always on in the app, so nothing waiting for you is missed. Its email can be turned off.",
       "saved": "Notification setting saved",
       "loadError": "Notification settings could not be loaded.",
       "types": {
@@ -2253,5 +2256,14 @@
     "mapKeys": "Up and down arrows move between the branches, from north to south, and show each branch's event; Enter goes to that event. Left and right arrows move through the events.",
     "pastButton": "Past events",
     "pastJump": "Go to the earliest past event"
+  },
+  "noticeEmails": {
+    "title": "Email notifications",
+    "intro": "Stop emails for “{{label}}”? You will no longer get these emails.",
+    "inApp": "Your notices in the app do not change. You can turn these emails back on in your profile, under Notifications.",
+    "button": "Stop these emails",
+    "done": "Done: you will no longer get emails for “{{label}}”.",
+    "invalid": "This link is not valid or has expired. You can change your emails in your profile, under Notifications.",
+    "settings": "Notification settings"
   }
 }

@@ -3599,6 +3599,11 @@ export type Database = {
         Args: { p_direction: number; p_id: string }
         Returns: undefined
       }
+      notice_email_context: { Args: { p_id: string }; Returns: Json }
+      notice_email_unsubscribe: {
+        Args: { p_type: string; p_user: string }
+        Returns: string
+      }
       notification_default_delivery: {
         Args: { _user: string }
         Returns: string
@@ -3607,6 +3612,16 @@ export type Database = {
         Args: { _type: string }
         Returns: boolean
       }
+      notification_email_mode: { Args: { _kind: string }; Returns: string }
+      notification_email_on: {
+        Args: { _type: string; _user: string }
+        Returns: boolean
+      }
+      notification_email_set: {
+        Args: { _on: boolean; _type: string; _user: string }
+        Returns: undefined
+      }
+      notification_email_timing: { Args: { _type: string }; Returns: string }
       notification_setting: {
         Args: { _type: string; _user: string }
         Returns: Json
@@ -3861,6 +3876,10 @@ export type Database = {
       }
       set_my_task_reminders: {
         Args: { p_id: string; p_reminders: Json }
+        Returns: Json
+      }
+      set_notification_email: {
+        Args: { p_on: boolean; p_type: string }
         Returns: Json
       }
       set_notification_setting: {

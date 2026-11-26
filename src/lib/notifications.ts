@@ -98,19 +98,20 @@ export const NOTIFICATION_TYPES = [
   "request_decided",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
-export const NOTIFICATION_DELIVERIES = ["immediate", "digest"] as const;
-export type NotificationDelivery = (typeof NOTIFICATION_DELIVERIES)[number];
+/** How a type's email arrives: at once, in the daily summary, or both (meetings: invitations at once). */
+export const NOTIFICATION_EMAIL_TIMINGS = ["immediate", "digest", "mixed"] as const;
+export type NotificationEmailTiming = (typeof NOTIFICATION_EMAIL_TIMINGS)[number];
 export const notificationSetting = z.object({
   type: z.enum(NOTIFICATION_TYPES),
+  /** In the app (always true for locked types). */
   enabled: z.boolean(),
-  delivery: z.enum(NOTIFICATION_DELIVERIES),
+  /** Email on/off (any type, locked ones included). */
+  email: z.boolean(),
   locked: z.boolean(),
-  /** Always delivered immediately (locked types and task reminders): only the on/off switch is shown. */
-  delivery_locked: z.boolean().default(false),
+  email_timing: z.enum(NOTIFICATION_EMAIL_TIMINGS),
 });
 export type NotificationSetting = z.infer<typeof notificationSetting>;
 export const notificationSettings = z.object({
-  default_delivery: z.enum(NOTIFICATION_DELIVERIES),
   task_reminder_emails: z.boolean(),
   types: z.array(notificationSetting),
 });

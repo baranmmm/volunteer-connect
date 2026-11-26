@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireMember } from "@/lib/require-member";
 import {
-  NOTIFICATION_DELIVERIES,
+  NOTIFICATION_TYPES,
   notification,
   notificationCounts,
   notificationSettings,
@@ -111,20 +111,34 @@ export const getNotificationSettings = createServerFn({ method: "GET" })
     return notificationSettings.parse(result.data);
   });
 
+/** In the app on/off for a changeable type (locked types are always on in the app). */
 export const setNotificationSetting = createServerFn({ method: "POST" })
   .middleware([requireMember])
   .inputValidator(
     z.object({
       type: z.enum(["task_status", "task_note", "task_reminder", "meeting", "request_decided"]),
       enabled: z.boolean(),
-      delivery: z.enum(NOTIFICATION_DELIVERIES),
     }),
   )
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("set_notification_setting", {
       p_type: data.type,
       p_enabled: data.enabled,
-      p_delivery: data.delivery,
+      // Ignored by the database: email timing is no longer a personal choice.
+      p_delivery: "immediate",
+    });
+    fail(result.error);
+    return { ok: true };
+  });
+
+/** Email on/off for any type (the locked ones stay on in the app). */
+export const setNotificationEmail = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ type: z.enum(NOTIFICATION_TYPES), on: z.boolean() }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_notification_email", {
+      p_type: data.type,
+      p_on: data.on,
     });
     fail(result.error);
     return { ok: true };

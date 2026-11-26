@@ -5,6 +5,8 @@
 
 export type LinkPurpose =
   "guest-confirm" | "guest-cancel" | "subscriber-confirm" | "subscriber-unsubscribe";
+/** Signature purposes: the link purposes plus notice unsubscribe links (their own token shape, below). */
+type SignPurpose = LinkPurpose | "notice-unsubscribe";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -22,7 +24,7 @@ function base64url(bytes: ArrayBuffer): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-async function signature(purpose: LinkPurpose, id: string): Promise<string> {
+async function signature(purpose: SignPurpose, id: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret()),
@@ -73,4 +75,65 @@ const PATHS: Record<LinkPurpose, string> = {
 /** The full link for an email, e.g. https://…/e/cancel?t=<token>. */
 export async function emailLink(purpose: LinkPurpose, id: string, origin: string): Promise<string> {
   return `${origin}${PATHS[purpose]}?t=${encodeURIComponent(await signLinkToken(purpose, id))}`;
+}
+
+// ─── Notice email unsubscribe links ──────────────────────────────────────────────────────────────────────────────
+// "<user>.<type>.<expiry day>.<signature>": turns off one notice type's emails for one member without signing in
+// (/e/notices, and the List-Unsubscribe one-click endpoint). Valid for NOTICE_LINK_DAYS days after the email.
+
+export const NOTICE_EMAIL_TYPES = [
+  "task_assigned",
+  "mention",
+  "review",
+  "task_status",
+  "task_note",
+  "task_reminder",
+  "meeting",
+  "request_decided",
+] as const;
+export type NoticeEmailType = (typeof NOTICE_EMAIL_TYPES)[number];
+export const isNoticeEmailType = (value: string): value is NoticeEmailType =>
+  (NOTICE_EMAIL_TYPES as readonly string[]).includes(value);
+export const NOTICE_LINK_DAYS = 60;
+
+const day = (now: Date) => Math.floor(now.getTime() / 86400000);
+
+async function noticeSignature(user: string, type: string, expires: number): Promise<string> {
+  // The purpose prefix keeps these apart from every other link (the signed text has a different shape too).
+  return signature("notice-unsubscribe", `${user}:${type}:${expires}`);
+}
+
+/** A notice unsubscribe token for one member and type, valid for NOTICE_LINK_DAYS days. */
+export async function signNoticeToken(user: string, type: NoticeEmailType, now = new Date()): Promise<string> {
+  if (!UUID.test(user) || !isNoticeEmailType(type)) throw new Error("Invalid link id");
+  const expires = day(now) + NOTICE_LINK_DAYS;
+  return `${user}.${type}.${expires}.${await noticeSignature(user, type, expires)}`;
+}
+
+/** The member and type inside a valid, unexpired token, or null (constant-time comparison). */
+export async function verifyNoticeToken(
+  token: string | null | undefined,
+  now = new Date(),
+): Promise<{ user: string; type: NoticeEmailType } | null> {
+  if (!token || token.length > 100) return null;
+  const [user, type, expires, sig, extra] = token.split(".");
+  if (!user || !type || !expires || !sig || extra !== undefined || !UUID.test(user) || !isNoticeEmailType(type))
+    return null;
+  if (!/^\d{1,7}$/.test(expires) || Number(expires) < day(now)) return null;
+  const expected = await noticeSignature(user, type, Number(expires));
+  if (expected.length !== sig.length) return null;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
+  return diff === 0 ? { user, type } : null;
+}
+
+/** The page link (/e/notices?t=) and the RFC 8058 one-click endpoint for one member and type. */
+export async function noticeUnsubscribeLinks(
+  user: string,
+  type: NoticeEmailType,
+  origin: string,
+  now = new Date(),
+): Promise<{ page: string; oneClick: string }> {
+  const t = encodeURIComponent(await signNoticeToken(user, type, now));
+  return { page: `${origin}/e/notices?t=${t}`, oneClick: `${origin}/api/public/notice-unsubscribe?t=${t}` };
 }

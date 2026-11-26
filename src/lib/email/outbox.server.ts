@@ -14,7 +14,12 @@ import {
   type BrevoConfig,
   type SenderAddress,
 } from "./brevo.server";
-import { appOrigin, emailLink } from "./links.server";
+import {
+  appOrigin,
+  emailLink,
+  isNoticeEmailType,
+  noticeUnsubscribeLinks,
+} from "./links.server";
 import {
   isEmailTemplate,
   renderEmail,
@@ -182,22 +187,62 @@ async function prepare(
       },
     };
   }
-  if (row.template === "task_reminder") return { ok: true, ctx: base };
-  if (row.template === "daily_digest") {
-    // The member's language at send time (the claim already skipped inactive and deleted members).
-    if (!row.user_id) return { ok: false, skip: "no_recipient" };
-    const { data, error } = await admin
-      .from("profiles")
-      .select("preferred_language")
-      .eq("id", row.user_id)
-      .maybeSingle();
-    if (error) throw new Error("context_unavailable");
-    return {
-      ok: true,
-      ctx: { ...base, language: data?.preferred_language === "tr" ? "tr" : "en" },
-    };
-  }
+  if (row.template === "task_reminder" || row.template === "daily_digest" || row.template === "notice")
+    return prepareMemberNotice(admin, row, origin, base);
   return { ok: false, skip: "unknown_template" };
+}
+
+/**
+ * Member notice emails: the member's language and (for 'notice') the notice at send time (notice_email_context); a
+ * notice that was read, removed or whose email was turned off since is skipped. Each email gets its type's signed
+ * "stop these emails" link (the daily summary one per type in it).
+ */
+async function prepareMemberNotice(
+  admin: Admin,
+  row: ClaimedRow,
+  origin: string,
+  base: RenderContext,
+): Promise<Prepared> {
+  if (!row.user_id) return { ok: false, skip: "no_recipient" };
+  const { data, error } = await admin.rpc("notice_email_context", { p_id: row.id });
+  if (error) throw new Error("context_unavailable");
+  const context = asRecord(data);
+  if (!data || context["applies"] === false) return { ok: false, skip: "no_longer_applies" };
+  const language = context["language"] === "tr" ? "tr" : "en";
+  const ctx: RenderContext = { ...base, language };
+  const links: NonNullable<RenderContext["links"]> = {};
+  if (row.template === "daily_digest") {
+    const types = Array.isArray(base.payload?.["types"]) ? (base.payload["types"] as unknown[]) : [];
+    const typeLinks: Record<string, string> = {};
+    for (const type of types)
+      if (typeof type === "string" && isNoticeEmailType(type))
+        typeLinks[type] = (await noticeUnsubscribeLinks(row.user_id, type, origin)).page;
+    links.typeUnsubscribe = typeLinks;
+    return { ok: true, ctx: { ...ctx, links } };
+  }
+  const type = row.template === "task_reminder" ? "task_reminder" : context["type"];
+  if (typeof type !== "string" || !isNoticeEmailType(type)) return { ok: false, skip: "unknown_template" };
+  const unsubscribe = await noticeUnsubscribeLinks(row.user_id, type, origin);
+  links.noticeUnsubscribe = unsubscribe.page;
+  links.noticeUnsubscribeOneClick = unsubscribe.oneClick;
+  if (row.template === "task_reminder") return { ok: true, ctx: { ...ctx, links } };
+  const n = asRecord(context["notice"] as Json);
+  if (!n["kind"]) return { ok: false, skip: "no_longer_applies" };
+  return {
+    ok: true,
+    ctx: {
+      ...ctx,
+      payload: { ...(base.payload ?? {}), type },
+      links,
+      notice: {
+        kind: String(n["kind"]),
+        title: typeof n["title"] === "string" ? n["title"] : "",
+        link: typeof n["link"] === "string" ? n["link"] : "/dashboard",
+        payload: asRecord(n["payload"] as Json),
+        actor_name: typeof n["actor_name"] === "string" ? n["actor_name"] : null,
+      },
+    },
+  };
 }
 
 async function finish(
