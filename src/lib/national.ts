@@ -8,6 +8,8 @@ export const ncDashboard = z.object({
   regions: z.number(),
   branches: z.number(),
   volunteers: z.number(),
+  /** Trustees: counted separately, never named. Defaults to 0 until the trustee migration is applied. */
+  trustees: z.number().default(0),
   followers: z.number(),
   upcoming_events: z.number(),
   registrations_30d: z.number(),
@@ -34,6 +36,7 @@ export const regionNode = z.object({
       name: z.string(),
       managers: z.array(person),
       volunteers: z.number(),
+      trustees: z.number().default(0),
       followers: z.number(),
       upcoming_events: z.number(),
     }),

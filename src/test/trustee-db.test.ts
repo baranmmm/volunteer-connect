@@ -63,7 +63,9 @@ async function tx(action: () => Promise<void>) {
 }
 const json = (v: unknown) => JSON.stringify(v);
 const createTask = (p: Row) =>
-  one<string>("SELECT public.create_task($1::jsonb) v", [json({ scope: "branch", branch_id: ids.b1, ...p })]);
+  one<string>("SELECT public.create_task($1::jsonb) v", [
+    json({ scope: "branch", branch_id: ids.b1, ...p }),
+  ]);
 const createGroup = (p: Row = {}) =>
   one<string>("SELECT public.create_task_group($1::jsonb) v", [
     json({ scope: "branch", branch_id: ids.b1, title: "Bring a friend", ...p }),
@@ -79,7 +81,8 @@ const meetingIn = (p: Row) =>
     location: "Hall",
     ...p,
   });
-const createMeeting = (p: Row = {}) => one<string>("SELECT public.create_meeting($1::jsonb) v", [meetingIn(p)]);
+const createMeeting = (p: Row = {}) =>
+  one<string>("SELECT public.create_meeting($1::jsonb) v", [meetingIn(p)]);
 const groupMembers = async (g: string) => {
   await as(null);
   return (
@@ -107,7 +110,10 @@ beforeAll(async () => {
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}');
     INSERT INTO auth.users(id, raw_user_meta_data) VALUES ${people
       .filter(([k]) => k !== "fol")
-      .map(([k, v]) => `('${v}', jsonb_build_object('full_name','Person ${k}','privacy_notice_version','${PRIVACY_VERSION}'))`)
+      .map(
+        ([k, v]) =>
+          `('${v}', jsonb_build_object('full_name','Person ${k}','privacy_notice_version','${PRIVACY_VERSION}'))`,
+      )
       .join(",")};
     UPDATE profiles SET status='active';
     UPDATE profiles SET branch_id='${ids.b1}' WHERE id IN ('${ids.bm1}','${ids.vol1}','${ids.vol1b}','${ids.tr1}');
@@ -144,7 +150,9 @@ async function branchActivity() {
   const group = await createGroup();
   const meeting = await createMeeting({ invitee_ids: [ids.vol1, ids.tr1] });
   const item = await one<string>("SELECT public.add_agenda_item($1,'Budget','Notes') v", [meeting]);
-  const decision = await one<string>("SELECT public.add_meeting_decision($1,'Buy chairs') v", [item]);
+  const decision = await one<string>("SELECT public.add_meeting_decision($1,'Buy chairs') v", [
+    item,
+  ]);
   await one("SELECT public.add_meeting_file($1,'pdf','plan.pdf') v", [meeting]);
   return { task, own, group, meeting, item, decision };
 }
@@ -157,9 +165,13 @@ describe("a trustee reads what a volunteer of the branch reads", () => {
         await as(user);
         return {
           task: (await one<Task | null>("SELECT public.get_task($1) v", [a.task]))?.id ?? null,
-          groups: (await one<{ id: string }[]>("SELECT public.list_task_groups() v")).map((g) => g.id),
+          groups: (await one<{ id: string }[]>("SELECT public.list_task_groups() v")).map(
+            (g) => g.id,
+          ),
           group: (await one<Row | null>("SELECT public.get_task_group($1) v", [a.group])) !== null,
-          linked: (await one<{ id: string }[]>("SELECT public.get_event_tasks($1) v", [event])).map((t) => t.id),
+          linked: (await one<{ id: string }[]>("SELECT public.get_event_tasks($1) v", [event])).map(
+            (t) => t.id,
+          ),
           meeting: (await one<Row | null>("SELECT public.get_meeting($1) v", [a.meeting])) !== null,
           rows: await q(
             `SELECT (SELECT count(*)::int FROM meeting_agenda_items WHERE meeting_id=$1) items,
@@ -170,15 +182,30 @@ describe("a trustee reads what a volunteer of the branch reads", () => {
                     (SELECT count(*)::int FROM tasks WHERE id=$3) tasks`,
             [a.meeting, event, a.task],
           ),
-          scopes: (await one<{ branch_id: string }[]>("SELECT public.list_my_work_scopes() v")).map((s) => s.branch_id),
+          scopes: (await one<{ branch_id: string }[]>("SELECT public.list_my_work_scopes() v")).map(
+            (s) => s.branch_id,
+          ),
         };
       };
       const volunteer = await view(ids.vol1);
-      expect(volunteer).toMatchObject({ task: a.task, group: true, meeting: true, linked: [a.task] });
-      expect(volunteer.rows).toEqual([{ items: 1, decisions: 1, files: 1, invitees: 2, events: 1, tasks: 1 }]);
+      expect(volunteer).toMatchObject({
+        task: a.task,
+        group: true,
+        meeting: true,
+        linked: [a.task],
+      });
+      expect(volunteer.rows).toEqual([
+        { items: 1, decisions: 1, files: 1, invitees: 2, events: 1, tasks: 1 },
+      ]);
       expect(await view(ids.tr1)).toEqual(volunteer);
       // A trustee of another branch sees none of it.
-      expect(await view(ids.tr2)).toMatchObject({ task: null, groups: [], group: false, linked: [], meeting: false });
+      expect(await view(ids.tr2)).toMatchObject({
+        task: null,
+        groups: [],
+        group: false,
+        linked: [],
+        meeting: false,
+      });
     }));
 
   it("a meeting they are not invited to stays hidden, as for volunteers", () =>
@@ -198,13 +225,22 @@ describe("a trustee writes nothing", () => {
       const a = await branchActivity();
       await as(ids.tr1);
       const refused: [string, unknown[]][] = [
-        ["SELECT public.create_task($1::jsonb)", [json({ scope: "branch", branch_id: ids.b1, title: "Mine" })]],
+        [
+          "SELECT public.create_task($1::jsonb)",
+          [json({ scope: "branch", branch_id: ids.b1, title: "Mine" })],
+        ],
         ["SELECT public.update_task($1,$2::jsonb)", [a.own, json({ title: "Renamed" })]],
         ["SELECT public.update_task($1,$2::jsonb)", [a.task, json({ title: "Renamed" })]],
         ["SELECT public.delete_task($1)", [a.own]],
-        ["SELECT public.create_task_group($1::jsonb)", [json({ scope: "branch", branch_id: ids.b1, title: "All" })]],
+        [
+          "SELECT public.create_task_group($1::jsonb)",
+          [json({ scope: "branch", branch_id: ids.b1, title: "All" })],
+        ],
         ["SELECT public.update_task_group($1,$2::jsonb)", [a.group, json({ title: "Renamed" })]],
-        ["SELECT public.set_task_group_members($1,$2::jsonb,'[]'::jsonb)", [a.group, json([ids.tr1])]],
+        [
+          "SELECT public.set_task_group_members($1,$2::jsonb,'[]'::jsonb)",
+          [a.group, json([ids.tr1])],
+        ],
         ["SELECT public.delete_task_group($1)", [a.group]],
         ["SELECT public.create_meeting($1::jsonb)", [meetingIn({})]],
         ["SELECT public.update_meeting($1,$2::jsonb)", [a.meeting, json({ title: "Renamed" })]],
@@ -225,7 +261,8 @@ describe("a trustee writes nothing", () => {
         ["SELECT public.set_task_status($1,'done')", [a.task]],
         ["SELECT public.add_task_note($1,'Hello','[]'::jsonb)", [a.task]],
       ];
-      for (const [sql, params] of refused) await fails(sql, params, /Not allowed|not allowed|cannot/);
+      for (const [sql, params] of refused)
+        await fails(sql, params, /Not allowed|not allowed|cannot/);
       // Storage: no upload slot means no upload, and the policy helper refuses the meeting.
       expect(await one("SELECT public.can_edit_meeting($1) v", [a.meeting])).toBe(false);
       // No create pickers.
@@ -242,8 +279,12 @@ describe("a trustee writes nothing", () => {
         can_set_status: true,
         can_archive: false,
       });
-      expect(await one("SELECT public.set_task_status($1,'in_progress') v", [a.own])).toBe("in_progress");
-      const note = await one<string>("SELECT public.add_task_note($1,'Started','[]'::jsonb) v", [a.own]);
+      expect(await one("SELECT public.set_task_status($1,'in_progress') v", [a.own])).toBe(
+        "in_progress",
+      );
+      const note = await one<string>("SELECT public.add_task_note($1,'Started','[]'::jsonb) v", [
+        a.own,
+      ]);
       await one("SELECT public.update_task_note($1,'Started today','[]'::jsonb) v", [note]);
       expect(await one("SELECT public.set_task_status($1,'done') v", [a.own])).toBe("done");
       await fails("SELECT public.archive_task($1,true)", [a.own], "Not allowed");
@@ -263,9 +304,20 @@ describe("a trustee writes nothing", () => {
       await as(ids.bm1);
       await db.query("SELECT public.set_user_role($1,'trustee')", [ids.vol1]);
       await as(ids.vol1);
-      expect(await one<Task>("SELECT public.get_task($1) v", [task])).toMatchObject({ can_edit: false, can_set_status: true });
-      await fails("SELECT public.update_task($1,$2::jsonb)", [task, json({ title: "X" })], "Not allowed");
-      await fails("SELECT public.update_meeting($1,$2::jsonb)", [meeting, json({ title: "X" })], "Not allowed");
+      expect(await one<Task>("SELECT public.get_task($1) v", [task])).toMatchObject({
+        can_edit: false,
+        can_set_status: true,
+      });
+      await fails(
+        "SELECT public.update_task($1,$2::jsonb)",
+        [task, json({ title: "X" })],
+        "Not allowed",
+      );
+      await fails(
+        "SELECT public.update_meeting($1,$2::jsonb)",
+        [meeting, json({ title: "X" })],
+        "Not allowed",
+      );
     }));
 });
 
@@ -273,14 +325,30 @@ describe("assignment", () => {
   it("the Branch Manager assigns a trustee (the trustee is told); volunteers and the RD cannot", () =>
     tx(async () => {
       await as(ids.bm1);
-      expect((await one<{ id: string }[]>("SELECT public.list_task_people('branch',$1,NULL) v", [ids.b1])).map((p) => p.id))
-        .toContain(ids.tr1);
-      const task = await createTask({ title: "Read the accounts", assignee_ids: [ids.tr1, ids.vol1] });
-      expect((await noticesOf(ids.tr1)).filter((n) => n.kind === "task_assigned").map((n) => n.entity_id)).toEqual([task]);
+      expect(
+        (
+          await one<{ id: string }[]>("SELECT public.list_task_people('branch',$1,NULL) v", [
+            ids.b1,
+          ])
+        ).map((p) => p.id),
+      ).toContain(ids.tr1);
+      const task = await createTask({
+        title: "Read the accounts",
+        assignee_ids: [ids.tr1, ids.vol1],
+      });
+      expect(
+        (await noticesOf(ids.tr1))
+          .filter((n) => n.kind === "task_assigned")
+          .map((n) => n.entity_id),
+      ).toEqual([task]);
 
       await as(ids.vol1);
       expect(
-        (await one<{ id: string }[]>("SELECT public.list_task_people('branch',$1,NULL) v", [ids.b1])).map((p) => p.id),
+        (
+          await one<{ id: string }[]>("SELECT public.list_task_people('branch',$1,NULL) v", [
+            ids.b1,
+          ])
+        ).map((p) => p.id),
       ).not.toContain(ids.tr1);
       await fails(
         "SELECT public.create_task($1::jsonb)",
@@ -290,7 +358,11 @@ describe("assignment", () => {
 
       await as(ids.rd);
       expect(
-        (await one<{ id: string }[]>("SELECT public.list_task_people('branch',$1,NULL) v", [ids.b1])).map((p) => p.id),
+        (
+          await one<{ id: string }[]>("SELECT public.list_task_people('branch',$1,NULL) v", [
+            ids.b1,
+          ])
+        ).map((p) => p.id),
       ).not.toContain(ids.tr1);
       await fails(
         "SELECT public.create_task($1::jsonb)",
@@ -303,7 +375,12 @@ describe("assignment", () => {
         json({ title: "Read the 2026 accounts", assignee_ids: [ids.tr1, ids.vol1] }),
       ]);
       await as(null);
-      expect(await one("SELECT count(*)::int v FROM task_assignees WHERE task_id=$1 AND user_id=$2", [task, ids.tr1])).toBe(1);
+      expect(
+        await one("SELECT count(*)::int v FROM task_assignees WHERE task_id=$1 AND user_id=$2", [
+          task,
+          ids.tr1,
+        ]),
+      ).toBe(1);
     }));
 
   it("@all groups from the Branch Manager, the RD and a volunteer never include trustees and notify them of nothing", () =>
@@ -330,17 +407,31 @@ describe("assignment", () => {
     tx(async () => {
       await as(ids.vol1);
       expect(
-        (await one<{ id: string }[]>("SELECT public.list_meeting_people('branch',$1,NULL) v", [ids.b1])).map((p) => p.id),
+        (
+          await one<{ id: string }[]>("SELECT public.list_meeting_people('branch',$1,NULL) v", [
+            ids.b1,
+          ])
+        ).map((p) => p.id),
       ).not.toContain(ids.tr1);
-      await fails("SELECT public.create_meeting($1::jsonb)", [meetingIn({ invitee_ids: [ids.tr1] })], "Invitee is not in this scope");
+      await fails(
+        "SELECT public.create_meeting($1::jsonb)",
+        [meetingIn({ invitee_ids: [ids.tr1] })],
+        "Invitee is not in this scope",
+      );
       for (const manager of [ids.bm1, ids.rd]) {
         await as(manager);
         expect(
-          (await one<{ id: string }[]>("SELECT public.list_meeting_people('branch',$1,NULL) v", [ids.b1])).map((p) => p.id),
+          (
+            await one<{ id: string }[]>("SELECT public.list_meeting_people('branch',$1,NULL) v", [
+              ids.b1,
+            ])
+          ).map((p) => p.id),
         ).toContain(ids.tr1);
         await createMeeting({ invitee_ids: [ids.tr1] });
       }
-      expect((await noticesOf(ids.tr1)).filter((n) => n.kind === "meeting_invited")).toHaveLength(2);
+      expect((await noticesOf(ids.tr1)).filter((n) => n.kind === "meeting_invited")).toHaveLength(
+        2,
+      );
     }));
 });
 
@@ -348,17 +439,26 @@ describe("requests and registration", () => {
   it("a trustee asks their Branch Manager or RD for a task, a meeting and an event, and registers for events", () =>
     tx(async () => {
       await as(ids.tr1);
-      expect((await one<{ id: string }[]>("SELECT public.list_request_targets() v")).map((t) => t.id).sort()).toEqual(
-        [ids.bm1, ids.rd].sort(),
-      );
-      await one("SELECT public.submit_task_request($1::jsonb) v", [json({ target_id: ids.bm1, title: "Audit the books" })]);
-      const meetingRequest = await one<string>("SELECT public.submit_meeting_request($1::jsonb) v", [
-        json({
-          target_id: ids.bm1,
-          topic: "Board review",
-          proposed_times: [{ starts_at: "2027-04-02T17:00:00Z", ends_at: "2027-04-02T18:00:00Z" }],
-        }),
+      expect(
+        (await one<{ id: string }[]>("SELECT public.list_request_targets() v"))
+          .map((t) => t.id)
+          .sort(),
+      ).toEqual([ids.bm1, ids.rd].sort());
+      await one("SELECT public.submit_task_request($1::jsonb) v", [
+        json({ target_id: ids.bm1, title: "Audit the books" }),
       ]);
+      const meetingRequest = await one<string>(
+        "SELECT public.submit_meeting_request($1::jsonb) v",
+        [
+          json({
+            target_id: ids.bm1,
+            topic: "Board review",
+            proposed_times: [
+              { starts_at: "2027-04-02T17:00:00Z", ends_at: "2027-04-02T18:00:00Z" },
+            ],
+          }),
+        ],
+      );
       await one("SELECT public.submit_event_request($1::jsonb) v", [
         json({
           title: "Trustee dinner",
@@ -371,7 +471,9 @@ describe("requests and registration", () => {
           expected_attendees: 20,
         }),
       ]);
-      expect(await one<{ status: string }>("SELECT public.register_for_event($1) v", [event])).toMatchObject({
+      expect(
+        await one<{ status: string }>("SELECT public.register_for_event($1) v", [event]),
+      ).toMatchObject({
         status: "registered",
       });
       // Approving the meeting request invites the trustee.
@@ -388,7 +490,9 @@ describe("requests and registration", () => {
       ]);
       await as(ids.tr1);
       expect(
-        (await one<{ invitees: { id: string }[] }>("SELECT public.get_meeting($1) v", [created])).invitees.map((i) => i.id),
+        (
+          await one<{ invitees: { id: string }[] }>("SELECT public.get_meeting($1) v", [created])
+        ).invitees.map((i) => i.id),
       ).toEqual([ids.tr1]);
     }));
 });
@@ -407,22 +511,36 @@ describe("roles: approval and switching", () => {
   };
   const rolesOf = async (user: string) => {
     await as(null);
-    return (await q<{ role: string }>("SELECT role::text FROM user_roles WHERE user_id=$1", [user])).map((r) => r.role);
+    return (
+      await q<{ role: string }>("SELECT role::text FROM user_roles WHERE user_id=$1", [user])
+    ).map((r) => r.role);
   };
   const audit = async (user: string) => {
     await as(null);
-    return q("SELECT actor_id, action, old_value, new_value FROM user_audit_log WHERE target_id=$1 AND action='role_change' ORDER BY created_at, new_value", [user]);
+    return q(
+      "SELECT actor_id, action, old_value, new_value FROM user_audit_log WHERE target_id=$1 AND action='role_change' ORDER BY created_at, new_value",
+      [user],
+    );
   };
 
   it("the Branch Manager approves an application as a trustee (audited, told as a trustee)", () =>
     tx(async () => {
       const app = await apply();
       await as(ids.bm1);
-      await fails("SELECT public.approve_volunteer_application($1,'branch_manager')", [app], "Choose Volunteer or Trustee");
+      await fails(
+        "SELECT public.approve_volunteer_application($1,'branch_manager')",
+        [app],
+        "Choose Volunteer or Trustee",
+      );
       await db.query("SELECT public.approve_volunteer_application($1,'trustee')", [app]);
       expect(await rolesOf(ids.fol)).toEqual(["trustee"]);
-      expect(await audit(ids.fol)).toEqual([{ actor_id: ids.bm1, action: "role_change", old_value: "follower", new_value: "trustee" }]);
-      expect((await noticesOf(ids.fol)).find((n) => n.kind === "volunteer_application_approved")?.payload).toMatchObject({
+      expect(await audit(ids.fol)).toEqual([
+        { actor_id: ids.bm1, action: "role_change", old_value: "follower", new_value: "trustee" },
+      ]);
+      expect(
+        (await noticesOf(ids.fol)).find((n) => n.kind === "volunteer_application_approved")
+          ?.payload,
+      ).toMatchObject({
         role: "trustee",
       });
     }));
@@ -448,25 +566,48 @@ describe("roles: approval and switching", () => {
         { actor_id: ids.bm1, action: "role_change", old_value: "trustee", new_value: "volunteer" },
       ]);
       await as(ids.bm1);
-      await fails("SELECT public.set_user_role($1,'branch_manager')", [ids.vol1], "Branch Managers can only switch between Volunteer and Trustee");
-      await fails("SELECT public.set_user_role($1,'volunteer')", [ids.tr2], "You cannot manage this user");
+      await fails(
+        "SELECT public.set_user_role($1,'branch_manager')",
+        [ids.vol1],
+        "Branch Managers can only switch between Volunteer and Trustee",
+      );
+      await fails(
+        "SELECT public.set_user_role($1,'volunteer')",
+        [ids.tr2],
+        "You cannot manage this user",
+      );
       await as(ids.vol1);
-      await fails("SELECT public.set_user_role($1,'volunteer')", [ids.tr1], "Only active Regional Directors can change roles");
+      await fails(
+        "SELECT public.set_user_role($1,'volunteer')",
+        [ids.tr1],
+        "Only active Regional Directors can change roles",
+      );
       await as(ids.tr1);
-      await fails("SELECT public.set_user_role($1,'trustee')", [ids.vol1b], "Only active Regional Directors can change roles");
+      await fails(
+        "SELECT public.set_user_role($1,'trustee')",
+        [ids.vol1b],
+        "Only active Regional Directors can change roles",
+      );
       // The RD may set Trustee too, and make a trustee a Branch Manager.
       await as(ids.rd);
       await db.query("SELECT public.set_user_role($1,'trustee')", [ids.vol1b]);
       await db.query("SELECT public.set_user_role($1,'branch_manager')", [ids.tr2]);
-      expect([await rolesOf(ids.vol1b), await rolesOf(ids.tr2)]).toEqual([["trustee"], ["branch_manager"]]);
+      expect([await rolesOf(ids.vol1b), await rolesOf(ids.tr2)]).toEqual([
+        ["trustee"],
+        ["branch_manager"],
+      ]);
     }));
 
   it("the Branch Manager reads and manages trustees of the branch like volunteers (Users page)", () =>
     tx(async () => {
       await as(ids.bm1);
-      expect((await q<{ id: string }>("SELECT id FROM profiles WHERE id=$1", [ids.tr1])).length).toBe(1);
+      expect(
+        (await q<{ id: string }>("SELECT id FROM profiles WHERE id=$1", [ids.tr1])).length,
+      ).toBe(1);
       await as(ids.bm2);
-      expect((await q<{ id: string }>("SELECT id FROM profiles WHERE id=$1", [ids.tr1])).length).toBe(0);
+      expect(
+        (await q<{ id: string }>("SELECT id FROM profiles WHERE id=$1", [ids.tr1])).length,
+      ).toBe(0);
     }));
 });
 
@@ -474,22 +615,32 @@ describe("National Coordinator counts", () => {
   it("trustees are counted separately and never named", () =>
     tx(async () => {
       await as(ids.nc, "aal2");
-      const dashboard = await one<{ volunteers: number; trustees: number }>("SELECT public.get_nc_dashboard() v");
+      const dashboard = await one<{ volunteers: number; trustees: number }>(
+        "SELECT public.get_nc_dashboard() v",
+      );
       // Members: rd, bm1, bm2, vol1, vol1b; trustees: tr1, tr2.
       expect(dashboard).toMatchObject({ volunteers: 5, trustees: 2 });
-      const tree = await one<{ id: string; branches: { id: string; volunteers: number; trustees: number }[] }[]>(
-        "SELECT public.get_regions_tree() v",
-      );
-      expect(tree.find((r) => r.id === ids.region)!.branches.map((b) => [b.id, b.volunteers, b.trustees])).toEqual([
+      const tree = await one<
+        { id: string; branches: { id: string; volunteers: number; trustees: number }[] }[]
+      >("SELECT public.get_regions_tree() v");
+      expect(
+        tree
+          .find((r) => r.id === ids.region)!
+          .branches.map((b) => [b.id, b.volunteers, b.trustees]),
+      ).toEqual([
         [ids.b1, 2, 1],
         [ids.b2, 0, 1],
       ]);
       const map = await one<{ id: string; trustees: number }[]>("SELECT public.get_branch_map() v");
-      expect(map.filter((b) => b.id === ids.b1 || b.id === ids.b2).map((b) => [b.id, b.trustees])).toEqual([
+      expect(
+        map.filter((b) => b.id === ids.b1 || b.id === ids.b2).map((b) => [b.id, b.trustees]),
+      ).toEqual([
         [ids.b1, 1],
         [ids.b2, 1],
       ]);
       // No trustee names: the profiles stay unreadable for the NC.
-      expect(await q("SELECT id FROM profiles WHERE id IN ($1,$2)", [ids.tr1, ids.tr2])).toEqual([]);
+      expect(await q("SELECT id FROM profiles WHERE id IN ($1,$2)", [ids.tr1, ids.tr2])).toEqual(
+        [],
+      );
     }));
 });

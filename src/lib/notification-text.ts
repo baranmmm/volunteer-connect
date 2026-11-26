@@ -32,7 +32,9 @@ export function notificationText(n: Notification, t: TFunction, lang: Lang = cur
   const key =
     n.kind === "task_reminder" && p.reminder === "overdue"
       ? "notifications.kinds.task_reminder_overdue"
-      : notificationKey(n.kind);
+      : n.kind === "volunteer_application_approved" && p.role === "trustee"
+        ? "notifications.kinds.volunteer_application_approved_trustee"
+        : notificationKey(n.kind);
   return t(key, {
     actor: n.actor_name || t("notifications.someone"),
     title: n.title,

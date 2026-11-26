@@ -29,9 +29,8 @@ export const Route = createFileRoute("/_app/meetings")({
 function MeetingsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { scopes } = useWorkScopes();
+  const { canCreate } = useWorkScopes();
   const [creating, setCreating] = useState(false);
-  const canCreate = scopes.length > 0;
   return (
     <div className="min-w-0 space-y-6">
       <header className="flex min-w-0 flex-wrap items-center justify-between gap-3">

@@ -5,7 +5,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { TASK_STATUSES, isOverdue, londonDay, type TaskDetail, type TaskStatus } from "@/lib/tasks";
+import {
+  TASK_STATUSES,
+  canArchive,
+  isOverdue,
+  londonDay,
+  type TaskDetail,
+  type TaskStatus,
+} from "@/lib/tasks";
 import { deleteTask, getTask, setTaskReminderMute } from "@/lib/tasks.functions";
 import { useMarkNoticesRead } from "@/lib/use-work-notices";
 import { translateError } from "@/lib/i18n";
@@ -326,7 +333,7 @@ function PanelDetail({
           />
         </div>
       )}
-      {task.can_set_status && (task.archived_at || task.status === "done") && (
+      {canArchive(task) && (task.archived_at || task.status === "done") && (
         <div className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
             {task.archived_at ? t("tasks.archive.archivedHint") : t("tasks.archive.hint")}

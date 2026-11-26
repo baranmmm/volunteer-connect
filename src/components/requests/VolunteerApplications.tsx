@@ -19,6 +19,8 @@ import {
   type ApplicationInput,
   type MyApplication,
   type ReviewApplication,
+  APPROVAL_ROLES,
+  type ApprovalRole,
 } from "@/lib/volunteer-applications";
 import { formatDate, translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
@@ -279,7 +281,9 @@ function ReviewRow({ application: a }: { application: ReviewApplication }) {
   const invalidate = useInvalidate();
   const [declining, setDeclining] = useState(false),
     [reason, setReason] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    // The reviewer chooses the role: Volunteer (default) or Trustee (reads branch activity, changes nothing).
+    [role, setRole] = useState<ApprovalRole>("volunteer");
   async function act(fn: () => Promise<unknown>, message: string) {
     setBusy(true);
     try {
@@ -344,11 +348,50 @@ function ReviewRow({ application: a }: { application: ReviewApplication }) {
         {field("phone")}
       </dl>
       {a.status === "submitted" && !declining && (
+        <fieldset
+          data-testid="volunteer-application-approve-role"
+          data-value={role}
+          aria-describedby={`approve-role-hint-${a.id}`}
+          className="space-y-2"
+        >
+          <legend className="text-sm font-medium">{t("applications.approveAs")}</legend>
+          <div className="flex flex-wrap gap-4">
+            {APPROVAL_ROLES.map((value) => (
+              <label key={value} className="flex min-h-11 items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name={`approve-role-${a.id}`}
+                  value={value}
+                  checked={role === value}
+                  onChange={() => setRole(value)}
+                  data-testid={`volunteer-application-approve-role-${value}`}
+                  className="size-4"
+                />
+                {t(`common.roles.${value}`)}
+              </label>
+            ))}
+          </div>
+          <p
+            id={`approve-role-hint-${a.id}`}
+            data-testid="volunteer-application-approve-role-hint"
+            className="text-xs text-muted-foreground"
+          >
+            {t("common.trusteeHint")}
+          </p>
+        </fieldset>
+      )}
+      {a.status === "submitted" && !declining && (
         <div className="flex flex-wrap gap-2">
           <Button
             data-testid="volunteer-application-approve"
+            data-role={role}
             disabled={busy}
-            onClick={() => void act(() => approveApplication(a.id), "applications.approved")}
+            onClick={() =>
+              void act(
+                () => approveApplication(a.id, role),
+                role === "trustee" ? "applications.approvedTrustee" : "applications.approved",
+              )
+            }
           >
             <CircleCheck />
             {t("applications.approve")}

@@ -37,6 +37,7 @@ describe("unified Requests views", () => {
     expect(items[0]?.roles).toEqual([
       "follower",
       "volunteer",
+      "trustee",
       "branch_manager",
       "regional_director",
       "national_coordinator",

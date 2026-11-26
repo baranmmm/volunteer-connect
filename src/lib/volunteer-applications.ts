@@ -115,8 +115,11 @@ export const submitApplication = async (input: ApplicationInput) =>
   );
 export const withdrawApplication = async (id: string) =>
   rpc((await loadSupabase()).rpc("withdraw_volunteer_application", { p_id: id }));
-export const approveApplication = async (id: string) =>
-  rpc((await loadSupabase()).rpc("approve_volunteer_application", { p_id: id }));
+/** The role an approved applicant gets: Volunteer, or Trustee (reads branch activity, changes nothing). */
+export const APPROVAL_ROLES = ["volunteer", "trustee"] as const;
+export type ApprovalRole = (typeof APPROVAL_ROLES)[number];
+export const approveApplication = async (id: string, role: ApprovalRole = "volunteer") =>
+  rpc((await loadSupabase()).rpc("approve_volunteer_application", { p_id: id, p_role: role }));
 export const declineApplication = async (id: string, reason: string) =>
   rpc((await loadSupabase()).rpc("decline_volunteer_application", { p_id: id, p_reason: reason }));
 export const deleteApplication = async (id: string) =>

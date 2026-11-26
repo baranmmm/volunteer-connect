@@ -16,6 +16,7 @@ import {
   TASK_STATUSES,
   addDays,
   archivableDoneIds,
+  canArchive,
   isOverdue,
   mineFirst,
   type Task,
@@ -139,7 +140,7 @@ function UnarchiveButton({ task }: { task: Task }) {
   const { t } = useTranslation();
   const archive = useTaskArchive();
   const [busy, setBusy] = useState(false);
-  if (!task.archived_at || !task.can_set_status) return null;
+  if (!task.archived_at || !canArchive(task)) return null;
   return (
     <Button
       type="button"
@@ -668,7 +669,7 @@ function TaskCard({
         </span>
         <AssigneeNames people={task.assignees} testId="task-card-assignees" />
       </div>
-      {task.archived_at && task.can_set_status && (
+      {task.archived_at && canArchive(task) && (
         <div className="pt-1">
           <UnarchiveButton task={task} />
         </div>
@@ -989,7 +990,7 @@ function TaskListRow({
           className="shrink-0 rounded-full px-2 py-0 text-[11px]"
         />
       )}
-      {task.archived_at && task.can_set_status && (
+      {task.archived_at && canArchive(task) && (
         <div className="shrink-0">
           <UnarchiveButton task={task} />
         </div>

@@ -14,6 +14,7 @@ export const mapBranch = z.object({
   longitude: z.number().nullable(),
   managers: z.array(z.string()),
   volunteers: z.number(),
+  trustees: z.number().default(0),
   followers: z.number(),
   upcoming_events: z.number(),
   open_tasks: z.number(),

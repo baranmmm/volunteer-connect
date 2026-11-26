@@ -28,7 +28,8 @@
       "branch_manager": "Branch Manager",
       "volunteer": "Volunteer",
       "follower": "Follower",
-      "national_coordinator": "National Coordinator"
+      "national_coordinator": "National Coordinator",
+      "trustee": "Trustee"
     },
     "status": {
       "pending": "Pending",
@@ -38,7 +39,8 @@
     "hubName": "Volunteer Hub",
     "opensInNewTab": "(opens in a new tab)",
     "goHomeLabel": "Go to home",
-    "enterToSave": "Enter saves, Shift+Enter adds a new line."
+    "enterToSave": "Enter saves, Shift+Enter adds a new line.",
+    "trusteeHint": "Trustees can follow all branch activity but cannot change it."
   },
   "navigation": {
     "main": "Main",
@@ -167,7 +169,7 @@
     "viewDetails": "View details",
     "viewDetailsFor": "View details for {{name}}",
     "volunteerCounts": "Volunteers by branch",
-    "branchCount": "{{branch}} ({{region}}): {{volunteers}} volunteers, {{followers}} followers"
+    "branchCount": "{{branch}} ({{region}}): {{volunteers}} volunteers, {{trustees}} trustees, {{followers}} followers"
   },
   "userDetails": {
     "confirmEventTitle": "Type the event title to confirm: {{title}}",
@@ -305,7 +307,8 @@
     },
     "roleExplanation": {
       "follower": "You follow {{branch}}: you hear about its events and can attend them.",
-      "volunteer": "You give your time to {{branch}}: you take on tasks, join meetings and help run events."
+      "volunteer": "You give your time to {{branch}}: you take on tasks, join meetings and help run events.",
+      "trustee": "You are a trustee of {{branch}}: you follow its events, tasks and the meetings you are invited to, without changing them."
     }
   },
   "history": {
@@ -430,7 +433,9 @@
     "taskGroupNoMembers": "Nobody in this branch can be assigned.",
     "taskGroupAlreadyMember": "This person is already in the group.",
     "taskGroupLastMember": "A task group needs at least one member. Delete the group instead.",
-    "carryOverItem": "This agenda item can no longer be carried over. Reload and try again."
+    "carryOverItem": "This agenda item can no longer be carried over. Reload and try again.",
+    "chooseVolunteerOrTrustee": "Choose Volunteer or Trustee.",
+    "trusteeSwitchOnly": "Branch Managers can only switch members between Volunteer and Trustee."
   },
   "events": {
     "title": "Calendar & Events",
@@ -1124,7 +1129,9 @@
     "stripLabel": "Your volunteer status",
     "stripFollowing": "You're following {{branch}}",
     "stripPending": "Your volunteer application is waiting for approval",
-    "stripDeclined": "Your volunteer application to {{branch}} was not approved."
+    "stripDeclined": "Your volunteer application to {{branch}} was not approved.",
+    "approveAs": "Approve as",
+    "approvedTrustee": "Application approved: the applicant is now a trustee."
   },
   "donate": {
     "title": "Support our work",
@@ -1142,7 +1149,8 @@
       "registrations_30d": "Registrations (last 30 days)",
       "attended_30d": "Attended (last 30 days)",
       "pending_requests": "Pending requests",
-      "open_applications": "Open volunteer applications"
+      "open_applications": "Open volunteer applications",
+      "trustees": "Trustees"
     }
   },
   "regions": {
@@ -1160,7 +1168,7 @@
     "managers": "Branch Managers",
     "nobody": "None yet",
     "regionEvents": "{{count}} upcoming region-wide events",
-    "branchCounts": "{{volunteers}} volunteers · {{followers}} followers · {{events}} upcoming events",
+    "branchCounts": "{{volunteers}} volunteers · {{trustees}} trustees · {{followers}} followers · {{events}} upcoming events",
     "confirmDeleteRegion": "Delete {{name}} and its branches? It can be restored from the Recycle Bin for 30 days.",
     "confirmDeleteBranch": "Delete {{name}}? It can be restored from the Recycle Bin for 30 days.",
     "viewLabel": "View",
@@ -1189,7 +1197,8 @@
         "volunteers": "Volunteers",
         "followers": "Followers",
         "events": "Upcoming events",
-        "tasks": "Open tasks"
+        "tasks": "Open tasks",
+        "trustees": "Trustees"
       },
       "dashboardTitle": "Branch map",
       "dashboardText_one": "{{count}} branch across {{regions}} regions",
@@ -1579,7 +1588,8 @@
       "daily_digest_other": "Your daily summary: {{count}} updates",
       "task_note_added_many": "{{count}} new notes on: “{{title}}”",
       "volunteer_application_approved": "You're now a Dialogue Society volunteer at {{branch}}!",
-      "volunteer_application_declined": "Your volunteer application to {{branch}} was not approved. Note: {{reason}}"
+      "volunteer_application_declined": "Your volunteer application to {{branch}} was not approved. Note: {{reason}}",
+      "volunteer_application_approved_trustee": "You're now a Dialogue Society trustee at {{branch}}."
     },
     "taskStatus": {
       "todo": "To do",

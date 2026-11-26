@@ -333,11 +333,13 @@ function RegionsPage() {
                   <p
                     data-testid="regions-tree-branch-counts"
                     data-volunteers={b.volunteers}
+                    data-trustees={b.trustees}
                     data-followers={b.followers}
                     className="text-sm text-muted-foreground"
                   >
                     {t("regions.branchCounts", {
                       volunteers: b.volunteers,
+                      trustees: b.trustees,
                       followers: b.followers,
                       events: b.upcoming_events,
                     })}
@@ -403,11 +405,13 @@ function RegionsPage() {
                   <p
                     data-testid="regions-tree-branch-counts"
                     data-volunteers={b.volunteers}
+                    data-trustees={b.trustees}
                     data-followers={b.followers}
                     className="text-sm text-muted-foreground"
                   >
                     {t("regions.branchCounts", {
                       volunteers: b.volunteers,
+                      trustees: b.trustees,
                       followers: b.followers,
                       events: b.upcoming_events,
                     })}

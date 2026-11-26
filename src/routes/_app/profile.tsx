@@ -59,8 +59,8 @@ function ProfilePage() {
   const roleExplanation =
     role === "follower" && followedNames
       ? t("profile.roleExplanation.follower", { branch: followedNames })
-      : role === "volunteer" && profile.branches?.name
-        ? t("profile.roleExplanation.volunteer", { branch: profile.branches.name })
+      : (role === "volunteer" || role === "trustee") && profile.branches?.name
+        ? t(`profile.roleExplanation.${role}`, { branch: profile.branches.name })
         : null;
 
   async function changeLanguage(value: string) {

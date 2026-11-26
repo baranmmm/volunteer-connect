@@ -69,7 +69,7 @@ export async function setStatus(userId: string, status: "active" | "inactive") {
 
 export async function setRole(
   userId: string,
-  role: "volunteer" | "branch_manager" | "regional_director",
+  role: "volunteer" | "trustee" | "branch_manager" | "regional_director",
   regionId?: string,
 ) {
   const { error } = await supabase.rpc("set_user_role", {
