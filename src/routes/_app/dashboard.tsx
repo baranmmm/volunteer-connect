@@ -29,6 +29,7 @@ import { STATUS_CARD, cancelledTitle } from "@/components/events/event-status-st
 import { HappeningNowBadge } from "@/components/events/HappeningNowBadge";
 import { MyRegistrationsCard } from "@/components/events/MyRegistrations";
 import { RequestNotices, WaitingForYouCard } from "@/components/requests/RequestDashboard";
+import { InstallAppBanner } from "@/components/app/InstallApp";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => pageHead("Dashboard", "Your volunteer dashboard."),
@@ -68,6 +69,7 @@ function Dashboard() {
   const welcome = follower && !!profile && !profile.welcome_seen_at;
   return (
     <div className="space-y-8">
+      <InstallAppBanner />
       {welcome ? (
         <WelcomeScreen />
       ) : (

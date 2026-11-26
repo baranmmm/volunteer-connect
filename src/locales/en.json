@@ -2253,5 +2253,40 @@
     "mapKeys": "Up and down arrows move between the branches, from north to south, and show each branch's event; Enter goes to that event. Left and right arrows move through the events.",
     "pastButton": "Past events",
     "pastJump": "Go to the earliest past event"
+  },
+  "installApp": {
+    "button": "Install app",
+    "title": "Install the app",
+    "bannerTitle": "Install the app for quick access",
+    "bannerText": "Open the hub from your home screen, like any other app.",
+    "dismiss": "Dismiss",
+    "done": "Got it",
+    "shareIcon": "Share icon",
+    "openInSafariTitle": "Open in Safari",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied. Paste it into Safari's address bar.",
+    "linkCopyFailed": "The link could not be copied. Please copy it from the address bar.",
+    "iosSafari": {
+      "intro": "Add the hub to your home screen in three steps.",
+      "step1": "Tap the Share button in Safari (at the bottom of the screen on iPhone, at the top on iPad):",
+      "step2": "Scroll down and tap Add to Home Screen:",
+      "step3": "Tap Add. The app appears on your home screen."
+    },
+    "iosOther": {
+      "intro": "On iPhone and iPad the app can be installed from Safari. Please open this page in Safari first.",
+      "step1": "Copy the link to this page.",
+      "step2": "Open Safari and paste the link into the address bar.",
+      "step3": "Tap Share, then Add to Home Screen:"
+    },
+    "androidMenu": {
+      "intro": "Add the hub to your home screen from the browser menu.",
+      "step1": "Open the browser menu (⋮).",
+      "step2": "Tap Install or Add to Home screen."
+    },
+    "macSafari": {
+      "intro": "Add the hub to your Dock from Safari.",
+      "step1": "In the menu bar, choose File, then Add to Dock.",
+      "step2": "Click Add. The app opens from your Dock."
+    }
   }
 }
