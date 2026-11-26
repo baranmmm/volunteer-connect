@@ -1,5 +1,6 @@
 // The email sender (server only): claims queued email_outbox rows and sends them through Brevo, within the daily limit
-// (claim_email_batch: 300 a day, London day; transactional before reminders before announcements).
+// (claim_email_batch: email_daily_limit() = 280 a London day, leaving 20 of Brevo's 300 for Supabase Auth emails;
+// transactional, then notice emails, reminders, announcements, and the daily summary last).
 // * EMAIL_TRANSPORT=capture (the e2e app server, never production): emails are rendered and stored on the row
 //   (payload.captured) instead of being sent.
 // * Without BREVO_API_KEY / EMAIL_FROM nothing is claimed: the rows stay pending until the sender is configured.
@@ -13,7 +14,7 @@ import {
   type BrevoConfig,
   type SenderAddress,
 } from "./brevo.server";
-import { appOrigin, emailLink } from "./links.server";
+import { appOrigin, emailLink, isNoticeEmailType, noticeUnsubscribeLinks } from "./links.server";
 import {
   isEmailTemplate,
   renderEmail,
@@ -25,7 +26,9 @@ import {
 
 type Admin = SupabaseClient<Database>;
 type ClaimedRow = Database["public"]["Functions"]["claim_email_batch"]["Returns"][number];
-export type FlushOptions = { maxPriority?: 1 | 2 | 3; max?: number; origin?: string | null };
+/** Priorities (email_priority): 1 transactional, 2 notice emails, 3 reminders, 4 announcements, 5 daily summaries. */
+export type EmailPriority = 1 | 2 | 3 | 4 | 5;
+export type FlushOptions = { maxPriority?: EmailPriority; max?: number; origin?: string | null };
 export type FlushResult = { sent: number; skipped: number; failed: number };
 
 const TIME_BUDGET_MS = 20000;
@@ -181,8 +184,69 @@ async function prepare(
       },
     };
   }
-  if (row.template === "task_reminder") return { ok: true, ctx: base };
+  if (
+    row.template === "task_reminder" ||
+    row.template === "daily_digest" ||
+    row.template === "notice"
+  )
+    return prepareMemberNotice(admin, row, origin, base);
   return { ok: false, skip: "unknown_template" };
+}
+
+/**
+ * Member notice emails: the member's language and (for 'notice') the notice at send time (notice_email_context); a
+ * notice that was read, removed or whose email was turned off since is skipped. Each email gets its type's signed
+ * "stop these emails" link (the daily summary one per type in it).
+ */
+async function prepareMemberNotice(
+  admin: Admin,
+  row: ClaimedRow,
+  origin: string,
+  base: RenderContext,
+): Promise<Prepared> {
+  if (!row.user_id) return { ok: false, skip: "no_recipient" };
+  const { data, error } = await admin.rpc("notice_email_context", { p_id: row.id });
+  if (error) throw new Error("context_unavailable");
+  const context = asRecord(data);
+  if (!data || context["applies"] === false) return { ok: false, skip: "no_longer_applies" };
+  const language = context["language"] === "tr" ? "tr" : "en";
+  const ctx: RenderContext = { ...base, language };
+  const links: NonNullable<RenderContext["links"]> = {};
+  if (row.template === "daily_digest") {
+    const types = Array.isArray(base.payload?.["types"])
+      ? (base.payload["types"] as unknown[])
+      : [];
+    const typeLinks: Record<string, string> = {};
+    for (const type of types)
+      if (typeof type === "string" && isNoticeEmailType(type))
+        typeLinks[type] = (await noticeUnsubscribeLinks(row.user_id, type, origin)).page;
+    links.typeUnsubscribe = typeLinks;
+    return { ok: true, ctx: { ...ctx, links } };
+  }
+  const type = row.template === "task_reminder" ? "task_reminder" : context["type"];
+  if (typeof type !== "string" || !isNoticeEmailType(type))
+    return { ok: false, skip: "unknown_template" };
+  const unsubscribe = await noticeUnsubscribeLinks(row.user_id, type, origin);
+  links.noticeUnsubscribe = unsubscribe.page;
+  links.noticeUnsubscribeOneClick = unsubscribe.oneClick;
+  if (row.template === "task_reminder") return { ok: true, ctx: { ...ctx, links } };
+  const n = asRecord(context["notice"] as Json);
+  if (!n["kind"]) return { ok: false, skip: "no_longer_applies" };
+  return {
+    ok: true,
+    ctx: {
+      ...ctx,
+      payload: { ...(base.payload ?? {}), type },
+      links,
+      notice: {
+        kind: String(n["kind"]),
+        title: typeof n["title"] === "string" ? n["title"] : "",
+        link: typeof n["link"] === "string" ? n["link"] : "/dashboard",
+        payload: asRecord(n["payload"] as Json),
+        actor_name: typeof n["actor_name"] === "string" ? n["actor_name"] : null,
+      },
+    },
+  };
 }
 
 async function finish(
@@ -225,7 +289,7 @@ export async function flushOutbox(opts: FlushOptions = {}): Promise<FlushResult>
     while (!stop && remaining > 0 && Date.now() < deadline) {
       const claim = await admin.rpc("claim_email_batch", {
         p_max: Math.min(remaining, BATCH),
-        p_max_priority: opts.maxPriority ?? 3,
+        p_max_priority: opts.maxPriority ?? 5,
       });
       if (claim.error || !claim.data?.length) break;
       remaining -= claim.data.length;

@@ -33,6 +33,7 @@ import { Route as AppUsersRouteImport } from './routes/_app/users'
 import { Route as ApiIcsRouteImport } from './routes/api/ics'
 import { Route as ECancelRouteImport } from './routes/e.cancel'
 import { Route as EConfirmRouteImport } from './routes/e.confirm'
+import { Route as ENoticesRouteImport } from './routes/e.notices'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as PrivacyAttendeesRouteImport } from './routes/privacy_.attendees'
 import { Route as UpdatesConfirmRouteImport } from './routes/updates.confirm'
@@ -42,6 +43,7 @@ import { Route as AppMeetingsIdRouteImport } from './routes/_app/meetings_.$id'
 import { Route as AppUsersIdRouteImport } from './routes/_app/users_.$id'
 import { Route as ApiPublicCleanupDeletedEventsRouteImport } from './routes/api/public/cleanup-deleted-events'
 import { Route as ApiPublicLandingRouteImport } from './routes/api/public/landing'
+import { Route as ApiPublicNoticeUnsubscribeRouteImport } from './routes/api/public/notice-unsubscribe'
 import { Route as ApiPublicTaskRemindersRouteImport } from './routes/api/public/task-reminders'
 import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
 import { Route as ApiPublicEventImageIdRouteImport } from './routes/api/public/event-image.$id'
@@ -165,6 +167,11 @@ const EConfirmRoute = EConfirmRouteImport.update({
   path: '/e/confirm',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ENoticesRoute = ENoticesRouteImport.update({
+  id: '/e/notices',
+  path: '/e/notices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsIndexRoute = EventsIndexRouteImport.update({
   id: '/events/',
   path: '/events/',
@@ -211,6 +218,12 @@ const ApiPublicLandingRoute = ApiPublicLandingRouteImport.update({
   path: '/api/public/landing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicNoticeUnsubscribeRoute =
+  ApiPublicNoticeUnsubscribeRouteImport.update({
+    id: '/api/public/notice-unsubscribe',
+    path: '/api/public/notice-unsubscribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicTaskRemindersRoute = ApiPublicTaskRemindersRouteImport.update({
   id: '/api/public/task-reminders',
   path: '/api/public/task-reminders',
@@ -251,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/api/ics': typeof ApiIcsRoute
   '/e/cancel': typeof ECancelRoute
   '/e/confirm': typeof EConfirmRoute
+  '/e/notices': typeof ENoticesRoute
   '/privacy/attendees': typeof PrivacyAttendeesRoute
   '/updates/confirm': typeof UpdatesConfirmRoute
   '/updates/unsubscribe': typeof UpdatesUnsubscribeRoute
@@ -260,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/users/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
   '/api/public/landing': typeof ApiPublicLandingRoute
+  '/api/public/notice-unsubscribe': typeof ApiPublicNoticeUnsubscribeRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
@@ -288,6 +303,7 @@ export interface FileRoutesByTo {
   '/api/ics': typeof ApiIcsRoute
   '/e/cancel': typeof ECancelRoute
   '/e/confirm': typeof EConfirmRoute
+  '/e/notices': typeof ENoticesRoute
   '/privacy/attendees': typeof PrivacyAttendeesRoute
   '/updates/confirm': typeof UpdatesConfirmRoute
   '/updates/unsubscribe': typeof UpdatesUnsubscribeRoute
@@ -297,6 +313,7 @@ export interface FileRoutesByTo {
   '/users/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
   '/api/public/landing': typeof ApiPublicLandingRoute
+  '/api/public/notice-unsubscribe': typeof ApiPublicNoticeUnsubscribeRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
@@ -327,6 +344,7 @@ export interface FileRoutesById {
   '/api/ics': typeof ApiIcsRoute
   '/e/cancel': typeof ECancelRoute
   '/e/confirm': typeof EConfirmRoute
+  '/e/notices': typeof ENoticesRoute
   '/privacy_/attendees': typeof PrivacyAttendeesRoute
   '/updates/confirm': typeof UpdatesConfirmRoute
   '/updates/unsubscribe': typeof UpdatesUnsubscribeRoute
@@ -336,6 +354,7 @@ export interface FileRoutesById {
   '/_app/users_/$id': typeof AppUsersIdRoute
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
   '/api/public/landing': typeof ApiPublicLandingRoute
+  '/api/public/notice-unsubscribe': typeof ApiPublicNoticeUnsubscribeRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
@@ -366,6 +385,7 @@ export interface FileRouteTypes {
     | '/api/ics'
     | '/e/cancel'
     | '/e/confirm'
+    | '/e/notices'
     | '/privacy/attendees'
     | '/updates/confirm'
     | '/updates/unsubscribe'
@@ -375,6 +395,7 @@ export interface FileRouteTypes {
     | '/users/$id'
     | '/api/public/cleanup-deleted-events'
     | '/api/public/landing'
+    | '/api/public/notice-unsubscribe'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
     | '/api/public/event-image/$id'
@@ -403,6 +424,7 @@ export interface FileRouteTypes {
     | '/api/ics'
     | '/e/cancel'
     | '/e/confirm'
+    | '/e/notices'
     | '/privacy/attendees'
     | '/updates/confirm'
     | '/updates/unsubscribe'
@@ -412,6 +434,7 @@ export interface FileRouteTypes {
     | '/users/$id'
     | '/api/public/cleanup-deleted-events'
     | '/api/public/landing'
+    | '/api/public/notice-unsubscribe'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
     | '/api/public/event-image/$id'
@@ -441,6 +464,7 @@ export interface FileRouteTypes {
     | '/api/ics'
     | '/e/cancel'
     | '/e/confirm'
+    | '/e/notices'
     | '/privacy_/attendees'
     | '/updates/confirm'
     | '/updates/unsubscribe'
@@ -450,6 +474,7 @@ export interface FileRouteTypes {
     | '/_app/users_/$id'
     | '/api/public/cleanup-deleted-events'
     | '/api/public/landing'
+    | '/api/public/notice-unsubscribe'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
     | '/api/public/event-image/$id'
@@ -466,12 +491,14 @@ export interface RootRouteChildren {
   ApiIcsRoute: typeof ApiIcsRoute
   ECancelRoute: typeof ECancelRoute
   EConfirmRoute: typeof EConfirmRoute
+  ENoticesRoute: typeof ENoticesRoute
   PrivacyAttendeesRoute: typeof PrivacyAttendeesRoute
   UpdatesConfirmRoute: typeof UpdatesConfirmRoute
   UpdatesUnsubscribeRoute: typeof UpdatesUnsubscribeRoute
   EventsIndexRoute: typeof EventsIndexRoute
   ApiPublicCleanupDeletedEventsRoute: typeof ApiPublicCleanupDeletedEventsRoute
   ApiPublicLandingRoute: typeof ApiPublicLandingRoute
+  ApiPublicNoticeUnsubscribeRoute: typeof ApiPublicNoticeUnsubscribeRoute
   ApiPublicTaskRemindersRoute: typeof ApiPublicTaskRemindersRoute
   ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
   ApiPublicEventImageIdRoute: typeof ApiPublicEventImageIdRoute
@@ -647,6 +674,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/e/notices': {
+      id: '/e/notices'
+      path: '/e/notices'
+      fullPath: '/e/notices'
+      preLoaderRoute: typeof ENoticesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/events/': {
       id: '/events/'
       path: '/events'
@@ -708,6 +742,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/landing'
       fullPath: '/api/public/landing'
       preLoaderRoute: typeof ApiPublicLandingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/notice-unsubscribe': {
+      id: '/api/public/notice-unsubscribe'
+      path: '/api/public/notice-unsubscribe'
+      fullPath: '/api/public/notice-unsubscribe'
+      preLoaderRoute: typeof ApiPublicNoticeUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/task-reminders': {
@@ -789,12 +830,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIcsRoute: ApiIcsRoute,
   ECancelRoute: ECancelRoute,
   EConfirmRoute: EConfirmRoute,
+  ENoticesRoute: ENoticesRoute,
   PrivacyAttendeesRoute: PrivacyAttendeesRoute,
   UpdatesConfirmRoute: UpdatesConfirmRoute,
   UpdatesUnsubscribeRoute: UpdatesUnsubscribeRoute,
   EventsIndexRoute: EventsIndexRoute,
   ApiPublicCleanupDeletedEventsRoute: ApiPublicCleanupDeletedEventsRoute,
   ApiPublicLandingRoute: ApiPublicLandingRoute,
+  ApiPublicNoticeUnsubscribeRoute: ApiPublicNoticeUnsubscribeRoute,
   ApiPublicTaskRemindersRoute: ApiPublicTaskRemindersRoute,
   ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
   ApiPublicEventImageIdRoute: ApiPublicEventImageIdRoute,

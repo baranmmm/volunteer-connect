@@ -11,6 +11,10 @@ import {
   MANAGER_TABS,
 } from "./event-requests";
 
+/** Sends the notice emails an action just queued (assignments, invitations, requests waiting). */
+const flushNoticeEmails = async () =>
+  (await import("@/lib/notice-emails.server")).flushNoticeEmails();
+
 // Every write is a SECURITY DEFINER RPC (no client write grants on event_requests); RLS scopes the reads.
 const requestId = z.object({ id: z.string().uuid() });
 const fail = (error: { message: string } | null) => {
@@ -23,6 +27,7 @@ export const submitEventRequest = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("submit_event_request", { p: data });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 export const updateEventRequest = createServerFn({ method: "POST" })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   absoluteAppLink,
+  digestLines,
   escapeHtml,
   renderEmail,
   type EmailEvent,
@@ -276,6 +277,236 @@ describe("email templates", () => {
     expect(r.text).toMatch(/Tuesday,? 1 June 2027/);
     expect(absoluteAppLink(ORIGIN, "//evil.example")).toBe(`${ORIGIN}/dashboard`);
     expect(absoluteAppLink(ORIGIN, "https://evil.example")).toBe(`${ORIGIN}/dashboard`);
+  });
+
+  it("daily_digest lists the counts per kind and links to the app (English)", () => {
+    const r = renderEmail("daily_digest", {
+      origin: ORIGIN,
+      toEmail: "bm@example.org",
+      toName: "Ayse <b>",
+      from: { email: "events@example.org" },
+      payload: {
+        count: 4,
+        kinds: { task_status_changed: 2, meeting_changed: 1, some_new_kind: 1 },
+        day: "2027-01-15",
+      },
+    });
+    expect(r.subject).toBe("Your daily summary: 4 updates");
+    expect(r.text).toContain("Hello Ayse <b>,");
+    expect(r.html).toContain("Hello Ayse &lt;b&gt;,");
+    expect(r.html).toContain('<html lang="en">');
+    expect(r.text).toMatch(/summary of Friday,? 15 January/);
+    const lines = r.text.split("\n");
+    const first = lines.findIndex((l) =>
+      l.includes("2 tasks you created were blocked or completed"),
+    );
+    expect(first).toBeGreaterThan(-1);
+    expect(lines[first + 2]).toContain("1 meeting changed");
+    expect(r.text).toContain("1 other update");
+    expect(r.text).toContain(`${ORIGIN}/notifications`);
+    expect(r.html).toContain(`href="${ORIGIN}/notifications"`);
+    expect(r.text).toContain(`${ORIGIN}/profile#notifications`);
+    expect(r.attachments).toEqual([]);
+    expect(r.listUnsubscribe).toBeNull();
+    expect(
+      renderEmail("daily_digest", {
+        origin: ORIGIN,
+        toEmail: "bm@example.org",
+        from: { email: "events@example.org" },
+        payload: { count: 1, kinds: { task_request_accepted: 1 }, day: "2027-01-15" },
+      }).subject,
+    ).toBe("Your daily summary: 1 update");
+  });
+
+  it("daily_digest in Turkish for a member who prefers Turkish", () => {
+    const r = renderEmail("daily_digest", {
+      origin: ORIGIN,
+      toEmail: "bm@example.org",
+      toName: "Ayşe",
+      from: { email: "events@example.org" },
+      language: "tr",
+      payload: {
+        count: 3,
+        kinds: { meeting_cancelled: 1, task_request_declined: 2 },
+        day: "2027-01-15",
+      },
+    });
+    expect(r.subject).toBe("Günlük özetiniz: 3 güncelleme");
+    expect(r.html).toContain('<html lang="tr">');
+    expect(r.text).toContain("Merhaba Ayşe,");
+    expect(r.text).toContain("1 toplantı iptal edildi");
+    expect(r.text).toContain("2 görev isteğiniz reddedildi");
+    expect(r.text).toMatch(/15 Ocak/);
+    expect(r.text).toContain("Bildirimlerimi aç: " + `${ORIGIN}/notifications`);
+    expect(digestLines({ task_status_changed: 1 }, "tr")).toEqual([
+      "Oluşturduğunuz 1 görev engellendi veya tamamlandı",
+    ]);
+  });
+
+  it("daily_digest has one stop link per notice type in it", () => {
+    const r = renderEmail("daily_digest", {
+      origin: ORIGIN,
+      toEmail: "bm@example.org",
+      from: { email: "events@example.org" },
+      payload: {
+        count: 2,
+        kinds: { task_status_changed: 1, task_note_mention: 1 },
+        day: "2027-01-15",
+      },
+      links: {
+        typeUnsubscribe: {
+          task_status: `${ORIGIN}/e/notices?t=a`,
+          mention: `${ORIGIN}/e/notices?t=b`,
+        },
+      },
+    });
+    expect(r.text).toContain(
+      `Stop emails for “A task I created is blocked or done”: ${ORIGIN}/e/notices?t=a`,
+    );
+    expect(r.text).toContain(`Stop emails for “I am mentioned in a note”: ${ORIGIN}/e/notices?t=b`);
+    expect(r.text).toContain("1 mention of you in a note");
+  });
+
+  const noticeCtx = (over: Partial<RenderContext> = {}): RenderContext => ({
+    origin: ORIGIN,
+    toEmail: "v@example.org",
+    toName: "Vol",
+    from: { email: "events@example.org" },
+    payload: { type: "task_assigned" },
+    notice: {
+      kind: "task_assigned",
+      title: "Book <the> hall",
+      link: "/tasks?task=abc",
+      payload: {},
+      actor_name: "Ayşe",
+    },
+    links: {
+      noticeUnsubscribe: `${ORIGIN}/e/notices?t=tok`,
+      noticeUnsubscribeOneClick: `${ORIGIN}/api/public/notice-unsubscribe?t=tok`,
+    },
+    ...over,
+  });
+
+  it("notice: a task assignment links to the task, says why, and has the stop link and List-Unsubscribe", () => {
+    const r = renderEmail("notice", noticeCtx());
+    expect(r.subject).toBe("New task: Book <the> hall");
+    expect(r.html).toContain("Book &lt;the&gt; hall");
+    expect(r.html).toContain('<html lang="en">');
+    expect(r.html).toContain("<h1");
+    expect(r.text).toContain("Ayşe assigned you a task:");
+    expect(r.text).toContain(`Open the task: ${ORIGIN}/tasks?task=abc`);
+    expect(r.text).toContain("emails for “A task is assigned to me” are on");
+    expect(r.text).toContain(`Stop these emails: ${ORIGIN}/e/notices?t=tok`);
+    expect(r.text).toContain(`Notification settings: ${ORIGIN}/profile#notifications`);
+    expect(r.listUnsubscribe).toEqual({
+      url: `${ORIGIN}/e/notices?t=tok`,
+      oneClick: `${ORIGIN}/api/public/notice-unsubscribe?t=tok`,
+    });
+  });
+
+  it("notice in Turkish: meeting invitation with the time, review waiting with the count", () => {
+    const meeting = renderEmail(
+      "notice",
+      noticeCtx({
+        language: "tr",
+        payload: { type: "meeting" },
+        notice: {
+          kind: "meeting_invited",
+          title: "Şube toplantısı",
+          link: "/meetings/m1",
+          payload: { starts_at: "2027-02-01T18:00:00Z" },
+          actor_name: "Ayşe",
+        },
+      }),
+    );
+    expect(meeting.subject).toBe("Toplantı daveti: Şube toplantısı");
+    expect(meeting.html).toContain('<html lang="tr">');
+    expect(meeting.text).toContain("Merhaba Vol,");
+    expect(meeting.text).toContain("Ayşe sizi bir toplantıya davet etti:");
+    expect(meeting.text).toMatch(/Ne zaman: .*1 Şubat 2027.*18:00 \(Birleşik Krallık saati\)/);
+    expect(meeting.text).toContain(`Toplantıyı aç: ${ORIGIN}/meetings/m1`);
+    expect(meeting.text).toContain(`Bu e-postaları durdur: ${ORIGIN}/e/notices?t=tok`);
+    expect(meeting.text).toContain("“Davet edildiğim toplantılar");
+    const review = renderEmail(
+      "notice",
+      noticeCtx({
+        payload: { type: "review" },
+        notice: {
+          kind: "review_waiting",
+          title: "",
+          link: "/requests?tab=review",
+          payload: { total: 3, branches: ["Medway", "Brighton"] },
+          actor_name: null,
+        },
+      }),
+    );
+    expect(review.subject).toBe("3 requests are waiting for your review");
+    expect(review.text).toContain(
+      "3 requests from Medway and Brighton are waiting for your decision.",
+    );
+    expect(review.text).toContain(`Open To review: ${ORIGIN}/requests?tab=review`);
+  });
+
+  it("task_reminder in Turkish with its stop link", () => {
+    const r = renderEmail("task_reminder", {
+      origin: ORIGIN,
+      toEmail: "v@example.org",
+      from: { email: "events@example.org" },
+      language: "tr",
+      payload: {
+        task_title: "Salonu ayırt",
+        due_date: "2027-06-01",
+        link: "/tasks?task=abc",
+        reminder: "overdue",
+      },
+      links: { noticeUnsubscribe: `${ORIGIN}/e/notices?t=tok` },
+    });
+    expect(r.subject).toBe("Süresi geçen görev: Salonu ayırt");
+    expect(r.text).toMatch(/1 Haziran 2027/);
+    expect(r.text).toContain(`Görevi aç: ${ORIGIN}/tasks?task=abc`);
+    expect(r.text).toContain(`Bu e-postaları durdur: ${ORIGIN}/e/notices?t=tok`);
+  });
+
+  it("notice: a mention links to the note (EN and TR)", () => {
+    const mention = (language: "en" | "tr") =>
+      renderEmail(
+        "notice",
+        noticeCtx({
+          language,
+          payload: { type: "mention" },
+          notice: {
+            kind: "task_note_mention",
+            title: "Book the hall",
+            link: "/tasks?task=abc&note=n1",
+            payload: {},
+            actor_name: "Ayşe",
+          },
+        }),
+      );
+    const en = mention("en");
+    expect(en.subject).toBe("You were mentioned: Book the hall");
+    expect(en.text).toContain("Ayşe mentioned you in a note on this task:");
+    expect(en.text).toContain(`Open the note: ${ORIGIN}/tasks?task=abc&note=n1`);
+    expect(en.text).toContain("emails for “I am mentioned in a note” are on");
+    const tr = mention("tr");
+    expect(tr.subject).toBe("Sizden bahsedildi: Book the hall");
+    expect(tr.text).toContain(`Notu aç: ${ORIGIN}/tasks?task=abc&note=n1`);
+  });
+
+  it("notice refuses a missing notice", () => {
+    expect(() => renderEmail("notice", noticeCtx({ notice: null }))).toThrow();
+  });
+
+  it("daily_digest refuses an empty summary", () => {
+    const ctx = {
+      origin: ORIGIN,
+      toEmail: "bm@example.org",
+      from: { email: "events@example.org" },
+    };
+    expect(() =>
+      renderEmail("daily_digest", { ...ctx, payload: { count: 0, kinds: {} } }),
+    ).toThrow();
+    expect(() => renderEmail("daily_digest", { ...ctx, payload: {} })).toThrow();
   });
 
   it("throws when the context is incomplete", () => {

@@ -117,9 +117,8 @@ test.describe("My requests badge", () => {
       .select("id")
       .single();
     expect(application.error).toBeNull();
-    // Managers get request decisions in the daily summary by default (held, not counted): this one chose
-    // "immediately", so the decision is an unread notice right away.
-    expect((await workRpc(manager, "set_notification_setting", { p_type: "request_decided", p_enabled: true, p_delivery: "immediate" })).error).toBeNull();
+    // Managers get request decisions in the daily summary email by default, but the in-app notice is immediate: the
+    // decision is an unread notice right away (default settings, nothing changed).
     // The manager asks the region's director for a task; the director accepts it: one unread decision.
     const director = seed.users.director;
     const request = await workRpc(manager, "submit_task_request", {

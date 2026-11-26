@@ -1612,22 +1612,32 @@ export type Database = {
         Row: {
           created_at: string
           day: string
+          email_id: string | null
           notification_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           day: string
+          email_id?: string | null
           notification_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           day?: string
+          email_id?: string | null
           notification_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notification_digest_log_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "email_outbox"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notification_digest_log_notification_id_fkey"
             columns: ["notification_id"]
@@ -1678,6 +1688,8 @@ export type Database = {
           actor_id: string | null
           created_at: string
           digest_id: string | null
+          email_digest: boolean
+          email_digested_at: string | null
           entity_id: string
           entity_type: string
           held: boolean
@@ -1693,6 +1705,8 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           digest_id?: string | null
+          email_digest?: boolean
+          email_digested_at?: string | null
           entity_id: string
           entity_type: string
           held?: boolean
@@ -1708,6 +1722,8 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           digest_id?: string | null
+          email_digest?: boolean
+          email_digested_at?: string | null
           entity_id?: string
           entity_type?: string
           held?: boolean
@@ -3583,6 +3599,11 @@ export type Database = {
         Args: { p_direction: number; p_id: string }
         Returns: undefined
       }
+      notice_email_context: { Args: { p_id: string }; Returns: Json }
+      notice_email_unsubscribe: {
+        Args: { p_type: string; p_user: string }
+        Returns: string
+      }
       notification_default_delivery: {
         Args: { _user: string }
         Returns: string
@@ -3591,6 +3612,16 @@ export type Database = {
         Args: { _type: string }
         Returns: boolean
       }
+      notification_email_mode: { Args: { _kind: string }; Returns: string }
+      notification_email_on: {
+        Args: { _type: string; _user: string }
+        Returns: boolean
+      }
+      notification_email_set: {
+        Args: { _on: boolean; _type: string; _user: string }
+        Returns: undefined
+      }
+      notification_email_timing: { Args: { _type: string }; Returns: string }
       notification_setting: {
         Args: { _type: string; _user: string }
         Returns: Json
@@ -3845,6 +3876,10 @@ export type Database = {
       }
       set_my_task_reminders: {
         Args: { p_id: string; p_reminders: Json }
+        Returns: Json
+      }
+      set_notification_email: {
+        Args: { p_on: boolean; p_type: string }
         Returns: Json
       }
       set_notification_setting: {
