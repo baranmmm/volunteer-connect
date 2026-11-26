@@ -63,6 +63,7 @@ test.describe("trustees", () => {
     // A Branch Manager may offer only Volunteer and Trustee.
     await expect(page.getByTestId("change-role-option-branch_manager")).toHaveCount(0);
     await details.roleDialog().confirm();
+    await expect(details.roleDialog().root).toBeHidden();
     await expect.poll(() => getRoles(volunteer.id)).toEqual(["trustee"]);
     await expect(details.role()).toHaveText(/Trustee/, { timeout: APP_LOAD_TIMEOUT });
 
