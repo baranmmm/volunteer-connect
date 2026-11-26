@@ -7,7 +7,7 @@ import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/roles";
 import type { TestUser } from "../../fixtures/roles";
 import { adminClient, signIn, storageStateFor } from "../../api/SupabaseClient";
-import { TASK_TITLE_PREFIX, createTaskAs } from "../../api/work";
+import { TASK_TITLE_PREFIX, createTaskAs, workRpc } from "../../api/work";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { baseUrl } from "../../setup/env";
 import { PROD_REF } from "../../setup/guard";
@@ -208,6 +208,10 @@ test.describe("Push notifications", () => {
     await expect.poll(queued).toBe(1);
     await typeRow(page, "task_assigned").getByTestId("profile-notification-push").click();
     await expect(typeRow(page, "task_assigned")).toHaveAttribute("data-push", "false");
+    // The checkbox changes at once (optimistic): wait for the saved setting.
+    await expect
+      .poll(async () => ((await workRpc(volunteer, "get_notification_settings")).data as { types: { type: string; push: boolean }[] }).types.find((s) => s.type === "task_assigned")?.push)
+      .toBe(false);
     await createTaskAs(manager, { scope: "branch", branch_id: branch, title: title("off"), assignee_ids: [volunteer.id] });
     expect(await queued()).toBe(1); // notify() queues within the RPC: nothing new
 

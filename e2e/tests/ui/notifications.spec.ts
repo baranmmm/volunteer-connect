@@ -86,6 +86,9 @@ test.describe("Notifications", () => {
     const reminders = typeRow(page, "task_reminder");
     await reminders.getByTestId("profile-notification-email").click();
     await expect(reminders).toHaveAttribute("data-email", "false");
+    // Changes show at once (optimistic): wait until every one is saved before reloading.
+    await expect.poll(async () => (await savedSettings(manager)).task_reminder_emails).toBe(false);
+    await expect.poll(async () => (await savedSettings(manager)).types.find((s) => s.type === "task_note")?.enabled).toBe(false);
 
     await page.reload();
     await expect(emailMode(page)).toHaveAttribute("data-mode", "custom", { timeout: APP_LOAD_TIMEOUT });
