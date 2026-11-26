@@ -6,7 +6,7 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
 `20261125090100_notifications.sql`); in-app notices always immediate and the daily summary as an email:
 `20261208090000_notifications_inapp_immediate.sql`; notice emails, email switches and stop links:
 `20261208090100_notification_emails.sql`; mentions at once, sending order, Auth reserve and the 250 warning:
-`20261208090200_email_priorities_budget.sql`. Texts: `src/lib/notification-text.ts` (i18n keys `notifications.kinds.*`,
+`20261208090200_email_priorities_budget.sql`; push notifications: `20261212090000_web_push.sql` (`docs/push.md`). Texts: `src/lib/notification-text.ts` (i18n keys `notifications.kinds.*`,
 `notifications.groups.*`), never stored sentences.
 
 ## Who gets what
@@ -48,6 +48,11 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
   Turning an email off cancels that type's notice emails still waiting. The old per-person delivery choice
   (`types.<type>.delivery`, "Immediately" / "Daily summary") is no longer read; nothing stored was rewritten, and
   everyone starts with every email on (`20261208090100_notification_emails.sql`).
+- **Push** (`set_notification_push`, any type, locked ones included): a third switch per type, default **on** for
+  `task_assigned`, `review` and `meeting`, **off** for the others. When it is on, every notice of that type is pushed at
+  once to each device where the member turned push on (Profile > Notifications, or the dashboard card in the installed
+  app); off means nothing is queued and waiting pushes of the type are skipped. The in-app switch off means no notice
+  and so no push. The push shows only a generic title per kind, never the item's title or names. See `docs/push.md`.
 - **Stop links**: every notice email has a signed "Stop these emails" link for its type (`/e/notices?t=`, a click
   confirms; the daily summary has one per type in it) and a `List-Unsubscribe` one-click header
   (`POST /api/public/notice-unsubscribe?t=`), plus a link to Profile > Notifications (`/profile#notifications`).
@@ -122,8 +127,9 @@ and day (the notice itself is the log), always on, never emailed. See `docs/emai
 - Badges (`data-count`): `nav-requests-badge`, `nav-tasks-badge`, `nav-meetings-badge`, `mobile-nav-<kind>-badge`,
   `mobile-nav-more-badge`.
 - Profile: `profile-notifications` (`id="notifications"`), `profile-notification-type` (`data-type`, `data-locked`,
-  `data-enabled`, `data-email`, `data-email-timing`), `profile-notification-enabled`, `profile-notification-email`,
-  `profile-notification-email-timing`.
+  `data-enabled`, `data-email`, `data-push`, `data-email-timing`), `profile-notification-enabled`,
+  `profile-notification-email`, `profile-notification-push`, `profile-notification-email-timing`; push on this device:
+  `profile-push` and the ids in `docs/push.md`.
 - Stop link page (`/e/notices`): `notice-email-link-page`, `notice-email-unsubscribe-button`,
   `notice-email-link-state` (`data-state` `unsubscribed` / `invalid`), `notice-email-link-error`,
   `notice-email-settings-link`.
