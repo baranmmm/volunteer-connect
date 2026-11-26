@@ -10,7 +10,7 @@ import { Gallery } from "./Gallery";
 import { Hero } from "./Hero";
 import { Highlights } from "./Highlights";
 import { LandingFooter } from "./LandingFooter";
-import { LandingHeader } from "./LandingHeader";
+import { PublicTopBar } from "@/components/public/PublicTopBar";
 import { useSeen } from "./motion";
 import type { LandingData } from "@/lib/landing.server";
 
@@ -84,7 +84,7 @@ export function LandingFrame({ landing, children }: { landing: Landing; children
       >
         {t("landing.skip")}
       </a>
-      <LandingHeader />
+      <PublicTopBar />
       <main id="landing-main">{children}</main>
       {!landing.query.isPending && <LandingFooter />}
     </div>

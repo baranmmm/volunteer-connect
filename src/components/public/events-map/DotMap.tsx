@@ -9,16 +9,16 @@ import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   branchEventIndex,
-  framePosition,
+  placePoint,
   type BranchPoint,
-  type Frame,
+  type MapLayout,
   type StoryStep,
 } from "@/lib/events-story";
 import { cn } from "@/lib/utils";
 import { UK_SVG_BOX, UK_SVG_URL } from "./uk-dots";
 
 export function DotMap({
-  frame,
+  layout,
   branches,
   steps,
   shown,
@@ -26,7 +26,8 @@ export function DotMap({
   onPick,
   children,
 }: {
-  frame: Frame;
+  /** The fixed frame, and the inset box for branches outside it. */
+  layout: MapLayout;
   branches: BranchPoint[];
   steps: StoryStep[];
   /** The step whose dot(s) are highlighted (the active event, or the one a dot previews). */
@@ -76,6 +77,8 @@ export function DotMap({
     }
   }
   const venue = shown && !shown.target.branchIds.length ? shown.target.point : null;
+  const frame = layout.frame;
+  const inset = layout.inset;
   const ratio = frame.w / frame.h;
   return (
     <div
@@ -120,8 +123,23 @@ export function DotMap({
             height: `${(UK_SVG_BOX.h / frame.h) * 100}%`,
           }}
         />
+        {inset && (
+          // Branches outside the frame (e.g. Orkney, Shetland) sit in a small box, top right, instead of enlarging the map.
+          <span
+            aria-hidden
+            data-testid="events-map-inset"
+            data-count={inset.branchIds.length}
+            className="pointer-events-none absolute rounded-lg border border-[#c3d0da] bg-background/80"
+            style={{
+              left: `${inset.box.left * 100}%`,
+              top: `${inset.box.top * 100}%`,
+              width: `${inset.box.width * 100}%`,
+              height: `${inset.box.height * 100}%`,
+            }}
+          />
+        )}
         {branches.map((b) => {
-          const pos = framePosition(frame, b.latitude, b.longitude);
+          const pos = placePoint(layout, b.latitude, b.longitude);
           const on = lit.has(b.id);
           const index = branchEventIndex(steps, b.id);
           const step = index === null ? null : steps[index]!;
@@ -132,6 +150,7 @@ export function DotMap({
               data-testid="events-map-branch"
               data-branch-id={b.id}
               data-active={on ? "true" : "false"}
+              data-inset={pos.inset ? "true" : undefined}
               data-focused={focused === b.id ? "true" : undefined}
               data-event-id={step?.event.id}
               title={step ? b.name : undefined}
@@ -156,7 +175,7 @@ export function DotMap({
             data-testid="events-map-venue"
             className="pointer-events-none absolute z-20 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
             style={(() => {
-              const p = framePosition(frame, venue.latitude, venue.longitude);
+              const p = placePoint(layout, venue.latitude, venue.longitude);
               return { left: `${p.left * 100}%`, top: `${p.top * 100}%` };
             })()}
           >

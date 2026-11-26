@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/members", () => ({
   fetchPendingMembers: async () => mocks.pendingMembers,
   fetchPendingDeletionRequests: async () => mocks.deletions,
+  countPendingMembers: async () => mocks.pendingMembers.length,
+  countPendingDeletionRequests: async () => mocks.deletions.length,
   setStatus: vi.fn(),
 }));
 vi.mock("@/components/app/DeleteUserDialog", () => ({ DeleteUserDialog: () => null }));
@@ -362,6 +364,22 @@ describe("Requests workspace", () => {
     );
     expect(screen.getByTestId("requests-tab-review")).toHaveAttribute("data-state", "active");
     expect(screen.getByTestId("requests-tab-mine")).toHaveAttribute("data-state", "inactive");
+    // The tab badge counts them too (the same total as the menu badge).
+    expect(screen.getByTestId("manager-requests-tab-review")).toHaveTextContent("2");
+  });
+  it("the approval badge sums the shared count, pending sign-ups and deletion requests", async () => {
+    mocks.pending = 2;
+    mocks.pendingMembers = [
+      { id: "pending-user", full_name: "Pending Person", created_at: "2026-11-20T09:00:00Z" },
+    ];
+    mocks.deletions = [
+      { id: "deletion-1", user_id: "leaving-user", requested_at: "2026-11-20T09:00:00Z" },
+    ];
+    mount();
+    await screen.findByTestId("approvals-row");
+    await waitFor(() =>
+      expect(screen.getByTestId("manager-requests-tab-review")).toHaveTextContent("4"),
+    );
   });
   it("shows exactly two top-level tabs, the approval one with the shared waiting count", async () => {
     mocks.pending = 3;

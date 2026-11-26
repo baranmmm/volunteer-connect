@@ -22,6 +22,7 @@ import {
 } from "@/lib/volunteer-applications";
 import { formatDate, translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
+import { REVIEW_WAITING_KEY } from "@/lib/request-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,8 @@ function useInvalidate() {
     Promise.all([
       qc.invalidateQueries({ queryKey: ["my-volunteer-applications"] }),
       qc.invalidateQueries({ queryKey: ["volunteer-applications"] }),
+      // A decision changes what waits for approval (menu badge, Requests tab, dashboard card).
+      qc.invalidateQueries({ queryKey: [REVIEW_WAITING_KEY] }),
     ]);
 }
 

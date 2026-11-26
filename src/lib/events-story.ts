@@ -1,6 +1,6 @@
 // The public events map as a scroll-driven story: pure helpers (no React, no DOM), so they are unit tested.
-// One fixed map of the United Kingdom: the frame is computed once from the land and the branch points and never
-// zooms, pans or re-centres on an event. Events step in date order (past first, then upcoming).
+// One fixed map of the United Kingdom (mainland Great Britain, Northern Ireland, the Hebrides): the frame never zooms,
+// pans, grows or re-centres on an event; a branch outside it is drawn in a small inset box instead. Events step in date order (past first, then upcoming).
 import {
   eventStartValue,
   isPastEvent,
@@ -38,29 +38,105 @@ export type Frame = { x: number; y: number; w: number; h: number };
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
 /**
- * The fixed frame: the United Kingdom with a margin, extended once to take in any branch outside it. The same for
- * every event of the page (the map never moves).
+ * The fixed frame: mainland Great Britain, Northern Ireland and the Hebrides with a small margin. The same for every
+ * event and every branch list (the map never moves or grows).
  */
-export function mapFrame(
-  land: Bounds,
-  branches: { latitude: number; longitude: number }[],
-  pad = 16,
-): Frame {
-  let { minX, minY, maxX, maxY } = land;
-  for (const b of branches) {
-    const [x, y] = project(b.latitude, b.longitude);
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minY = Math.min(minY, y);
-    maxY = Math.max(maxY, y);
-  }
-  return { x: minX - pad, y: minY - pad, w: maxX - minX + 2 * pad, h: maxY - minY + 2 * pad };
+export function mapFrame(land: Bounds, pad = 6): Frame {
+  return {
+    x: land.minX - pad,
+    y: land.minY - pad,
+    w: land.maxX - land.minX + 2 * pad,
+    h: land.maxY - land.minY + 2 * pad,
+  };
 }
 
 /** A point as fractions (0–1) of the frame. */
 export function framePosition(frame: Frame, latitude: number, longitude: number) {
   const [x, y] = project(latitude, longitude);
   return { left: (x - frame.x) / frame.w, top: (y - frame.y) / frame.h };
+}
+
+const inFrame = (p: { left: number; top: number }) =>
+  p.left >= 0 && p.left <= 1 && p.top >= 0 && p.top <= 1;
+const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
+
+/** A box on the map, in fractions of the map's width and height. */
+export type MapBox = { left: number; top: number; width: number; height: number };
+/**
+ * The fixed map, plus an inset box in the top-right corner for branches outside the frame (e.g. Orkney, Shetland or
+ * abroad), so the main map never grows. `inset` is null when every branch is on the main map.
+ */
+export type MapLayout = {
+  frame: Frame;
+  inset: { box: MapBox; frame: Frame; branchIds: string[] } | null;
+};
+
+const INSET_WIDTH = 0.24;
+const INSET_MAX_HEIGHT = 0.28;
+const INSET_MARGIN = 0.02;
+
+export function mapLayout(
+  land: Bounds,
+  branches: { id: string; latitude: number; longitude: number }[],
+): MapLayout {
+  const frame = mapFrame(land);
+  const outside = branches.filter((b) => !inFrame(framePosition(frame, b.latitude, b.longitude)));
+  if (!outside.length) return { frame, inset: null };
+  // The inset frame: the outside branches with room around them (at least about a degree across).
+  const pts = outside.map((b) => project(b.latitude, b.longitude));
+  const xs = pts.map((p) => p[0]),
+    ys = pts.map((p) => p[1]);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2,
+    cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const iw = Math.max(Math.max(...xs) - Math.min(...xs), 0) * 1.4 + 60;
+  const ih = Math.max(Math.max(...ys) - Math.min(...ys), 0) * 1.4 + 60;
+  // Same aspect on screen as the inset frame: height (of the map's height) = width × map ratio × (ih / iw).
+  let width = INSET_WIDTH;
+  let height = width * (frame.w / frame.h) * (ih / iw);
+  if (height > INSET_MAX_HEIGHT) {
+    width *= INSET_MAX_HEIGHT / height;
+    height = INSET_MAX_HEIGHT;
+  }
+  return {
+    frame,
+    inset: {
+      box: { left: 1 - INSET_MARGIN - width, top: INSET_MARGIN, width, height },
+      frame: { x: cx - iw / 2, y: cy - ih / 2, w: iw, h: ih },
+      branchIds: outside.map((b) => b.id),
+    },
+  };
+}
+
+/** Where a point is drawn: on the main map, or in the inset when it lies outside the frame (fractions of the map). */
+export function placePoint(layout: MapLayout, latitude: number, longitude: number) {
+  const p = framePosition(layout.frame, latitude, longitude);
+  if (inFrame(p)) return { ...p, inset: false };
+  if (!layout.inset) return { left: clamp01(p.left), top: clamp01(p.top), inset: false };
+  const { box, frame } = layout.inset;
+  const q = framePosition(frame, latitude, longitude);
+  return {
+    left: box.left + clamp01(q.left) * box.width,
+    top: box.top + clamp01(q.top) * box.height,
+    inset: true,
+  };
+}
+
+/** The card's anchor for a target: the middle of its drawn branch dots, or its venue. */
+export function targetPosition(
+  layout: MapLayout,
+  target: StoryTarget,
+  branches: { id: string; latitude: number; longitude: number }[],
+) {
+  const dots = target.branchIds.flatMap((id) => {
+    const b = branches.find((x) => x.id === id);
+    return b ? [placePoint(layout, b.latitude, b.longitude)] : [];
+  });
+  if (!dots.length) return placePoint(layout, target.point.latitude, target.point.longitude);
+  return {
+    left: dots.reduce((n, d) => n + d.left, 0) / dots.length,
+    top: dots.reduce((n, d) => n + d.top, 0) / dots.length,
+    inset: dots.every((d) => d.inset),
+  };
 }
 
 /** Where an event lights up: its branch, every branch of its region (region events), or its venue (no branch). */

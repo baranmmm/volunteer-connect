@@ -5,6 +5,9 @@ import {
   firstUpcomingIndex,
   framePosition,
   mapFrame,
+  mapLayout,
+  placePoint,
+  targetPosition,
   playStep,
   progressOfStep,
   project,
@@ -211,35 +214,29 @@ describe("stepping", () => {
 });
 
 describe("the fixed map frame", () => {
-  it("covers the United Kingdom and every branch inside them without changing", () => {
-    const f = mapFrame(UK_BOUNDS, BRANCHES);
-    expect(f).toEqual(mapFrame(UK_BOUNDS, []));
-    for (const b of BRANCHES) {
-      const p = framePosition(f, b.latitude, b.longitude);
-      expect(p.left).toBeGreaterThan(0);
-      expect(p.left).toBeLessThan(1);
-      expect(p.top).toBeGreaterThan(0);
-      expect(p.top).toBeLessThan(1);
-    }
+  const inside = (f: ReturnType<typeof mapFrame>, lat: number, lon: number) => {
+    const p = framePosition(f, lat, lon);
+    return p.left > 0 && p.left < 1 && p.top > 0 && p.top < 1;
+  };
+  it("is mainland Great Britain, Northern Ireland and the Hebrides; Orkney and Shetland are outside", () => {
+    const f = mapFrame(UK_BOUNDS);
+    for (const [lat, lon] of [
+      [51.5074, -0.1278], // London
+      [51.4816, -3.1791], // Cardiff
+      [55.9533, -3.1883], // Edinburgh
+      [54.5973, -5.9301], // Belfast
+      [58.6373, -3.0689], // John o' Groats (the mainland's north)
+      [58.209, -6.3849], // Stornoway (Outer Hebrides)
+      [50.0657, -5.7132], // Land's End
+    ] as const)
+      expect(inside(f, lat, lon)).toBe(true);
+    expect(inside(f, 58.9809, -2.9605)).toBe(false); // Kirkwall, Orkney
+    expect(inside(f, 60.155, -1.145)).toBe(false); // Lerwick, Shetland
+    // Tight: the frame is the land plus a small margin, no empty band.
+    expect(f.y).toBeGreaterThan(UK_BOUNDS.minY - 10);
+    expect(f.h).toBeLessThan(UK_BOUNDS.maxY - UK_BOUNDS.minY + 20);
   });
-  it("contains all four nations (capitals and Shetland) without any extension", () => {
-    const f = mapFrame(UK_BOUNDS, []);
-    const places: [string, number, number][] = [
-      ["London", 51.5074, -0.1278],
-      ["Cardiff", 51.4816, -3.1791],
-      ["Edinburgh", 55.9533, -3.1883],
-      ["Belfast", 54.5973, -5.9301],
-      ["Lerwick", 60.155, -1.145],
-      ["Glasgow", 55.8642, -4.2518],
-    ];
-    for (const [, lat, lon] of places) {
-      const p = framePosition(f, lat, lon);
-      expect(p.left).toBeGreaterThan(0);
-      expect(p.left).toBeLessThan(1);
-      expect(p.top).toBeGreaterThan(0);
-      expect(p.top).toBeLessThan(1);
-    }
-    // A Scottish or Northern Irish branch does not change the frame.
+  it("never grows: branches on the mainland need no inset; a branch outside goes into a top-right inset", () => {
     const glasgow = {
       id: "b-glasgow",
       name: "Glasgow",
@@ -247,16 +244,68 @@ describe("the fixed map frame", () => {
       latitude: 55.8642,
       longitude: -4.2518,
     };
-    expect(mapFrame(UK_BOUNDS, [...BRANCHES, glasgow])).toEqual(f);
+    const lerwick = {
+      id: "b-lerwick",
+      name: "Lerwick",
+      region_id: null,
+      latitude: 60.155,
+      longitude: -1.145,
+    };
+    const kirkwall = {
+      id: "b-kirkwall",
+      name: "Kirkwall",
+      region_id: null,
+      latitude: 58.9809,
+      longitude: -2.9605,
+    };
+    expect(mapLayout(UK_BOUNDS, [...BRANCHES, glasgow]).inset).toBeNull();
+    const layout = mapLayout(UK_BOUNDS, [...BRANCHES, glasgow, lerwick, kirkwall]);
+    expect(layout.frame).toEqual(mapFrame(UK_BOUNDS));
+    const inset = layout.inset!;
+    expect(inset.branchIds.sort()).toEqual(["b-kirkwall", "b-lerwick"]);
+    // Top-right corner, inside the map, at most a quarter wide.
+    expect(inset.box.left + inset.box.width).toBeLessThanOrEqual(1);
+    expect(inset.box.left).toBeGreaterThan(0.7);
+    expect(inset.box.top).toBeLessThan(0.05);
+    expect(inset.box.height).toBeLessThanOrEqual(0.28);
+    // Placing: mainland points on the map, the islands inside the inset box (Lerwick north of Kirkwall).
+    const g = placePoint(layout, glasgow.latitude, glasgow.longitude);
+    expect(g.inset).toBe(false);
+    const l = placePoint(layout, lerwick.latitude, lerwick.longitude);
+    const k = placePoint(layout, kirkwall.latitude, kirkwall.longitude);
+    for (const p of [l, k]) {
+      expect(p.inset).toBe(true);
+      expect(p.left).toBeGreaterThanOrEqual(inset.box.left);
+      expect(p.left).toBeLessThanOrEqual(inset.box.left + inset.box.width);
+      expect(p.top).toBeGreaterThanOrEqual(inset.box.top);
+      expect(p.top).toBeLessThanOrEqual(inset.box.top + inset.box.height);
+    }
+    expect(l.top).toBeLessThan(k.top);
+    // The card anchors on the drawn dot (in the inset for Lerwick).
+    const t = targetPosition(
+      layout,
+      { branchIds: ["b-lerwick"], point: { latitude: 0, longitude: 0 } },
+      [lerwick],
+    );
+    expect(t).toMatchObject({ left: l.left, top: l.top, inset: true });
   });
-  it("is extended once to take in a branch outside the United Kingdom's box", () => {
-    const outside = { id: "b-x", name: "Outside", region_id: null, latitude: 51.0, longitude: 2.6 };
-    const base = mapFrame(UK_BOUNDS, BRANCHES);
-    const f = mapFrame(UK_BOUNDS, [...BRANCHES, outside]);
-    expect(f.w).toBeGreaterThan(base.w);
-    const p = framePosition(f, outside.latitude, outside.longitude);
-    expect(p.left).toBeGreaterThan(0);
-    expect(p.left).toBeLessThan(1);
+  it("the inset sits over sea (no mainland town under it)", () => {
+    const layout = mapLayout(UK_BOUNDS, [{ id: "x", latitude: 60.155, longitude: -1.145 }]);
+    const box = layout.inset!.box;
+    for (const [lat, lon] of [
+      [57.1497, -2.0943], // Aberdeen
+      [57.5052, -1.7981], // Peterhead
+      [58.4391, -3.0941], // Wick
+      [56.462, -2.9707], // Dundee
+    ] as const) {
+      const p = framePosition(layout.frame, lat, lon);
+      const under =
+        p.left >= box.left &&
+        p.left <= box.left + box.width &&
+        p.top >= box.top &&
+        p.top <= box.top + box.height;
+      expect(under).toBe(false);
+    }
   });
   it("the land dots were generated with the same projection (the capitals inside the dotted bounds)", () => {
     for (const [lat, lon] of [

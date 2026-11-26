@@ -2,8 +2,8 @@
 // The land dots themselves are the static asset /maps/uk-dots.svg (kept out of the JS module graph);
 // this file holds only its geometry in map units (see project() in src/lib/events-story.ts).
 /** The bounds of the land. */
-export const UK_BOUNDS = { minX: 49.7, minY: 16.8, maxX: 624.1, maxY: 1097.9 };
+export const UK_BOUNDS = { minX: 49.7, minY: 235, maxX: 624.1, maxY: 1097.9 };
 /** The SVG's viewBox (the land plus one grid step). */
-export const UK_SVG_BOX = { x: 41.7, y: 8.8, w: 590.4, h: 1097 };
+export const UK_SVG_BOX = { x: 41.7, y: 227, w: 590.4, h: 878.9 };
 export const UK_SVG_URL = "/maps/uk-dots.svg";
-export const UK_DOT_COUNT = 3468;
+export const UK_DOT_COUNT = 3425;
