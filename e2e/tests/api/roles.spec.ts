@@ -160,7 +160,7 @@ test.describe("National Coordinators", () => {
 });
 
 test.describe("Privacy notice: a new version", () => {
-  // The current version comes from privacy_notice_version() (1.4 with the trustee notice); an older one is refused.
+  // The current version comes from privacy_notice_version() (the latest notice); an older one is refused.
   test("a member who confirmed an older notice must confirm the current one before writing (events and tasks)", async ({ freshUser, freshEvent, seed }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const volunteer = await freshUser();

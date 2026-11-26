@@ -72,12 +72,13 @@ text with a heading, no images) and a plain-text part. Times are Europe/London.
   - right after a member action that queues notice emails (task create/edit, task groups, meetings and invitees,
     task notes with mentions, task/meeting/event requests, accepting or approving a request): up to 60 emails of
     priorities 1–2
-    (`flushNoticeEmails`, `src/lib/notice-emails.server.ts`); anything else waits for the scheduled run;
+    (`flushNoticeEmails`, `src/lib/notice-emails.server.ts`, which sends the same notices' push notifications alongside,
+    `docs/push.md`); anything else waits for the scheduled run;
   - right after an action, for its transactional emails (member register/cancel, guest and subscriber forms, event
     changes; announcements send up to 50 at once);
   - in the scheduled run (`/api/public/task-reminders`, the "Task reminders" workflow at 07:05, 08:05, 09:05, 13:05 and
     18:05 UTC): it queues the daily summaries (from 08:00 London), task and event reminders, then sends up to 300 of
-    every priority. The later runs drain the
+    every priority (and the push notifications still waiting, which never count toward the email limit). The later runs drain the
     outbox; announcements over the daily limit continue the next day.
 - Each call is bounded (at most 300 rows, about 20 seconds) and never throws. Logs contain only template names and
   error codes, never addresses or content.

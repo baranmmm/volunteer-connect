@@ -1866,6 +1866,114 @@ export type Database = {
           },
         ]
       }
+      push_outbox: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          not_before: string | null
+          notification_id: string
+          sent_at: string | null
+          status: string
+          subscription_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          not_before?: string | null
+          notification_id: string
+          sent_at?: string | null
+          status?: string
+          subscription_id: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          not_before?: string | null
+          notification_id?: string
+          sent_at?: string | null
+          status?: string
+          subscription_id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_outbox_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_outbox_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "push_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_outbox_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_rate_limits: {
         Row: {
           bucket: string
@@ -2865,6 +2973,21 @@ export type Database = {
         Args: { _commitment: boolean; _help: string; _time: string }
         Returns: undefined
       }
+      claim_push_batch: {
+        Args: { p_max?: number }
+        Returns: {
+          attempts: number
+          auth: string
+          endpoint: string
+          id: string
+          kind: string
+          language: string
+          link: string
+          notification_id: string
+          p256dh: string
+          payload: Json
+        }[]
+      }
       claim_email_batch: {
         Args: { p_max?: number; p_max_priority?: number }
         Returns: {
@@ -3133,6 +3256,10 @@ export type Database = {
         Returns: string
       }
       extend_all_series: { Args: never; Returns: number }
+      finish_push: {
+        Args: { p_error?: string; p_id: string; p_result: string }
+        Returns: undefined
+      }
       finish_email: {
         Args: { p_error?: string; p_id: string; p_result: string }
         Returns: undefined
@@ -3388,6 +3515,10 @@ export type Database = {
       list_my_notifications: { Args: { p_limit?: number }; Returns: Json }
       list_my_notifications_page: {
         Args: { p_before?: string; p_before_id?: string; p_limit?: number }
+        Returns: Json
+      }
+      list_my_push_subscriptions: {
+        Args: { p_endpoint?: string }
         Returns: Json
       }
       list_my_task_requests: { Args: never; Returns: Json }
@@ -3711,6 +3842,15 @@ export type Database = {
         Args: { _actor: string; _audit: string; _target: string }
         Returns: undefined
       }
+      register_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
       register_for_event: {
         Args: { p_event_id: string; p_show_name?: boolean }
         Returns: Json
@@ -3882,6 +4022,10 @@ export type Database = {
         Returns: Json
       }
       set_notification_email: {
+        Args: { p_on: boolean; p_type: string }
+        Returns: Json
+      }
+      set_notification_push: {
         Args: { p_on: boolean; p_type: string }
         Returns: Json
       }
@@ -4180,6 +4324,10 @@ export type Database = {
         }
       }
       unfollow_branch: { Args: { p_branch_id: string }; Returns: undefined }
+      unregister_push_subscription: {
+        Args: { p_endpoint?: string; p_id?: string }
+        Returns: boolean
+      }
       update_agenda_item: {
         Args: { p_id: string; p_notes?: string; p_title: string }
         Returns: undefined

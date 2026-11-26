@@ -66,6 +66,33 @@ describe("route import graphs", () => {
     expect(staticGraph("components/app/MemberShell.tsx")).toContain("lib/install-app-store.ts");
     expect(staticGraph("routes/_app/dashboard.tsx")).toContain("components/app/InstallApp.tsx");
   });
+  it("public routes never reach the push code (service worker registration, subscriptions, the sender)", () => {
+    const publicRoutes = [
+      "routes/__root.tsx",
+      "routes/index.tsx",
+      "routes/events.index.tsx",
+      "routes/sign-in.tsx",
+      "routes/join.tsx",
+      "routes/privacy_.attendees.tsx",
+      "routes/_app/route.tsx",
+      "routes/_app/events_.$id.tsx",
+    ];
+    for (const route of publicRoutes)
+      expect(
+        staticGraph(route).filter((f) => /lib\/push|push\.functions|PushNotifications/.test(f)),
+        route,
+      ).toEqual([]);
+    // Signed-in pages do: the dashboard card and Profile > Notifications.
+    expect(staticGraph("routes/_app/dashboard.tsx")).toContain("lib/push/client.ts");
+    expect(staticGraph("routes/_app/profile.tsx")).toContain(
+      "components/app/PushNotifications.tsx",
+    );
+    // The service worker never caches or intercepts requests.
+    const sw = readFileSync(path.join(SRC, "../public/sw.js"), "utf8");
+    expect(sw).not.toMatch(/addEventListener\(\s*["']fetch["']|caches\.|importScripts/);
+    expect(sw).toMatch(/addEventListener\("push"/);
+    expect(sw).toMatch(/addEventListener\("notificationclick"/);
+  });
   it("the map data is a static asset, not a module (/events imports only its geometry)", () => {
     const files = staticGraph("routes/events.index.tsx");
     expect(files).toContain("components/public/events-map/uk-dots.ts");

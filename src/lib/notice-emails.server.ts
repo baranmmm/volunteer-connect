@@ -35,12 +35,19 @@ export async function unsubscribeNoticeWithToken(
     : { state: "invalid" };
 }
 
-/** Sends the notice emails a member action just queued (assignments, invitations, requests waiting). Never throws. */
+/**
+ * Sends what a member action just queued: the notice emails (assignments, invitations, requests waiting) and the push
+ * notifications of the same notices (src/lib/push/sender.server.ts), side by side. Never throws.
+ */
 export async function flushNoticeEmails(): Promise<void> {
-  try {
+  const emails = (async () => {
     const { flushOutbox, requestOrigin } = await import("@/lib/email/outbox.server");
     await flushOutbox({ maxPriority: 2, max: 60, origin: await requestOrigin() });
-  } catch {
-    /* non-fatal: rows stay queued for the scheduled sender */
-  }
+  })();
+  const pushes = (async () => {
+    const { flushPush } = await import("@/lib/push/sender.server");
+    await flushPush({ max: 50, timeBudgetMs: 8000 });
+  })();
+  // Non-fatal: rows stay queued for the scheduled sender.
+  await Promise.allSettled([emails, pushes]);
 }

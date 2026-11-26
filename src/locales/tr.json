@@ -2311,5 +2311,79 @@
     "reset": "Sıfırla",
     "done": "Tamam",
     "moreActions": "Diğer işlemler"
+  },
+  "push": {
+    "titles": {
+      "task_assigned": "Size yeni bir görev atandı",
+      "task_group_created": "Size yeni bir görev atandı",
+      "task_note_mention": "Bir görev notunda sizden bahsedildi",
+      "task_note_added": "Görevlerinizden birine yeni not eklendi",
+      "task_status_changed": "Oluşturduğunuz bir görev güncellendi",
+      "task_reminder": "Görev hatırlatması",
+      "review_waiting": "İncelemenizi bekleyen talepler var",
+      "meeting_invited": "Yeni toplantı daveti",
+      "meeting_changed": "Bir toplantı değişti",
+      "meeting_cancelled": "Bir toplantı iptal edildi",
+      "task_request_accepted": "Talebiniz yanıtlandı",
+      "task_request_declined": "Talebiniz yanıtlandı",
+      "meeting_request_approved": "Talebiniz yanıtlandı",
+      "meeting_request_declined": "Talebiniz yanıtlandı",
+      "volunteer_application_approved": "Başvurunuz yanıtlandı",
+      "volunteer_application_declined": "Başvurunuz yanıtlandı",
+      "other": "Yeni bildirim"
+    },
+    "bodies": {
+      "default": "Görmek için Gönüllü Merkezi'ni açın.",
+      "review_one": "Sizi bekleyen 1 talep var. İncelemek için Gönüllü Merkezi'ni açın.",
+      "review_other": "Sizi bekleyen {{count}} talep var. İncelemek için Gönüllü Merkezi'ni açın."
+    },
+    "device": {
+      "title": "Bu cihazda anlık bildirimler",
+      "intro": "Merkez kapalıyken bile bildirimleri bu telefonda veya bilgisayarda alın. Hangi bildirimlerin anlık bildirim olarak da geleceğini aşağıda seçin.",
+      "on": "Bu cihazda anlık bildirimler açık.",
+      "off": "Bu cihazda anlık bildirimler kapalı.",
+      "unsupported": "Bu tarayıcı anlık bildirim gösteremiyor. Yüklü uygulamayı veya başka bir tarayıcıyı deneyin.",
+      "iosInstall": "iPhone ve iPad'de anlık bildirimler yalnızca yüklü uygulamada çalışır (iOS 16.4 veya üstü). Uygulamayı yükleyin (Paylaş, ardından Ana Ekrana Ekle), ana ekranınızdan açın ve bildirimleri burada açın.",
+      "denied": "Bu cihazda uygulamanın bildirimleri engellenmiş. Yeniden izin vermek için:",
+      "enable": "Bu cihazda anlık bildirimleri aç",
+      "disable": "Bu cihazda anlık bildirimleri kapat",
+      "enabled": "Bu cihazda anlık bildirimler açıldı",
+      "disabled": "Bu cihazda anlık bildirimler kapatıldı",
+      "failed": "Anlık bildirimler açılamadı. Lütfen tekrar deneyin.",
+      "disableFailed": "Anlık bildirimler kapatılamadı. Lütfen tekrar deneyin.",
+      "otherDevices": "Anlık bildirimleri açık olan diğer cihazlar",
+      "remove": "Kaldır",
+      "removeLabel": "{{label}} için anlık bildirimleri kaldır",
+      "removed": "Cihaz kaldırıldı",
+      "unknownDevice": "Tarayıcı"
+    },
+    "settings": {
+      "push": "Anlık bildirim",
+      "pushOn": "{{label}} için anlık bildirim"
+    },
+    "card": {
+      "title": "Görevlerinizden haberdar olmak için bildirimleri açın",
+      "text": "Size bir görev atandığında, bir toplantıya davet edildiğinizde veya incelemenizi bekleyen talepler olduğunda bu telefonda bildirim alın. Bunu istediğiniz zaman Profil'den değiştirebilirsiniz.",
+      "button": "Bildirimleri aç",
+      "notNow": "Şimdi değil",
+      "deniedTitle": "Bildirimler engellenmiş",
+      "deniedText": "Görevlerinizden haberdar olmak için telefonunuzun ayarlarından uygulamanın bildirimlerine izin verin:"
+    },
+    "help": {
+      "ios": {
+        "step1": "Ayarlar uygulamasını açın.",
+        "step2": "Bildirimler'e, ardından {{app}} uygulamasına dokunun.",
+        "step3": "Bildirimlere İzin Ver'i açın."
+      },
+      "android": {
+        "step1": "Uygulama simgesine basılı tutun, ardından Uygulama bilgileri'ne dokunun.",
+        "step2": "Bildirimler'e dokunun ve açın.",
+        "step3": "Ya da tarayıcıda: site ayarlarını açın (adresin yanındaki simge) ve Bildirimler'e izin verin."
+      },
+      "desktop": {
+        "step1": "Site ayarlarını açmak için adres çubuğunun yanındaki simgeye tıklayın.",
+        "step2": "Bildirimler'i İzin ver olarak ayarlayın ve sayfayı yenileyin."
+      }
+    }
   }
 }

@@ -2311,5 +2311,79 @@
     "reset": "Reset",
     "done": "Done",
     "moreActions": "More actions"
+  },
+  "push": {
+    "titles": {
+      "task_assigned": "New task for you",
+      "task_group_created": "New task for you",
+      "task_note_mention": "You were mentioned in a task note",
+      "task_note_added": "New note on one of your tasks",
+      "task_status_changed": "A task you created was updated",
+      "task_reminder": "Task reminder",
+      "review_waiting": "Requests are waiting for your review",
+      "meeting_invited": "New meeting invitation",
+      "meeting_changed": "A meeting was changed",
+      "meeting_cancelled": "A meeting was cancelled",
+      "task_request_accepted": "Your request has been answered",
+      "task_request_declined": "Your request has been answered",
+      "meeting_request_approved": "Your request has been answered",
+      "meeting_request_declined": "Your request has been answered",
+      "volunteer_application_approved": "Your application has been answered",
+      "volunteer_application_declined": "Your application has been answered",
+      "other": "New notification"
+    },
+    "bodies": {
+      "default": "Open the Volunteer Hub to see it.",
+      "review_one": "1 request is waiting for you. Open the Volunteer Hub to review it.",
+      "review_other": "{{count}} requests are waiting for you. Open the Volunteer Hub to review them."
+    },
+    "device": {
+      "title": "Push notifications on this device",
+      "intro": "Get notices on this phone or computer even when the hub is closed. Choose below which notices also come as push notifications.",
+      "on": "Push notifications are on for this device.",
+      "off": "Push notifications are off on this device.",
+      "unsupported": "This browser cannot show push notifications. Try the installed app or another browser.",
+      "iosInstall": "On iPhone and iPad, push notifications work only in the installed app (iOS 16.4 or later). Install the app (Share, then Add to Home Screen), open it from your home screen and turn them on here.",
+      "denied": "Notifications are blocked for this app on this device. To allow them again:",
+      "enable": "Enable push on this device",
+      "disable": "Disable push on this device",
+      "enabled": "Push notifications are on for this device",
+      "disabled": "Push notifications are off for this device",
+      "failed": "Push notifications could not be turned on. Please try again.",
+      "disableFailed": "Push notifications could not be turned off. Please try again.",
+      "otherDevices": "Other devices with push on",
+      "remove": "Remove",
+      "removeLabel": "Remove push on {{label}}",
+      "removed": "Device removed",
+      "unknownDevice": "Browser"
+    },
+    "settings": {
+      "push": "Push",
+      "pushOn": "Push for {{label}}"
+    },
+    "card": {
+      "title": "Turn on notifications to hear about your tasks",
+      "text": "Get a notification on this phone when a task is assigned to you, you are invited to a meeting or requests wait for your review. You can change this any time in Profile.",
+      "button": "Turn on notifications",
+      "notNow": "Not now",
+      "deniedTitle": "Notifications are blocked",
+      "deniedText": "To hear about your tasks, allow notifications for the app in your phone's settings:"
+    },
+    "help": {
+      "ios": {
+        "step1": "Open the Settings app.",
+        "step2": "Tap Notifications, then {{app}}.",
+        "step3": "Turn on Allow Notifications."
+      },
+      "android": {
+        "step1": "Touch and hold the app icon, then tap App info.",
+        "step2": "Tap Notifications and turn them on.",
+        "step3": "In the browser instead: open the site settings (the icon next to the address), then allow Notifications."
+      },
+      "desktop": {
+        "step1": "Click the icon next to the address bar to open the site settings.",
+        "step2": "Set Notifications to Allow, then reload the page."
+      }
+    }
   }
 }

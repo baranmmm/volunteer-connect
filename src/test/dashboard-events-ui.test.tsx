@@ -37,6 +37,7 @@ vi.mock("@/lib/events.functions", () => ({ listEvents: vi.fn() }));
 vi.mock("@/components/events/EventForm", () => ({ EventForm: () => null }));
 vi.mock("@/components/events/MyRegistrations", () => ({ MyRegistrationsCard: () => null }));
 vi.mock("@/components/tasks/MyTasksCard", () => ({ MyTasksCard: () => null }));
+vi.mock("@/components/app/PushNotifications", () => ({ PushPromptCard: () => null }));
 vi.mock("@/components/meetings/UpcomingMeetingsCard", () => ({ UpcomingMeetingsCard: () => null }));
 vi.mock("@/components/requests/RequestDashboard", () => ({
   WaitingForYouCard: () => null,
