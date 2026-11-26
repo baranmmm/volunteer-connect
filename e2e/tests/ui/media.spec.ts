@@ -7,7 +7,6 @@ import { test, expect, type TestUser } from "../../fixtures/roles";
 import {
   addLibraryPhotoAs,
   createAlbumAs,
-  createPastEventAs,
   gradientPhoto,
   PALETTE,
   storedMediaObjects,
@@ -15,6 +14,7 @@ import {
   type TestPhoto,
 } from "../../api/media";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
+import { createEventAs, EVENT_TITLE_PREFIX } from "../../api/events";
 
 let n = 0;
 const photo = (i = n++) => gradientPhoto(PALETTE[i % PALETTE.length]!, i, 900, 600);
@@ -64,7 +64,8 @@ test.describe("Media", () => {
 
   test("a volunteer's upload request is approved in part: the photo shows, the deselected file is deleted", async ({ freshBranch, freshUser, pageAs }) => {
     const { branch, bm, vol } = await people(freshBranch, freshUser, "approve");
-    const event = await createPastEventAs(bm.email, branch, "E2E Iftar Dinner", 3);
+    // A members-only event starting within the hour (upload targets include events up to a day ahead); never public.
+    const event = await createEventAs(bm.email, { title: `${EVENT_TITLE_PREFIX}media approve`, branchId: branch, status: "published", startInMinutes: 60 });
     const volunteer = await pageAs(vol);
     await openMedia(volunteer);
     await openAdd(volunteer);

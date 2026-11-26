@@ -104,12 +104,17 @@ export async function addLibraryPhotoAs(
   return slot.id;
 }
 
-/** A past event record of a branch (all-day, `daysAgo` London days back) through create_past_event, as a manager. */
-export async function createPastEventAs(email: string, branchId: string, title: string, daysAgo: number): Promise<string> {
+/**
+ * A past event record of a branch (all-day, `daysAgo` days back) through create_past_event, as a manager. Past
+ * records are always public (validate_event): they show on the public events page, map and gallery, so only the
+ * local sample seed uses them (specs use members-only events: other specs count public events).
+ */
+export async function createPastEventAs(email: string, branchId: string, title: string, daysAgo: number, location?: string): Promise<string> {
   const db = await clientAs(email);
   const date = new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
   const { data, error } = await db.rpc("create_past_event", { p_title: title, p_date: date, p_branch: branchId, p_description: "" });
   if (error || !data) throw new Error(`create_past_event "${title}": ${error?.message ?? "no id"}`);
+  if (location) await adminClient().from("events").update({ location }).eq("id", String(data));
   return String(data);
 }
 

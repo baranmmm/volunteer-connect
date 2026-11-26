@@ -1,5 +1,6 @@
 // Local stack only: sample Media data for visual checks (never QA, never production). Placeholder photos (colour
-// gradients) only. Creates, as the seeded Medway/Brighton managers and the Medway volunteer, through the app's RPCs:
+// gradients) only. The sample events are past records, which are public: they show on the public events page and
+// map, which other specs count, so run `npm run local:reset && npm run local:seed` before the Playwright suite. Creates, as the seeded Medway/Brighton managers and the Medway volunteer, through the app's RPCs:
 //   * past Medway event records with photos on their event pages and Media-only photos ("2026 Iftar Dinner", "2025
 //     Christmas Dinner") and a third ("Peace Walk");
 //   * one Brighton event with photos (it must never appear in Medway's gallery);
@@ -30,12 +31,9 @@ export async function seedMedia() {
     console.log("[seed-media] Sample media already there: nothing to do.");
     return;
   }
-  // Past records (published events cannot end in the past): the app's create_past_event, as the branch manager.
-  const event = async (email: string, branchId: string, title: string, daysAgo: number, location: string) => {
-    const id = await createPastEventAs(email, branchId, title, daysAgo);
-    await adminClient().from("events").update({ location }).eq("id", id);
-    return id;
-  };
+  // Past records (published events cannot end in the past): create_past_event as the branch manager.
+  const event = (email: string, branchId: string, title: string, daysAgo: number, location: string) =>
+    createPastEventAs(email, branchId, title, daysAgo, location);
   const iftar = await event(bm, medway, "2026 Iftar Dinner", 20, "Rochester Cathedral");
   const xmas = await event(bm, medway, "2025 Christmas Dinner", 120, "Chatham Community Hall");
   const walk = await event(bm, medway, "Peace Walk", 60, "Rochester Esplanade");

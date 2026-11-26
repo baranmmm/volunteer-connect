@@ -33,3 +33,5 @@ Private bucket `media-library`: `<branch id>/<photo id>.webp` plus `.w640.webp` 
 ## Local sample data
 `cd e2e && npm run local:seed-media` (after `local:seed`, local stack only): three Medway events and two albums with
 placeholder photos, a Brighton event that must never show in Medway's gallery, and a pending upload request.
+The sample events are past records, which are public (they appear on the public events page and map), so reset the
+stack (`npm run local:reset && npm run local:seed`) before running the Playwright suite.
