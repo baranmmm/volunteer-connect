@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import {
   navItemsFor,
   forbiddenItem,
-  MOBILE_PRIMARY,
+  mobileNavFor,
   moreBadgeCount,
   type NavBadge,
   type NavItem,
@@ -157,8 +157,7 @@ export function MemberShell() {
   if (forbiddenItem(role, pathname)) return <Navigate to="/dashboard" replace />;
 
   const items = navItemsFor(role);
-  const primary = items.filter((i) => MOBILE_PRIMARY.includes(i.to)).slice(0, 4);
-  const more = items.filter((i) => !primary.includes(i));
+  const { primary, more } = mobileNavFor(role, items);
   const moreCount = moreBadgeCount(more, badgeCounts);
   const active = (to: string) => pathname === to || pathname.startsWith(to + "/");
   // Pages that use the whole content width (boards and long rows); every other page keeps the reading width.

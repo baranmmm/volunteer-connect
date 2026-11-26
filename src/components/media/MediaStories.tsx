@@ -30,6 +30,8 @@ export function MediaStories({
   onSlideshow,
   onAdd,
   onNewAlbum,
+  menuOpen,
+  onMenuOpenChange,
   loading,
 }: {
   home: MediaHome;
@@ -45,6 +47,9 @@ export function MediaStories({
   onSlideshow: () => void;
   onAdd: (() => void) | null;
   onNewAlbum: (() => void) | null;
+  /** The ⋯ menu (controlled: the page keeps it in the URL, so Back closes it). */
+  menuOpen: boolean;
+  onMenuOpenChange: (open: boolean) => void;
   loading: boolean;
 }) {
   const { t } = useTranslation();
@@ -79,7 +84,7 @@ export function MediaStories({
         >
           <Play className="size-5" aria-hidden />
         </Button>
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
           <DropdownMenuTrigger asChild>
             <Button
               data-testid="media-more"

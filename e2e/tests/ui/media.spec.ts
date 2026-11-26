@@ -182,4 +182,87 @@ test.describe("Media", () => {
     await viewer.getByTestId("media-story-close").click();
     await expect(story).toHaveAttribute("data-unseen", "false", { timeout: APP_LOAD_TIMEOUT });
   });
+
+  test("phones: Back closes the story viewer (after moving on) and the lightbox, keeping the place", async ({ freshBranch, freshUser, pageAs }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-pixel7", "The phone's Back button and the stories row");
+    const { branch, bm, vol } = await people(freshBranch, freshUser, "back");
+    const album = await createAlbumAs(bm.email, branch, "Volunteer meet-ups");
+    for (let i = 0; i < 15; i++) await addLibraryPhotoAs(bm.email, branch, { album_id: album }, await photo());
+    const page = await pageAs(vol);
+    await page.goto("/dashboard");
+    await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await openMedia(page);
+    const stories = page.getByTestId("media-stories");
+
+    // Story: next photo (replaces the entry), then Back closes it and stays on /media.
+    await page.locator(`[data-testid="media-story"][data-chapter-id="${album}"]`).click();
+    const viewer = page.getByTestId("media-story-viewer");
+    await expect(viewer).toContainText("1 of 15");
+    await expect(page).toHaveURL(/story=album/);
+    await viewer.getByTestId("media-story-next").click();
+    await expect(viewer).toContainText("2 of 15");
+    await page.goBack();
+    await expect(viewer).toHaveCount(0);
+    await expect(page).toHaveURL(/\/media$/);
+    await expect(stories).toBeVisible();
+
+    // Closing with the X goes back too: a second Back leaves Media and never reopens the story.
+    await page.locator(`[data-testid="media-story"][data-chapter-id="${album}"]`).click();
+    await expect(viewer).toBeVisible();
+    await viewer.getByTestId("media-story-close").click();
+    await expect(viewer).toHaveCount(0);
+    await expect(page).toHaveURL(/\/media$/);
+
+    // Lightbox from the grid, scrolled down: Back closes it and the scroll position stays.
+    const grid = page.getByTestId("media-grid-photo");
+    await expect(grid).toHaveCount(15);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+    const scrolled = await page.evaluate(() => window.scrollY);
+    await grid.nth(14).click();
+    const lightbox = page.getByTestId("media-lightbox");
+    await expect(lightbox).toBeVisible();
+    await expect(page).toHaveURL(/photo=/);
+    await page.goBack();
+    await expect(lightbox).toHaveCount(0);
+    await expect(page).toHaveURL(/\/media$/);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(scrolled - 5);
+    expect(await page.evaluate(() => window.scrollY)).toBeLessThan(scrolled + 5);
+
+    // A reloaded lightbox link opens the same photo.
+    const photoId = await grid.nth(3).getAttribute("data-photo-id");
+    await grid.nth(3).click();
+    await page.reload();
+    await expect(page.getByTestId("media-lightbox")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    expect(new URL(page.url()).searchParams.get("photo")).toBe(photoId);
+    await page.getByTestId("media-lightbox-close").click();
+    await expect(page.getByTestId("media-lightbox")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/media$/);
+
+    // The rest of the way back leaves Media (no overlay reopens on the way).
+    await page.goBack();
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.getByTestId("media-story-viewer")).toHaveCount(0);
+  });
+
+  test("phones: the bottom bar is Dashboard · Calendar · Tasks · Media; Meetings opens from More", async ({ freshBranch, freshUser, pageAs }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-pixel7", "The phone bottom bar");
+    const { vol } = await people(freshBranch, freshUser, "nav");
+    const page = await pageAs(vol);
+    await page.goto("/dashboard");
+    const bar = page.getByTestId("mobile-bottom-nav");
+    await expect(bar).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    const keys = await bar.locator('a[data-testid^="nav-"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+    expect(keys).toEqual(["nav-dashboard", "nav-calendar", "nav-tasks", "nav-media"]);
+    await expect(bar.getByTestId("mobile-nav-more")).toBeVisible();
+    await bar.getByTestId("nav-media").click();
+    await expect(page).toHaveURL(/\/media/);
+    await expect(bar.getByTestId("nav-media")).toHaveAttribute("data-status", "active");
+    await page.getByTestId("mobile-nav-more").click();
+    const sheet = page.getByTestId("mobile-nav-more-sheet");
+    const first = sheet.locator('a[data-testid^="nav-"]').first();
+    await expect(first).toHaveAttribute("data-testid", "nav-meetings");
+    await first.click();
+    await expect(page).toHaveURL(/\/meetings/);
+  });
 });

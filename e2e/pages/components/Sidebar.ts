@@ -2,8 +2,10 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { APP_LOAD_TIMEOUT } from "../app";
 
 export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" | "training" | "approvals" | "my-requests" | "requests" | "users" | "regions" | "recycle-bin" | "profile" | "donate";
-/** Bottom-nav items on phones (members); followers have dashboard, calendar and requests there. */
-export const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
+/** Bottom-nav items on phones (members: Meetings is the first item under More); followers have dashboard, calendar and
+ * requests there; National Coordinators (no branch gallery) keep Meetings instead of Media. */
+export const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "media"];
+export const NC_MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
 export const FOLLOWER_MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "requests"];
 
 /** Desktop sidebar (`app-sidebar`) or mobile bottom nav (`mobile-bottom-nav`) + "More" sheet (`mobile-nav-more-sheet`). */
