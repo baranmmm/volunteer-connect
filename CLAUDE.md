@@ -30,6 +30,10 @@ runs local e2e (`local:test`, `local:reset/up/down/migrate/seed/dryrun`) at a ti
 lock (`e2e/setup/local-lock.ts`, `~/.cache/dsvh-e2e/local-stack.lock`) and refuses to start while another live
 process holds it. Wait for the other session; never delete the lock file or set `E2E_LOCAL_LOCK=off` to get around
 it (that is for CI runners, which have a stack each). Subagents of one session run their e2e one after another.
+**Only the main session changes the local stack's schema.** It applies migrations (`local:migrate`, `local:dryrun`,
+`supabase db push`, any SQL that changes schema or the migration history) one at a time and in timestamp order.
+Subagents never run migration commands against the shared stack: they write and commit the migration files and ask
+the main session to apply them; `local:test` stays allowed for them.
 1. `npx tsc --noEmit` at the repo root, and inside `e2e/` when it changed.
 2. ESLint on the changed files only: `npx eslint <changed files>` (the rest of `src/` has known formatting issues).
 3. Vitest: `npx vitest run`.
