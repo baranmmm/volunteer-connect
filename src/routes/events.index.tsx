@@ -30,6 +30,8 @@ import {
 } from "@/components/landing/Landing";
 import { PublicRegistrationState, publicWhere } from "@/components/public/PublicEventBits";
 import { getPublicEvents, getPublicStructure } from "@/lib/public-events.functions";
+import { getPastPublicEvents } from "@/lib/events-map.functions";
+import type { BranchPoint } from "@/lib/events-story";
 import { branchSlug, type PublicEvent } from "@/lib/public-events";
 import { eventOccursOn, eventWhen } from "@/lib/event-rules";
 import { dateLocale } from "@/lib/i18n";
@@ -50,6 +52,14 @@ const eventsQuery = (branch: string | undefined) =>
     queryKey: ["public-events", branch ?? ""],
     queryFn: () => getPublicEvents({ data: branch ? { branch } : {} }),
     staleTime: 300_000,
+  });
+
+// Past public events for the map story (the last 12 months, imported records included).
+const pastQuery = (branch: string | undefined) =>
+  queryOptions({
+    queryKey: ["public-past-events", branch ?? ""],
+    queryFn: () => getPastPublicEvents({ data: branch ? { branch } : {} }),
+    staleTime: 600_000,
   });
 
 const SUPABASE_ORIGIN = (() => {
@@ -80,13 +90,21 @@ export const Route = createFileRoute("/events/")({
   loader: async ({ context, deps }) => {
     const origin = await siteOrigin();
     if (typeof window !== "undefined")
-      return { origin, branch: deps.branch, events: null, structure: null, landing: null };
-    const [events, structure, landing] = await Promise.all([
+      return {
+        origin,
+        branch: deps.branch,
+        events: null,
+        past: null,
+        structure: null,
+        landing: null,
+      };
+    const [events, past, structure, landing] = await Promise.all([
       context.queryClient.ensureQueryData(eventsQuery(deps.branch)).catch(() => null),
+      context.queryClient.ensureQueryData(pastQuery(deps.branch)).catch(() => null),
       context.queryClient.ensureQueryData(structureQuery).catch(() => null),
       context.queryClient.ensureQueryData(landingQuery).catch(() => null),
     ]);
-    return { origin, branch: deps.branch, events, structure, landing };
+    return { origin, branch: deps.branch, events, past, structure, landing };
   },
   // The image links in the HTML (hero, gallery) are signed for 5 minutes: never store the page in a cache.
   headers: () => ({ "Cache-Control": "private, no-store" }),
@@ -128,6 +146,10 @@ function PublicEventsPage() {
     ...eventsQuery(search.branch),
     ...(loaded.events && loaded.branch === search.branch ? { initialData: loaded.events } : {}),
   });
+  const past = useQuery({
+    ...pastQuery(search.branch),
+    ...(loaded.past && loaded.branch === search.branch ? { initialData: loaded.past } : {}),
+  });
   const selected = new Set((search.branch ?? "").split(",").filter(Boolean));
   const view = search.view ?? "list";
   const shown = useMemo(
@@ -136,6 +158,31 @@ function PublicEventsPage() {
         (e) => !search.region || e.scope === "national" || e.region_id === search.region,
       ),
     [events.data, search.region],
+  );
+  const pastShown = useMemo(
+    () =>
+      (past.data?.events ?? []).filter(
+        (e) => !search.region || e.scope === "national" || e.region_id === search.region,
+      ),
+    [past.data, search.region],
+  );
+  // Every branch with a location is a dot on the map (the map is the same for every filter).
+  const branchPoints = useMemo<BranchPoint[]>(
+    () =>
+      (structure.data?.branches ?? []).flatMap((b) =>
+        b.latitude !== null && b.longitude !== null
+          ? [
+              {
+                id: b.id,
+                name: b.name,
+                region_id: b.region_id,
+                latitude: b.latitude,
+                longitude: b.longitude,
+              },
+            ]
+          : [],
+      ),
+    [structure.data],
   );
   type Patch = { [K in keyof Search]?: Search[K] | undefined };
   const setSearch = (next: Patch) =>
@@ -274,16 +321,12 @@ function PublicEventsPage() {
               {t("publicEvents.loadError")}
             </p>
           ) : (
-            <EventsMapLayout upcoming={shown} branch={search.branch} region={search.region}>
+            <EventsMapLayout upcoming={shown} past={pastShown} branches={branchPoints}>
               {(ctx) =>
                 view === "list" ? (
-                  <PublicList
-                    events={ctx.shown}
-                    highlightedId={ctx.highlightedId}
-                    onHover={ctx.onHover}
-                  />
+                  <PublicList events={ctx.shown} />
                 ) : (
-                  <PublicMonth events={ctx.events} month={ctx.month} onMonth={ctx.setMonthOffset} />
+                  <PublicMonth events={shown} month={ctx.month} onMonth={ctx.setMonthOffset} />
                 )
               }
             </EventsMapLayout>
@@ -295,15 +338,7 @@ function PublicEventsPage() {
   );
 }
 
-function PublicList({
-  events,
-  highlightedId,
-  onHover,
-}: {
-  events: PublicEvent[];
-  highlightedId: string | null;
-  onHover: (id: string | null) => void;
-}) {
+function PublicList({ events }: { events: PublicEvent[] }) {
   const { t, i18n } = useTranslation();
   if (!events.length)
     return (
@@ -314,19 +349,14 @@ function PublicList({
   return (
     <ul
       data-testid="public-events-list"
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
     >
       {events.map((e) => (
         <li
           key={e.id}
           data-testid="public-event-card"
           data-event-id={e.id}
-          data-highlighted={e.id === highlightedId ? "true" : undefined}
-          onMouseEnter={() => onHover(e.id)}
-          onMouseLeave={() => onHover(null)}
-          onFocus={() => onHover(e.id)}
-          onBlur={() => onHover(null)}
-          className={`scroll-mt-4 rounded-2xl border bg-card p-4 ${e.id === highlightedId ? "ring-2 ring-primary" : ""}`}
+          className="scroll-mt-4 rounded-2xl border bg-card p-4"
         >
           <Link
             to="/events/$id"
