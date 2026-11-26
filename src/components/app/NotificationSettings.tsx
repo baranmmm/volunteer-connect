@@ -65,16 +65,20 @@ export function NotificationSettings() {
   /** Shows `next` at once, runs the calls together; on an error restores the previous settings and re-reads them. */
   async function save(next: Settings, calls: (() => Promise<unknown>)[]) {
     if (calls.length === 0) return;
+    setBusy(true);
+    // A read still in flight (e.g. the re-read after a failed save) would land after this change and overwrite it.
+    await qc.cancelQueries({ queryKey: key });
     const previous = qc.getQueryData<Settings>(key);
     qc.setQueryData<Settings>(key, next);
-    setBusy(true);
     try {
       await Promise.all(calls.map((call) => call()));
       toast.success(t("notifications.settings.saved"));
     } catch (e) {
       qc.setQueryData<Settings>(key, previous);
-      void qc.invalidateQueries({ queryKey: key });
       toast.error(translateError(e));
+      // Some calls may have been saved: re-read before the controls work again, so the next change starts from the
+      // stored values.
+      await qc.invalidateQueries({ queryKey: key }).catch(() => undefined);
     } finally {
       setBusy(false);
     }
