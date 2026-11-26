@@ -1579,7 +1579,8 @@
       "daily_digest_other": "Günlük özetiniz: {{count}} güncelleme",
       "task_note_added_many": "“{{title}}” görevinde {{count}} yeni not",
       "volunteer_application_approved": "Artık {{branch}} şubesinde Dialogue Society gönüllüsüsün!",
-      "volunteer_application_declined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı. Not: {{reason}}"
+      "volunteer_application_declined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı. Not: {{reason}}",
+      "email_budget_warning": "Bugün {{limit}} e-postanın {{sent}} tanesi gönderildi. Günlük sınırı aşan e-postalar yarına kalır (kayıt ve şifre e-postaları her zaman gider). Ücretli bir e-posta planı düşünebilirsiniz."
     },
     "taskStatus": {
       "todo": "Yapılacak",
@@ -1592,13 +1593,6 @@
       "tasks": "{{count}} yeni görev",
       "meetings": "{{count}} toplantı güncellemesi",
       "more": "Diğer menüsünde {{count}} güncelleme"
-    },
-    "preferences": {
-      "title": "Görev hatırlatmaları",
-      "taskEmails": "Görevler için e-posta hatırlatmaları",
-      "taskEmailsOn": "Görev hatırlatmalarını size e-postayla göndereceğiz. Hatırlatmalar uygulamada da görünür.",
-      "taskEmailsOff": "Görev hatırlatmaları yalnızca uygulamada görünür.",
-      "saved": "Hatırlatma tercihi kaydedildi"
     },
     "groups": {
       "task_assigned": "Size {{count}} görev atandı",

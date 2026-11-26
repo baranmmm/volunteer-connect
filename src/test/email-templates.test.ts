@@ -467,6 +467,32 @@ describe("email templates", () => {
     expect(r.text).toContain(`Bu e-postaları durdur: ${ORIGIN}/e/notices?t=tok`);
   });
 
+  it("notice: a mention links to the note (EN and TR)", () => {
+    const mention = (language: "en" | "tr") =>
+      renderEmail(
+        "notice",
+        noticeCtx({
+          language,
+          payload: { type: "mention" },
+          notice: {
+            kind: "task_note_mention",
+            title: "Book the hall",
+            link: "/tasks?task=abc&note=n1",
+            payload: {},
+            actor_name: "Ayşe",
+          },
+        }),
+      );
+    const en = mention("en");
+    expect(en.subject).toBe("You were mentioned: Book the hall");
+    expect(en.text).toContain("Ayşe mentioned you in a note on this task:");
+    expect(en.text).toContain(`Open the note: ${ORIGIN}/tasks?task=abc&note=n1`);
+    expect(en.text).toContain("emails for “I am mentioned in a note” are on");
+    const tr = mention("tr");
+    expect(tr.subject).toBe("Sizden bahsedildi: Book the hall");
+    expect(tr.text).toContain(`Notu aç: ${ORIGIN}/tasks?task=abc&note=n1`);
+  });
+
   it("notice refuses a missing notice", () => {
     expect(() => renderEmail("notice", noticeCtx({ notice: null }))).toThrow();
   });

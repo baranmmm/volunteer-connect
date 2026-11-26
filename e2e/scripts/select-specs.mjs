@@ -51,7 +51,7 @@ const SRC_RULES = [
   [/components\/landing\/|lib\/landing|image-variants|ResponsiveImage|lib\/email\/|public-guest|components\/public\/(Guest|Subscribe|form-protection|GuestLink|SubscriberLink)|past-events|PastEvent|event-videos|EventVideos|youtube|attendee|Attendee|announce|Announce|event-emails|video-posters|routes\/index\.tsx|routes\/(e|updates)\.|routes\/privacy_\.attendees|routes\/api\/public\/unsubscribe|attendee-privacy/i, ["public"]],
   [/components\/tasks\/|routes\/_app\/tasks|lib\/tasks|task-reminders|EventLinkedTasks/i, ["tasks"]],
   [/components\/meetings\/|routes\/_app\/meetings|lib\/meetings/i, ["meetings"]],
-  [/work-requests|WorkRequest|work-scopes|components\/work\/|notifications|Notifications|TaskReminderPreferences/i, ["tasks", "meetings"]],
+  [/work-requests|WorkRequest|work-scopes|components\/work\/|notifications|Notifications/i, ["tasks", "meetings"]],
   [/public-events|routes\/events\.|routes\/api\/ics|followed-branches|FollowedBranches|volunteer-applications|VolunteerApplications|national|regions|MfaGate|RoleDashboards|branch-map|BranchMap|geocode|\/roles\.ts|components\/app\/nav|components\/public\//i, ["roles"]],
   [/requests?[-./]|\/requests\/|my-requests/i, ["requests"]],
   [/registration/i, ["registrations"]],

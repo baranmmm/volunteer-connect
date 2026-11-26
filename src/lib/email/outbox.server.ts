@@ -1,6 +1,6 @@
 // The email sender (server only): claims queued email_outbox rows and sends them through Brevo, within the daily limit
-// (claim_email_batch: 300 a day, London day; transactional before reminders and the members' daily summary before
-// announcements).
+// (claim_email_batch: email_daily_limit() = 280 a London day, leaving 20 of Brevo's 300 for Supabase Auth emails;
+// transactional, then notice emails, reminders, announcements, and the daily summary last).
 // * EMAIL_TRANSPORT=capture (the e2e app server, never production): emails are rendered and stored on the row
 //   (payload.captured) instead of being sent.
 // * Without BREVO_API_KEY / EMAIL_FROM nothing is claimed: the rows stay pending until the sender is configured.
@@ -26,7 +26,9 @@ import {
 
 type Admin = SupabaseClient<Database>;
 type ClaimedRow = Database["public"]["Functions"]["claim_email_batch"]["Returns"][number];
-export type FlushOptions = { maxPriority?: 1 | 2 | 3; max?: number; origin?: string | null };
+/** Priorities (email_priority): 1 transactional, 2 notice emails, 3 reminders, 4 announcements, 5 daily summaries. */
+export type EmailPriority = 1 | 2 | 3 | 4 | 5;
+export type FlushOptions = { maxPriority?: EmailPriority; max?: number; origin?: string | null };
 export type FlushResult = { sent: number; skipped: number; failed: number };
 
 const TIME_BUDGET_MS = 20000;
@@ -287,7 +289,7 @@ export async function flushOutbox(opts: FlushOptions = {}): Promise<FlushResult>
     while (!stop && remaining > 0 && Date.now() < deadline) {
       const claim = await admin.rpc("claim_email_batch", {
         p_max: Math.min(remaining, BATCH),
-        p_max_priority: opts.maxPriority ?? 3,
+        p_max_priority: opts.maxPriority ?? 5,
       });
       if (claim.error || !claim.data?.length) break;
       remaining -= claim.data.length;

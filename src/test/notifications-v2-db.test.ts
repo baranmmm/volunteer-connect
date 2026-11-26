@@ -155,7 +155,7 @@ describe("settings: in-app on/off, email on/off", () => {
       const s = await settings(ids.bm1);
       expect(Object.fromEntries(s.map((x) => [x.type, x.email_timing]))).toEqual({
         task_assigned: "immediate",
-        mention: "digest",
+        mention: "immediate",
         review: "immediate",
         task_status: "digest",
         task_note: "digest",
@@ -348,6 +348,156 @@ describe("immediate notice emails", () => {
     }));
 });
 
+describe("mentions are emailed at once", () => {
+  it("one notice email per mention; none when the mention email is off (the mention is still in the app)", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const t = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Hall",
+        assignee_ids: [ids.bm1],
+      });
+      await one("SELECT public.add_task_note($1, 'Ask @vol', $2::jsonb) v", [
+        t,
+        JSON.stringify([ids.vol1b]),
+      ]);
+      const mention = await stored(ids.vol1b, "task_note_mention");
+      expect(mention).toMatchObject([{ email_digest: false }]);
+      expect(await outbox(ids.vol1b, "notice")).toMatchObject([
+        { notification_id: mention[0]!.id, payload: { type: "mention" }, priority: 2 },
+      ]);
+      await as(ids.vol1b);
+      await one("SELECT public.set_notification_email('mention', false) v");
+      await as(ids.bm1);
+      await one("SELECT public.add_task_note($1, 'Again @vol', $2::jsonb) v", [
+        t,
+        JSON.stringify([ids.vol1b]),
+      ]);
+      expect(await stored(ids.vol1b, "task_note_mention")).toHaveLength(2);
+      expect((await outbox(ids.vol1b, "notice")).map((m) => m.status)).toEqual(["cancelled"]);
+    }));
+});
+
+describe("sending order, the Auth reserve and the 250 warning", () => {
+  const seedSent = (n: number) =>
+    db.exec(`INSERT INTO email_outbox (to_email, template, status, sent_at)
+      SELECT 'x' || g || '@example.org', 'guest_confirm', 'sent', now() FROM generate_series(1, ${n}) g`);
+  const queue = (template: string) =>
+    one<string>(
+      "INSERT INTO email_outbox (to_email, template) VALUES ('q@example.org', $1) RETURNING id v",
+      [template],
+    );
+
+  it("priorities: transactional, notice, reminders, announcements, daily summary last", () =>
+    tx(async () => {
+      await as(null);
+      const order = [
+        "guest_confirm",
+        "notice",
+        "task_reminder",
+        "event_reminder",
+        "event_announcement",
+        "daily_digest",
+      ];
+      expect(
+        await q<{ t: string; p: number }>(
+          "SELECT t, public.email_priority(t) AS p FROM unnest($1::text[]) t",
+          [order],
+        ),
+      ).toEqual([
+        { t: "guest_confirm", p: 1 },
+        { t: "notice", p: 2 },
+        { t: "task_reminder", p: 3 },
+        { t: "event_reminder", p: 3 },
+        { t: "event_announcement", p: 4 },
+        { t: "daily_digest", p: 5 },
+      ]);
+      // Queued in the reverse order, claimed in priority order.
+      for (const t of [
+        "daily_digest",
+        "event_announcement",
+        "task_reminder",
+        "notice",
+        "registration_confirmed",
+      ])
+        await queue(t);
+      expect(
+        (await q<{ template: string }>("SELECT template FROM public.claim_email_batch(10, 5)")).map(
+          (r) => r.template,
+        ),
+      ).toEqual([
+        "registration_confirmed",
+        "notice",
+        "task_reminder",
+        "event_announcement",
+        "daily_digest",
+      ]);
+      // A run up to priority 4 leaves the daily summary for later.
+      await db.exec(
+        "UPDATE email_outbox SET status='pending', claimed_at=NULL WHERE status='sending'",
+      );
+      expect(
+        (await q<{ template: string }>("SELECT template FROM public.claim_email_batch(10, 4)")).map(
+          (r) => r.template,
+        ),
+      ).not.toContain("daily_digest");
+    }));
+
+  it("the app stops at 280 a day, leaving 20 of the 300 for Supabase Auth emails", () =>
+    tx(async () => {
+      await as(null);
+      expect(await one("SELECT public.email_daily_limit() v")).toBe(280);
+      expect(await one("SELECT public.email_provider_daily_limit() v")).toBe(300);
+      await seedSent(278);
+      for (let i = 0; i < 5; i++) await queue("guest_confirm");
+      expect(await q("SELECT id FROM public.claim_email_batch(10, 5)")).toHaveLength(2);
+      expect(await q("SELECT id FROM public.claim_email_batch(10, 5)")).toHaveLength(0);
+    }));
+
+  it("at 250 sent today: one in-app warning for each National Coordinator and Branch Manager, once a day", () =>
+    tx(async () => {
+      await as(null);
+      const nc = id(14);
+      await db.exec(`INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${nc}', jsonb_build_object('full_name','Coordinator','privacy_notice_version','1.3'));
+        UPDATE profiles SET status='active', branch_id=NULL WHERE id='${nc}';
+        UPDATE user_roles SET role='national_coordinator' WHERE user_id='${nc}';`);
+      const warned = () =>
+        q<{ user_id: string; payload: Row }>(
+          "SELECT user_id, payload FROM notifications WHERE kind='email_budget_warning' ORDER BY user_id",
+        );
+      await seedSent(248);
+      const a = await queue("notice");
+      const b = await queue("notice");
+      const c = await queue("notice");
+      // 249 sent: nothing yet.
+      await db.query("UPDATE email_outbox SET status='sent', sent_at=now() WHERE id=$1", [a]);
+      expect(await warned()).toEqual([]);
+      // 250: the warning, for the NC and the Branch Manager only (not the Regional Director, not volunteers).
+      await db.query("UPDATE email_outbox SET status='sent', sent_at=now() WHERE id=$1", [b]);
+      const first = await warned();
+      expect(first.map((w) => w.user_id).sort()).toEqual([ids.bm1, nc].sort());
+      expect(first[0]!.payload).toMatchObject({ sent: 250, limit: 300, app_limit: 280 });
+      // 251 and another check the same day: no second warning. Never emailed.
+      await db.query("UPDATE email_outbox SET status='sent', sent_at=now() WHERE id=$1", [c]);
+      expect(await one("SELECT public.email_budget_check() v")).toBe(0);
+      expect(await warned()).toHaveLength(2);
+      expect(
+        await one(
+          "SELECT count(*)::int v FROM email_outbox o JOIN notifications n ON n.id=o.notification_id WHERE n.kind='email_budget_warning'",
+        ),
+      ).toBe(0);
+      // Listed for the manager (in the app), with its own text key.
+      expect(await listed(ids.bm1)).toContain("email_budget_warning");
+      expect(await listed(ids.vol1)).not.toContain("email_budget_warning");
+      // A captured test email (sent without a send time) does not count.
+      await as(null);
+      const d = await queue("notice");
+      await db.query("UPDATE email_outbox SET status='sent', sent_at=NULL WHERE id=$1", [d]);
+      expect(await one("SELECT public.emails_sent_today() v")).toBe(251);
+    }));
+});
+
 describe("unsubscribe from one type (signed link, service role)", () => {
   it("turns off exactly that type's email; unknown types and deleted people are invalid; clients cannot call it", () =>
     tx(async () => {
@@ -426,7 +576,7 @@ describe("the daily summary email", () => {
       expect(await one("SELECT public.run_notification_digest('2027-01-15 08:05+00') v")).toBe(1);
       const queued = await mails();
       expect(queued).toHaveLength(1);
-      expect(queued[0]).toMatchObject({ user_id: ids.bm1, priority: 2 });
+      expect(queued[0]).toMatchObject({ user_id: ids.bm1, priority: 5 });
       expect(queued[0]!.payload).toMatchObject({
         count: 2,
         kinds: { task_request_accepted: 1, task_status_changed: 1 },

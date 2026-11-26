@@ -881,6 +881,23 @@ function notice(ctx: RenderContext): RenderedEmail {
       blocks,
     });
   }
+  if (n.kind === "task_note_mention") {
+    const intro = tr
+      ? `${actor ?? "Biri"} bu görevdeki bir notta sizden bahsetti:`
+      : `${actor ?? "Someone"} mentioned you in a note on this task:`;
+    const name = title || (tr ? "Görev" : "Task");
+    return memberBuild(ctx, lang, type, {
+      subject: `${tr ? "Sizden bahsedildi" : "You were mentioned"}: ${subjectTitle(name)}`,
+      preheader: intro,
+      heading: tr ? "Bir notta sizden bahsedildi" : "You were mentioned in a note",
+      blocks: [
+        hello,
+        { kind: "p", text: intro },
+        { kind: "strong", text: name },
+        { kind: "button", label: tr ? "Notu aç" : "Open the note", url },
+      ],
+    });
+  }
   if (n.kind === "task_assigned" || n.kind === "task_group_created") {
     const group = n.kind === "task_group_created";
     const intro = tr

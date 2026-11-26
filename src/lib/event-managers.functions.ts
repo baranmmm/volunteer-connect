@@ -98,7 +98,7 @@ export const announceEvent = createServerFn({ method: "POST" })
     if (result.error) throw new Error(result.error.message);
     if (!data.dryRun) {
       const { flushEventEmails } = await import("./event-emails.server");
-      await flushEventEmails(3, 50);
+      await flushEventEmails(4, 50);
     }
     return Number(result.data ?? 0);
   });

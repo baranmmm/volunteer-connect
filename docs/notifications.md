@@ -5,7 +5,8 @@ person hears only about what directly concerns them, never about their own actio
 Database: `supabase/migrations/20261128090000_notification_settings_self_reminders.sql` (on top of
 `20261125090100_notifications.sql`); in-app notices always immediate and the daily summary as an email:
 `20261208090000_notifications_inapp_immediate.sql`; notice emails, email switches and stop links:
-`20261208090100_notification_emails.sql`. Texts: `src/lib/notification-text.ts` (i18n keys `notifications.kinds.*`,
+`20261208090100_notification_emails.sql`; mentions at once, sending order, Auth reserve and the 250 warning:
+`20261208090200_email_priorities_budget.sql`. Texts: `src/lib/notification-text.ts` (i18n keys `notifications.kinds.*`,
 `notifications.groups.*`), never stored sentences.
 
 ## Who gets what
@@ -40,8 +41,9 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
   | `task_assigned` (`task_assigned`, `task_group_created`) | at once, one per notice (template `notice`) |
   | `review` (the grouped `review_waiting` notice) | at once when it is created or its count goes up (a new request); while one email is still waiting it is reused (sent with the current count) |
   | `meeting` | invitations (`meeting_invited`) at once; changes and cancellations in the daily summary |
+  | `mention` (`task_note_mention`) | at once, one per mention (`20261208090200`) |
   | `task_reminder` | its own email at once (`task_reminder`; the switch is `notification_preferences.task_reminder_emails`) |
-  | `mention`, `task_status`, `task_note`, `request_decided` | in the daily summary |
+  | `task_status`, `task_note`, `request_decided` | in the daily summary |
 
   Turning an email off cancels that type's notice emails still waiting. The old per-person delivery choice
   (`types.<type>.delivery`, "Immediately" / "Daily summary") is no longer read; nothing stored was rewritten, and
@@ -68,6 +70,13 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
   render and expand to their items (`digest_id`). Notices held before `20261208090000` were released by that
   migration and went into the next summary email; `held` is always false now (check constraint).
 - The emails themselves: `docs/email.md`.
+
+## Email budget warning
+
+When the app has sent 250 emails in a London day (`email_budget_warning_at()`), every active National Coordinator and
+Branch Manager gets one in-app notice `email_budget_warning` (entity type `email_budget`, link `/dashboard`, payload
+`{day, sent, limit, app_limit}`): "250 of 300 emails were sent today … consider a paid email plan". Once per person
+and day (the notice itself is the log), always on, never emailed. See `docs/email.md`.
 
 ## Grouping (dashboard Notifications card)
 

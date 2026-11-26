@@ -93,15 +93,6 @@ export const getNotificationPreferences = createServerFn({ method: "GET" })
     return z.object({ task_reminder_emails: z.boolean() }).parse(result.data);
   });
 
-export const setTaskReminderEmails = createServerFn({ method: "POST" })
-  .middleware([requireMember])
-  .inputValidator(z.object({ on: z.boolean() }))
-  .handler(async ({ data, context }) => {
-    const result = await context.supabase.rpc("set_task_reminder_emails", { p_on: data.on });
-    fail(result.error);
-    return { task_reminder_emails: data.on };
-  });
-
 /** Profile > Notifications: every type with its setting (locked types are always on and immediate). */
 export const getNotificationSettings = createServerFn({ method: "GET" })
   .middleware([requireMember])

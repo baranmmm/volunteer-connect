@@ -1579,7 +1579,8 @@
       "daily_digest_other": "Your daily summary: {{count}} updates",
       "task_note_added_many": "{{count}} new notes on: “{{title}}”",
       "volunteer_application_approved": "You're now a Dialogue Society volunteer at {{branch}}!",
-      "volunteer_application_declined": "Your volunteer application to {{branch}} was not approved. Note: {{reason}}"
+      "volunteer_application_declined": "Your volunteer application to {{branch}} was not approved. Note: {{reason}}",
+      "email_budget_warning": "{{sent}} of {{limit}} emails were sent today. Emails over the daily limit wait until tomorrow (sign-up and password emails always go out). Consider a paid email plan."
     },
     "taskStatus": {
       "todo": "To do",
@@ -1592,13 +1593,6 @@
       "tasks": "{{count}} new tasks",
       "meetings": "{{count}} meeting updates",
       "more": "{{count}} updates under More"
-    },
-    "preferences": {
-      "title": "Task reminders",
-      "taskEmails": "Email reminders for tasks",
-      "taskEmailsOn": "We'll email you task reminders. Reminders also appear in the app.",
-      "taskEmailsOff": "Task reminders appear in the app only.",
-      "saved": "Reminder preference saved"
     },
     "groups": {
       "task_assigned": "{{count}} tasks were assigned to you",

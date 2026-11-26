@@ -20,6 +20,7 @@ export const NOTIFICATION_KINDS = [
   "meeting_request_declined",
   "review_waiting",
   "daily_digest",
+  "email_budget_warning",
   "volunteer_application_approved",
   "volunteer_application_declined",
 ] as const;
@@ -35,6 +36,7 @@ export const notification = z.object({
     "review",
     "digest",
     "volunteer_application",
+    "email_budget",
   ]),
   entity_id: z.string().uuid(),
   title: z.string(),
@@ -59,6 +61,9 @@ export const notification = z.object({
     count: z.number().optional(),
     kinds: z.record(z.string(), z.number()).optional(),
     day: z.string().optional(),
+    /** email_budget_warning: emails sent today and the provider's daily limit. */
+    sent: z.number().optional(),
+    limit: z.number().optional(),
   }),
   created_at: z.string(),
   read_at: z.string().nullable(),

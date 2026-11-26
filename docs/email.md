@@ -16,7 +16,7 @@ API. Everything stays on free tiers: Brevo's free plan allows **300 emails a day
 | `subscriber_confirm` | "Get event updates" (double opt-in) | the subscriber | none |
 | `event_announcement` | a manager announces an upcoming public event | confirmed subscribers in the target | none |
 | `task_reminder` | task reminders (`docs/tasks.md`) | the assignee | none |
-| `notice` | at once: a task assigned to me, a meeting invitation, requests waiting for my review (`docs/notifications.md`) | the member | none |
+| `notice` | at once: a task assigned to me, a mention, a meeting invitation, requests waiting for my review (`docs/notifications.md`) | the member | none |
 | `daily_digest` | 08:00 London, when the member has new unread notices of daily-summary types (`docs/notifications.md`) | the member | none |
 
 Event emails go only to public events (not meetings, not past-event records). The database queues them with
@@ -50,16 +50,28 @@ text with a heading, no images) and a plain-text part. Times are Europe/London.
 
 `flushOutbox()` in `src/lib/email/outbox.server.ts` claims rows with `claim_email_batch`, renders them and sends them:
 
-- **Priorities** (`email_priority`): 1 transactional (confirmations, updates, cancellations), 2 reminders (event and
-  task), member notice emails (`notice`) and the daily summary, 3 announcements; oldest first within a priority.
-- **Daily limit**: 300 per London day (`email_daily_limit()`), counting sent and in-flight rows. Whatever does not fit
+- **Priorities** (`email_priority`, lower first; oldest first within one):
+  1. transactional: guest and subscriber confirmations, registration confirmations, event updates and cancellations;
+  2. member notice emails (`notice`);
+  3. reminders: `task_reminder` and `event_reminder` (event reminders are queued two days ahead, so a delay still
+     reaches people before the event);
+  4. announcements (`event_announcement`);
+  5. the daily summary (`daily_digest`), lowest: it may slip to the next day.
+- **Reserve for Supabase Auth**: sign-up confirmations and password resets are sent by Supabase Auth through the same
+  Brevo account and share its 300 a day. The app never uses all of it: it stops at `email_daily_limit()` = **280**
+  a London day, leaving 20 for Auth. Change it in that one function (`email_provider_daily_limit()` = 300 is only used
+  in the warning text).
+- **Warning at 250**: when the app has sent `email_budget_warning_at()` = 250 in a London day, National Coordinators
+  and Branch Managers get one in-app notice that day (`email_budget_warning`, `docs/notifications.md`).
+- **Daily limit**: 280 per London day (`email_daily_limit()`, the reserve above), counting sent and in-flight rows. Whatever does not fit
   stays pending for the next run or the next day.
 - **Results**: `finish_email` marks a row `sent`, `skipped` (no longer applies: unsubscribed, cancelled, event closed,
   or the recipient is rejected by Brevo) or `retry` (rate limit, Brevo error, network: back-off of attempts × 10 minutes;
   `failed` after 5 attempts). A crashed run's claims return after 15 minutes.
 - **When it runs**:
   - right after a member action that queues notice emails (task create/edit, task groups, meetings and invitees,
-    task/meeting/event requests, accepting or approving a request): up to 60 emails of priorities 1–2
+    task notes with mentions, task/meeting/event requests, accepting or approving a request): up to 60 emails of
+    priorities 1–2
     (`flushNoticeEmails`, `src/lib/notice-emails.server.ts`); anything else waits for the scheduled run;
   - right after an action, for its transactional emails (member register/cancel, guest and subscriber forms, event
     changes; announcements send up to 50 at once);

@@ -5,8 +5,8 @@ import { createFileRoute } from "@tanstack/react-router";
 // idempotent: run_notification_digest does nothing before 08:00 London time and queues at most one summary email per
 // person and London day (none when nothing is new; `digests` counts those emails), run_task_reminders nothing before
 // 09:00, enqueue_event_reminders queues one reminder per registration two days before the start. Each run then sends
-// what the daily email limit allows (transactional first, then reminders and summaries, then announcements); the later
-// runs drain the rest, and anything over the limit continues the next day. Only numbers are returned.
+// what the daily email limit allows (transactional first, then notice emails, reminders, announcements and the daily
+// summaries last); the later runs drain the rest, and anything over the limit continues the next day. Only numbers are returned.
 export const Route = createFileRoute("/api/public/task-reminders")({
   ssr: false,
   server: {
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/api/public/task-reminders")({
           const events = await supabaseAdmin.rpc("enqueue_event_reminders");
           if (events.error) throw new Error("Event reminders unavailable");
           const { flushOutbox } = await import("@/lib/email/outbox.server");
-          const emails = await flushOutbox({ maxPriority: 3, max: 300 });
+          const emails = await flushOutbox({ maxPriority: 5, max: 300 });
           return Response.json(
             {
               reminders: result.data ?? 0,

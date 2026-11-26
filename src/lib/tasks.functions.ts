@@ -234,6 +234,7 @@ export const addTaskNote = createServerFn({ method: "POST" })
       p_mentions: data.mentions,
     });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 /** The author only. Newly mentioned people get a notice. */
@@ -247,6 +248,7 @@ export const updateTaskNote = createServerFn({ method: "POST" })
       p_mentions: data.mentions,
     });
     fail(result.error);
+    await flushNoticeEmails();
     return { ok: true };
   });
 export const deleteTaskNote = createServerFn({ method: "POST" })
