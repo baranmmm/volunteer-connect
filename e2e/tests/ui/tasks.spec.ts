@@ -85,7 +85,8 @@ test.describe("Tasks", () => {
     await expect(card(page, id)).toBeVisible();
     await expect(card(page, id)).toHaveAttribute("data-status", "todo");
     if (isMobile) await card(page, id).getByTestId("task-card-status").selectOption("in_progress");
-    else await card(page, id).dragTo(column(page, "in_progress"));
+    // Compact cards: grab the card by its padding (its middle is the title or a control).
+    else await card(page, id).dragTo(column(page, "in_progress"), { sourcePosition: { x: 6, y: 3 } });
     await expect(column(page, "in_progress").locator(`[data-testid="task-card"][data-task-id="${id}"]`)).toBeVisible();
     await expect.poll(async () => (await adminClient().from("tasks").select("status").eq("id", id).single()).data?.status).toBe("in_progress");
     await page.reload();
