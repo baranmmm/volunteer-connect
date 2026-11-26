@@ -1,4 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+// The public Events page (/events) around its list and map: the top bar, the next event as the hero, then (below the
+// list) the counters, YouTube highlights, the past-events gallery and the updates sign-up, and the footer. These were
+// the landing page's sections; the home page (/) is now the join page.
+import { lazy, Suspense, useCallback, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { LANDING_STALE_MS as STALE, landingHero, landingQuery } from "@/lib/landing.functions";
@@ -9,8 +12,6 @@ import { Highlights } from "./Highlights";
 import { LandingFooter } from "./LandingFooter";
 import { LandingHeader } from "./LandingHeader";
 import { useSeen } from "./motion";
-import { LandingMapShell } from "@/components/public/events-map/LandingMapShell";
-import { Upcoming } from "./Upcoming";
 import type { LandingData } from "@/lib/landing.server";
 
 // The form (and its config/branch reads) stays off the first paint's critical path.
@@ -29,25 +30,6 @@ function SubscribeCard() {
   return (
     <div className="rounded-[5px] bg-white p-5 text-[#28303D] shadow-ds-card sm:p-6">
       <SubscribeForm />
-    </div>
-  );
-}
-
-// "Our events across the UK": the server renders its heading and static map preview; the interactive section (its
-// code, then Leaflet) loads only when it nears the screen.
-const LazyEventsMap = lazy(() => import("@/components/public/events-map/LandingEventsMap"));
-function EventsMapSection({ upcoming }: { upcoming: LandingData["upcoming"] }) {
-  const [ref, seen] = useSeen<HTMLDivElement>("600px 0px");
-  const shell = <LandingMapShell upcoming={upcoming} />;
-  return (
-    <div ref={ref} data-testid="landing-map-slot">
-      {seen ? (
-        <Suspense fallback={shell}>
-          <LazyEventsMap upcoming={upcoming} />
-        </Suspense>
-      ) : (
-        shell
-      )}
     </div>
   );
 }
@@ -76,30 +58,24 @@ function Updates() {
   );
 }
 
-export function Landing({ initial }: { initial?: LandingData | null }) {
-  const { t } = useTranslation();
-  // Server-rendered data first; re-read once its signed links are older than 4 minutes.
+/** The landing data (hero, counters, highlights, gallery): server-rendered first, re-signed when its links get old. */
+export function useLanding(initial?: LandingData | null) {
   const query = useQuery({
     ...landingQuery,
     ...(initial ? { initialData: initial, initialDataUpdatedAt: initial.signedAt } : {}),
   });
-  const [heroDone, setHeroDone] = useState(false);
-  const { data, dataUpdatedAt, refetch } = query;
+  const { dataUpdatedAt, refetch } = query;
   // Re-sign when the links are older than 4 minutes (lightbox open, or an image failed to load).
   const refreshIfStale = useCallback(() => {
     if (Date.now() - dataUpdatedAt > STALE) void refetch();
   }, [dataUpdatedAt, refetch]);
-  const hero = data ? landingHero(data) : null;
-  const next = hero?.event;
-  const fallbackPhoto = hero?.fallbackPhoto ?? null;
-  const heroImage = hero?.image ?? null;
-  // No cover to wait for, or a slow one: let the other images load anyway.
-  useEffect(() => {
-    if (!data) return;
-    if (!heroImage) return setHeroDone(true);
-    const timer = setTimeout(() => setHeroDone(true), 3000);
-    return () => clearTimeout(timer);
-  }, [data, heroImage]);
+  return { query, refreshIfStale };
+}
+export type Landing = ReturnType<typeof useLanding>;
+
+/** The page frame: skip link, top bar, main and (once the landing data is in, so it never jumps: CLS) the footer. */
+export function LandingFrame({ landing, children }: { landing: Landing; children: ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div data-testid="landing-page" className="landing min-h-screen font-sans">
       <a
@@ -109,46 +85,68 @@ export function Landing({ initial }: { initial?: LandingData | null }) {
         {t("landing.skip")}
       </a>
       <LandingHeader />
-      <main id="landing-main">
-        {query.isPending ? (
-          <div
-            aria-busy="true"
-            className="min-h-[560px] bg-[linear-gradient(135deg,#006D9C_0%,#28303D_70%)] sm:min-h-[600px] lg:min-h-[640px]"
-          >
-            <span className="sr-only">{t("common.loading")}</span>
-          </div>
-        ) : query.isError || !data ? (
-          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-            <p data-testid="landing-error" role="alert" className="text-ds-muted">
-              {t("landing.loadError")}
-            </p>
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="mt-4 inline-flex min-h-11 items-center rounded-[3px] bg-ds-slate px-5 font-semibold text-ds-slate-fg"
-            >
-              {t("common.retry")}
-            </button>
-          </div>
-        ) : (
-          <>
-            <Hero
-              event={next}
-              fallbackPhoto={fallbackPhoto}
-              subscribe={<SubscribeForm />}
-              onImageDone={() => setHeroDone(true)}
-            />
-            <Counters stats={data.stats} />
-            <Upcoming events={data.upcoming} imagesReady={heroDone} />
-            <Highlights videos={data.highlights} />
-            <EventsMapSection upcoming={data.upcoming} />
-            <Gallery groups={data.gallery} onStale={refreshIfStale} />
-            {next && <Updates />}
-          </>
-        )}
-      </main>
-      {/* The footer waits for the content so it never jumps down (CLS). */}
-      {!query.isPending && <LandingFooter />}
+      <main id="landing-main">{children}</main>
+      {!landing.query.isPending && <LandingFooter />}
     </div>
+  );
+}
+
+/**
+ * The next public event as a full-bleed cover (its title is the page's h1); without one, a highlight photo and the
+ * updates sign-up. While loading or after an error the page still has its h1 (screen readers), and the list works.
+ */
+export function LandingHero({ landing }: { landing: Landing }) {
+  const { t } = useTranslation();
+  const { data, isPending } = landing.query;
+  if (isPending)
+    return (
+      <div
+        aria-busy="true"
+        className="min-h-[560px] bg-[linear-gradient(135deg,#006D9C_0%,#28303D_70%)] sm:min-h-[600px] lg:min-h-[640px]"
+      >
+        <h1 className="sr-only">{t("publicEvents.title")}</h1>
+        <span className="sr-only">{t("common.loading")}</span>
+      </div>
+    );
+  if (!data) return <h1 className="sr-only">{t("publicEvents.title")}</h1>;
+  const hero = landingHero(data);
+  return (
+    <Hero
+      event={hero.event}
+      fallbackPhoto={hero.fallbackPhoto}
+      subscribe={<SubscribeForm />}
+      allEventsHref="#events-list"
+    />
+  );
+}
+
+/** Below the list: counters, highlights, gallery (anchors #gallery-<eventId>) and the updates sign-up. */
+export function LandingSections({ landing }: { landing: Landing }) {
+  const { t } = useTranslation();
+  const { data, isError, refetch } = landing.query;
+  if (isError || (!data && !landing.query.isPending))
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <p data-testid="landing-error" role="alert" className="text-ds-muted">
+          {t("landing.loadError")}
+        </p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-4 inline-flex min-h-11 items-center rounded-[3px] bg-ds-slate px-5 font-semibold text-ds-slate-fg"
+        >
+          {t("common.retry")}
+        </button>
+      </div>
+    );
+  if (!data) return null;
+  const next = landingHero(data).event;
+  return (
+    <>
+      <Counters stats={data.stats} />
+      <Highlights videos={data.highlights} />
+      <Gallery groups={data.gallery} onStale={landing.refreshIfStale} />
+      {next && <Updates />}
+    </>
   );
 }

@@ -19,7 +19,16 @@ const mocks = vi.hoisted(() => ({
   markRead: vi.fn(),
   counts: vi.fn(),
   workCount: 0,
+  pendingMembers: [] as { id: string; full_name: string; created_at: string }[],
+  deletions: [] as { id: string; user_id: string; requested_at: string }[],
 }));
+// The former Approvals page (pending sign-ups, deletion requests) now in "Waiting for my approval".
+vi.mock("@/lib/members", () => ({
+  fetchPendingMembers: async () => mocks.pendingMembers,
+  fetchPendingDeletionRequests: async () => mocks.deletions,
+  setStatus: vi.fn(),
+}));
+vi.mock("@/components/app/DeleteUserDialog", () => ({ DeleteUserDialog: () => null }));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => ({
     options,
@@ -192,6 +201,8 @@ beforeEach(() => {
   }));
   mocks.mine.mockResolvedValue([row("own", "submitted")]);
   mocks.workCount = 0;
+  mocks.pendingMembers = [];
+  mocks.deletions = [];
   mocks.targets = [
     { id: "00000000-0000-4000-8000-000000000002", full_name: "Manager", role: "branch_manager" },
   ];
@@ -330,5 +341,35 @@ describe("Requests workspace", () => {
         resetScroll: false,
       }),
     );
+  });
+  it("Waiting for my approval also holds the former Approvals items for managers", async () => {
+    mocks.pending = 0;
+    mocks.pendingMembers = [
+      { id: "pending-user", full_name: "Pending Person", created_at: "2026-11-20T09:00:00Z" },
+    ];
+    mocks.deletions = [
+      { id: "deletion-1", user_id: "leaving-user", requested_at: "2026-11-20T09:00:00Z" },
+    ];
+    mount();
+    // Nothing in the shared count, yet the approval tab opens first: something waits there.
+    expect(await screen.findByTestId("approvals-row")).toHaveAttribute(
+      "data-user-id",
+      "pending-user",
+    );
+    expect(screen.getByTestId("deletion-request-row")).toHaveAttribute(
+      "data-request-id",
+      "deletion-1",
+    );
+    expect(screen.getByTestId("requests-tab-review")).toHaveAttribute("data-state", "active");
+    expect(screen.getByTestId("requests-tab-mine")).toHaveAttribute("data-state", "inactive");
+  });
+  it("shows exactly two top-level tabs, the approval one with the shared waiting count", async () => {
+    mocks.pending = 3;
+    mount();
+    const approval = await screen.findByTestId("requests-tab-review");
+    expect(screen.getByTestId("manager-requests-tab-review")).toHaveTextContent("3");
+    const top = approval.closest('[role="tablist"]')!;
+    expect(top.querySelectorAll(':scope > [role="tab"]')).toHaveLength(2);
+    expect(screen.getByTestId("requests-tab-open")).toHaveAttribute("data-state", "active");
   });
 });

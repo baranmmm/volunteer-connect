@@ -278,7 +278,7 @@ export function placeBounds(places: { latitude: number; longitude: number }[]) {
   ] as [[number, number], [number, number]];
 }
 
-/** Where a past event's card leads: its photos in the landing gallery, else its public page. */
+/** Where a past event's card leads: its photos in the gallery on /events, else its public page. */
 export function pastEventHref(id: string, galleryIds: ReadonlySet<string>) {
-  return galleryIds.has(id) ? `/#gallery-${id}` : `/events/${id}`;
+  return galleryIds.has(id) ? `/events#gallery-${id}` : `/events/${id}`;
 }

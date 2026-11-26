@@ -27,6 +27,11 @@ import {
 import { useMyApplications } from "@/lib/volunteer-applications";
 import { requestViewSearch, resolveRequestView } from "@/lib/request-view";
 import { ManagerEventRequests } from "@/components/requests/ManagerEventRequests";
+import {
+  DeletionRequests,
+  PendingVolunteers,
+  useAccountApprovals,
+} from "@/components/requests/AccountApprovals";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MyEventRequests } from "@/components/requests/MyEventRequests";
 import {
@@ -74,7 +79,9 @@ function RequestsPage() {
   const reviewTotal = reviewer ? (waiting.data?.total ?? 0) : 0;
   const { tab: requested } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const view = resolveRequestView(requested, reviewer, nc, reviewTotal);
+  // The former Approvals page (pending sign-ups, account deletion requests) is part of "Waiting for my approval".
+  const approvals = useAccountApprovals();
+  const view = resolveRequestView(requested, reviewer, nc, reviewTotal + approvals.count);
   // Opening Requests marks the task and meeting request notices read (the menu badge).
   useMarkNoticesRead(REQUEST_NOTICES, "requests", !follower);
   useMarkNoticesRead(REVIEW_NOTICES, "review", reviewer && view === "review");
@@ -131,27 +138,22 @@ function RequestsPage() {
           </Button>
         )}
       </header>
-      {reviewer && !requested && waiting.data === undefined ? (
+      {reviewer && !requested && (waiting.data === undefined || !approvals.settled) ? (
         // The default tab depends on what waits: decide once the count is known (no flash of another tab).
         <p data-testid="requests-loading" className="text-muted-foreground">
           {t("common.loading")}
         </p>
       ) : reviewer ? (
-        <Tabs value={view} onValueChange={selectView} className="min-w-0 space-y-5">
+        // Two tabs: "My requests" and "Waiting for my approval" (its open items, or the decided ones).
+        <Tabs
+          value={view === "mine" ? "mine" : "approval"}
+          onValueChange={(tab) => selectView(tab === "mine" ? "mine" : "review")}
+          className="min-w-0 space-y-5"
+        >
           <TabsList
             aria-label={t("navigation.requests")}
             className="h-auto w-full justify-start gap-1 sm:w-auto"
           >
-            <TabsTrigger
-              value="review"
-              data-testid="requests-tab-review"
-              className="min-h-11 flex-1 gap-2 px-2 sm:px-3"
-            >
-              <span data-testid="manager-requests-tab-pending">{t("requests.toReview")}</span>
-              <Badge variant="secondary" data-testid="manager-requests-tab-review">
-                {reviewTotal}
-              </Badge>
-            </TabsTrigger>
             {!nc && (
               <TabsTrigger
                 value="mine"
@@ -162,31 +164,61 @@ function RequestsPage() {
               </TabsTrigger>
             )}
             <TabsTrigger
-              value="decided"
-              data-testid="requests-tab-decided"
-              className="min-h-11 flex-1 px-2 sm:px-3"
+              value="approval"
+              data-testid="requests-tab-review"
+              className="min-h-11 flex-1 gap-2 px-2 sm:px-3"
             >
-              <span data-testid="manager-requests-tab-decided">{t("requests.tabs.decided")}</span>
+              <span data-testid="manager-requests-tab-pending">{t("requests.waitingForMe")}</span>
+              <Badge variant="secondary" data-testid="manager-requests-tab-review">
+                {reviewTotal}
+              </Badge>
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="review" className="space-y-6">
-            {isManager && (
-              <>
-                <ReviewVolunteerApplications filter="open" />
-                <ManagerEventRequests group="review" />
-              </>
-            )}
-            <ReviewWorkRequests filter="open" showEmpty={nc} />
-          </TabsContent>
           {!nc && <TabsContent value="mine">{mineList()}</TabsContent>}
-          <TabsContent value="decided" className="space-y-6">
-            {isManager && (
-              <>
-                <ReviewVolunteerApplications filter="decided" />
-                <ManagerEventRequests group="decided" />
-              </>
-            )}
-            <ReviewWorkRequests filter="decided" showEmpty={nc} />
+          <TabsContent value="approval">
+            <Tabs value={view} onValueChange={selectView} className="min-w-0 space-y-5">
+              <TabsList
+                aria-label={t("requests.waitingForMe")}
+                className="h-auto justify-start gap-1"
+              >
+                <TabsTrigger
+                  value="review"
+                  data-testid="requests-tab-open"
+                  className="min-h-11 px-3"
+                >
+                  {t("requests.toReview")}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="decided"
+                  data-testid="requests-tab-decided"
+                  className="min-h-11 px-3"
+                >
+                  <span data-testid="manager-requests-tab-decided">
+                    {t("requests.tabs.decided")}
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="review" className="space-y-6">
+                {isManager && (
+                  <>
+                    <ReviewVolunteerApplications filter="open" />
+                    <PendingVolunteers />
+                    <ManagerEventRequests group="review" />
+                  </>
+                )}
+                <ReviewWorkRequests filter="open" showEmpty={nc} />
+                {isManager && <DeletionRequests />}
+              </TabsContent>
+              <TabsContent value="decided" className="space-y-6">
+                {isManager && (
+                  <>
+                    <ReviewVolunteerApplications filter="decided" />
+                    <ManagerEventRequests group="decided" />
+                  </>
+                )}
+                <ReviewWorkRequests filter="decided" showEmpty={nc} />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       ) : (

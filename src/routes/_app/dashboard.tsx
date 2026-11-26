@@ -101,6 +101,8 @@ function Dashboard() {
           </div>
         )}
         {!follower && !nc && <RequestNotices />}
+        {/* Reading order: meetings, events, tasks, then registrations (followers have no meetings or tasks). */}
+        {!follower && <UpcomingMeetingsCard />}
         <UpcomingEventsCard
           events={upcoming}
           loading={events.isLoading}
@@ -109,10 +111,9 @@ function Dashboard() {
           now={now}
           canCreate={isManager || nc}
         />
-        {drafts.length > 0 && <DraftsCard drafts={drafts} />}
-        <MyRegistrationsCard />
         {!follower && <MyTasksCard />}
-        {!follower && <UpcomingMeetingsCard />}
+        <MyRegistrationsCard />
+        {drafts.length > 0 && <DraftsCard drafts={drafts} />}
       </div>
     </div>
   );
