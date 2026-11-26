@@ -155,6 +155,8 @@ box Enter saves the note and Shift+Enter adds a new line (Enter is ignored while
   people).
 - **Creator notice.** The creator gets `task_note_added` when an assignee or a trustee writes a note (unless mentioned in
   it or an assignee).
+  When a trustee writes a note on a task with no active creator (account deleted or no longer active), the branch's
+  Branch Managers get it instead (`20261211090100_trustee_note_creator_fallback.sql`; never the author, nobody twice).
 - **Cards** show the note count when there is at least one.
 - **Dashboard.** The "My tasks" card (volunteer and up) shows open and overdue counts and the next 5 tasks by due date,
   with due-tomorrow and overdue tasks highlighted.
@@ -218,7 +220,7 @@ see [notifications.md](notifications.md). For tasks in short:
 | A task is created with assignees, or an assignee is added | Each new assignee, never someone who assigned themselves | `task_assigned` (always on) |
 | A task moves to Blocked or Done (by someone else) | The creator | `task_status_changed` |
 | Someone is @mentioned in a note | The mentioned person | `task_note_mention` (always on) |
-| An assignee or a trustee writes a note | The creator (unless mentioned) | `task_note_added` |
+| An assignee or a trustee writes a note | The creator (unless mentioned); for a trustee's note on a task with no active creator, the branch's Branch Managers | `task_note_added` |
 | A reminder is due (reminders turned on) | The assignee | `task_reminder` |
 | A task request waits for review | The target, in one grouped notice | `review_waiting` (always on) |
 | A task request is accepted or declined | The requester | `task_request_accepted` / `task_request_declined` |

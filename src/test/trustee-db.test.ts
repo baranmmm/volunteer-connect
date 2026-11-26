@@ -515,6 +515,42 @@ describe("trustee notes on branch tasks (20261211090000)", () => {
       expect(await one("SELECT public.set_task_status($1,'blocked') v", [a.own])).toBe("blocked");
     }));
 
+  it("a task without a creator: the branch's Branch Managers get the trustee's note instead (20261211090100)", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const task = await createTask({ title: "Orphan", assignee_ids: [ids.bm1, ids.vol1b] });
+      await as(null);
+      // A second Branch Manager of the branch; the creator's account is gone.
+      await db.query("UPDATE user_roles SET role='branch_manager' WHERE user_id=$1", [ids.vol1]);
+      await db.query("UPDATE tasks SET created_by=NULL WHERE id=$1", [task]);
+      await as(ids.tr1);
+      await one("SELECT public.add_task_note($1,'Who runs this?','[]'::jsonb) v", [task]);
+      const added = async (user: string) => {
+        await as(null);
+        return q<{ count: number }>(
+          "SELECT (payload->>'count')::int count FROM notifications WHERE user_id=$1 AND entity_id=$2 AND kind='task_note_added'",
+          [user, task],
+        );
+      };
+      // Both Branch Managers once (bm1 also as an assignee), the other assignee once, never the author.
+      expect(await added(ids.bm1)).toEqual([{ count: 1 }]);
+      expect(await added(ids.vol1)).toEqual([{ count: 1 }]);
+      expect(await added(ids.vol1b)).toEqual([{ count: 1 }]);
+      expect(await added(ids.tr1)).toEqual([]);
+      // Branch Two's manager is not told.
+      expect(await added(ids.bm2)).toEqual([]);
+    }));
+
+  it("with an active creator the Branch Manager fallback does not fire", () =>
+    tx(async () => {
+      await as(ids.vol1b);
+      const task = await createTask({ title: "Volunteer poster" });
+      await as(ids.tr1);
+      await one("SELECT public.add_task_note($1,'Nice','[]'::jsonb) v", [task]);
+      expect(await noteNotices(ids.vol1b, task)).toEqual(["task_note_added"]);
+      expect(await noteNotices(ids.bm1, task)).toEqual([]);
+    }));
+
   it("volunteers keep today's rules: assignees, creators and managers write notes, other members do not", () =>
     tx(async () => {
       const a = await branchActivity();
