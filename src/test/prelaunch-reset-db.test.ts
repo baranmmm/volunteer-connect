@@ -109,6 +109,7 @@ const KEPT_TABLES = [
   "consent_preferences",
   "notification_preferences",
   "privacy_notice_acceptances",
+  "push_subscriptions",
   "events",
   "event_media",
   "event_videos",
@@ -372,6 +373,12 @@ describe("the production-like database", { timeout: 30000 }, () => {
         INSERT INTO public.event_cleanup_audit(outcome) VALUES ('ok');
         INSERT INTO public.public_rate_limits(bucket, window_start, hits) VALUES ('guest:abc', now(), 3);
         INSERT INTO public.privacy_notice_acceptances(user_id, notice_version) VALUES (NULL, '1.2');
+        -- Push devices (20261212090000): the kept NC's own stays, the volunteer's goes; a queued push for each.
+        INSERT INTO public.push_subscriptions(user_id, endpoint, p256dh, auth, user_agent)
+        VALUES ('${ids.nc}', 'https://push.example.test/nc', repeat('A', 87), repeat('B', 22), 'Safari on iPhone'),
+          ('${ids.vol}', 'https://push.example.test/vol', repeat('C', 87), repeat('D', 22), 'Chrome on Android');
+        INSERT INTO public.push_outbox(user_id, subscription_id, notification_id, type)
+        SELECT s.user_id, s.id, _n, 'meeting' FROM public.push_subscriptions s;
       END $$;`);
     // A task group ("@all") created through its RPC by the Branch Manager (tasks, assignees, notices).
     await as(ids.bm);
@@ -386,6 +393,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
       consent_preferences: await count("consent_preferences", `user_id='${ids.nc}'`),
       notification_preferences: await count("notification_preferences", `user_id='${ids.nc}'`),
       privacy_notice_acceptances: await count("privacy_notice_acceptances", `user_id='${ids.nc}'`),
+      push_subscriptions: await count("push_subscriptions", `user_id='${ids.nc}'`),
     };
     deleteObjects = (
       await q<{ o: string }>(

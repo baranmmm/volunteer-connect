@@ -4,7 +4,7 @@
 --
 -- Keep rules
 --   * the National Coordinator account with the DOTTED email (a "." before the @): auth user, profile, role,
---     MFA factors, its own preferences/consents. Every other account is deleted (incl. the undotted NC).
+--     MFA factors, its own preferences/consents and push devices. Every other account is deleted (incl. the undotted NC).
 --   * the 15 imported dialoguesociety.org past events (past_record, photos with a dialoguesociety.org source_url),
 --     their photos (event_media + Storage objects in their folder) and the imported channel highlight videos
 --     (event_videos without an event, created_by NULL) with their poster files.
@@ -57,6 +57,7 @@ counts(tbl, total, kept) AS (
   UNION ALL SELECT 'user_followed_branches', (SELECT count(*) FROM public.user_followed_branches), (SELECT count(*) FROM public.user_followed_branches WHERE user_id IN (SELECT id FROM keep_nc))
   UNION ALL SELECT 'consent_preferences', (SELECT count(*) FROM public.consent_preferences), (SELECT count(*) FROM public.consent_preferences WHERE user_id IN (SELECT id FROM keep_nc))
   UNION ALL SELECT 'notification_preferences', (SELECT count(*) FROM public.notification_preferences), (SELECT count(*) FROM public.notification_preferences WHERE user_id IN (SELECT id FROM keep_nc))
+  UNION ALL SELECT 'push_subscriptions', (SELECT count(*) FROM public.push_subscriptions), (SELECT count(*) FROM public.push_subscriptions WHERE user_id IN (SELECT id FROM keep_nc))
   UNION ALL SELECT 'privacy_notice_acceptances', (SELECT count(*) FROM public.privacy_notice_acceptances), (SELECT count(*) FROM public.privacy_notice_acceptances WHERE user_id IN (SELECT id FROM keep_nc))
   UNION ALL SELECT 'events', (SELECT count(*) FROM public.events), (SELECT count(*) FROM keep_events)
   UNION ALL SELECT 'event_media', (SELECT count(*) FROM public.event_media), (SELECT count(*) FROM public.event_media WHERE event_id IN (SELECT id FROM keep_events))
@@ -79,6 +80,7 @@ counts(tbl, total, kept) AS (
   UNION ALL SELECT 'meeting_requests', (SELECT count(*) FROM public.meeting_requests), 0
   UNION ALL SELECT 'meeting_series', (SELECT count(*) FROM public.meeting_series), 0
   UNION ALL SELECT 'meetings', (SELECT count(*) FROM public.meetings), 0
+  UNION ALL SELECT 'push_outbox', (SELECT count(*) FROM public.push_outbox), 0
   UNION ALL SELECT 'notification_digest_log', (SELECT count(*) FROM public.notification_digest_log), 0
   UNION ALL SELECT 'notifications', (SELECT count(*) FROM public.notifications), 0
   UNION ALL SELECT 'public_rate_limits', (SELECT count(*) FROM public.public_rate_limits), 0
