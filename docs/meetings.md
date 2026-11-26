@@ -21,6 +21,7 @@ Every meeting is also a calendar entry: `meetings.event_id` links it to an event
 Only these people can see a meeting:
 - the **creator**;
 - the **invitees**;
+- for a branch meeting, the branch's **trustees** (read only);
 - the **managers of its scope**:
   - branch meeting: the branch's Branch Manager and the region's Regional Director;
   - region meeting: the Regional Director;
@@ -34,6 +35,13 @@ Everyone else gets nothing. This applies to:
 Meetings never appear on the public `/events` pages or the ICS feed.
 
 ## Who can do what
+
+Trustees (`docs/roles.md#trustees`) see every meeting of their own branch (branch scope; `can_view_meeting`,
+`20261210090300_trustee_branch_meetings.sql`), read only: the agenda, decisions, files, invitees and the calendar entry.
+Region and national meetings only when they created them or are invited, as for volunteers. They create and edit
+nothing (no edit, status, invitees, agenda, decisions, files or carry-over). Only the managers of the
+meeting's scope (the branch's Branch Manager, the region's Regional Director) invite them (`meeting_invitee_ok`, also
+for a series edit); volunteers' invitee pickers leave them out. Trustees send meeting requests like volunteers.
 
 | | Volunteer | Branch Manager | Regional Director | National Coordinator (MFA) |
 |---|---|---|---|---|

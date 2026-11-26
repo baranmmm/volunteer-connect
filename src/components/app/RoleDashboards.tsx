@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { VolunteerApplicationForm } from "@/components/requests/VolunteerApplications";
 import { BranchMapCard } from "@/components/regions/BranchMapCard";
 
-/** National Coordinator overview: numbers only for volunteers and followers. */
+/** National Coordinator overview: numbers only for volunteers, trustees and followers. */
 export function NcDashboard() {
   const { t } = useTranslation();
   const { session } = useAuth();
@@ -34,6 +34,7 @@ export function NcDashboard() {
     "regions",
     "branches",
     "volunteers",
+    "trustees",
     "followers",
     "upcoming_events",
     "registrations_30d",

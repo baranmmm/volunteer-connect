@@ -6,7 +6,7 @@ import { assertQaEnvironment } from "../setup/guard";
 
 assertQaEnvironment();
 
-export type AppRole = "regional_director" | "branch_manager" | "volunteer" | "follower" | "national_coordinator";
+export type AppRole = "regional_director" | "branch_manager" | "volunteer" | "trustee" | "follower" | "national_coordinator";
 export type ProfileStatus = "pending" | "active" | "inactive";
 export type Lang = "en" | "tr";
 

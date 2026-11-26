@@ -65,6 +65,9 @@ function UserDetails() {
   const nc = isNationalCoordinator(roles);
   const director = canEditRoleOrBranch(profile?.status, roles) || nc;
   const manager = isManager || nc;
+  // Branch Managers switch a member of their branch between Volunteer and Trustee (set_user_role checks it again).
+  const branchManager =
+    !director && profile?.status === "active" && roles.includes("branch_manager");
   const members = useQuery({
     queryKey: ["members", uid],
     queryFn: () => fetchMembers(uid),
@@ -127,9 +130,13 @@ function UserDetails() {
   const m = member.data;
   const block = deleteBlockReason(m.status);
   const branchOptions = (branches.data ?? []).map((b) => ({ value: b.id, label: b.name }));
+  const targetRole = primaryRole(m.roles);
+  const switchable = targetRole === "volunteer" || targetRole === "trustee";
+  const canChangeRole = director || (branchManager && switchable);
   const roleOptions = [
     { value: "volunteer", label: t("common.roles.volunteer") },
-    { value: "branch_manager", label: t("common.roles.branch_manager") },
+    { value: "trustee", label: t("common.roles.trustee") },
+    ...(director ? [{ value: "branch_manager", label: t("common.roles.branch_manager") }] : []),
     ...(nc ? [{ value: "regional_director", label: t("common.roles.regional_director") }] : []),
   ];
 
@@ -158,7 +165,12 @@ function UserDetails() {
     setError("");
     try {
       if (edit === "role") {
-        if (value !== "volunteer" && value !== "branch_manager" && value !== "regional_director")
+        if (
+          value !== "volunteer" &&
+          value !== "trustee" &&
+          value !== "branch_manager" &&
+          value !== "regional_director"
+        )
           return;
         await setRole(
           m.id,
@@ -262,21 +274,23 @@ function UserDetails() {
             <History className="mr-2 h-4 w-4" />
             {t("userDetails.history")}
           </Button>
+          {canChangeRole && (
+            <Button
+              variant="outline"
+              className="h-11"
+              data-testid="user-details-change-role-button"
+              onClick={() => {
+                setEdit("role");
+                setValue(primaryRole(m.roles));
+                setError("");
+              }}
+            >
+              <UserCog className="mr-2 h-4 w-4" />
+              {t("userDetails.changeRole")}
+            </Button>
+          )}
           {director && (
             <>
-              <Button
-                variant="outline"
-                className="h-11"
-                data-testid="user-details-change-role-button"
-                onClick={() => {
-                  setEdit("role");
-                  setValue(primaryRole(m.roles));
-                  setError("");
-                }}
-              >
-                <UserCog className="mr-2 h-4 w-4" />
-                {t("userDetails.changeRole")}
-              </Button>
               {!!branches.data?.length && (
                 <Button
                   variant="outline"
@@ -356,7 +370,7 @@ function UserDetails() {
       </div>
 
       <Dialog
-        open={!!edit && director}
+        open={!!edit && (director || (edit === "role" && canChangeRole))}
         onOpenChange={(open) => {
           if (!open && !busy) setEdit(null);
         }}
@@ -398,8 +412,13 @@ function UserDetails() {
               ))}
             </SelectContent>
           </Select>
+          {edit === "role" && value === "trustee" && (
+            <p data-testid="change-role-trustee-hint" className="text-sm text-muted-foreground">
+              {t("common.trusteeHint")}
+            </p>
+          )}
           {edit === "role" &&
-            value === "volunteer" &&
+            (value === "volunteer" || value === "trustee") &&
             isLastBranchManager(m, members.data ?? []) && (
               <p
                 data-testid="last-manager-warning"

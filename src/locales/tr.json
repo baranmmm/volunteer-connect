@@ -28,7 +28,8 @@
       "branch_manager": "Şube Yöneticisi",
       "volunteer": "Gönüllü",
       "follower": "Takipçi",
-      "national_coordinator": "Ulusal Koordinatör"
+      "national_coordinator": "Ulusal Koordinatör",
+      "trustee": "Mütevelli"
     },
     "status": {
       "pending": "Onay bekliyor",
@@ -38,7 +39,8 @@
     "hubName": "Gönüllü Platformu",
     "opensInNewTab": "(yeni sekmede açılır)",
     "goHomeLabel": "Ana sayfaya git",
-    "enterToSave": "Enter kaydeder, Shift+Enter yeni satır ekler."
+    "enterToSave": "Enter kaydeder, Shift+Enter yeni satır ekler.",
+    "trusteeHint": "Mütevelliler şubenin tüm faaliyetlerini takip edebilir ancak hiçbirini değiştiremez."
   },
   "navigation": {
     "main": "Ana menü",
@@ -167,7 +169,7 @@
     "viewDetails": "Ayrıntıları görün",
     "viewDetailsFor": "{{name}} için ayrıntıları görün",
     "volunteerCounts": "Şubelere göre gönüllüler",
-    "branchCount": "{{branch}} ({{region}}): {{volunteers}} gönüllü, {{followers}} takipçi"
+    "branchCount": "{{branch}} ({{region}}): {{volunteers}} gönüllü, {{trustees}} mütevelli, {{followers}} takipçi"
   },
   "userDetails": {
     "confirmEventTitle": "Onaylamak için etkinlik başlığını yazın: {{title}}",
@@ -305,7 +307,8 @@
     },
     "roleExplanation": {
       "follower": "{{branch}} şubesini takip ediyorsun: etkinliklerinden haberdar olur, onlara katılabilirsin.",
-      "volunteer": "{{branch}} şubesi için zamanını veriyorsun: görev alıyor, toplantılara katılıyor, etkinliklerin yürütülmesine yardım ediyorsun."
+      "volunteer": "{{branch}} şubesi için zamanını veriyorsun: görev alıyor, toplantılara katılıyor, etkinliklerin yürütülmesine yardım ediyorsun.",
+      "trustee": "{{branch}} şubesinin mütevellisisin: etkinliklerini, görevlerini ve şubenin toplantılarını takip ediyorsun, ancak değiştirmiyorsun."
     }
   },
   "history": {
@@ -430,7 +433,9 @@
     "taskGroupNoMembers": "Bu şubede atanabilecek kimse yok.",
     "taskGroupAlreadyMember": "Bu kişi zaten grupta.",
     "taskGroupLastMember": "Bir görev grubunda en az bir üye olmalı. Bunun yerine grubu silin.",
-    "carryOverItem": "Bu gündem maddesi artık aktarılamıyor. Sayfayı yenileyip tekrar deneyin."
+    "carryOverItem": "Bu gündem maddesi artık aktarılamıyor. Sayfayı yenileyip tekrar deneyin.",
+    "chooseVolunteerOrTrustee": "Gönüllü veya Mütevelli seç.",
+    "trusteeSwitchOnly": "Şube Yöneticileri üyeleri yalnızca Gönüllü ve Mütevelli arasında değiştirebilir."
   },
   "events": {
     "title": "Takvim ve Etkinlikler",
@@ -1124,7 +1129,9 @@
     "stripLabel": "Gönüllülük durumun",
     "stripFollowing": "{{branch}} şubesini takip ediyorsun",
     "stripPending": "Gönüllülük başvurun onay bekliyor",
-    "stripDeclined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı."
+    "stripDeclined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı.",
+    "approveAs": "Şu rolle onayla",
+    "approvedTrustee": "Başvuru onaylandı: başvuran artık mütevelli."
   },
   "donate": {
     "title": "Çalışmalarımızı destekleyin",
@@ -1142,7 +1149,8 @@
       "registrations_30d": "Kayıtlar (son 30 gün)",
       "attended_30d": "Katılım (son 30 gün)",
       "pending_requests": "Bekleyen talepler",
-      "open_applications": "Açık gönüllü başvuruları"
+      "open_applications": "Açık gönüllü başvuruları",
+      "trustees": "Mütevelliler"
     }
   },
   "regions": {
@@ -1160,7 +1168,7 @@
     "managers": "Şube Yöneticileri",
     "nobody": "Henüz yok",
     "regionEvents": "Bölge genelinde {{count}} yaklaşan etkinlik",
-    "branchCounts": "{{volunteers}} gönüllü · {{followers}} takipçi · {{events}} yaklaşan etkinlik",
+    "branchCounts": "{{volunteers}} gönüllü · {{trustees}} mütevelli · {{followers}} takipçi · {{events}} yaklaşan etkinlik",
     "confirmDeleteRegion": "{{name}} ve şubeleri silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir.",
     "confirmDeleteBranch": "{{name}} silinsin mi? 30 gün boyunca geri dönüşüm kutusundan geri yüklenebilir.",
     "viewLabel": "Görünüm",
@@ -1189,7 +1197,8 @@
         "volunteers": "Gönüllüler",
         "followers": "Takipçiler",
         "events": "Yaklaşan etkinlikler",
-        "tasks": "Açık görevler"
+        "tasks": "Açık görevler",
+        "trustees": "Mütevelliler"
       },
       "dashboardTitle": "Şube haritası",
       "dashboardText_one": "{{regions}} bölgede {{count}} şube",
@@ -1580,6 +1589,7 @@
       "task_note_added_many": "“{{title}}” görevinde {{count}} yeni not",
       "volunteer_application_approved": "Artık {{branch}} şubesinde Dialogue Society gönüllüsüsün!",
       "volunteer_application_declined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı. Not: {{reason}}",
+      "volunteer_application_approved_trustee": "Artık {{branch}} şubesinde Dialogue Society mütevellisisin.",
       "email_budget_warning": "Bugün {{limit}} e-postanın {{sent}} tanesi gönderildi. Günlük sınırı aşan e-postalar yarına kalır (kayıt ve şifre e-postaları her zaman gider). Ücretli bir e-posta planı düşünebilirsiniz."
     },
     "taskStatus": {

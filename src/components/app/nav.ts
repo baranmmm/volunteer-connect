@@ -32,6 +32,7 @@ export type NavItem = {
 
 const MEMBERS: AppRole[] = [
   "volunteer",
+  "trustee",
   "branch_manager",
   "regional_director",
   "national_coordinator",

@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { isTrusteeRoles } from "@/lib/roles";
 import { WORK_SCOPES, linkedRows, visibleEventTasks, type WorkScope } from "@/lib/tasks";
 import { getEventTasks } from "@/lib/tasks.functions";
 import { listMyWorkScopes, scopeKey } from "@/lib/work-scopes";
@@ -31,7 +32,7 @@ export type LinkedEvent = {
  */
 export function EventLinkedTasks({ event }: { event: LinkedEvent }) {
   const { t } = useTranslation();
-  const { session } = useAuth();
+  const { session, roles } = useAuth();
   const uid = session?.user.id;
   const member = useWorkMember();
   const fetchTasks = useServerFn(getEventTasks);
@@ -53,8 +54,11 @@ export function EventLinkedTasks({ event }: { event: LinkedEvent }) {
   const eventScope = scope
     ? { scope, branch_id: event.branch_id, region_id: event.region_id }
     : null;
+  // Trustees create no tasks (the database refuses it).
   const canCreate =
-    !!eventScope && (scopes.data ?? []).some((o) => scopeKey(o) === scopeKey(eventScope));
+    !isTrusteeRoles(roles) &&
+    !!eventScope &&
+    (scopes.data ?? []).some((o) => scopeKey(o) === scopeKey(eventScope));
   const shown = visibleEventTasks(tasks.data ?? []);
   if (!member || (!shown.length && !canCreate)) return null;
 

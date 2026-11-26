@@ -288,7 +288,8 @@ function TasksPage() {
     </div>
   );
 
-  const canCreate = work.scopes.length > 0;
+  // Trustees and others without create rights get neither the button nor the floating +.
+  const canCreate = work.canCreate;
   const groupBySelect = (className: string) => (
     <select
       id="tasks-group-by"

@@ -43,6 +43,8 @@ export const notification = z.object({
   link: z.string().startsWith("/"),
   payload: z.object({
     reason: z.string().optional(),
+    /** volunteer_application_approved: the role the applicant was approved as (volunteer or trustee). */
+    role: z.string().optional(),
     status: z.string().optional(),
     previous: z.string().optional(),
     reminder: z.string().optional(),
