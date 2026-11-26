@@ -1,4 +1,4 @@
-// The public events map on /events (signed out): one fixed dotted map of England and Wales that never zooms, pans or
+// The public events map on /events (signed out): one fixed dotted map of the United Kingdom that never zooms, pans or
 // re-centres; scrolling through the sticky section steps through the events in date order (past first), the active
 // event's branch dot pulses and its card opens the event page; the timeline (ticks, cursor, Today, keyboard, Play),
 // branch dot previews, reduced motion (static map + list), phones (card below the map, swipe) and the server HTML.

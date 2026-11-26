@@ -1,6 +1,7 @@
 // The story's timeline: one tick per event (past ones dark, coming ones in the brand blue), a moving cursor and a
 // "Today" marker. The bar is a single role="slider" (arrows, Home, End; the value text names the event), so a long
-// list of events is one tab stop; clicking a tick (or near it) jumps to that event.
+// list of events is one tab stop; clicking a tick (or near it) jumps to that event and dragging moves the cursor.
+// Left of Today, "Past events" jumps to the earliest past event (scrolling only moves forward from Today).
 import type { KeyboardEvent, PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { mapWhen } from "@/lib/events-map";
@@ -11,11 +12,14 @@ export function StoryTimeline({
   steps,
   active,
   onGo,
+  onPast,
   onSuspend,
 }: {
   steps: StoryStep[];
   active: number;
   onGo: (index: number) => void;
+  /** Jump to the earliest past event. */
+  onPast: () => void;
   onSuspend: (suspended: boolean) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -25,8 +29,8 @@ export function StoryTimeline({
     ? `${current.event.title}, ${mapWhen(current.event, i18n.language) ?? ""}`
     : "";
 
-  function indexAt(e: PointerEvent<HTMLDivElement>) {
-    const tick = (e.target as HTMLElement).closest<HTMLElement>("[data-index]");
+  function indexAt(e: PointerEvent<HTMLDivElement>, byPosition = false) {
+    const tick = byPosition ? null : (e.target as HTMLElement).closest<HTMLElement>("[data-index]");
     if (tick) return Number(tick.dataset["index"]);
     const box = e.currentTarget.getBoundingClientRect();
     if (n <= 1 || !box.width) return 0;
@@ -41,8 +45,24 @@ export function StoryTimeline({
     onGo(next);
   }
   const today = todayPosition(steps);
+  const hasPast = steps.some((s) => s.past);
   return (
-    <div data-testid="events-map-timeline" className="px-3 pb-1 pt-5">
+    <div
+      data-testid="events-map-timeline"
+      className="flex min-w-0 items-end gap-2 px-1 pb-1 pt-5 sm:px-3"
+    >
+      {hasPast && (
+        <button
+          type="button"
+          data-testid="events-map-timeline-past"
+          onClick={onPast}
+          title={t("eventsStory.pastJump")}
+          className="mb-1.5 inline-flex min-h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border bg-background px-2.5 text-xs font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span aria-hidden>←</span>
+          {t("eventsStory.pastButton")}
+        </button>
+      )}
       <div
         role="slider"
         tabIndex={0}
@@ -55,11 +75,18 @@ export function StoryTimeline({
         onKeyDown={onKeyDown}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
+          e.currentTarget.setPointerCapture?.(e.pointerId);
           onGo(indexAt(e));
+        }}
+        onPointerMove={(e) => {
+          // Dragging the cursor (the pointer was captured on the bar).
+          if (!e.currentTarget.hasPointerCapture?.(e.pointerId)) return;
+          const i = indexAt(e, true);
+          if (i !== active) onGo(i);
         }}
         onFocus={() => onSuspend(true)}
         onBlur={() => onSuspend(false)}
-        className="relative h-9 cursor-pointer touch-pan-y select-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4"
+        className="relative h-9 min-w-0 flex-1 cursor-pointer touch-pan-y select-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4"
       >
         <div aria-hidden className="absolute inset-x-0 top-4 h-0.5 rounded-full bg-border" />
         <span

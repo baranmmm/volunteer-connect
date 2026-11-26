@@ -1,5 +1,5 @@
 // The /events map as a scroll-driven story. A tall section holds a sticky panel: the month label, the fixed dotted
-// map of England and Wales, the active event's card (next to its dot on desktop, below the map on phones) and the
+// map of the United Kingdom, the active event's card (next to its dot on desktop, below the map on phones) and the
 // timeline. Scrolling through the section steps through the events in date order (past first, then upcoming); ticks,
 // arrows, branch dots, swipes and Play jump by scrolling to that event's slice, so the scroll position and the
 // active event never disagree. With prefers-reduced-motion the section is a static map with a plain list (CSS decides,
@@ -11,12 +11,12 @@ import { dateLocale } from "@/lib/i18n";
 import { mapWhen } from "@/lib/events-map";
 import {
   clampStep,
-  firstUpcomingIndex,
   framePosition,
   mapFrame,
   playStep,
   progressOfStep,
   stepAtProgress,
+  startIndex,
   stepHeightVh,
   storySteps,
   type BranchPoint,
@@ -24,7 +24,7 @@ import {
 } from "@/lib/events-story";
 import { cn } from "@/lib/utils";
 import { DotMap } from "./DotMap";
-import { EW_BOUNDS } from "./england-wales-dots";
+import { UK_BOUNDS } from "./uk-dots";
 import { PauseIcon, PlayIcon } from "./icons";
 import { storyPlace } from "./labels";
 import { StoryCard } from "./StoryCard";
@@ -74,11 +74,13 @@ export function EventsStory({
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
 
-  const frame = useMemo(() => mapFrame(EW_BOUNDS, branches), [branches]);
+  const frame = useMemo(() => mapFrame(UK_BOUNDS, branches), [branches]);
   const steps = useMemo(() => storySteps(events, branches, now), [events, branches, now]);
   const n = steps.length;
-  const [activeState, setActive] = useState(0);
-  const active = clampStep(activeState, n);
+  // "Today": the next coming event (or the most recent past one). The story opens here and scrolling moves forward.
+  const start = startIndex(steps);
+  const [activeState, setActive] = useState<number | null>(null);
+  const active = clampStep(activeState ?? start, n);
   const [preview, setPreview] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [suspended, setSuspended] = useState(false);
@@ -94,14 +96,17 @@ export function EventsStory({
   }, []);
 
   // Reduced motion: the list is open and the card shows the next event (or the latest one).
-  const featured = Math.min(firstUpcomingIndex(steps), n - 1);
+  const featured = start;
   useEffect(() => {
     if (reduced) setListOpen(true);
   }, [reduced]);
   const shownIndex = preview ?? (reduced ? featured : active);
   const shown = n ? (steps[clampStep(shownIndex, n)] ?? null) : null;
 
-  // Scrolling picks the step (one equal slice of the section each).
+  // Scrolling moves forward from Today (one equal slice of the section per step from `start`). The scroll position
+  // only takes over when it reaches another slice, so a past event chosen on the timeline stays until the reader
+  // scrolls on. Before the section is reached it shows Today again.
+  const lastScrolled = useRef<number | null>(null);
   useEffect(() => {
     if (reduced || !n) return;
     let raf = 0;
@@ -109,7 +114,15 @@ export function EventsStory({
       raf = 0;
       const m = measure();
       if (!m) return;
-      setActive(stepAtProgress(m.range > 0 ? (TOP_PX - m.box.top) / m.range : 0, n));
+      if (m.box.top > TOP_PX + 1) {
+        lastScrolled.current = start;
+        setActive(null);
+        return;
+      }
+      const at = stepAtProgress(m.range > 0 ? (TOP_PX - m.box.top) / m.range : 0, n, start);
+      if (at === lastScrolled.current) return;
+      lastScrolled.current = at;
+      setActive(at);
     };
     const schedule = () => {
       if (!raf) raf = window.requestAnimationFrame(update);
@@ -122,9 +135,12 @@ export function EventsStory({
       window.removeEventListener("resize", schedule);
       if (raf) window.cancelAnimationFrame(raf);
     };
-  }, [reduced, n, measure]);
+  }, [reduced, n, start, measure]);
 
-  /** Jumps to a step: scrolls to the middle of its slice (the map stays where it is). A manual jump stops Play. */
+  /**
+   * Jumps to a step: scrolls to the middle of its slice, or to the section's top for a past event (the map stays where
+   * it is). A manual jump stops Play.
+   */
   const goTo = useCallback(
     (index: number, fromPlay = false) => {
       if (!n) return;
@@ -133,12 +149,13 @@ export function EventsStory({
       setActive(next);
       const m = reduced ? null : measure();
       if (!m || m.range <= 0) return;
+      lastScrolled.current = Math.max(next, start);
       window.scrollTo({
-        top: window.scrollY + m.box.top - TOP_PX + progressOfStep(next, n) * m.range,
+        top: window.scrollY + m.box.top - TOP_PX + progressOfStep(next, n, start) * m.range,
         behavior: "instant",
       });
     },
-    [n, reduced, measure],
+    [n, start, reduced, measure],
   );
 
   // Play: one event on every step, paused while the map or card is hovered or focused, stopping at the last event.
@@ -155,7 +172,8 @@ export function EventsStory({
   }, [playing, suspended, reduced, n]);
   function togglePlay() {
     if (playing) return setPlaying(false);
-    if (playStep(active, n) === null) goTo(0, true);
+    // From the current position; at the end it starts again from Today.
+    if (playStep(active, n) === null) goTo(start, true);
     setPlaying(true);
   }
 
@@ -228,11 +246,15 @@ export function EventsStory({
         data-testid="events-map"
         data-steps={n}
         data-active={n ? active : undefined}
+        data-start={n ? start : undefined}
         data-shown={shown ? shownIndex : undefined}
         data-mode={ready ? (reduced ? "static" : "story") : undefined}
         className="relative motion-reduce:h-auto!"
         style={{
-          height: n > 1 ? `calc(100svh - ${TOP_PX}px + ${n * stepHeightVh(n)}svh)` : undefined,
+          height:
+            n > 1
+              ? `calc(100svh - ${TOP_PX}px + ${(n - start) * stepHeightVh(n - start)}svh)`
+              : undefined,
         }}
       >
         <div
@@ -278,7 +300,12 @@ export function EventsStory({
               </button>
             )}
           </div>
-          <div className="relative min-h-0 flex-1" {...pause} {...swipe}>
+          {/* Phones: the map is capped so the card and the timeline stay on screen below it. */}
+          <div
+            className="relative max-h-[50svh] min-h-0 flex-1 lg:max-h-none"
+            {...pause}
+            {...swipe}
+          >
             <DotMap
               frame={frame}
               branches={branches}
@@ -320,6 +347,7 @@ export function EventsStory({
                 steps={steps}
                 active={active}
                 onGo={(i) => goTo(i)}
+                onPast={() => goTo(0)}
                 onSuspend={setSuspended}
               />
             </div>

@@ -1,4 +1,4 @@
-// The fixed dotted map of England and Wales: the land as halftone dots (generated SVG paths), every branch as a small
+// The fixed dotted map of the United Kingdom: the land as halftone dots (generated SVG paths), every branch as a small
 // dot, the active event's branch dot(s) larger and pulsing. The frame never changes for an event: no zoom, no pan, no
 // re-centring. A size container keeps the map's aspect ratio, so dots and the card are placed in percent of it and
 // the server-rendered HTML is already in place.
@@ -15,7 +15,7 @@ import {
   type StoryStep,
 } from "@/lib/events-story";
 import { cn } from "@/lib/utils";
-import { EW_SVG_BOX, EW_SVG_URL } from "./england-wales-dots";
+import { UK_SVG_BOX, UK_SVG_URL } from "./uk-dots";
 
 export function DotMap({
   frame,
@@ -105,19 +105,19 @@ export function DotMap({
         {/* The land: a static, cached SVG asset (not in the JS bundle or the HTML), placed in the same frame. */}
         <img
           data-testid="events-map-land"
-          src={EW_SVG_URL}
+          src={UK_SVG_URL}
           alt=""
           aria-hidden="true"
-          width={Math.round(EW_SVG_BOX.w)}
-          height={Math.round(EW_SVG_BOX.h)}
+          width={Math.round(UK_SVG_BOX.w)}
+          height={Math.round(UK_SVG_BOX.h)}
           decoding="async"
           draggable={false}
           className="pointer-events-none absolute max-w-none select-none"
           style={{
-            left: `${((EW_SVG_BOX.x - frame.x) / frame.w) * 100}%`,
-            top: `${((EW_SVG_BOX.y - frame.y) / frame.h) * 100}%`,
-            width: `${(EW_SVG_BOX.w / frame.w) * 100}%`,
-            height: `${(EW_SVG_BOX.h / frame.h) * 100}%`,
+            left: `${((UK_SVG_BOX.x - frame.x) / frame.w) * 100}%`,
+            top: `${((UK_SVG_BOX.y - frame.y) / frame.h) * 100}%`,
+            width: `${(UK_SVG_BOX.w / frame.w) * 100}%`,
+            height: `${(UK_SVG_BOX.h / frame.h) * 100}%`,
           }}
         />
         {branches.map((b) => {
