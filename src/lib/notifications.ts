@@ -40,6 +40,9 @@ export const notification = z.object({
     "volunteer_application",
     "email_budget",
     "media_upload_request",
+    // Media part 2 (20261217090000): download decisions and the post-event photo nudge.
+    "media_download_request",
+    "event",
   ]),
   entity_id: z.string().uuid(),
   title: z.string(),
@@ -128,7 +131,14 @@ export const notificationSetting = z.object({
 export type NotificationSetting = z.infer<typeof notificationSetting>;
 export const notificationSettings = z.object({
   task_reminder_emails: z.boolean(),
-  types: z.array(notificationSetting),
+  // A type the database added before this app version knows it (migrations run before the code) is left out instead
+  // of breaking the whole settings screen.
+  types: z.array(z.unknown()).transform((list) =>
+    list.flatMap((item) => {
+      const parsed = notificationSetting.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  ),
 });
 export type NotificationSettings = z.infer<typeof notificationSettings>;
 
