@@ -159,18 +159,20 @@ test.describe("National Coordinators", () => {
   });
 });
 
-test.describe("Privacy notice 1.3", () => {
-  test("a member who confirmed 1.2 must confirm 1.3 before writing (events and tasks)", async ({ freshUser, freshEvent, seed }) => {
+test.describe("Privacy notice: a new version", () => {
+  // The current version comes from privacy_notice_version() (1.4 with the trustee notice); an older one is refused.
+  test("a member who confirmed an older notice must confirm the current one before writing (events and tasks)", async ({ freshUser, freshEvent, seed }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const volunteer = await freshUser();
-    const event = await freshEvent(manager, { label: "privacy 1.3", status: "published", startInMinutes: 3 * 24 * 60 });
+    const { data: current } = await adminClient().rpc("privacy_notice_version");
+    const event = await freshEvent(manager, { label: "privacy current", status: "published", startInMinutes: 3 * 24 * 60 });
     await adminClient().from("privacy_notice_acceptances").update({ notice_version: "1.2" }).eq("user_id", volunteer.id);
-    expect((await rpcAs(volunteer.email, "get_privacy_status")).data).toMatchObject({ current_version: "1.3", accepted_version: "1.2", current_accepted: false });
+    expect((await rpcAs(volunteer.email, "get_privacy_status")).data).toMatchObject({ current_version: current, accepted_version: "1.2", current_accepted: false });
     expect((await rpcAs(volunteer.email, "register_for_event", { p_event_id: event.id })).error).toBe("Privacy notice not accepted");
     const selfTask = { scope: "branch", branch_id: seed.branches.Medway, title: `E2E Task ${runId} privacy` };
     expect((await rpcAs(volunteer.email, "create_task", { p: selfTask })).error).toBe("Privacy notice not accepted");
     expect((await rpcAs(volunteer.email, "accept_privacy_notice", { p_version: "1.2" })).error).toBe("Privacy notice version is out of date");
-    expect((await rpcAs(volunteer.email, "accept_privacy_notice", { p_version: "1.3" })).error).toBeNull();
+    expect((await rpcAs(volunteer.email, "accept_privacy_notice", { p_version: current })).error).toBeNull();
     expect((await rpcAs(volunteer.email, "register_for_event", { p_event_id: event.id })).error).toBeNull();
     expect((await rpcAs(volunteer.email, "create_task", { p: selfTask })).error).toBeNull();
   });
