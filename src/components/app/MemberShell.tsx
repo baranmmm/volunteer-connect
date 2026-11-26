@@ -26,6 +26,12 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNotificationCounts } from "@/lib/use-work-notices";
 import { useApprovalWaiting } from "@/lib/use-approval-waiting";
+import { startInstallCapture } from "@/lib/install-app-store";
+import { InstallAppNavItem } from "@/components/app/InstallApp";
+
+// Listen for the browser's install prompt as soon as this chunk loads (before the dashboard mounts): Chrome fires
+// `beforeinstallprompt` once per page load and it is lost when nobody listens.
+startInstallCapture();
 
 function useSignOut() {
   const queryClient = useQueryClient();
@@ -176,6 +182,7 @@ export function MemberShell() {
             </NavLink>
           ))}
         </nav>
+        <InstallAppNavItem className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent" />
         <button
           data-testid="nav-sign-out"
           onClick={signOut}
@@ -278,6 +285,7 @@ export function MemberShell() {
                 {item.badge && <NavCount kind={item.badge} count={badgeCounts[item.badge]} />}
               </NavLink>
             ))}
+            <InstallAppNavItem className="flex min-h-12 items-center gap-3 rounded-xl px-3 font-medium hover:bg-muted" />
             <button
               data-testid="mobile-nav-sign-out"
               onClick={signOut}
