@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { E2E_DIR, LOCAL_ENV_FILE, REPO_ROOT, isLocalTarget } from "./env";
+import { acquireLocalStackLock } from "./local-lock";
 
 const WORKDIR = path.join(E2E_DIR, "local");
 
@@ -72,6 +73,7 @@ if (!isLocalTarget()) {
   process.exit(2);
 }
 try {
+  acquireLocalStackLock(`local:${command}`);
   if (command === "up") {
     checkDocker();
     // E2E_LOCAL_EXCLUDE (comma-separated, e.g. in CI): containers the tests never use, so they are not pulled or started.
