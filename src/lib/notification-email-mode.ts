@@ -19,6 +19,12 @@ export const IMPORTANT_EMAIL_TYPES: readonly NotificationType[] = [
 ];
 
 export const EMAIL_MODES = ["all", "important", "none"] as const;
+/**
+ * Types the simple choice leaves alone: the post-event photo nudge has its email off by default and is changed only in
+ * Advanced (otherwise every default setup would read as "custom").
+ */
+const OUTSIDE_EMAIL_MODES: readonly string[] = ["media"];
+const inModes = (s: { type: string }) => !OUTSIDE_EMAIL_MODES.includes(s.type);
 export type EmailMode = (typeof EMAIL_MODES)[number];
 export type EmailModeState = EmailMode | "custom";
 
@@ -34,9 +40,11 @@ export function emailOnFor(mode: EmailMode, type: NotificationType): boolean {
  * app, which sends nothing either way), so choosing a mode always shows that mode afterwards.
  */
 export function emailModeOf(types: Pick<NotificationSetting, "type" | "email">[]): EmailModeState {
-  if (types.length === 0) return "custom";
+  const relevant = types.filter(inModes);
+  if (relevant.length === 0) return "custom";
   return (
-    EMAIL_MODES.find((mode) => types.every((s) => s.email === emailOnFor(mode, s.type))) ?? "custom"
+    EMAIL_MODES.find((mode) => relevant.every((s) => s.email === emailOnFor(mode, s.type))) ??
+    "custom"
   );
 }
 
@@ -47,6 +55,7 @@ export function emailModeChanges(
 ): { type: NotificationType; on: boolean }[] {
   return types
     .filter((s) => (NOTIFICATION_TYPES as readonly string[]).includes(s.type))
+    .filter(inModes)
     .filter((s) => s.email !== emailOnFor(mode, s.type))
     .map((s) => ({ type: s.type, on: emailOnFor(mode, s.type) }));
 }

@@ -2882,6 +2882,10 @@ export type Database = {
         Args: { p_audience?: string; p_id: string }
         Returns: Json
       }
+      approve_media_download_request: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       approve_media_upload_request: {
         Args: { p_album_title?: string; p_file_ids: string[]; p_id: string }
         Returns: Json
@@ -3068,6 +3072,10 @@ export type Database = {
       }
       decline_event_request: {
         Args: { p_id: string; p_reason: string }
+        Returns: undefined
+      }
+      decline_media_download_request: {
+        Args: { p_id: string; p_reason?: string }
         Returns: undefined
       }
       decline_media_upload_request: {
@@ -3393,6 +3401,14 @@ export type Database = {
         Args: { p_before_at?: string; p_before_id?: string; p_branch: string; p_limit?: number; p_search?: string; p_source?: string; p_year?: number }
         Returns: Json
       }
+      get_media_download: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      get_media_highlights: {
+        Args: { p_branch: string; p_limit?: number }
+        Returns: Json
+      }
       get_media_home: {
         Args: { p_branch?: string }
         Returns: Json
@@ -3567,6 +3583,10 @@ export type Database = {
         Args: { p_offset?: number; p_status?: string }
         Returns: Json
       }
+      list_media_download_requests: {
+        Args: { p_box: string }
+        Returns: Json
+      }
       list_media_targets: {
         Args: { p_branch: string }
         Returns: Json
@@ -3669,6 +3689,10 @@ export type Database = {
       }
       media_cleanup_paths: {
         Args: never
+        Returns: Json
+      }
+      media_download_files: {
+        Args: { p_id: string; p_user: string }
         Returns: Json
       }
       meeting_add_agenda: {
@@ -4000,6 +4024,10 @@ export type Database = {
         Args: { p_album: string; p_ids: string[] }
         Returns: undefined
       }
+      request_media_download: {
+        Args: { p_items: Json; p_reason?: string }
+        Returns: string
+      }
       request_scope_of: {
         Args: { _requester: string }
         Returns: Record<string, unknown>
@@ -4027,6 +4055,10 @@ export type Database = {
       review_waiting_for: { Args: { _user: string }; Returns: Json }
       run_notification_digest: { Args: { p_now?: string }; Returns: number }
       run_task_reminders: { Args: { p_now?: string }; Returns: number }
+      run_media_nudges: {
+        Args: { p_now?: string }
+        Returns: number
+      }
       scope_people: {
         Args: { _branch: string; _region: string; _scope: string }
         Returns: Json
@@ -4113,6 +4145,10 @@ export type Database = {
       }
       set_media_album_cover: {
         Args: { p_album: string; p_photo: string | null }
+        Returns: undefined
+      }
+      set_media_highlight: {
+        Args: { p_id: string; p_on: boolean; p_source: string }
         Returns: undefined
       }
       set_meeting_invitees: {
@@ -4503,6 +4539,10 @@ export type Database = {
       withdraw_event_request: { Args: { p_id: string }; Returns: undefined }
       withdraw_meeting_request: { Args: { p_id: string }; Returns: undefined }
       withdraw_task_request: { Args: { p_id: string }; Returns: undefined }
+      withdraw_media_download_request: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       withdraw_media_upload_request: {
         Args: { p_id: string }
         Returns: Json

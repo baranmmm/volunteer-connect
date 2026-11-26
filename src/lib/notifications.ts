@@ -25,6 +25,9 @@ export const NOTIFICATION_KINDS = [
   "volunteer_application_declined",
   "media_upload_approved",
   "media_upload_declined",
+  "media_download_approved",
+  "media_download_declined",
+  "media_photo_nudge",
 ] as const;
 
 export const notification = z.object({
@@ -112,6 +115,8 @@ export const NOTIFICATION_TYPES = [
   "task_reminder",
   "meeting",
   "request_decided",
+  /** The post-event "Share your photos" nudge (in the app and push on, email off by default). */
+  "media",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 /** How a type's email arrives: at once, in the daily summary, or both (meetings: invitations at once). */

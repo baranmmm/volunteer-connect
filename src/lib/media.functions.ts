@@ -6,6 +6,8 @@ import {
   MEDIA_BUCKET,
   MEDIA_SOURCES,
   mediaChapterRow,
+  mediaDownloadRequestRow,
+  mediaHighlightRow,
   mediaHome,
   mediaPhotoRow,
   mediaTargets,
@@ -13,6 +15,8 @@ import {
   moveResult,
   storagePaths,
   type MediaChapter,
+  type MediaDownloadFiles,
+  type MediaDownloadRequest,
   type MediaPhoto,
   type MediaPhotoRow,
   type MediaUploadRequest,
@@ -551,4 +555,199 @@ export const declineMediaUploadRequest = createServerFn({ method: "POST" })
     fail(r.error);
     await removeMediaFiles(storagePaths.parse(r.data).paths);
     await flushNoticeEmails();
+  });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Part 2: highlights, direct full-size downloads (managers), download requests (volunteers and trustees)
+
+export const getMediaHighlights = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ branchId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const r = await context.supabase.rpc("get_media_highlights", { p_branch: data.branchId, p_limit: 30 });
+    fail(r.error);
+    const rows = z.object({ photos: z.array(mediaHighlightRow) }).parse(r.data).photos;
+    const signed = await signPhotos(context.supabase, rows);
+    return signed.map((p, i) => ({
+      ...p,
+      chapter_venue: rows[i]!.chapter_venue ?? null,
+      chapter_photo_count: rows[i]!.chapter_photo_count,
+    }));
+  });
+
+export const setMediaHighlight = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ source: z.enum(["library", "event"]), id: z.string().uuid(), on: z.boolean() }))
+  .handler(async ({ data, context }) => {
+    fail(
+      (await context.supabase.rpc("set_media_highlight", { p_source: data.source, p_id: data.id, p_on: data.on }))
+        .error,
+    );
+  });
+
+/**
+ * A Branch Manager's / Regional Director's full-size download of one photo: the photo is looked up in its chapter as
+ * the caller (managers get the original path) and signed with the caller's token (Storage checks again) for a
+ * minute, as a download with the original name.
+ */
+export const getMediaOriginalUrl = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(
+    z.object({
+      chapterKind: z.enum(["event", "album"]),
+      chapterId: z.string().uuid(),
+      photoId: z.string().uuid(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const r = await context.supabase.rpc("get_media_chapter", { p_kind: data.chapterKind, p_id: data.chapterId });
+    fail(r.error);
+    const chapter = mediaChapterRow.parse(r.data);
+    const manager = await context.supabase.rpc("can_manage_media", { _branch: chapter.branch_id! });
+    if (manager.error || !manager.data) throw new Error("Not allowed");
+    const photo = chapter.photos.find((p) => p.id === data.photoId);
+    if (!photo?.original) throw new Error("Not allowed");
+    const name = `${chapter.title.replace(/[^\p{L}\p{N} _-]+/gu, "").trim() || "photo"}-${photo.id.slice(0, 8)}.${photo.original.split(".").pop()}`;
+    const signed = await context.supabase.storage.from(photo.bucket).createSignedUrl(photo.original, 60, { download: name });
+    if (signed.error || !signed.data) throw new Error("Not allowed");
+    const raw = new URL(signed.data.signedUrl);
+    return { url: `${import.meta.env["VITE_SUPABASE_URL"] ?? process.env["SUPABASE_URL"]}${raw.pathname}${raw.search}` };
+  });
+
+async function signDownloadRequest(
+  supabase: SupabaseClient,
+  row: z.infer<typeof mediaDownloadRequestRow>,
+): Promise<MediaDownloadRequest> {
+  const byBucket = new Map<string, string[]>();
+  for (const i of row.items) byBucket.set(i.bucket, [...(byBucket.get(i.bucket) ?? []), i.w640]);
+  const urls = new Map<string, string>();
+  for (const [bucket, paths] of byBucket)
+    for (const [k, v] of await signPaths(supabase, bucket, paths)) urls.set(`${bucket}:${k}`, v);
+  return {
+    ...row,
+    items: row.items.map((i) => ({
+      id: i.id,
+      source: i.source,
+      photo_id: i.photo_id,
+      thumb: urls.get(`${i.bucket}:${i.w640}`) ?? null,
+    })),
+  };
+}
+
+const itemRefs = z
+  .array(z.object({ source: z.enum(["library", "event"]), id: z.string().uuid() }))
+  .min(1)
+  .max(50);
+
+export const requestMediaDownload = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ items: itemRefs, reason: z.string().max(500).optional() }))
+  .handler(async ({ data, context }) => {
+    const r = await context.supabase.rpc("request_media_download", {
+      p_items: data.items,
+      ...(data.reason?.trim() ? { p_reason: data.reason.trim() } : {}),
+    });
+    fail(r.error);
+    await flushNoticeEmails();
+    return z.string().uuid().parse(r.data);
+  });
+
+export const listMediaDownloadRequests = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ box: z.enum(["mine", "review"]) }))
+  .handler(async ({ data, context }) => {
+    const r = await context.supabase.rpc("list_media_download_requests", { p_box: data.box });
+    fail(r.error);
+    const rows = z.array(mediaDownloadRequestRow).parse(r.data ?? []);
+    return Promise.all(rows.map((row) => signDownloadRequest(context.supabase, row)));
+  });
+
+export const withdrawMediaDownloadRequest = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    fail((await context.supabase.rpc("withdraw_media_download_request", { p_id: data.id })).error);
+  });
+
+export const approveMediaDownloadRequest = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    fail((await context.supabase.rpc("approve_media_download_request", { p_id: data.id })).error);
+    await flushNoticeEmails();
+  });
+
+export const declineMediaDownloadRequest = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ id: z.string().uuid(), reason: z.string().max(500).optional() }))
+  .handler(async ({ data, context }) => {
+    fail(
+      (
+        await context.supabase.rpc("decline_media_download_request", {
+          p_id: data.id,
+          ...(data.reason?.trim() ? { p_reason: data.reason.trim() } : {}),
+        })
+      ).error,
+    );
+    await flushNoticeEmails();
+  });
+
+/** The download page: the request (previews only), or null when it is not the caller's to see. */
+export const getMediaDownload = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const r = await context.supabase.rpc("get_media_download", { p_id: data.id });
+    if (r.error?.message === "Request not found") return null;
+    fail(r.error);
+    return signDownloadRequest(context.supabase, mediaDownloadRequestRow.parse(r.data));
+  });
+
+/**
+ * The full-size files of an approved request, for its requester inside the 24-hour window: the database checks the
+ * requester, the approval and the window (media_download_files, service role); the files are then signed with the
+ * service role for five minutes as downloads. Never anyone else's request.
+ */
+export const getMediaDownloadFiles = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data, context }): Promise<MediaDownloadFiles> => {
+    const db = await admin();
+    const r = await db.rpc("media_download_files", { p_id: data.id, p_user: context.userId });
+    fail(r.error);
+    const result = z
+      .object({
+        state: z.enum(["ready", "expired", "submitted", "approved", "declined", "withdrawn", "not_found"]),
+        expires_at: z.string().nullable().optional(),
+        files: z
+          .array(z.object({ item_id: z.string(), bucket: z.string(), path: z.string(), name: z.string().nullable() }))
+          .optional(),
+      })
+      .parse(r.data);
+    if (result.state === "expired") return { state: "expired", expires_at: result.expires_at ?? null };
+    if (result.state !== "ready") return { state: result.state === "approved" ? "not_found" : result.state };
+    const origin = import.meta.env["VITE_SUPABASE_URL"] ?? process.env["SUPABASE_URL"];
+    const files: { item_id: string; url: string; name: string }[] = [];
+    for (const [n, f] of (result.files ?? []).entries()) {
+      const ext = f.path.split(".").pop() ?? "webp";
+      const name = `photo-${String(n + 1).padStart(2, "0")}.${ext}`;
+      const signed = await db.storage.from(f.bucket).createSignedUrl(f.path, 300, { download: name });
+      if (signed.error || !signed.data) continue;
+      const raw = new URL(signed.data.signedUrl);
+      files.push({ item_id: f.item_id, url: `${origin}${raw.pathname}${raw.search}`, name });
+    }
+    return { state: "ready", expires_at: result.expires_at ?? "", files };
+  });
+
+/** The dashboard's "Latest photos": the newest photos of the member's branch (events and albums), or none. */
+export const getLatestMediaPhotos = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .handler(async ({ context }) => {
+    const home = await context.supabase.rpc("get_media_home", {});
+    if (home.error) return null; // not a branch member (followers, NCs): no strip
+    const branch = mediaHome.parse(home.data).branch;
+    const r = await context.supabase.rpc("get_media_photos", { p_branch: branch.id, p_limit: 12 });
+    fail(r.error);
+    const rows = z.object({ photos: z.array(mediaPhotoRow) }).parse(r.data).photos;
+    return { branchId: branch.id, photos: await signPhotos(context.supabase, rows) };
   });

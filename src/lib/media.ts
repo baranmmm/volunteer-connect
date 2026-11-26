@@ -25,6 +25,8 @@ export const mediaPhotoRow = z.object({
   chapter_id: z.string().uuid().optional(),
   chapter_title: z.string().optional(),
   chapter_date: z.string().nullable().optional(),
+  /** Starred as a highlight (managers star; everyone sees the highlights). */
+  starred: z.boolean().optional(),
 });
 export type MediaPhotoRow = z.infer<typeof mediaPhotoRow>;
 
@@ -179,11 +181,11 @@ export function collageLargeSide(index: number): "left" | "right" {
 }
 
 /**
- * The four tiles of a chapter's collage (one large + three small) and the "+N" on the last tile when the chapter has
- * more photos than are shown.
+ * The five tiles of a chapter's collage (one large + four small, as in the "Story chapters" mockup) and the "+N" on
+ * the last tile when the chapter has more photos than are shown.
  */
 export function collageTiles<T>(photos: T[], total: number): { tiles: T[]; more: number } {
-  const tiles = photos.slice(0, 4);
+  const tiles = photos.slice(0, 5);
   return { tiles, more: Math.max(0, total - tiles.length) };
 }
 
@@ -257,4 +259,60 @@ const CHAPTER_REF =
 export function parseChapterRef(value: string): { kind: ChapterKind; id: string } | null {
   const m = CHAPTER_REF.exec(value);
   return m ? { kind: m[1]!.toLowerCase() as ChapterKind, id: m[2]!.toLowerCase() } : null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Part 2: highlights and download requests
+
+export const mediaHighlightRow = mediaPhotoRow.extend({
+  chapter_venue: z.string().nullable().optional(),
+  chapter_photo_count: z.number().optional(),
+  starred: z.boolean().optional(),
+  starred_at: z.string().optional(),
+});
+export type MediaHighlight = MediaPhoto & {
+  chapter_venue?: string | null | undefined;
+  chapter_photo_count?: number | undefined;
+};
+
+export const DOWNLOAD_REQUEST_STATUSES = ["submitted", "approved", "declined", "withdrawn"] as const;
+export const mediaDownloadRequestRow = z.object({
+  id: z.string().uuid(),
+  branch_id: z.string().uuid(),
+  branch_name: z.string().nullable(),
+  status: z.enum(DOWNLOAD_REQUEST_STATUSES),
+  reason: z.string().nullable(),
+  decline_reason: z.string().nullable(),
+  expires_at: z.string().nullable(),
+  expired: z.boolean().nullable(),
+  requester_name: z.string().nullable(),
+  reviewer_name: z.string().nullable(),
+  reviewed_at: z.string().nullable(),
+  created_at: z.string(),
+  is_own: z.boolean(),
+  can_withdraw: z.boolean(),
+  can_review: z.boolean(),
+  items: z.array(
+    z.object({
+      id: z.string().uuid(),
+      source: z.enum(["library", "event"]),
+      photo_id: z.string().uuid(),
+      bucket: z.enum(["media-library", "event-media"]),
+      w640: z.string(),
+      has_variants: z.boolean().nullable(),
+    }),
+  ),
+});
+export type MediaDownloadRequest = Omit<z.infer<typeof mediaDownloadRequestRow>, "items"> & {
+  items: { id: string; source: "library" | "event"; photo_id: string; thumb: string | null }[];
+};
+/** The signed full-size files of an approved request (or why there are none). */
+export type MediaDownloadFiles =
+  | { state: "ready"; expires_at: string; files: { item_id: string; url: string; name: string }[] }
+  | { state: "expired"; expires_at: string | null }
+  | { state: "submitted" | "declined" | "withdrawn" | "not_found" };
+
+/** Whether a download window is still open (the database decides again when the files are signed). */
+export function downloadWindowOpen(expiresAt: string | null, now = Date.now()): boolean {
+  return !!expiresAt && Date.parse(expiresAt) > now;
 }

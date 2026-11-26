@@ -42,6 +42,9 @@ export const PUSH_TITLE_KINDS = [
   "volunteer_application_declined",
   "media_upload_approved",
   "media_upload_declined",
+  "media_download_approved",
+  "media_download_declined",
+  "media_photo_nudge",
 ] as const;
 
 /** A same-origin path, or the notifications page when the stored link is not one. */
