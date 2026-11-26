@@ -1690,10 +1690,12 @@
       "dueNone": "Son tarih yok",
       "sort": "Sırala",
       "sortBy": {
+        "status": "Durum",
         "due": "Son tarih",
+        "newest": "Önce en yeni",
+        "oldest": "Önce en eski",
         "priority": "Öncelik",
-        "title": "Başlık",
-        "status": "Durum"
+        "title": "Başlık"
       },
       "group": "Grupla",
       "groupBy": {
@@ -1807,7 +1809,8 @@
         "pickOne": "En az bir hatırlatma seçin ya da hatırlatmalarınızı kaldırın.",
         "saved": "Hatırlatmalarınız kaydedildi.",
         "removed": "Hatırlatmalarınız kaldırıldı."
-      }
+      },
+      "created": "Oluşturulma"
     },
     "card": {
       "viewAll": "Tüm görevler",
@@ -1911,7 +1914,7 @@
     "grouping": {
       "label": "Grupla",
       "by": {
-        "source": "Kaynak",
+        "meeting": "Toplantı",
         "assignee": "Atanan kişi",
         "due": "Bitiş tarihi",
         "none": "Yok"
@@ -1926,8 +1929,18 @@
       },
       "other": "Diğer görevler",
       "allMembers": "Tüm üyeler (@all)",
-      "progress": "{{total}} görevin {{done}} tanesi tamamlandı"
-    }
+      "progress": "{{total}} görevin {{done}} tanesi tamamlandı",
+      "events": "Etkinlikler",
+      "expandAll": "Tümünü aç",
+      "collapseAll": "Tümünü kapat"
+    },
+    "assigneeNames": {
+      "you": "Sen",
+      "label": "Atananlar: {{names}}"
+    },
+    "decisionLine": "Karar: {{text}}",
+    "created": "Oluşturulma: {{date}}",
+    "createdBy": "{{date}} tarihinde {{name}} oluşturdu"
   },
   "landing": {
     "skip": "İçeriğe geç",

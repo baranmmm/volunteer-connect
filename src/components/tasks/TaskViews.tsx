@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Archive,
@@ -18,7 +18,6 @@ import {
   archivableDoneIds,
   isOverdue,
   mineFirst,
-  type Person,
   type Task,
   type TaskStatus,
 } from "@/lib/tasks";
@@ -44,14 +43,16 @@ import {
   TASK_STATUS_CARD,
   TASK_STATUS_COLUMN,
 } from "./task-status-colors";
-import { formatDay, initials, scopeText, sectionLabel } from "./task-display";
+import { createdDay, formatDay, scopeText, sectionLabel } from "./task-display";
+import { AssigneeNames } from "./AssigneeNames";
 import { TaskGroupMembers, TaskGroupProgress } from "./TaskGroupParts";
 
 /**
  * `showScope`: scope labels (branch, region, national) are shown only to someone who can work in more than one place
  * (useWorkScopes().single is false); with a single scope every task comes from there.
  *
- * Every view uses compact rows: title, link icons (meeting, event), due date, assignee initials and the status. The
+ * Every view uses compact rows: title (and the decision it comes from), link icons (meeting, event), the created date
+ * (wide screens), due date, assignee names and the status. The
  * caller's own tasks stand out by an accent bar on the left, a light tint and a bold title (screen readers hear
  * "your task"); the calendar adds a small icon.
  */
@@ -61,6 +62,37 @@ type ViewProps = {
   onOpen: (id: string) => void;
   showScope: boolean;
 };
+
+/** "Created 25 Nov" on wide screens (hidden on phones, where the row has no room). */
+function CreatedText({ task, today }: { task: Task; today: string }) {
+  const { t } = useTranslation();
+  const date = createdDay(task.created_at, today);
+  if (!date) return null;
+  return (
+    <span
+      data-testid="task-created"
+      className="hidden shrink-0 whitespace-nowrap text-xs text-muted-foreground md:inline dark:text-inherit"
+    >
+      {t("tasks.created", { date })}
+    </span>
+  );
+}
+
+/** "Decision: …" under a task created from a meeting decision: one line, the full text on hover and focus. */
+function DecisionLine({ text, testId }: { text: string | undefined; testId: string }) {
+  const { t } = useTranslation();
+  if (!text) return null;
+  const line = t("tasks.decisionLine", { text });
+  return (
+    <span
+      data-testid={testId}
+      title={line}
+      className="block min-w-0 truncate text-xs font-normal text-muted-foreground group-focus-visible:whitespace-normal dark:text-inherit"
+    >
+      {line}
+    </span>
+  );
+}
 
 /** "Mine" marker on cards, rows and calendar items (shown when the list is not filtered to my tasks only). */
 export function MineBadge({ testId, iconOnly = false }: { testId: string; iconOnly?: boolean }) {
@@ -76,46 +108,6 @@ export function MineBadge({ testId, iconOnly = false }: { testId: string; iconOn
     >
       <UserCheck className={iconOnly ? "size-3" : "size-3.5"} aria-hidden />
       <span className={iconOnly ? "sr-only" : undefined}>{t("tasks.mine")}</span>
-    </span>
-  );
-}
-
-/** Assignee initials (at most two, then "+N"); the names are in the tooltip and for screen readers. */
-export function AssigneeAvatars({
-  people,
-  testId,
-  className,
-}: {
-  people: Pick<Person, "id" | "full_name">[];
-  testId: string;
-  className?: string;
-}) {
-  const { t } = useTranslation();
-  if (!people.length) return null;
-  const name = (p: Pick<Person, "full_name">) => p.full_name ?? t("common.formerMember");
-  const names = people.map(name).join(", ");
-  const shown = people.slice(0, 2);
-  const rest = people.length - shown.length;
-  const dot =
-    "inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-semibold leading-none text-foreground";
-  return (
-    <span
-      data-testid={testId}
-      data-count={people.length}
-      title={names}
-      className={cn("flex shrink-0 -space-x-1.5", className)}
-    >
-      {shown.map((p) => (
-        <span key={p.id} className={dot} aria-hidden>
-          {initials(p.full_name)}
-        </span>
-      ))}
-      {rest > 0 && (
-        <span className={dot} aria-hidden>
-          +{rest}
-        </span>
-      )}
-      <span className="sr-only">{names}</span>
     </span>
   );
 }
@@ -250,37 +242,53 @@ function LoudPriority({ task }: { task: Task }) {
 // ---------------------------------------------------------------------------------------------------------------
 // Sections (Group by): a collapsible header with done/total and a mini progress bar
 
-const SECTION_ICONS = { agenda: Users, meeting: Users, event: CalendarDays } as const;
+const SECTION_ICONS = {
+  agenda: Users,
+  meeting: Users,
+  events: CalendarDays,
+  event: CalendarDays,
+} as const;
 
 function SectionHeader({
   section,
   collapsed,
   onToggle,
   bodyId,
+  depth,
   className,
 }: {
   section: TaskSection;
   collapsed: boolean;
   onToggle: () => void;
   bodyId: string;
+  /** 0 for a top-level section (h2), 1 for a nested one (h3), and so on. */
+  depth: number;
   className?: string;
 }) {
   const { t } = useTranslation();
   const label = sectionLabel(t, section);
+  const text = section.kind === "due" ? label : section.title;
   const Icon =
-    section.kind === "agenda" || section.kind === "meeting" || section.kind === "event"
+    section.kind === "agenda" ||
+    section.kind === "meeting" ||
+    section.kind === "events" ||
+    section.kind === "event"
       ? SECTION_ICONS[section.kind]
       : null;
   const pct = section.total ? Math.round((section.done / section.total) * 100) : 0;
+  const Heading = depth === 0 ? "h2" : depth === 1 ? "h3" : "h4";
   return (
-    <h2 className={cn("min-w-0", className)}>
+    <Heading className={cn("min-w-0", className)}>
       <button
         type="button"
         data-testid="tasks-section-toggle"
         aria-expanded={!collapsed}
         aria-controls={bodyId}
         onClick={onToggle}
-        className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          "flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          depth > 0 && "min-h-10",
+        )}
       >
         <ChevronRight
           aria-hidden
@@ -292,10 +300,21 @@ function SectionHeader({
         {Icon && <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />}
         <span
           data-testid="tasks-section-label"
-          className="min-w-0 flex-1 truncate text-sm font-semibold"
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm",
+            depth === 0 ? "font-semibold" : "font-medium",
+          )}
           title={label}
         >
-          {label}
+          {text}
+          {section.date && (
+            <span
+              data-testid="tasks-section-date"
+              className="ml-2 text-xs font-normal text-muted-foreground"
+            >
+              {formatDay(section.date)}
+            </span>
+          )}
         </span>
         <span
           data-testid="tasks-section-progress"
@@ -305,7 +324,10 @@ function SectionHeader({
         >
           <span
             aria-hidden
-            className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-muted sm:block"
+            className={cn(
+              "hidden h-1.5 overflow-hidden rounded-full bg-muted sm:block",
+              section.kind === "meeting" ? "w-16" : "w-10",
+            )}
           >
             <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
           </span>
@@ -317,9 +339,12 @@ function SectionHeader({
           </span>
         </span>
       </button>
-    </h2>
+    </Heading>
   );
 }
+
+const sectionDomId = (prefix: string, key: string) =>
+  `${prefix}-${key.replace(/[^a-z0-9-]/gi, "-")}`;
 
 type SectionProps = {
   sections: TaskSection[];
@@ -329,6 +354,8 @@ type SectionProps = {
   grouping: TaskGrouping;
   /** All-done sections start collapsed (off in the Archived view). */
   autoCollapse: boolean;
+  /** Decision id → text, for the "Decision: …" line. */
+  decisions: Map<string, string>;
 };
 
 /** The status of a task as a small menu: a pill (list rows) or a "…" button (board cards). */
@@ -412,6 +439,7 @@ export function KanbanView({
   onToggle,
   grouping,
   autoCollapse,
+  decisions,
 }: ViewProps & SectionProps) {
   const { t } = useTranslation();
   const setStatus = useSetTaskStatus();
@@ -463,6 +491,7 @@ export function KanbanView({
             <TaskCard
               key={task.id}
               task={task}
+              decision={task.decision_id ? decisions.get(task.decision_id) : undefined}
               showScope={showScope}
               today={today}
               onOpen={onOpen}
@@ -479,6 +508,49 @@ export function KanbanView({
     );
   };
   const totals = TASK_STATUSES.map((s) => tasks.filter((x) => x.status === s));
+  // One swimlane per section; nested sections (a meeting's agenda items, the events) inside their parent's lane.
+  const lane = (section: TaskSection, depth: number): ReactNode => {
+    const collapsed = grouping !== "none" && isCollapsed(section, remembered, autoCollapse);
+    const bodyId = sectionDomId("tasks-lane", section.key);
+    return (
+      <section
+        key={section.key}
+        data-testid="tasks-section"
+        data-section-key={section.key}
+        data-kind={section.kind}
+        data-depth={depth}
+        data-collapsed={collapsed}
+        className="min-w-0 space-y-1.5"
+      >
+        {grouping !== "none" && (
+          <SectionHeader
+            section={section}
+            collapsed={collapsed}
+            bodyId={bodyId}
+            depth={depth}
+            onToggle={() => onToggle(section.key, !collapsed)}
+            className="border-b"
+          />
+        )}
+        <div id={bodyId} hidden={collapsed} className="min-w-0 space-y-2">
+          {!collapsed && (
+            <>
+              {section.children.length > 0 && (
+                <div className="min-w-0 space-y-2 border-l pl-1.5 sm:ml-2 sm:pl-3">
+                  {section.children.map((c) => lane(c, depth + 1))}
+                </div>
+              )}
+              {section.tasks.length > 0 && (
+                <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4">
+                  {TASK_STATUSES.map((status) => cell(section, status))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+    );
+  };
   return (
     <div data-testid="tasks-kanban" data-grouping={grouping} className="min-w-0 space-y-2">
       <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4">
@@ -501,36 +573,7 @@ export function KanbanView({
           </div>
         ))}
       </div>
-      {sections.map((section) => {
-        const collapsed = grouping !== "none" && isCollapsed(section, remembered, autoCollapse);
-        const bodyId = `tasks-lane-${section.key.replace(/[^a-z0-9-]/gi, "-")}`;
-        return (
-          <section
-            key={section.key}
-            data-testid="tasks-section"
-            data-section-key={section.key}
-            data-collapsed={collapsed}
-            className="min-w-0 space-y-1.5"
-          >
-            {grouping !== "none" && (
-              <SectionHeader
-                section={section}
-                collapsed={collapsed}
-                bodyId={bodyId}
-                onToggle={() => onToggle(section.key, !collapsed)}
-                className="border-b"
-              />
-            )}
-            <div
-              id={bodyId}
-              hidden={collapsed}
-              className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4"
-            >
-              {!collapsed && TASK_STATUSES.map((status) => cell(section, status))}
-            </div>
-          </section>
-        );
-      })}
+      {sections.map((section) => lane(section, 0))}
     </div>
   );
 }
@@ -541,6 +584,7 @@ export function KanbanView({
  */
 function TaskCard({
   task,
+  decision,
   showScope,
   today,
   onOpen,
@@ -549,6 +593,7 @@ function TaskCard({
   onStatus,
 }: {
   task: Task;
+  decision: string | undefined;
   showScope: boolean;
   today: string;
   onOpen: (id: string) => void;
@@ -586,7 +631,7 @@ function TaskCard({
           data-testid="task-card-open"
           onClick={() => onOpen(task.id)}
           className={cn(
-            "relative block min-h-8 min-w-0 flex-1 py-0.5 text-left text-sm leading-snug hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "group relative block min-h-8 min-w-0 flex-1 py-0.5 text-left text-sm leading-snug hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
           )}
         >
@@ -598,6 +643,7 @@ function TaskCard({
             {task.title}
           </span>
           {task.mine && <MineText />}
+          <DecisionLine text={decision} testId="task-card-decision" />
         </button>
         {changeable && (
           <StatusMenu task={task} onStatus={onStatus} testId="task-card-menu" variant="more" />
@@ -620,7 +666,7 @@ function TaskCard({
             </span>
           )}
         </span>
-        <AssigneeAvatars people={task.assignees} testId="task-card-assignees" />
+        <AssigneeNames people={task.assignees} testId="task-card-assignees" />
       </div>
       {task.archived_at && task.can_set_status && (
         <div className="pt-1">
@@ -784,129 +830,171 @@ export function ListView({
   onToggle,
   grouping,
   autoCollapse,
+  decisions,
 }: ViewProps & SectionProps) {
-  const { t } = useTranslation();
   const setStatus = useSetTaskStatus();
+  const render = (section: TaskSection, depth: number): ReactNode => {
+    const collapsed = grouping !== "none" && isCollapsed(section, remembered, autoCollapse);
+    const bodyId = sectionDomId("tasks-section", section.key);
+    return (
+      <section
+        key={section.key}
+        data-testid="tasks-section"
+        data-section-key={section.key}
+        data-kind={section.kind}
+        data-depth={depth}
+        data-collapsed={collapsed}
+        className="min-w-0"
+      >
+        {grouping !== "none" && (
+          <SectionHeader
+            section={section}
+            collapsed={collapsed}
+            bodyId={bodyId}
+            depth={depth}
+            onToggle={() => onToggle(section.key, !collapsed)}
+          />
+        )}
+        <div id={bodyId} hidden={collapsed} className="mt-1 min-w-0 space-y-1">
+          {!collapsed && (
+            <>
+              {section.children.length > 0 && (
+                <div
+                  data-testid="tasks-section-children"
+                  className="ml-2 min-w-0 space-y-1 border-l pl-1.5 sm:ml-3 sm:pl-3"
+                >
+                  {section.children.map((c) => render(c, depth + 1))}
+                </div>
+              )}
+              {section.tasks.length > 0 && (
+                <ul
+                  className={cn(
+                    "min-w-0 divide-y overflow-hidden rounded-xl border bg-card",
+                    section.children.length > 0 && "ml-2 sm:ml-3",
+                  )}
+                >
+                  {section.tasks.map((task) =>
+                    task.group ? (
+                      <GroupListRow
+                        key={task.id}
+                        task={task}
+                        today={today}
+                        showScope={showScope}
+                        onOpen={onOpen}
+                      />
+                    ) : (
+                      <TaskListRow
+                        key={task.id}
+                        task={task}
+                        today={today}
+                        showScope={showScope}
+                        onOpen={onOpen}
+                        decision={task.decision_id ? decisions.get(task.decision_id) : undefined}
+                        onStatus={(st) => void setStatus(task.id, st)}
+                      />
+                    ),
+                  )}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+    );
+  };
   return (
     <div data-testid="tasks-list" data-grouping={grouping} className="min-w-0 space-y-3">
-      {sections.map((section) => {
-        const collapsed = grouping !== "none" && isCollapsed(section, remembered, autoCollapse);
-        const bodyId = `tasks-section-${section.key.replace(/[^a-z0-9-]/gi, "-")}`;
-        return (
-          <section
-            key={section.key}
-            data-testid="tasks-section"
-            data-section-key={section.key}
-            data-collapsed={collapsed}
-            className="min-w-0"
-          >
-            {grouping !== "none" && (
-              <SectionHeader
-                section={section}
-                collapsed={collapsed}
-                bodyId={bodyId}
-                onToggle={() => onToggle(section.key, !collapsed)}
-              />
-            )}
-            <ul
-              id={bodyId}
-              hidden={collapsed}
-              className="mt-1 min-w-0 divide-y overflow-hidden rounded-xl border bg-card"
-            >
-              {!collapsed &&
-                section.tasks.map((task) =>
-                  task.group ? (
-                    <GroupListRow
-                      key={task.id}
-                      task={task}
-                      today={today}
-                      showScope={showScope}
-                      onOpen={onOpen}
-                    />
-                  ) : (
-                    <li
-                      key={task.id}
-                      data-testid="tasks-list-item"
-                      className={cn(
-                        "flex min-w-0 items-center gap-1 pr-2",
-                        task.mine ? TASK_MINE : TASK_OTHER,
-                      )}
-                    >
-                      <button
-                        type="button"
-                        data-testid="tasks-list-row"
-                        data-task-id={task.id}
-                        data-status={task.status}
-                        data-overdue={isOverdue(task, today)}
-                        data-mine={task.mine}
-                        data-archived={!!task.archived_at}
-                        onClick={() => onOpen(task.id)}
-                        className="flex min-h-10 w-full min-w-0 flex-1 items-center gap-2 py-1 pl-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <span
-                          data-testid="tasks-list-row-title"
-                          className={cn(
-                            "relative min-w-0 flex-1 truncate text-sm",
-                            task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
-                          )}
-                          title={task.title}
-                        >
-                          {task.title}
-                          {task.mine && <MineText />}
-                        </span>
-                        {showScope && (
-                          <span
-                            className="hidden min-w-0 max-w-[12rem] shrink truncate text-xs text-muted-foreground lg:inline"
-                            data-testid="tasks-list-row-scope"
-                            data-scope={task.scope}
-                            title={scopeText(t, task)}
-                          >
-                            {scopeText(t, task)}
-                          </span>
-                        )}
-                        <span className="hidden sm:contents">
-                          <TaskLinkIcons task={task} />
-                          <LoudPriority task={task} />
-                          <NoteCount task={task} />
-                        </span>
-                        <DueText task={task} today={today} />
-                        {task.assignees.length ? (
-                          <AssigneeAvatars
-                            people={task.assignees}
-                            testId="tasks-list-row-assignees"
-                          />
-                        ) : (
-                          <span className="hidden text-xs text-muted-foreground sm:inline">
-                            {t("tasks.unassigned")}
-                          </span>
-                        )}
-                      </button>
-                      {task.can_set_status && !task.archived_at ? (
-                        <StatusMenu
-                          task={task}
-                          onStatus={(s) => void setStatus(task.id, s)}
-                          testId="tasks-list-row-status"
-                          variant="pill"
-                        />
-                      ) : (
-                        <TaskStatusBadge
-                          status={task.status}
-                          className="shrink-0 rounded-full px-2 py-0 text-[11px]"
-                        />
-                      )}
-                      {task.archived_at && task.can_set_status && (
-                        <div className="shrink-0">
-                          <UnarchiveButton task={task} />
-                        </div>
-                      )}
-                    </li>
-                  ),
-                )}
-            </ul>
-          </section>
-        );
-      })}
+      {sections.map((section) => render(section, 0))}
     </div>
+  );
+}
+
+/** One compact task row: title (and decision line), scope, link icons, created, due, assignees, the status menu. */
+function TaskListRow({
+  task,
+  today,
+  showScope,
+  onOpen,
+  decision,
+  onStatus,
+}: {
+  task: Task;
+  today: string;
+  showScope: boolean;
+  onOpen: (id: string) => void;
+  decision: string | undefined;
+  onStatus: (s: TaskStatus) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <li
+      data-testid="tasks-list-item"
+      className={cn("flex min-w-0 items-center gap-1 pr-2", task.mine ? TASK_MINE : TASK_OTHER)}
+    >
+      <button
+        type="button"
+        data-testid="tasks-list-row"
+        data-task-id={task.id}
+        data-status={task.status}
+        data-overdue={isOverdue(task, today)}
+        data-mine={task.mine}
+        data-archived={!!task.archived_at}
+        onClick={() => onOpen(task.id)}
+        className="group flex min-h-10 w-full min-w-0 flex-1 items-center gap-2 py-1 pl-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="min-w-0 flex-1">
+          <span
+            data-testid="tasks-list-row-title"
+            className={cn(
+              "relative block min-w-0 truncate text-sm",
+              task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
+            )}
+            title={task.title}
+          >
+            {task.title}
+            {task.mine && <MineText />}
+          </span>
+          <DecisionLine text={decision} testId="tasks-list-row-decision" />
+        </span>
+        {showScope && (
+          <span
+            className="hidden min-w-0 max-w-[12rem] shrink truncate text-xs text-muted-foreground lg:inline"
+            data-testid="tasks-list-row-scope"
+            data-scope={task.scope}
+            title={scopeText(t, task)}
+          >
+            {scopeText(t, task)}
+          </span>
+        )}
+        <span className="hidden sm:contents">
+          <TaskLinkIcons task={task} />
+          <LoudPriority task={task} />
+          <NoteCount task={task} />
+        </span>
+        <CreatedText task={task} today={today} />
+        <DueText task={task} today={today} />
+        {task.assignees.length ? (
+          <AssigneeNames people={task.assignees} testId="tasks-list-row-assignees" />
+        ) : (
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            {t("tasks.unassigned")}
+          </span>
+        )}
+      </button>
+      {task.can_set_status && !task.archived_at ? (
+        <StatusMenu task={task} onStatus={onStatus} testId="tasks-list-row-status" variant="pill" />
+      ) : (
+        <TaskStatusBadge
+          status={task.status}
+          className="shrink-0 rounded-full px-2 py-0 text-[11px]"
+        />
+      )}
+      {task.archived_at && task.can_set_status && (
+        <div className="shrink-0">
+          <UnarchiveButton task={task} />
+        </div>
+      )}
+    </li>
   );
 }
 

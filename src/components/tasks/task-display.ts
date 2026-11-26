@@ -1,6 +1,6 @@
-import type { TaskSection } from "@/lib/task-grouping";
+import { formatCreatedDate, type TaskSection } from "@/lib/task-grouping";
 import type { TFunction } from "i18next";
-import { formatDate } from "@/lib/i18n";
+import { dateLocale, formatDate } from "@/lib/i18n";
 import type { WorkScope } from "@/lib/tasks";
 
 /** A London calendar day (YYYY-MM-DD) as a short localized date; noon UTC so no time zone can shift the day. */
@@ -30,11 +30,15 @@ export function initials(name: string | null | undefined) {
 export const selectClass =
   "h-11 w-full min-w-0 max-w-full rounded-xl border border-input bg-card px-3 text-base";
 
-/** The header text of a section: "<agenda item> · <meeting> (<date>)", "<title> (<date>)", a due bucket, a name. */
+/** The header text of a section: "<title> (<date>)" for a meeting or event, a due bucket, a name or a title. */
 export function sectionLabel(t: TFunction, s: TaskSection) {
   const day = s.date ? formatDay(s.date) : null;
-  if (s.kind === "agenda") return `${s.title} · ${s.meeting ?? ""}${day ? ` (${day})` : ""}`;
   if (s.kind === "meeting" || s.kind === "event") return `${s.title}${day ? ` (${day})` : ""}`;
   if (s.kind === "due") return t(`tasks.grouping.due.${s.title}`);
   return s.title;
+}
+
+/** "25 Nov" (this year) or "25 Nov 2025" (another year) for a task's created_at, in the current language. */
+export function createdDay(createdAt: string, today: string) {
+  return formatCreatedDate(createdAt, today, dateLocale());
 }

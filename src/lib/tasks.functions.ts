@@ -39,7 +39,24 @@ export const listTaskSources = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const result = await context.supabase.rpc("list_task_sources");
     fail(result.error);
-    return taskSources.parse(result.data ?? {});
+    const sources = taskSources.parse(result.data ?? {});
+    // The decision texts (the "Decision: …" line under a task): read through RLS (meeting_decisions_read), so only
+    // decisions of meetings the caller may see. Without them the rows simply show no decision line.
+    const ids = [...new Set(sources.decisions.map((d) => d.id))];
+    if (!ids.length) return sources;
+    const texts = new Map<string, string>();
+    for (let i = 0; i < ids.length; i += 200) {
+      const chunk = await context.supabase
+        .from("meeting_decisions")
+        .select("id, text")
+        .in("id", ids.slice(i, i + 200));
+      if (chunk.error) return sources;
+      for (const d of chunk.data ?? []) texts.set(d.id, d.text);
+    }
+    return {
+      ...sources,
+      decisions: sources.decisions.map((d) => ({ ...d, text: texts.get(d.id) ?? null })),
+    };
   });
 
 export const getTask = createServerFn({ method: "GET" })

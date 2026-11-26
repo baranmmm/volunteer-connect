@@ -3,7 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Archive, CalendarDays, Columns3, List, Plus } from "lucide-react";
+import {
+  Archive,
+  CalendarDays,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Columns3,
+  List,
+  Plus,
+} from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "@/lib/auth";
 import {
@@ -21,20 +29,25 @@ import {
   saveTaskScopeFilter,
   saveTaskView,
   scopeFilterOptions,
-  sortTasks,
   type TaskFilters,
-  type TaskSort,
   type TaskView,
 } from "@/lib/tasks";
 import {
   NO_SOURCES,
   TASK_GROUPINGS,
+  TASK_ROW_SORTS,
+  decisionTexts,
   groupTaskSections,
   readCollapsed,
   readTaskGrouping,
+  readTaskRowSort,
   saveCollapsed,
   saveTaskGrouping,
+  saveTaskRowSort,
+  setAllCollapsed,
+  sortTaskRows,
   type TaskGrouping,
+  type TaskRowSort,
 } from "@/lib/task-grouping";
 import { listTasks, listTaskSources } from "@/lib/tasks.functions";
 import { pageHead } from "@/components/app/head";
@@ -106,6 +119,12 @@ function TasksPage() {
     saveTaskGrouping(uid, g);
   };
   const [remembered, setRemembered] = useState<Record<string, boolean>>(() => readCollapsed(uid));
+  const setAllSections = (collapsed: boolean) =>
+    setRemembered((cur) => {
+      const next = setAllCollapsed(cur, sections, collapsed);
+      saveCollapsed(uid, next);
+      return next;
+    });
   const toggleSection = (key: string, collapsed: boolean) =>
     setRemembered((cur) => {
       const { [key]: _drop, ...rest } = cur;
@@ -117,7 +136,7 @@ function TasksPage() {
   const sources = useQuery({
     queryKey: ["task-sources", uid],
     queryFn: () => fetchSources(),
-    enabled: !!uid && grouping === "source",
+    enabled: !!uid && grouping === "meeting",
     staleTime: 60_000,
   });
   // Every task the user can see by default; "My tasks" starts off (their own tasks are marked instead).
@@ -126,7 +145,12 @@ function TasksPage() {
     ...DEFAULT_FILTERS,
     ...readTaskScopeFilter(uid),
   }));
-  const [sort, setSort] = useState<TaskSort>("due");
+  // Sort inside every section (Status by default), remembered per user.
+  const [sort, setSortState] = useState<TaskRowSort>(() => readTaskRowSort(uid));
+  const setSort = (v: TaskRowSort) => {
+    setSortState(v);
+    saveTaskRowSort(uid, v);
+  };
   const [creating, setCreating] = useState(false);
   const today = londonDay();
   const all = useMemo(
@@ -178,19 +202,28 @@ function TasksPage() {
       view === "list"
         ? { ...filters, ...scope }
         : { ...DEFAULT_FILTERS, ...scope, mine: filters.mine, archived: !!filters.archived };
-    return sortTasks(filterTasks(all, active, today), view === "list" ? sort : "due");
+    return sortTaskRows(filterTasks(all, active, today), sort);
   }, [all, filters, view, sort, today, branchesKey, regionsKey]);
 
   const sections = useMemo(
     () =>
-      groupTaskSections(shown, grouping, sources.data ?? NO_SOURCES, today, {
-        other: t("tasks.grouping.other"),
-        unassigned: t("tasks.unassigned"),
-        allMembers: t("tasks.grouping.allMembers"),
-        formerMember: t("common.formerMember"),
-      }),
-    [shown, grouping, sources.data, today, t],
+      groupTaskSections(
+        shown,
+        grouping,
+        sources.data ?? NO_SOURCES,
+        today,
+        {
+          other: t("tasks.grouping.other"),
+          events: t("tasks.grouping.events"),
+          unassigned: t("tasks.unassigned"),
+          allMembers: t("tasks.grouping.allMembers"),
+          formerMember: t("common.formerMember"),
+        },
+        sort,
+      ),
+    [shown, grouping, sources.data, today, t, sort],
   );
+  const decisions = useMemo(() => decisionTexts(sources.data ?? NO_SOURCES), [sources.data]);
 
   const assigneeOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -289,6 +322,26 @@ function TasksPage() {
               </select>
             </div>
           )}
+          {view !== "calendar" && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="tasks-sort" className="text-sm text-muted-foreground">
+                {t("tasks.filters.sort")}
+              </Label>
+              <select
+                id="tasks-sort"
+                data-testid="tasks-sort"
+                className={cn(selectClass, "h-11 w-auto")}
+                value={sort}
+                onChange={(e) => setSort(e.target.value as TaskRowSort)}
+              >
+                {TASK_ROW_SORTS.map((v) => (
+                  <option key={v} value={v}>
+                    {t(`tasks.filters.sortBy.${v}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <Button
             data-testid="tasks-filter-mine"
             variant={filters.mine ? "default" : "outline"}
@@ -363,24 +416,6 @@ function TasksPage() {
             ["week", t("tasks.filters.dueWeek")],
             ["none", t("tasks.filters.dueNone")],
           ])}
-          <div className="min-w-0 space-y-1">
-            <Label htmlFor="tasks-sort" className="text-xs text-muted-foreground">
-              {t("tasks.filters.sort")}
-            </Label>
-            <select
-              id="tasks-sort"
-              data-testid="tasks-sort"
-              className={selectClass}
-              value={sort}
-              onChange={(e) => setSort(e.target.value as TaskSort)}
-            >
-              {(["due", "priority", "title", "status"] as const).map((s) => (
-                <option key={s} value={s}>
-                  {t(`tasks.filters.sortBy.${s}`)}
-                </option>
-              ))}
-            </select>
-          </div>
           {!filters.archived && (
             <div className="col-span-2 flex min-w-0 items-end lg:col-span-1">
               <ArchiveDoneButton tasks={shown} testId="tasks-archive-done" />
@@ -422,32 +457,64 @@ function TasksPage() {
             </Button>
           )}
         </div>
-      ) : view === "kanban" ? (
-        <KanbanView
-          tasks={shown}
-          today={today}
-          onOpen={open}
-          showScope={showScope}
-          sections={sections}
-          remembered={remembered}
-          onToggle={toggleSection}
-          grouping={grouping}
-          autoCollapse={!filters.archived}
-        />
-      ) : view === "list" ? (
-        <ListView
-          tasks={shown}
-          today={today}
-          onOpen={open}
-          showScope={showScope}
-          sections={sections}
-          remembered={remembered}
-          onToggle={toggleSection}
-          grouping={grouping}
-          autoCollapse={!filters.archived}
-        />
       ) : (
-        <CalendarView tasks={shown} today={today} onOpen={open} showScope={showScope} />
+        <>
+          {view !== "calendar" && grouping !== "none" && sections.length > 0 && (
+            <div className="flex flex-wrap justify-end gap-2" data-testid="tasks-expand-controls">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-10"
+                data-testid="tasks-expand-all"
+                onClick={() => setAllSections(false)}
+              >
+                <ChevronsUpDown aria-hidden />
+                {t("tasks.grouping.expandAll")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-10"
+                data-testid="tasks-collapse-all"
+                onClick={() => setAllSections(true)}
+              >
+                <ChevronsDownUp aria-hidden />
+                {t("tasks.grouping.collapseAll")}
+              </Button>
+            </div>
+          )}
+          {view === "kanban" ? (
+            <KanbanView
+              tasks={shown}
+              today={today}
+              onOpen={open}
+              showScope={showScope}
+              sections={sections}
+              remembered={remembered}
+              onToggle={toggleSection}
+              grouping={grouping}
+              autoCollapse={!filters.archived}
+              decisions={decisions}
+            />
+          ) : view === "list" ? (
+            <ListView
+              tasks={shown}
+              today={today}
+              onOpen={open}
+              showScope={showScope}
+              sections={sections}
+              remembered={remembered}
+              onToggle={toggleSection}
+              grouping={grouping}
+              autoCollapse={!filters.archived}
+              decisions={decisions}
+            />
+          ) : (
+            <CalendarView tasks={shown} today={today} onOpen={open} showScope={showScope} />
+          )}
+        </>
       )}
       <TaskPanel taskId={openTask ?? null} highlightNote={highlightNote} onClose={close} />
       <TaskGroupPanel groupId={openTask ? null : (openGroup ?? null)} onClose={close} />

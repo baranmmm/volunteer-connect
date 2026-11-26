@@ -7,11 +7,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TaskPriorityBadge, TaskStatusBadge } from "./TaskBadges";
 import { formatDay } from "./task-display";
+import { AssigneeNames } from "./AssigneeNames";
+import { useAuth } from "@/lib/auth";
 
 /** Dashboard card: open and overdue counts of the caller's tasks and the next five by due date. */
 export function MyTasksCard() {
   const { t } = useTranslation();
   const summary = useDashboardWork();
+  const { session } = useAuth();
+  const uid = session?.user.id;
   const data = summary.data?.tasks;
   return (
     <section
@@ -91,7 +95,11 @@ export function MyTasksCard() {
                       <span className="min-w-0 truncate font-medium" title={task.title}>
                         {task.title}
                       </span>
-                      <span className="flex shrink-0 flex-wrap items-center gap-2">
+                      <span className="flex min-w-0 shrink-0 flex-wrap items-center gap-2">
+                        <AssigneeNames
+                          people={task.assignees ?? (uid ? [{ id: uid, full_name: null }] : [])}
+                          testId="dashboard-my-task-assignees"
+                        />
                         <TaskStatusBadge status={task.status} />
                         <TaskPriorityBadge priority={task.priority} />
                         {task.due_date && (
