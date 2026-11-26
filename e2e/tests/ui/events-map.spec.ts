@@ -212,6 +212,7 @@ test.describe("Public events map", () => {
     const manager = await freshUser({ role: "branch_manager" });
     const first = await freshEvent(manager, { label: "map phone 1", status: "published", startInMinutes: 4 * 24 * 60, audience: "public" });
     await freshEvent(manager, { label: "map phone 2", status: "published", startInMinutes: 5 * 24 * 60, audience: "public" });
+    await freshEvent(manager, { label: "map phone 3", status: "published", startInMinutes: 6 * 24 * 60, audience: "public" });
     const map = new EventsMapPage(page);
     await page.goto("/events");
     await map.waitReady();
@@ -227,10 +228,14 @@ test.describe("Public events map", () => {
     expect(cardBox.y).toBeGreaterThanOrEqual(canvas.y + canvas.height - 1);
     expect(bar.y).toBeGreaterThanOrEqual(cardBox.y + cardBox.height - 1);
 
-    // Scrolling the page moves to later events while the map stays put (sticky).
-    const start = Number(await map.story().getAttribute("data-active"));
+    // Scrolling the page moves to later events while the map stays put (sticky). From the first event, a third of a
+    // screen always reaches the next slice and never the end of the section, however many events there are.
+    await map.slider().focus();
+    await page.keyboard.press("Home");
+    await expect(map.story()).toHaveAttribute("data-active", "0");
+    const start = 0;
     const before = await mapState(map);
-    await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+    await page.evaluate(() => window.scrollBy(0, Math.round(window.innerHeight / 3)));
     await expect.poll(async () => Number(await map.story().getAttribute("data-active"))).toBeGreaterThan(start);
     expect(await mapState(map)).toEqual(before);
 
@@ -269,6 +274,8 @@ test.describe("Public events map", () => {
     test.setTimeout(90_000);
     const manager = await freshUser({ role: "branch_manager" });
     await freshEvent(manager, { label: "map axe", status: "published", startInMinutes: 4 * 24 * 60, audience: "public" });
+    // Two events, so the timeline is there whatever else the database holds.
+    await freshEvent(manager, { label: "map axe 2", status: "published", startInMinutes: 5 * 24 * 60, audience: "public" });
     const map = new EventsMapPage(page);
     const axe = () =>
       new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).include('[data-testid="events-map-layout"]').analyze();
@@ -284,6 +291,7 @@ test.describe("Public events map", () => {
     test.skip(isMobile, "the HTML is the same for every device");
     const manager = await freshUser({ role: "branch_manager" });
     const event = await freshEvent(manager, { label: "map ssr", status: "published", startInMinutes: 4 * 24 * 60, audience: "public" });
+    await freshEvent(manager, { label: "map ssr 2", status: "published", startInMinutes: 5 * 24 * 60, audience: "public" });
     const html = await (await request.get("/events")).text();
     for (const id of ["events-map-land", "events-map-branch", "events-map-timeline-slider", "events-map-card", "events-map-list"])
       expect(html).toContain(`data-testid="${id}"`);
