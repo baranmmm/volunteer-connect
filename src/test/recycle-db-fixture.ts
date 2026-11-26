@@ -1,7 +1,8 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 
-export async function initializeRecycleDatabase(db: PGlite) {
+/** Every migration (or, with `until`, only those before that file name, to test a migration on older data). */
+export async function initializeRecycleDatabase(db: PGlite, options: { until?: string } = {}) {
   await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
     CREATE SCHEMA auth; CREATE SCHEMA storage;
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
@@ -15,8 +16,10 @@ export async function initializeRecycleDatabase(db: PGlite) {
     GRANT SELECT,INSERT,DELETE ON storage.objects TO authenticated;
     CREATE FUNCTION storage.extension(name text) RETURNS text LANGUAGE sql AS $$SELECT reverse(split_part(reverse(name),'.',1))$$;
     CREATE FUNCTION public.rls_auto_enable() RETURNS event_trigger LANGUAGE plpgsql AS $$BEGIN END$$;`);
-  for (const file of readdirSync("supabase/migrations").sort())
+  for (const file of readdirSync("supabase/migrations").sort()) {
+    if (options.until && file >= options.until) break;
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
+  }
   // Test-only (PGlite): sign-up needs a followed branch, and the older DB tests were written when a new account was a
   // pending volunteer. A fixture branch fills in a missing branch_id, and unless the metadata says "follower": true the
   // new follower is turned back into a pending volunteer (branch from the metadata). Real sign-up is tested with

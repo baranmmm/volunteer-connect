@@ -259,7 +259,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
     await db.exec("BEGIN");
     await db.exec(`DO $$
       DECLARE _e uuid; _pub uuid; _mem uuid; _s uuid; _m uuid; _a1 uuid; _a2 uuid; _d uuid; _t uuid; _r uuid; _v uuid;
-        _ua uuid; _req uuid; _n uuid; _sub uuid; _ms uuid;
+        _ua uuid; _req uuid; _n uuid; _sub uuid; _ms uuid; _mail uuid;
       BEGIN
         -- A past record without an imported photo, and an imported-looking one in the Recycle Bin (both deleted).
         PERFORM set_config('app.past_event', 'on', true);
@@ -345,10 +345,13 @@ describe("the production-like database", { timeout: 30000 }, () => {
         -- Notifications (also the kept NC's own), digest log, requests of every kind, audit and log rows.
         INSERT INTO public.notifications(user_id, kind, entity_type, entity_id, title, link, actor_id)
         VALUES ('${ids.nc}', 'meeting_invited', 'meeting', _m, 'Branch meeting', '/meetings/' || _m, '${ids.bm}') RETURNING id INTO _n;
-        INSERT INTO public.notifications(user_id, kind, entity_type, entity_id, title, link, digest_id)
-        VALUES ('${ids.vol}', 'task_assigned', 'task', _t, 'Book the hall', '/tasks/' || _t, _n);
+        INSERT INTO public.notifications(user_id, kind, entity_type, entity_id, title, link, digest_id, email_digest, email_digested_at)
+        VALUES ('${ids.vol}', 'task_status_changed', 'task', _t, 'Book the hall', '/tasks/' || _t, _n, true, now());
+        -- A daily summary email (the log points at it) and an immediate notice email.
+        INSERT INTO public.email_outbox(template, user_id, payload) VALUES ('daily_digest', '${ids.vol}', '{"count":1}') RETURNING id INTO _mail;
+        INSERT INTO public.notification_digest_log(user_id, day, notification_id, email_id) VALUES ('${ids.vol}', current_date, _n, _mail);
         INSERT INTO public.notification_digest_log(user_id, day, notification_id) VALUES ('${ids.nc}', current_date, _n);
-        INSERT INTO public.email_outbox(template, user_id, notification_id) VALUES ('notification_digest', '${ids.nc}', _n);
+        INSERT INTO public.email_outbox(template, user_id, notification_id, payload) VALUES ('notice', '${ids.nc}', _n, '{"type":"meeting"}');
         INSERT INTO public.event_requests(requester_id, scope, branch_id, region_id, title, proposed_start, proposed_end, last_edited_by)
         VALUES ('${ids.vol}', 'branch', '${ids.b1}', '${ids.region}', 'Iftar', now() + interval '20 days', now() + interval '20 days 2 hours', '${ids.vol}')
         RETURNING id INTO _req;
