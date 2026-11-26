@@ -8,6 +8,7 @@ import { MEETING_TITLE_PREFIX, TASK_TITLE_PREFIX, createMeetingAs, createTaskAs,
 import { RequestsPage } from "../../pages/RequestsPage";
 import { RegionsPage } from "../../pages/RegionsPage";
 import { EventRequestFormDialog } from "../../pages/components/EventRequestFormDialog";
+import { showBoard } from "../../pages/components/tasks";
 
 /** Loading indicators: the app shell, page/list loading states, busy regions and skeletons. */
 const LOADING = '[data-testid="app-loading"], [data-testid$="-loading"], [aria-busy="true"], .animate-pulse';
@@ -106,6 +107,8 @@ test.describe("Accessibility (axe)", () => {
     const meeting = await createMeetingAs(manager, { scope: "branch", branch_id: branch, title: `${MEETING_TITLE_PREFIX}${runId} axe`, starts_at: inDays(4), ends_at: inDays(4, 1), invitee_ids: [volunteer.id] });
     const page = await pageAs(manager);
     await page.goto("/tasks");
+    // List is the default view: open the Board first (all three views are checked).
+    await showBoard(page);
     await expect(page.locator(`[data-testid="task-card"][data-task-id="${task}"]`)).toBeVisible({ timeout: 30_000 });
     await expectNoSeriousViolations(page, "tasks kanban");
     for (const view of ["list", "calendar"] as const) {
