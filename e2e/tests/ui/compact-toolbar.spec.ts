@@ -206,8 +206,9 @@ test.describe("Compact toolbars on phones", () => {
       await expect(more).toHaveAttribute("aria-expanded", "true");
       await expect(menu.getByRole("menuitem")).toHaveCount(3);
       for (const id of ["event-request-open-button", "calendar-add-past-event-button", "calendar-my-requests-link"]) {
+        // Measured once the opening zoom has finished.
+        await expect.poll(async () => Math.round((await box(menu.getByTestId(id))).height), id).toBeGreaterThanOrEqual(44);
         const b = await box(menu.getByTestId(id));
-        expect(Math.round(b.height), id).toBeGreaterThanOrEqual(44);
         expect(Math.round(b.x + b.width), id).toBeLessThanOrEqual(viewport.width);
       }
       await page.keyboard.press("Escape");
@@ -224,13 +225,15 @@ test.describe("Compact toolbars on phones", () => {
       // Each item works as before: Request an event opens the request form, Add past event its dialog, My requests
       // goes to the Requests page.
       await clickCalendarAction(page, "event-request-open-button");
-      await expect(page.getByTestId("event-request-form")).toBeVisible();
+      await expect(page.getByTestId("event-request-type-choice")).toBeVisible();
       await page.keyboard.press("Escape");
-      await expect(page.getByTestId("event-request-form")).toHaveCount(0);
+      await expect(page.getByTestId("event-request-type-choice")).toHaveCount(0);
+      await expect(more).toBeFocused();
       await clickCalendarAction(page, "calendar-add-past-event-button");
       await expect(page.getByTestId("past-event-dialog")).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(page.getByTestId("past-event-dialog")).toHaveCount(0);
+      await expect(more).toBeFocused();
 
       await clickCalendarAction(page, "calendar-my-requests-link");
       await expect(page).toHaveURL(/\/requests\?tab=mine/);

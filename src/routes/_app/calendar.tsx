@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, History, List, ListChecks, Plus, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
@@ -265,14 +265,17 @@ function CalendarPage() {
   // Phones: the same actions (same conditions) in the header's "More actions" menu.
   const canRequest = useCanRequestEvents();
   const [requesting, setRequesting] = useState(false);
+  // The dialogs opened from the menu unmount on close, so focus is put back on ⋯ by hand.
+  const moreButton = useRef<HTMLButtonElement>(null);
+  const focusMore = () => window.setTimeout(() => moreButton.current?.focus(), 0);
   const showMyRequests = !follower && !nc;
   const showRequest = showMyRequests && canRequest;
   const moreActions = (showMyRequests || showRequest || canCreate) && (
-    <OverflowMenu testId="calendar-more-actions">
+    <OverflowMenu testId="calendar-more-actions" triggerRef={moreButton}>
       {showRequest && (
         <OverflowMenuItem
           data-testid="event-request-open-button"
-          onSelect={() => setRequesting(true)}
+          onAction={() => setRequesting(true)}
         >
           <Send aria-hidden />
           {t("requests.open")}
@@ -281,7 +284,7 @@ function CalendarPage() {
       {canCreate && (
         <OverflowMenuItem
           data-testid="calendar-add-past-event-button"
-          onSelect={() => setAddingPast(true)}
+          onAction={() => setAddingPast(true)}
         >
           <History aria-hidden />
           {t("pastEvents.add")}
@@ -335,7 +338,13 @@ function CalendarPage() {
             </FiltersSheet>
             {moreActions}
           </CompactHeader>
-          <RequestEventDialog open={requesting} onClose={() => setRequesting(false)} />
+          <RequestEventDialog
+            open={requesting}
+            onClose={() => {
+              setRequesting(false);
+              focusMore();
+            }}
+          />
         </>
       ) : (
         <>
@@ -417,7 +426,11 @@ function CalendarPage() {
       {createForm}
       {addingPast && (
         <PastEventDialog
-          onClose={() => setAddingPast(false)}
+          onClose={() => {
+            setAddingPast(false);
+            // Opened from the phone menu: focus back on ⋯ (desktop keeps its behaviour).
+            if (narrow) focusMore();
+          }}
           onSaved={(id) => {
             setAddingPast(false);
             void navigate({ to: "/events/$id", params: { id } });

@@ -2,7 +2,14 @@
 // "Filters" button with the number of non-default settings), the settings in a bottom sheet (vaul Drawer: focus trap,
 // Escape and swipe down close it, focus returns to the Filters button) and the page's main action as a floating +
 // button above the bottom navigation. Used by /tasks and /calendar; wider screens keep their full toolbars.
-import { useRef, type ComponentProps, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useRef,
+  type ComponentProps,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { MoreHorizontal, Plus, RotateCcw, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -173,16 +180,30 @@ export function FiltersSheet({
   );
 }
 
+const OverflowContext = createContext<(action: () => void) => void>((action) => action());
+
 /**
  * "More actions" (⋯): the page's secondary actions in a menu (Radix DropdownMenu: arrow keys, Escape closes, focus
- * returns to the button). Not modal, so an item can open a dialog. Items: OverflowMenuItem.
+ * returns to the button). An item's `onAction` (e.g. opening a dialog) runs only after the menu has closed and focus
+ * is back on the button, so the dialog never stacks on the closing menu and gives focus back to ⋯ when it closes.
  */
-export function OverflowMenu({ testId, children }: { testId: string; children: ReactNode }) {
+export function OverflowMenu({
+  testId,
+  triggerRef,
+  children,
+}: {
+  testId: string;
+  /** The ⋯ button, so a page can give focus back to it when a dialog opened from the menu closes. */
+  triggerRef?: Ref<HTMLButtonElement>;
+  children: ReactNode;
+}) {
   const { t } = useTranslation();
+  const pending = useRef<(() => void) | null>(null);
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          ref={triggerRef}
           type="button"
           variant="ghost"
           data-testid={testId}
@@ -198,19 +219,32 @@ export function OverflowMenu({ testId, children }: { testId: string; children: R
         collisionPadding={16}
         data-testid={`${testId}-menu`}
         className="min-w-56"
+        onCloseAutoFocus={() => {
+          const action = pending.current;
+          pending.current = null;
+          if (action) window.setTimeout(action, 0);
+        }}
       >
-        {children}
+        <OverflowContext.Provider value={(action) => (pending.current = action)}>
+          {children}
+        </OverflowContext.Provider>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-/** A menu entry of at least 44px; `asChild` for a link. */
-export function OverflowMenuItem(props: ComponentProps<typeof DropdownMenuItem>) {
+/** A menu entry of at least 44px: `onAction` for a button (runs after the menu closed), `asChild` for a link. */
+export function OverflowMenuItem({
+  onAction,
+  className,
+  ...props
+}: ComponentProps<typeof DropdownMenuItem> & { onAction?: () => void }) {
+  const defer = useContext(OverflowContext);
   return (
     <DropdownMenuItem
       {...props}
-      className={cn("min-h-11 gap-3 px-3 text-base [&>svg]:size-5", props.className)}
+      {...(onAction ? { onSelect: () => defer(onAction) } : {})}
+      className={cn("min-h-11 gap-3 px-3 text-base [&>svg]:size-5", className)}
     />
   );
 }
