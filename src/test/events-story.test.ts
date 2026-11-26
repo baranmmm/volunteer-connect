@@ -10,6 +10,7 @@ import {
   project,
   stepAtProgress,
   stepHeightVh,
+  startIndex,
   stepKey,
   storySteps,
   storyTarget,
@@ -18,7 +19,8 @@ import {
   type BranchPoint,
   type StoryEvent,
 } from "@/lib/events-story";
-import { EW_BOUNDS, EW_DOTS } from "@/components/public/events-map/england-wales-dots";
+import { readFileSync } from "node:fs";
+import { UK_BOUNDS, UK_DOT_COUNT, UK_SVG_BOX } from "@/components/public/events-map/uk-dots";
 
 // The /events map story: event order, where an event lights up, stepping (keys, Play, scroll) and the fixed frame.
 const NOW = new Date("2026-11-24T12:00:00Z");
@@ -162,6 +164,30 @@ describe("stepping", () => {
     expect(stepAtProgress(0.5, 0)).toBe(0);
     for (let i = 0; i < 9; i++) expect(stepAtProgress(progressOfStep(i, 9), 9)).toBe(i);
   });
+  it("the story starts on Today: the next coming event, else the most recent past one", () => {
+    expect(startIndex([{ past: true }, { past: true }, { past: false }, { past: false }])).toBe(2);
+    expect(startIndex([{ past: false }, { past: false }])).toBe(0);
+    expect(startIndex([{ past: true }, { past: true }, { past: true }])).toBe(2);
+    expect(startIndex([])).toBe(0);
+  });
+  it("scrolling covers only Today onward; past steps map to the section's top", () => {
+    // 6 steps, Today at 2: four slices (2, 3, 4, 5).
+    expect(stepAtProgress(-1, 6, 2)).toBe(2);
+    expect(stepAtProgress(0, 6, 2)).toBe(2);
+    expect(stepAtProgress(0.25, 6, 2)).toBe(3);
+    expect(stepAtProgress(0.99, 6, 2)).toBe(5);
+    expect(stepAtProgress(1, 6, 2)).toBe(5);
+    for (let i = 2; i < 6; i++) expect(stepAtProgress(progressOfStep(i, 6, 2), 6, 2)).toBe(i);
+    expect(progressOfStep(0, 6, 2)).toBe(0);
+    expect(progressOfStep(1, 6, 2)).toBe(0);
+    // Every event past: a single slice for the most recent one.
+    expect(stepAtProgress(0.7, 3, 2)).toBe(2);
+  });
+  it("Play from a past position walks forward through Today to the end", () => {
+    const seen: number[] = [];
+    for (let i: number | null = 0; i !== null; i = playStep(i, 4)) seen.push(i);
+    expect(seen).toEqual([0, 1, 2, 3]);
+  });
   it("each step scrolls a shorter way with many events, within 8–40% of a screen", () => {
     expect(stepHeightVh(3)).toBe(40);
     expect(stepHeightVh(30)).toBe(20);
@@ -185,9 +211,9 @@ describe("stepping", () => {
 });
 
 describe("the fixed map frame", () => {
-  it("covers England and Wales and every branch inside them without changing", () => {
-    const f = mapFrame(EW_BOUNDS, BRANCHES);
-    expect(f).toEqual(mapFrame(EW_BOUNDS, []));
+  it("covers the United Kingdom and every branch inside them without changing", () => {
+    const f = mapFrame(UK_BOUNDS, BRANCHES);
+    expect(f).toEqual(mapFrame(UK_BOUNDS, []));
     for (const b of BRANCHES) {
       const p = framePosition(f, b.latitude, b.longitude);
       expect(p.left).toBeGreaterThan(0);
@@ -196,7 +222,24 @@ describe("the fixed map frame", () => {
       expect(p.top).toBeLessThan(1);
     }
   });
-  it("is extended once to take in a branch outside England and Wales (e.g. Glasgow)", () => {
+  it("contains all four nations (capitals and Shetland) without any extension", () => {
+    const f = mapFrame(UK_BOUNDS, []);
+    const places: [string, number, number][] = [
+      ["London", 51.5074, -0.1278],
+      ["Cardiff", 51.4816, -3.1791],
+      ["Edinburgh", 55.9533, -3.1883],
+      ["Belfast", 54.5973, -5.9301],
+      ["Lerwick", 60.155, -1.145],
+      ["Glasgow", 55.8642, -4.2518],
+    ];
+    for (const [, lat, lon] of places) {
+      const p = framePosition(f, lat, lon);
+      expect(p.left).toBeGreaterThan(0);
+      expect(p.left).toBeLessThan(1);
+      expect(p.top).toBeGreaterThan(0);
+      expect(p.top).toBeLessThan(1);
+    }
+    // A Scottish or Northern Irish branch does not change the frame.
     const glasgow = {
       id: "b-glasgow",
       name: "Glasgow",
@@ -204,20 +247,37 @@ describe("the fixed map frame", () => {
       latitude: 55.8642,
       longitude: -4.2518,
     };
-    const base = mapFrame(EW_BOUNDS, BRANCHES);
-    const f = mapFrame(EW_BOUNDS, [...BRANCHES, glasgow]);
-    expect(f.y).toBeLessThan(base.y);
-    expect(f.h).toBeGreaterThan(base.h);
-    const p = framePosition(f, glasgow.latitude, glasgow.longitude);
-    expect(p.top).toBeGreaterThan(0);
-    expect(p.left).toBeGreaterThan(0);
+    expect(mapFrame(UK_BOUNDS, [...BRANCHES, glasgow])).toEqual(f);
   });
-  it("the land dots were generated with the same projection (London inside the dotted bounds)", () => {
-    const [x, y] = project(51.5074, -0.1278);
-    expect(x).toBeGreaterThan(EW_BOUNDS.minX);
-    expect(x).toBeLessThan(EW_BOUNDS.maxX);
-    expect(y).toBeGreaterThan(EW_BOUNDS.minY);
-    expect(y).toBeLessThan(EW_BOUNDS.maxY);
-    expect(EW_DOTS.join("").match(/h0/g)!.length).toBeGreaterThan(1000);
+  it("is extended once to take in a branch outside the United Kingdom's box", () => {
+    const outside = { id: "b-x", name: "Outside", region_id: null, latitude: 51.0, longitude: 2.6 };
+    const base = mapFrame(UK_BOUNDS, BRANCHES);
+    const f = mapFrame(UK_BOUNDS, [...BRANCHES, outside]);
+    expect(f.w).toBeGreaterThan(base.w);
+    const p = framePosition(f, outside.latitude, outside.longitude);
+    expect(p.left).toBeGreaterThan(0);
+    expect(p.left).toBeLessThan(1);
+  });
+  it("the land dots were generated with the same projection (the capitals inside the dotted bounds)", () => {
+    for (const [lat, lon] of [
+      [51.5074, -0.1278],
+      [55.9533, -3.1883],
+      [54.5973, -5.9301],
+    ] as const) {
+      const [x, y] = project(lat, lon);
+      expect(x).toBeGreaterThan(UK_BOUNDS.minX);
+      expect(x).toBeLessThan(UK_BOUNDS.maxX);
+      expect(y).toBeGreaterThan(UK_BOUNDS.minY);
+      expect(y).toBeLessThan(UK_BOUNDS.maxY);
+    }
+    // The dots are a static asset (out of the JS module graph) whose box frames the land bounds.
+    const svg = readFileSync("public/maps/uk-dots.svg", "utf8");
+    expect(svg.match(/h0/g)!.length).toBe(UK_DOT_COUNT);
+    expect(UK_DOT_COUNT).toBeGreaterThan(1000);
+    expect(svg).toContain(
+      `viewBox="${UK_SVG_BOX.x} ${UK_SVG_BOX.y} ${UK_SVG_BOX.w} ${UK_SVG_BOX.h}"`,
+    );
+    expect(UK_SVG_BOX.x).toBeLessThan(UK_BOUNDS.minX);
+    expect(UK_SVG_BOX.x + UK_SVG_BOX.w).toBeGreaterThan(UK_BOUNDS.maxX);
   });
 });

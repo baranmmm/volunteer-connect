@@ -1,4 +1,4 @@
-// The fixed dotted map of England and Wales: the land as halftone dots (generated SVG paths), every branch as a small
+// The fixed dotted map of the United Kingdom: the land as halftone dots (generated SVG paths), every branch as a small
 // dot, the active event's branch dot(s) larger and pulsing. The frame never changes for an event: no zoom, no pan, no
 // re-centring. A size container keeps the map's aspect ratio, so dots and the card are placed in percent of it and
 // the server-rendered HTML is already in place.
@@ -15,10 +15,7 @@ import {
   type StoryStep,
 } from "@/lib/events-story";
 import { cn } from "@/lib/utils";
-import { EW_DOT_STEP, EW_DOTS } from "./england-wales-dots";
-
-/** Dot diameters (map units) for the coast, near the coast and inland. */
-const DOT_SIZES = [0.34, 0.5, 0.62].map((f) => f * EW_DOT_STEP);
+import { UK_SVG_BOX, UK_SVG_URL } from "./uk-dots";
 
 export function DotMap({
   frame,
@@ -105,25 +102,24 @@ export function DotMap({
           height: `min(100cqh, calc(100cqw / ${ratio.toFixed(4)}))`,
         }}
       >
-        <svg
+        {/* The land: a static, cached SVG asset (not in the JS bundle or the HTML), placed in the same frame. */}
+        <img
           data-testid="events-map-land"
-          viewBox={`${frame.x} ${frame.y} ${frame.w} ${frame.h}`}
-          preserveAspectRatio="xMidYMid meet"
+          src={UK_SVG_URL}
+          alt=""
           aria-hidden="true"
-          focusable="false"
-          className="absolute inset-0 h-full w-full"
-        >
-          {EW_DOTS.map((d, i) => (
-            <path
-              key={i}
-              d={d}
-              fill="none"
-              stroke="#c3d0da"
-              strokeWidth={DOT_SIZES[i]}
-              strokeLinecap="round"
-            />
-          ))}
-        </svg>
+          width={Math.round(UK_SVG_BOX.w)}
+          height={Math.round(UK_SVG_BOX.h)}
+          decoding="async"
+          draggable={false}
+          className="pointer-events-none absolute max-w-none select-none"
+          style={{
+            left: `${((UK_SVG_BOX.x - frame.x) / frame.w) * 100}%`,
+            top: `${((UK_SVG_BOX.y - frame.y) / frame.h) * 100}%`,
+            width: `${(UK_SVG_BOX.w / frame.w) * 100}%`,
+            height: `${(UK_SVG_BOX.h / frame.h) * 100}%`,
+          }}
+        />
         {branches.map((b) => {
           const pos = framePosition(frame, b.latitude, b.longitude);
           const on = lit.has(b.id);

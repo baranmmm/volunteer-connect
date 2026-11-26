@@ -1,5 +1,5 @@
 // The public events map as a scroll-driven story: pure helpers (no React, no DOM), so they are unit tested.
-// One fixed map of England and Wales: the frame is computed once from the land and the branch points and never
+// One fixed map of the United Kingdom: the frame is computed once from the land and the branch points and never
 // zooms, pans or re-centres on an event. Events step in date order (past first, then upcoming).
 import {
   eventStartValue,
@@ -25,20 +25,20 @@ export type StoryEvent = MapEvent & {
   region_id?: string | null | undefined;
 };
 
-const K = Math.cos((52.5 * Math.PI) / 180);
+const K = Math.cos((54.5 * Math.PI) / 180);
 /**
- * Map units: 100 per degree of latitude, longitudes scaled by cos(52.5°) (England and Wales' middle). Must match
- * scripts/england-wales-map/generate.mjs, which drew the land dots with it.
+ * Map units: 100 per degree of latitude, longitudes scaled by cos(54.5°) (the UK's middle). Must match
+ * scripts/uk-map/generate.mjs, which drew the land dots with it.
  */
 export function project(latitude: number, longitude: number): [number, number] {
-  return [(longitude + 6) * K * 100, (56 - latitude) * 100];
+  return [(longitude + 9) * K * 100, (61 - latitude) * 100];
 }
 
 export type Frame = { x: number; y: number; w: number; h: number };
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
 /**
- * The fixed frame: England and Wales with a margin, extended once to take in any branch outside them. The same for
+ * The fixed frame: the United Kingdom with a margin, extended once to take in any branch outside it. The same for
  * every event of the page (the map never moves).
  */
 export function mapFrame(
@@ -135,6 +135,14 @@ export function firstUpcomingIndex(steps: { past: boolean }[]) {
   return i === -1 ? steps.length : i;
 }
 
+/**
+ * Where the story starts ("Today"): the next coming event, or the most recent past one when nothing is coming. Scrolling
+ * moves forward from here; past events are reached by the timeline (ticks, drag, keys, "Past events").
+ */
+export function startIndex(steps: { past: boolean }[]) {
+  return Math.max(Math.min(firstUpcomingIndex(steps), steps.length - 1), 0);
+}
+
 export function clampStep(index: number, length: number) {
   return Math.min(Math.max(index, 0), Math.max(length - 1, 0));
 }
@@ -163,16 +171,22 @@ export function playStep(index: number, length: number): number | null {
 }
 
 /**
- * Scrolling through the sticky section: `progress` (0 at its top, 1 when its end reaches the bottom of the screen)
- * picks the step; each step owns an equal slice.
+ * Scrolling through the sticky section covers the steps from `start` to the last one: `progress` (0 at its top, 1 when
+ * its end reaches the bottom of the screen) picks the step; each owns an equal slice. Earlier (past) steps have no
+ * slice: the section's top stands for `start`.
  */
-export function stepAtProgress(progress: number, length: number) {
+export function stepAtProgress(progress: number, length: number, start = 0) {
   if (length <= 0) return 0;
-  return clampStep(Math.floor(Math.min(Math.max(progress, 0), 1) * length), length);
+  const from = clampStep(start, length);
+  const span = length - from;
+  return from + Math.min(Math.floor(Math.min(Math.max(progress, 0), 1) * span), span - 1);
 }
-/** The progress in the middle of a step's slice (where jumping to it scrolls). */
-export function progressOfStep(index: number, length: number) {
-  return length <= 0 ? 0 : (clampStep(index, length) + 0.5) / length;
+/** The progress in the middle of a step's slice (where jumping to it scrolls); 0 for a step before `start`. */
+export function progressOfStep(index: number, length: number, start = 0) {
+  if (length <= 0) return 0;
+  const from = clampStep(start, length);
+  if (index < from) return 0;
+  return (clampStep(index, length) - from + 0.5) / (length - from);
 }
 
 /** The scroll length of one step, in viewport heights: shorter with many events, at most about 6 screens in all. */
