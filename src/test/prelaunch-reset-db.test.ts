@@ -156,6 +156,7 @@ describe(
 
 describe("the production-like database", { timeout: 30000 }, () => {
   let keptEvents: string[] = [];
+  let keptVideoEvents: string[] = [];
   let keptMedia: string[] = [];
   let keptVideos: string[] = [];
   let deleteObjects: string[] = [];
@@ -248,6 +249,9 @@ describe("the production-like database", { timeout: 30000 }, () => {
     keptEvents = (
       await q<{ id: string }>("SELECT id FROM events WHERE past_record ORDER BY id")
     ).map((r) => r.id);
+    keptVideoEvents = (
+      await q<{ event_id: string }>("SELECT event_id FROM event_videos WHERE event_id IS NOT NULL")
+    ).map((r) => r.event_id);
     keptMedia = (await q<{ id: string }>("SELECT id FROM event_media ORDER BY id")).map(
       (r) => r.id,
     );
@@ -547,8 +551,10 @@ describe("the production-like database", { timeout: 30000 }, () => {
 
   it("aborts with nothing changed when only 14 imported events are found", () =>
     tx(async () => {
+      // An imported event without an attached video (ids are random: the one with the video would also drop a video).
+      const noVideo = keptEvents.find((e) => !keptVideoEvents.includes(e))!;
       await db.query("DELETE FROM event_media WHERE event_id=$1 AND source_url IS NOT NULL", [
-        keptEvents[0],
+        noVideo,
       ]);
       const before = await snapshot();
       await resetFails("found 1, 14, 6");

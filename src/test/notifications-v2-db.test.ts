@@ -459,7 +459,7 @@ describe("sending order, the Auth reserve and the 250 warning", () => {
     tx(async () => {
       await as(null);
       const nc = id(14);
-      await db.exec(`INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${nc}', jsonb_build_object('full_name','Coordinator','privacy_notice_version','1.3'));
+      await db.exec(`INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${nc}', jsonb_build_object('full_name','Coordinator','privacy_notice_version','1.4'));
         UPDATE profiles SET status='active', branch_id=NULL WHERE id='${nc}';
         UPDATE user_roles SET role='national_coordinator' WHERE user_id='${nc}';`);
       const warned = () =>
