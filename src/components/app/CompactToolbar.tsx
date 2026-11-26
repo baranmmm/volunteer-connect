@@ -2,9 +2,9 @@
 // "Filters" button with the number of non-default settings), the settings in a bottom sheet (vaul Drawer: focus trap,
 // Escape and swipe down close it, focus returns to the Filters button) and the page's main action as a floating +
 // button above the bottom navigation. Used by /tasks and /calendar; wider screens keep their full toolbars.
-import { useRef, type ReactNode } from "react";
+import { useRef, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, RotateCcw, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { MoreHorizontal, Plus, RotateCcw, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -15,6 +15,12 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 /**
@@ -164,6 +170,48 @@ export function FiltersSheet({
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
+  );
+}
+
+/**
+ * "More actions" (⋯): the page's secondary actions in a menu (Radix DropdownMenu: arrow keys, Escape closes, focus
+ * returns to the button). Not modal, so an item can open a dialog. Items: OverflowMenuItem.
+ */
+export function OverflowMenu({ testId, children }: { testId: string; children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          data-testid={testId}
+          aria-label={t("toolbar.moreActions")}
+          title={t("toolbar.moreActions")}
+          className="size-11 shrink-0 p-0 [&_svg]:size-5"
+        >
+          <MoreHorizontal aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        collisionPadding={16}
+        data-testid={`${testId}-menu`}
+        className="min-w-56"
+      >
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** A menu entry of at least 44px; `asChild` for a link. */
+export function OverflowMenuItem(props: ComponentProps<typeof DropdownMenuItem>) {
+  return (
+    <DropdownMenuItem
+      {...props}
+      className={cn("min-h-11 gap-3 px-3 text-base [&>svg]:size-5", props.className)}
+    />
   );
 }
 

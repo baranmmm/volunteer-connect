@@ -1,4 +1,5 @@
 // A3 event requests through the UI. Fresh users (and, for counts, a temporary branch) only; removed after each test.
+import { clickCalendarAction } from "../../pages/CalendarPage";
 import { test, expect } from "../../fixtures/roles";
 import {
   REQUEST_TITLE_PREFIX,
@@ -34,7 +35,7 @@ test.describe("Event requests", () => {
     const volunteer = await freshUser();
     const page = await pageAs(volunteer);
     await page.goto("/calendar?view=list");
-    await page.getByTestId("event-request-open-button").click();
+    await clickCalendarAction(page, "event-request-open-button");
     const form = new EventRequestFormDialog(page);
     await form.chooseType("proposal");
     await expect(form.scope()).toHaveAttribute("data-scope", "branch");

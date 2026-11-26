@@ -8,7 +8,6 @@ import { EventRequestForm } from "./EventRequestForm";
 
 export function RequestEventButton({ variant = "default" }: { variant?: "default" | "outline" }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const allowed = useCanRequestEvents();
   if (!allowed) return null;
@@ -23,15 +22,25 @@ export function RequestEventButton({ variant = "default" }: { variant?: "default
         <Send />
         {t("requests.open")}
       </Button>
-      {open && (
-        <EventRequestForm
-          onClose={() => setOpen(false)}
-          onSaved={() => {
-            setOpen(false);
-            void navigate({ to: "/requests", search: { tab: "mine" } });
-          }}
-        />
-      )}
+      <RequestEventDialog open={open} onClose={() => setOpen(false)} />
     </>
+  );
+}
+
+/**
+ * The event request form on its own (e.g. opened from the phone Calendar's "More actions" menu); after saving it goes
+ * to My requests. Check useCanRequestEvents() before offering it.
+ */
+export function RequestEventDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
+  if (!open) return null;
+  return (
+    <EventRequestForm
+      onClose={onClose}
+      onSaved={() => {
+        onClose();
+        void navigate({ to: "/requests", search: { tab: "mine" } });
+      }}
+    />
   );
 }

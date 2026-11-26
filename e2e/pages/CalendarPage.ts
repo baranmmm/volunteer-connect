@@ -47,3 +47,15 @@ export class CalendarPage {
     await expect(this.card("month", eventId)).toBeVisible();
   }
 }
+
+/**
+ * Clicks a Calendar header action (`event-request-open-button`, `calendar-add-past-event-button`,
+ * `calendar-my-requests-link`): on phones (< 640px) these sit in the "More actions" (⋯) menu, opened first.
+ */
+export async function clickCalendarAction(page: Page, testId: string, options: { timeout?: number } = {}) {
+  if ((page.viewportSize()?.width ?? 1280) < 640) {
+    await page.getByTestId("calendar-more-actions").click(options);
+    await expect(page.getByTestId("calendar-more-actions-menu")).toBeVisible();
+  }
+  await page.getByTestId(testId).click(options);
+}

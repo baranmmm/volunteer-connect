@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, History, List, Plus } from "lucide-react";
+import { CalendarDays, History, List, ListChecks, Plus, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
@@ -25,7 +25,8 @@ import { PastEventDialog } from "@/components/events/PastEventDialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CalendarLegend } from "@/components/events/EventStatus";
-import { RequestEventButton } from "@/components/requests/RequestEventButton";
+import { RequestEventButton, RequestEventDialog } from "@/components/requests/RequestEventButton";
+import { useCanRequestEvents } from "@/lib/use-event-requests";
 import { useNarrowScreen } from "@/hooks/use-narrow-screen";
 import { calendarToolbarChanges } from "@/lib/compact-toolbar";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,8 @@ import {
   FiltersSheet,
   FloatingActionButton,
   IconViewSwitch,
+  OverflowMenu,
+  OverflowMenuItem,
 } from "@/components/app/CompactToolbar";
 
 /** "Public events only" (managers): remembered on this device. */
@@ -259,6 +262,41 @@ function CalendarPage() {
   const requestButton = !follower && !nc && (
     <RequestEventButton variant={isManager ? "outline" : "default"} />
   );
+  // Phones: the same actions (same conditions) in the header's "More actions" menu.
+  const canRequest = useCanRequestEvents();
+  const [requesting, setRequesting] = useState(false);
+  const showMyRequests = !follower && !nc;
+  const showRequest = showMyRequests && canRequest;
+  const moreActions = (showMyRequests || showRequest || canCreate) && (
+    <OverflowMenu testId="calendar-more-actions">
+      {showRequest && (
+        <OverflowMenuItem
+          data-testid="event-request-open-button"
+          onSelect={() => setRequesting(true)}
+        >
+          <Send aria-hidden />
+          {t("requests.open")}
+        </OverflowMenuItem>
+      )}
+      {canCreate && (
+        <OverflowMenuItem
+          data-testid="calendar-add-past-event-button"
+          onSelect={() => setAddingPast(true)}
+        >
+          <History aria-hidden />
+          {t("pastEvents.add")}
+        </OverflowMenuItem>
+      )}
+      {showMyRequests && (
+        <OverflowMenuItem asChild>
+          <Link to="/requests" search={{ tab: "mine" }} data-testid="calendar-my-requests-link">
+            <ListChecks aria-hidden />
+            {t("requests.myTitle")}
+          </Link>
+        </OverflowMenuItem>
+      )}
+    </OverflowMenu>
+  );
   return (
     <div className={narrow ? cn("space-y-4", canCreate && FAB_CLEARANCE) : "space-y-6"}>
       {narrow ? (
@@ -295,17 +333,9 @@ function CalendarPage() {
               {publicOnlySwitch}
               {filterSelects}
             </FiltersSheet>
+            {moreActions}
           </CompactHeader>
-          {(requestButton || addPastButton || myRequestsLink) && (
-            <div
-              data-testid="calendar-compact-actions"
-              className="-mx-4 flex min-w-0 items-center gap-2 overflow-x-auto px-4 [&>*]:shrink-0"
-            >
-              {requestButton}
-              {addPastButton}
-              {myRequestsLink}
-            </div>
-          )}
+          <RequestEventDialog open={requesting} onClose={() => setRequesting(false)} />
         </>
       ) : (
         <>

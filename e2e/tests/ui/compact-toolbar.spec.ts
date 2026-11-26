@@ -1,5 +1,5 @@
 // Phone toolbars (< 640px) on Tasks and Calendar: one slim sticky header row (title, view switch as icon buttons,
-// Filters with the number of non-default settings), the settings in a bottom sheet (focus trap, Escape, focus back on
+// Filters with the number of non-default settings; Calendar: the other actions in a More actions menu), the settings in a bottom sheet (focus trap, Escape, focus back on
 // Filters, Reset to the defaults) and the main action as a floating + button that never covers the last row. Checked
 // on Pixel 7 and iPhone SE screens in the mobile project (a phone context: isMobile, touch; the device's viewport is
 // set per test), once each; desktop keeps the full toolbar (desktop project).
@@ -8,6 +8,7 @@ import { devices, type Locator, type Page } from "@playwright/test";
 import { test, expect, runId, type TestUser } from "../../fixtures/roles";
 import { TASK_TITLE_PREFIX, createTaskAs } from "../../api/work";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
+import { clickCalendarAction } from "../../pages/CalendarPage";
 
 const PHONES = { "Pixel 7": devices["Pixel 7"].viewport, "iPhone SE": devices["iPhone SE"].viewport };
 const TASKS = 12;
@@ -153,38 +154,107 @@ test.describe("Compact toolbars on phones", () => {
     });
   }
 
-  test("Pixel 7: Calendar has the same compact header, Filters sheet and floating Create event button", async ({ freshUser, freshBranch, pageAs }, testInfo) => {
+  for (const [name, viewport] of Object.entries(PHONES)) {
+    test(`${name}: Calendar has the same compact header (nothing overflows), Filters sheet, More actions menu and floating Create event button`, async ({ freshUser, freshBranch, pageAs }, testInfo) => {
+      test.skip(testInfo.project.name !== "mobile-pixel7", "phone layout (the mobile project's phone context)");
+      test.setTimeout(90_000);
+      const branch = await freshBranch("compact-calendar");
+      const manager = await freshUser({ role: "branch_manager", branch });
+      const page = await pageAs(manager);
+      await page.setViewportSize(viewport);
+      await page.goto("/calendar");
+      const header = page.getByTestId("calendar-compact-header");
+      await expect(header).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+      await expect(page.getByTestId("calendar-more-actions")).toBeVisible();
+      expect((await box(header)).height).toBeLessThanOrEqual(viewport.height * 0.15);
+      await expect(page.getByTestId("calendar-view-list")).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByTestId("calendar-filter-category")).toHaveCount(0);
+      await expectTouchTargets(header);
+      // Nothing in the header goes past the screen edge, and the page never scrolls sideways.
+      for (const el of await header.locator("button, h1").all()) {
+        const b = await box(el);
+        expect(b.x).toBeGreaterThanOrEqual(0);
+        expect(Math.round(b.x + b.width)).toBeLessThanOrEqual(viewport.width);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      // The old row of action buttons is gone: they are in the More actions menu.
+      await expect(page.getByTestId("calendar-compact-actions")).toHaveCount(0);
+      await expect(page.getByTestId("calendar-add-past-event-button")).toHaveCount(0);
+
+      const filters = page.getByTestId("calendar-filters-button");
+      await filters.click();
+      const sheet = page.getByTestId("calendar-filters-sheet");
+      await expect(sheet.getByTestId("calendar-filter-category")).toBeVisible();
+      await sheet.getByTestId("calendar-filter-past").click();
+      await expect(filters).toHaveAttribute("data-count", "1");
+      await page.getByTestId("calendar-filters-reset").click();
+      await expect(filters).toHaveAttribute("data-count", "0");
+      await expect(sheet.getByTestId("calendar-filter-upcoming")).toHaveAttribute("aria-pressed", "true");
+      await page.keyboard.press("Escape");
+      await expect(sheet).toHaveCount(0);
+      await expect(filters).toBeFocused();
+
+      // More actions (⋯): a real menu button; the manager's three actions, each 44px or more; Escape closes it and
+      // focus returns to the button.
+      const more = page.getByTestId("calendar-more-actions");
+      const menu = page.getByTestId("calendar-more-actions-menu");
+      await expect(more).toHaveAttribute("aria-label", "More actions");
+      await expect(more).toHaveAttribute("aria-haspopup", "menu");
+      await expect(more).toHaveAttribute("aria-expanded", "false");
+      await more.click();
+      await expect(menu).toBeVisible();
+      await expect(more).toHaveAttribute("aria-expanded", "true");
+      await expect(menu.getByRole("menuitem")).toHaveCount(3);
+      for (const id of ["event-request-open-button", "calendar-add-past-event-button", "calendar-my-requests-link"]) {
+        const b = await box(menu.getByTestId(id));
+        expect(Math.round(b.height), id).toBeGreaterThanOrEqual(44);
+        expect(Math.round(b.x + b.width), id).toBeLessThanOrEqual(viewport.width);
+      }
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
+      await expect(more).toBeFocused();
+      // Keyboard: Enter opens it, the arrow keys move between the items.
+      await page.keyboard.press("Enter");
+      await expect(menu).toBeVisible();
+      await page.keyboard.press("ArrowDown");
+      await expect(menu.getByRole("menuitem").nth(1)).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(more).toBeFocused();
+
+      // Each item works as before: Request an event opens the request form, Add past event its dialog, My requests
+      // goes to the Requests page.
+      await clickCalendarAction(page, "event-request-open-button");
+      await expect(page.getByTestId("event-request-form")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("event-request-form")).toHaveCount(0);
+      await clickCalendarAction(page, "calendar-add-past-event-button");
+      await expect(page.getByTestId("past-event-dialog")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("past-event-dialog")).toHaveCount(0);
+
+      await clickCalendarAction(page, "calendar-my-requests-link");
+      await expect(page).toHaveURL(/\/requests\?tab=mine/);
+
+      await page.goBack();
+      const create = page.getByTestId("calendar-create-event-button");
+      await expect(create).toHaveAttribute("data-variant", "fab", { timeout: APP_LOAD_TIMEOUT });
+      await create.click();
+      await expect(page.getByTestId("event-form")).toBeVisible();
+    });
+  }
+
+  test("Calendar: a volunteer's More actions menu has only their own actions (no Add past event)", async ({ freshUser, freshBranch, pageAs }, testInfo) => {
     test.skip(testInfo.project.name !== "mobile-pixel7", "phone layout");
-    const branch = await freshBranch("compact-calendar");
-    const manager = await freshUser({ role: "branch_manager", branch });
-    const page = await pageAs(manager);
-    await page.setViewportSize(PHONES["Pixel 7"]);
+    const branch = await freshBranch("compact-calendar-vol");
+    const volunteer = await freshUser({ role: "volunteer", branch });
+    const page = await pageAs(volunteer);
     await page.goto("/calendar");
-    const header = page.getByTestId("calendar-compact-header");
-    await expect(header).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    expect((await box(header)).height).toBeLessThanOrEqual(page.viewportSize()!.height * 0.15);
-    await expect(page.getByTestId("calendar-view-list")).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByTestId("calendar-filter-category")).toHaveCount(0);
-    await expectTouchTargets(header);
-
-    const filters = page.getByTestId("calendar-filters-button");
-    await filters.click();
-    const sheet = page.getByTestId("calendar-filters-sheet");
-    await expect(sheet.getByTestId("calendar-filter-category")).toBeVisible();
-    await sheet.getByTestId("calendar-filter-past").click();
-    await expect(filters).toHaveAttribute("data-count", "1");
-    await page.getByTestId("calendar-filters-reset").click();
-    await expect(filters).toHaveAttribute("data-count", "0");
-    await expect(sheet.getByTestId("calendar-filter-upcoming")).toHaveAttribute("aria-pressed", "true");
-    await page.keyboard.press("Escape");
-    await expect(sheet).toHaveCount(0);
-    await expect(filters).toBeFocused();
-
-    await expect(page.getByTestId("calendar-add-past-event-button")).toBeVisible();
-    const create = page.getByTestId("calendar-create-event-button");
-    await expect(create).toHaveAttribute("data-variant", "fab");
-    await create.click();
-    await expect(page.getByTestId("event-form")).toBeVisible();
+    await page.getByTestId("calendar-more-actions").click({ timeout: APP_LOAD_TIMEOUT });
+    const menu = page.getByTestId("calendar-more-actions-menu");
+    await expect(menu.getByTestId("event-request-open-button")).toBeVisible();
+    await expect(menu.getByTestId("calendar-my-requests-link")).toBeVisible();
+    await expect(menu.getByTestId("calendar-add-past-event-button")).toHaveCount(0);
+    await expect(page.getByTestId("calendar-create-event-button")).toHaveCount(0);
   });
 
   test("desktop keeps the full Tasks toolbar", async ({ freshUser, freshBranch, pageAs }, testInfo) => {
