@@ -29,8 +29,12 @@ const openAdvanced = async (page: Page) => {
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 };
 type Saved = { task_reminder_emails: boolean; types: { type: string; enabled: boolean; email: boolean }[] };
-const savedSettings = async (who: TestUser) => (await workRpc(who, "get_notification_settings")).data as Saved;
 const TYPES = ["task_assigned", "mention", "review", "task_status", "task_note", "task_reminder", "meeting", "request_decided"];
+/** The stored settings of the types Profile shows (the database may already know newer ones, e.g. 'media'). */
+const savedSettings = async (who: TestUser) => {
+  const saved = (await workRpc(who, "get_notification_settings")).data as Saved;
+  return { ...saved, types: saved.types.filter((s) => TYPES.includes(s.type)) };
+};
 const IMPORTANT = ["task_assigned", "mention", "review", "meeting", "task_reminder"];
 const ALL_OFF = Object.fromEntries(TYPES.map((t) => [t, false]));
 const unreadNotices = async (userId: string) =>
