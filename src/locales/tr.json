@@ -2354,7 +2354,7 @@
     },
     "device": {
       "title": "Telefon bildirimleri (anlık)",
-      "intro": "Size bir görev atandığında, bir toplantı daveti geldiğinde veya bir talep incelemenizi beklediğinde.",
+      "intro": "Size bir görev atandığında, bir görev notunda sizden bahsedildiğinde, bir toplantı daveti geldiğinde veya bir talep incelemenizi beklediğinde.",
       "unsupported": "Bu tarayıcı anlık bildirim gösteremiyor. Yüklü uygulamayı veya başka bir tarayıcıyı deneyin.",
       "iosInstall": "iPhone ve iPad'de anlık bildirimler yalnızca yüklü uygulamada çalışır (iOS 16.4 veya üstü): Paylaş, ardından Ana Ekrana Ekle, sonra burada açın.",
       "denied": "Bu cihazda bildirimler engellenmiş. Yeniden izin vermek için:",
@@ -2370,7 +2370,7 @@
     },
     "card": {
       "title": "Görevlerinizden haberdar olmak için bildirimleri açın",
-      "text": "Size bir görev atandığında, bir toplantıya davet edildiğinizde veya incelemenizi bekleyen talepler olduğunda bu telefonda bildirim alın. Bunu istediğiniz zaman Profil'den değiştirebilirsiniz.",
+      "text": "Size bir görev atandığında, bir görev notunda sizden bahsedildiğinde, bir toplantıya davet edildiğinizde veya incelemenizi bekleyen talepler olduğunda bu telefonda bildirim alın. Bunu istediğiniz zaman Profil'den değiştirebilirsiniz.",
       "button": "Bildirimleri aç",
       "notNow": "Şimdi değil",
       "deniedTitle": "Bildirimler engellenmiş",

@@ -46,8 +46,9 @@ load or on public pages.
 
 ## What is sent, and when
 
-- Same types and switches as email; push defaults **on** for `task_assigned` (incl. task groups), `review` and
-  `meeting`, **off** for every other type. Every kind of a type that is on is pushed at once (also the ones whose email
+- Same types and switches as email; push defaults **on** for `task_assigned` (incl. task groups), `mention` (task note
+  @mentions, since `20261215090000`), `review` and `meeting`, **off** for every other type; a member's saved choice
+  for a type always wins over the default. Every kind of a type that is on is pushed at once (also the ones whose email
   waits for the daily summary); the grouped review notice when it is created or its count goes up.
 - `notify()` / `review_notice_refresh()` queue one `push_outbox` row per device; the server sends them right after the
   member action (`flushNoticeEmails()` also flushes push) and, as the backstop, from the **outbox tick** within a

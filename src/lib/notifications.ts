@@ -114,7 +114,7 @@ export const notificationSetting = z.object({
   enabled: z.boolean(),
   /** Email on/off (any type, locked ones included). */
   email: z.boolean(),
-  /** Push notifications on/off (any type; on by default for assignments, requests waiting and meetings). */
+  /** Push notifications on/off (any type; on by default for assignments, @mentions, requests waiting and meetings). */
   push: z.boolean(),
   locked: z.boolean(),
   email_timing: z.enum(NOTIFICATION_EMAIL_TIMINGS),
