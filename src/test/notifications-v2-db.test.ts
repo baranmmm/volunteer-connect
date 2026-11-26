@@ -82,9 +82,9 @@ beforeAll(async () => {
   const members = [ids.rd, ids.bm1, ids.vol1, ids.vol1b];
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','Riverside','${ids.region}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.3')
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.4')
       FROM unnest(ARRAY['${members.join("','")}']::uuid[]) x;
-    INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${ids.follower}', jsonb_build_object('full_name','Follower','privacy_notice_version','1.3','follower',true,'branch_id','${ids.b1}'));
+    INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${ids.follower}', jsonb_build_object('full_name','Follower','privacy_notice_version','1.4','follower',true,'branch_id','${ids.b1}'));
     UPDATE profiles SET status='active';
     UPDATE profiles SET branch_id='${ids.b1}' WHERE id IN ('${ids.bm1}','${ids.vol1}','${ids.vol1b}');
     UPDATE profiles SET branch_id=NULL WHERE id = '${ids.rd}';
@@ -459,7 +459,7 @@ describe("sending order, the Auth reserve and the 250 warning", () => {
     tx(async () => {
       await as(null);
       const nc = id(14);
-      await db.exec(`INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${nc}', jsonb_build_object('full_name','Coordinator','privacy_notice_version','1.3'));
+      await db.exec(`INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${nc}', jsonb_build_object('full_name','Coordinator','privacy_notice_version','1.4'));
         UPDATE profiles SET status='active', branch_id=NULL WHERE id='${nc}';
         UPDATE user_roles SET role='national_coordinator' WHERE user_id='${nc}';`);
       const warned = () =>
