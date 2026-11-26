@@ -18,7 +18,6 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
-import { Route as AppContactsRouteImport } from './routes/_app/contacts'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppMediaRouteImport } from './routes/_app/media'
 import { Route as AppMeetingsRouteImport } from './routes/_app/meetings'
@@ -89,11 +88,6 @@ const AppApprovalsRoute = AppApprovalsRouteImport.update({
 const AppCalendarRoute = AppCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppContactsRoute = AppContactsRouteImport.update({
-  id: '/contacts',
-  path: '/contacts',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -242,7 +236,6 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/approvals': typeof AppApprovalsRoute
   '/calendar': typeof AppCalendarRoute
-  '/contacts': typeof AppContactsRoute
   '/dashboard': typeof AppDashboardRoute
   '/media': typeof AppMediaRoute
   '/meetings': typeof AppMeetingsRoute
@@ -280,7 +273,6 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/approvals': typeof AppApprovalsRoute
   '/calendar': typeof AppCalendarRoute
-  '/contacts': typeof AppContactsRoute
   '/dashboard': typeof AppDashboardRoute
   '/media': typeof AppMediaRoute
   '/meetings': typeof AppMeetingsRoute
@@ -320,7 +312,6 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/calendar': typeof AppCalendarRoute
-  '/_app/contacts': typeof AppContactsRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/media': typeof AppMediaRoute
   '/_app/meetings': typeof AppMeetingsRoute
@@ -360,7 +351,6 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/approvals'
     | '/calendar'
-    | '/contacts'
     | '/dashboard'
     | '/media'
     | '/meetings'
@@ -398,7 +388,6 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/approvals'
     | '/calendar'
-    | '/contacts'
     | '/dashboard'
     | '/media'
     | '/meetings'
@@ -437,7 +426,6 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/approvals'
     | '/_app/calendar'
-    | '/_app/contacts'
     | '/_app/dashboard'
     | '/_app/media'
     | '/_app/meetings'
@@ -552,13 +540,6 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AppCalendarRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/_app/contacts': {
-      id: '/_app/contacts'
-      path: '/contacts'
-      fullPath: '/contacts'
-      preLoaderRoute: typeof AppContactsRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/dashboard': {
@@ -756,7 +737,6 @@ declare module '@tanstack/react-router' {
 interface AppRouteRouteChildren {
   AppApprovalsRoute: typeof AppApprovalsRoute
   AppCalendarRoute: typeof AppCalendarRoute
-  AppContactsRoute: typeof AppContactsRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppMediaRoute: typeof AppMediaRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
@@ -777,7 +757,6 @@ interface AppRouteRouteChildren {
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppApprovalsRoute: AppApprovalsRoute,
   AppCalendarRoute: AppCalendarRoute,
-  AppContactsRoute: AppContactsRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppMediaRoute: AppMediaRoute,
   AppMeetingsRoute: AppMeetingsRoute,

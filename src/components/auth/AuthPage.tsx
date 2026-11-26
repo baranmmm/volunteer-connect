@@ -3,7 +3,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRedirect } from "@/lib/use-redirect";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "@/lib/toast";
 import { loadSupabase } from "@/lib/supabase-lazy";
 import { useAuth } from "@/lib/auth";
@@ -38,9 +38,12 @@ type Mode = "signin" | "signup" | "forgot";
 export function AuthPage({
   redirect,
   initialMode,
+  header,
 }: {
   redirect?: string | undefined;
   initialMode: "signin" | "signup";
+  /** A top bar above the page (the join page at / and /join: logo, Events, Sign in). */
+  header?: ReactNode;
 }) {
   const { session, loading } = useAuth();
   const search = { redirect };
@@ -56,17 +59,23 @@ export function AuthPage({
 
   return (
     // Server-rendered on /sign-in and /join: hidden for a stored session until its redirect (styles.css).
-    <div data-signed-out-only="" className="min-h-screen lg:grid lg:grid-cols-[11fr_9fr]">
-      <AuthHero join={mode === "signup"} />
-      <main className="relative flex justify-center px-5 pb-16 pt-8 lg:items-center lg:py-16">
-        <LanguageToggle className="absolute right-4 top-4" />
-        <div className="w-full max-w-md">
-          <Logo variant="auth" className="mb-6 mt-8 lg:mt-0" />
-          {mode === "signin" && <SignIn setMode={setMode} />}
-          {mode === "signup" && <SignUp setMode={setMode} />}
-          {mode === "forgot" && <Forgot setMode={setMode} />}
-        </div>
-      </main>
+    <div data-signed-out-only="" className={header ? "landing min-h-screen" : "min-h-screen"}>
+      {header}
+      <div
+        className={`lg:grid lg:grid-cols-[11fr_9fr] ${header ? "bg-background text-foreground lg:min-h-[calc(100vh-var(--auth-top))]" : "min-h-screen"}`}
+        style={header ? ({ "--auth-top": "61px" } as React.CSSProperties) : undefined}
+      >
+        <AuthHero join={mode === "signup"} belowHeader={!!header} />
+        <main className="relative flex justify-center px-5 pb-16 pt-8 lg:items-center lg:py-16">
+          <LanguageToggle className="absolute right-4 top-4" />
+          <div className="w-full max-w-md">
+            <Logo variant="auth" className="mb-6 mt-8 lg:mt-0" />
+            {mode === "signin" && <SignIn setMode={setMode} />}
+            {mode === "signup" && <SignUp setMode={setMode} />}
+            {mode === "forgot" && <Forgot setMode={setMode} />}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
@@ -79,12 +88,14 @@ const HERO_IMAGES = {
 } as const;
 
 /** Desktop: the photo fills the left column with the hub's message; mobile: a short banner above the form. */
-function AuthHero({ join }: { join: boolean }) {
+function AuthHero({ join, belowHeader }: { join: boolean; belowHeader: boolean }) {
   const { t } = useTranslation();
   const name = join ? "join" : "signin";
   const image = HERO_IMAGES[name];
   return (
-    <div className="relative h-40 overflow-hidden bg-sidebar sm:h-56 lg:sticky lg:top-0 lg:h-screen">
+    <div
+      className={`relative h-40 overflow-hidden bg-sidebar sm:h-56 lg:sticky ${belowHeader ? "lg:top-[var(--auth-top)] lg:h-[calc(100vh-var(--auth-top))]" : "lg:top-0 lg:h-screen"}`}
+    >
       {/* Only the photo of the current mode is in the page, so it alone loads eagerly with high priority. */}
       <img
         key={name}

@@ -36,8 +36,8 @@ test.describe("Event updates subscribers", () => {
     await useOwnClientIp(page);
     const email = subscriberEmail();
     created.push(email);
-    await page.goto("/");
-    // The landing page mounts the form when its section nears the screen.
+    await page.goto("/events");
+    // The Events page mounts the form when its section (below the list) nears the screen.
     const section = page.getByTestId("landing-subscribe");
     await section.scrollIntoViewIfNeeded({ timeout: APP_LOAD_TIMEOUT });
     const form = new SubscribeForm(page, section);

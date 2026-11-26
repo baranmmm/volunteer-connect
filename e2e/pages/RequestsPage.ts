@@ -3,7 +3,7 @@ import { APP_LOAD_TIMEOUT } from "./app";
 
 export type ManagerTab = "pending" | "review" | "decided";
 
-/** /requests: "My requests" (requesters) and the reviewers' "Event requests" tabs and detail dialog. */
+/** /requests: "My requests" and the reviewers' "Waiting for my approval" tab (To review / Decided) and detail dialog. */
 export class RequestsPage {
   constructor(readonly page: Page) {}
 
@@ -22,8 +22,10 @@ export class RequestsPage {
   readonly myRows = () => this.myList().locator("[data-request-id]");
   // Reviewers
   readonly managerPage = () => this.page.getByTestId("manager-requests-page");
+  /** "Waiting for my approval" (the second of the two tabs) and, inside it, "To review" or "Decided". */
+  readonly approvalTab = () => this.page.getByTestId("requests-tab-review");
   readonly tab = (tab: ManagerTab) =>
-    this.page.getByTestId(tab === "decided" ? "requests-tab-decided" : "requests-tab-review");
+    this.page.getByTestId(tab === "decided" ? "requests-tab-decided" : "requests-tab-open");
   readonly managerRow = (id: string) => this.page.getByTestId(`manager-request-row-${id}`);
   readonly detail = () => this.page.getByTestId("manager-request-detail");
   readonly detailStatus = () => this.detail().getByTestId("manager-request-status");
@@ -62,6 +64,7 @@ export class RequestsPage {
   }
   /** Opens a reviewer's request from the given tab. */
   async openManaged(id: string, tab: ManagerTab = "pending") {
+    await this.approvalTab().click();
     await this.tab(tab).click();
     await this.managerRow(id).click();
     await expect(this.detail()).toBeVisible();

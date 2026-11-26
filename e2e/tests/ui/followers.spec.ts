@@ -18,10 +18,15 @@ test.describe("Followers", () => {
     const sidebar = new Sidebar(page, !!isMobile, FOLLOWER_MOBILE_PRIMARY);
     for (const hidden of ["users", "approvals", "tasks", "meetings", "recycle-bin"] as const) expect(await sidebar.hasItem(hidden), hidden).toBe(false);
     expect(await sidebar.hasItem("donate")).toBe(true);
-    for (const path of ["/users", "/recycle-bin", "/approvals", "/tasks", "/media"]) {
+    for (const path of ["/users", "/recycle-bin", "/tasks", "/media"]) {
       await page.goto(path);
       await expect(page, path).toHaveURL(/\/dashboard$/, { timeout: APP_LOAD_TIMEOUT });
     }
+    // The old Approvals address opens Requests, where a follower has only "My requests".
+    await page.goto("/approvals");
+    await expect(page).toHaveURL(/\/requests\?tab=review$/, { timeout: APP_LOAD_TIMEOUT });
+    await expect(page.getByTestId("my-requests-page")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page.getByTestId("requests-tab-review")).toHaveCount(0);
   });
 
   test("applies to volunteer from the dashboard; the branch manager approves in Requests; the follower becomes a volunteer", async ({ freshUser, freshBranch, pageAs }) => {

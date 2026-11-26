@@ -38,13 +38,16 @@ export function Hero({
   event,
   fallbackPhoto,
   subscribe,
-  onImageDone,
+  allEventsHref,
+  onImageDone = () => {},
 }: {
   event: LandingEvent | undefined;
   fallbackPhoto: SignedImage | null;
   subscribe: ReactNode;
-  /** Called once the cover has loaded (or failed), so images further down start only after it. */
-  onImageDone: () => void;
+  /** "All events": the list further down the same page (/events). */
+  allEventsHref: string;
+  /** Called once the cover has loaded (or failed), so images further down can start only after it. */
+  onImageDone?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   // The server-rendered cover may finish loading before hydration, when React has not attached onLoad yet.
@@ -168,12 +171,13 @@ export function Hero({
           >
             {t("landing.hero.register")}
           </Link>
-          <Link
-            to="/events"
+          <a
+            href={allEventsHref}
+            data-testid="landing-hero-all-events"
             className="inline-flex min-h-12 items-center rounded-[3px] border-2 border-white/80 px-6 text-base font-semibold text-white transition-colors hover:bg-white/10"
           >
             {t("landing.hero.allEvents")}
-          </Link>
+          </a>
         </div>
       </div>
     </Frame>
