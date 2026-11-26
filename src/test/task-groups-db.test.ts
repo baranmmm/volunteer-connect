@@ -137,9 +137,11 @@ describe("@all creates a task group with one task per active member", () => {
       expect(notices.map((n) => n.user_id).sort()).toEqual([ids.vol1, ids.vol1b].sort());
     }));
 
-  it("only the branch's managers create groups; branch scope only", () =>
+  // Volunteers of the branch create groups too (20261207090000, task-groups-volunteer-db.test.ts); another branch's
+  // volunteer may not.
+  it("only the branch's managers and volunteers create groups; their own branch, branch scope only", () =>
     tx(async () => {
-      await as(ids.vol1);
+      await as(ids.vol2);
       await fails(
         "SELECT public.create_task_group($1::jsonb)",
         [JSON.stringify({ scope: "branch", branch_id: ids.b1, title: "X" })],
@@ -689,14 +691,18 @@ describe("write RPC permissions", () => {
   for (const [who, label] of [
     ["vol2", "a volunteer of another branch"],
     ["fol", "a follower"],
-    ["vol1", "a volunteer of the same branch"],
+    ["vol1", "a volunteer of the same branch (on a group they did not create)"],
     ["nc", "a National Coordinator"],
   ] as const) {
     it(`${label} is refused by every write RPC, and nothing changed`, () =>
       tx(async () => {
         const f = await fixture(ids.bm1);
         await as(ids[who], who === "nc" ? "aal2" : "aal1");
-        for (const [name, sql, params] of calls(f))
+        // A volunteer of the branch may create a group of their own (20261207090000); everything else is refused.
+        const refused = calls(f).filter(
+          ([name]) => !(who === "vol1" && name === "create_task_group"),
+        );
+        for (const [name, sql, params] of refused)
           await fails(sql, [...params], "Not allowed").catch((e) => {
             throw new Error(`${name} as ${who}: ${(e as Error).message}`);
           });
