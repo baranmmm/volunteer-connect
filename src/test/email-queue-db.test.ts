@@ -86,8 +86,8 @@ beforeAll(async () => {
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.branch}','Camden','${ids.region}');
     INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES
-      ('${ids.member}', 'member@example.org', jsonb_build_object('full_name','Member','privacy_notice_version','1.3')),
-      ('${ids.inactive}', 'inactive@example.org', jsonb_build_object('full_name','Inactive','privacy_notice_version','1.3'));
+      ('${ids.member}', 'member@example.org', jsonb_build_object('full_name','Member','privacy_notice_version','1.4')),
+      ('${ids.inactive}', 'inactive@example.org', jsonb_build_object('full_name','Inactive','privacy_notice_version','1.4'));
     UPDATE profiles SET status='active', branch_id='${ids.branch}' WHERE id='${ids.member}';
     UPDATE profiles SET status='inactive', branch_id='${ids.branch}' WHERE id='${ids.inactive}';`);
 }, 60000);

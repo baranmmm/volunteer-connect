@@ -1,6 +1,6 @@
 # Gizlilik Bildirimi: Dialogue Society Gönüllü Merkezi
 
-Sürüm 1.3 · 24 Kasım 2026
+Sürüm 1.4 · 26 Kasım 2026
 
 Bu bildirim, Dialogue Society Gönüllü Merkezi'nin (Volunteer Hub) hangi kişisel bilgileri topladığını, bunları neden kullandığımızı, kimlerin görebildiğini ve hangi haklara sahip olduğunuzu açıklar. Hesap oluşturmadan önce okumanız gerekir. Bu metin İngilizce bildirimin çevirisidir; aralarında bir fark olursa İngilizce sürüm geçerlidir.
 
@@ -47,8 +47,9 @@ Görevleri, toplantıları ve bildirimleri şubenizde ve bölgenizdeki gönüll�
 | Kaydolduğunuz bir etkinliği görebilen diğer üyeler | Katılımcı listesinde adınız. Her etkinlik için "Adımı diğer gönüllülere gösterme" seçeneğini işaretleyerek gizleyebilirsiniz. |
 | Şubenizin Şube Yöneticileri | Profil bilgileriniz, şubelerine ait kayıt ve istekleriniz ve gönüllülük başvurunuz |
 | Bölgenizin Bölge Direktörleri | Aynı bilgiler, bölgelerindeki tüm şubeler için |
-| Ulusal Koordinatörler | Gönüllüler için yalnızca sayılar; şube ve bölge yöneticilerinin bilgileri |
+| Ulusal Koordinatörler | Gönüllüler ve mütevelliler için yalnızca sayılar; şube ve bölge yöneticilerinin bilgileri |
 | Şubenizin üyeleri | Kime atandıkları ve üzerlerindeki notlar dahil şube görevleri |
+| Şubenizin mütevellileri | Şubenizin faaliyetleri: etkinlikleri, şube görevleri (kime atandıkları ve üzerlerindeki notlar dahil), davet edildikleri toplantılar ile bunların gündemi, kararları ve dosyaları ve burada görünen şube üyelerinin adları. Mütevelliler bunları görebilir ancak değiştiremez. |
 | Bir toplantıya davet edilenler, düzenleyeni ve şubesinin ya da bölgesinin yöneticileri | O toplantı (takvimde de), davetlileri, gündemi, kararları ve dosyaları. Başka kimse göremez. |
 | Ulusal Koordinatörler | Yalnızca ulusal görevler ve toplantılar; gönüllülerin adlarını asla görmezler |
 | Merkezde başka hiç kimse | E-posta adresiniz ve telefon numaranız |
