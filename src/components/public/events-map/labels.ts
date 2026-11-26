@@ -12,6 +12,12 @@ export function placeText(e: MapCardEvent, t: TFunction) {
   return e.branch ? t("eventsMap.branchArea", { branch: e.branch }) : "";
 }
 
+/** The story card's place: the branch, or "<region> region" for a region-wide event. */
+export function storyPlace(e: MapCardEvent & { scope?: string | undefined }, t: TFunction) {
+  if (e.scope === "region" && e.region) return t("eventsStory.regionWide", { region: e.region });
+  return e.branch ?? e.region ?? "";
+}
+
 /** The marker's accessible name: "<title>, <date>, <place>" (several events at one point: their count and titles). */
 export function labelPlaces(
   places: MapPlace<MapCardEvent>[],
