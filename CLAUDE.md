@@ -24,6 +24,12 @@ screens and design, and still syncs two-way on `main`.
 ### Local checks (every PR)
 Local tests run on the local Supabase stack (Docker, `cd e2e && npm run local:up`), never on the remote QA project.
 Never run the full Playwright suite locally.
+**One session at a time on the local stack.** Every worktree and session shares one Docker stack (project
+`dsvh-e2e-local`, fixed ports), so a reset or seed in one session breaks another's running tests. Only one session
+runs local e2e (`local:test`, `local:reset/up/down/migrate/seed/dryrun`) at a time: each of these takes a machine-wide
+lock (`e2e/setup/local-lock.ts`, `~/.cache/dsvh-e2e/local-stack.lock`) and refuses to start while another live
+process holds it. Wait for the other session; never delete the lock file or set `E2E_LOCAL_LOCK=off` to get around
+it (that is for CI runners, which have a stack each). Subagents of one session run their e2e one after another.
 1. `npx tsc --noEmit` at the repo root, and inside `e2e/` when it changed.
 2. ESLint on the changed files only: `npx eslint <changed files>` (the rest of `src/` has known formatting issues).
 3. Vitest: `npx vitest run`.

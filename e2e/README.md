@@ -23,6 +23,13 @@ cp .env.qa.example .env.qa  # then fill in the QA values (git-ignored)
 
 ## Local stack (Docker) — everyday work
 
+**One session at a time.** All worktrees share this one stack. Every local command (`local:test`, `local:up`,
+`local:reset`, `local:down`, `local:migrate`, `local:seed`, `local:dryrun`) takes a machine-wide lock
+(`setup/local-lock.ts`, file `~/.cache/dsvh-e2e/local-stack.lock`) and stops with the holder's command, pid and
+folder while another live process has it. A lock left by a crashed process is taken over automatically; child
+processes of the holder (`local:reset` runs migrate and seed) share it. `E2E_LOCAL_LOCK=off` skips it, for CI
+runners only (each has its own stack).
+
 Needs Docker (Docker Desktop or colima) and the Supabase CLI. Nothing is read from `.env.qa`: test users get a
 fixed test password (`LOCAL_TEST_PASSWORD` in `setup/env.ts`), and the keys are the local stack's defaults, written
 to the git-ignored `e2e/.env.local`.

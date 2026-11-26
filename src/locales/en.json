@@ -1690,10 +1690,12 @@
       "dueNone": "No due date",
       "sort": "Sort by",
       "sortBy": {
+        "status": "Status",
         "due": "Due date",
+        "newest": "Newest first",
+        "oldest": "Oldest first",
         "priority": "Priority",
-        "title": "Title",
-        "status": "Status"
+        "title": "Title"
       },
       "group": "Group by",
       "groupBy": {
@@ -1807,7 +1809,8 @@
         "pickOne": "Choose at least one reminder, or remove your reminders.",
         "saved": "Your reminders are saved.",
         "removed": "Your reminders were removed."
-      }
+      },
+      "created": "Created"
     },
     "card": {
       "viewAll": "All tasks",
@@ -1911,7 +1914,7 @@
     "grouping": {
       "label": "Group by",
       "by": {
-        "source": "Source",
+        "meeting": "Meeting",
         "assignee": "Assignee",
         "due": "Due date",
         "none": "None"
@@ -1926,8 +1929,18 @@
       },
       "other": "Other tasks",
       "allMembers": "All members (@all)",
-      "progress": "{{done}} of {{total}} done"
-    }
+      "progress": "{{done}} of {{total}} done",
+      "events": "Events",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all"
+    },
+    "assigneeNames": {
+      "you": "You",
+      "label": "Assigned to: {{names}}"
+    },
+    "decisionLine": "Decision: {{text}}",
+    "created": "Created {{date}}",
+    "createdBy": "Created {{date}} by {{name}}"
   },
   "landing": {
     "skip": "Skip to content",
