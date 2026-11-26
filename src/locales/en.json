@@ -1553,6 +1553,7 @@
     "someone": "Someone",
     "kinds": {
       "task_assigned": "{{actor}} assigned you a task: “{{title}}”",
+      "task_group_created": "{{actor}} created a task for all members: “{{title}}”",
       "task_status_changed": "{{actor}} changed the status of “{{title}}” to {{status}}",
       "task_reminder": "Reminder: “{{title}}” is due {{due}}",
       "task_reminder_overdue": "Overdue: “{{title}}” was due {{due}}",
@@ -1904,7 +1905,8 @@
       "collapse": "Hide the members of {{title}}",
       "created": "Task created for every member.",
       "allOption": "@all: every member of the branch",
-      "allHint": "Each active member of the branch gets their own task now. You can add or remove members later."
+      "allHint": "Each active member of the branch gets their own task now. You can add or remove members later.",
+      "allHintVolunteer": "Each active volunteer and the branch manager get their own task now. Your branch manager is notified."
     },
     "grouping": {
       "label": "Group by",

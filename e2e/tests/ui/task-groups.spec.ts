@@ -125,6 +125,34 @@ test.describe("Task groups (@all)", () => {
     expect((left.data ?? []).every((x) => x.deleted_at !== null)).toBe(true);
   });
 
+  test("a volunteer creates @all for their branch: every volunteer and the manager get a task; the manager is notified and opens the group", async ({ freshUser, freshBranch, pageAs }) => {
+    const { manager, v1, v2 } = await team(freshBranch, freshUser, "groups-volunteer");
+    const name = title("volunteer all");
+    const page = await pageAs(v1);
+    await openTasks(page);
+    await page.getByTestId("tasks-new").click();
+    const form = page.getByTestId("task-form");
+    await form.getByTestId("task-form-title").fill(name);
+    await form.getByTestId("task-form-all-members").check();
+    await form.getByTestId("task-form-submit").click();
+    await expect(form).toBeHidden({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page).toHaveURL(/[?&]group=[0-9a-f-]{36}/, { timeout: APP_LOAD_TIMEOUT });
+    const groupId = new URL(page.url()).searchParams.get("group")!;
+    const [g] = (await groupsOf(v1)).filter((x) => x.id === groupId);
+    expect(g!.members.map((m) => m.user_id).sort()).toEqual([manager.id, v1.id, v2.id].sort());
+    // The manager's notice: "<name> created a task for all members", linking to the group (no approval step).
+    const notice = await adminClient()
+      .from("notifications")
+      .select("kind, link, actor_id")
+      .eq("user_id", manager.id)
+      .eq("kind", "task_group_created")
+      .single();
+    expect(notice.data).toEqual({ kind: "task_group_created", link: `/tasks?group=${groupId}`, actor_id: v1.id });
+    const managerPage = await pageAs(manager);
+    await managerPage.goto(notice.data!.link);
+    await expect(managerPage.getByTestId("task-group-panel").getByTestId("task-group-panel-title")).toHaveText(name, { timeout: APP_LOAD_TIMEOUT });
+  });
+
   test("a group from a meeting decision is one row under the decision and on the meeting's calendar entry", async ({ freshUser, freshBranch, pageAs }) => {
     const { branch, manager, v1 } = await team(freshBranch, freshUser, "groups-meeting");
     const meeting = await createMeetingAs(manager, { scope: "branch", branch_id: branch, title: `${MEETING_TITLE_PREFIX}${runId} grp`, starts_at: inDays(3), ends_at: inDays(3, 1), invitee_ids: [v1.id] });

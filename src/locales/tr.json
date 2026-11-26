@@ -1553,6 +1553,7 @@
     "someone": "Biri",
     "kinds": {
       "task_assigned": "{{actor}} size bir görev atadı: “{{title}}”",
+      "task_group_created": "{{actor}} tüm üyeler için bir görev oluşturdu: “{{title}}”",
       "task_status_changed": "{{actor}}, “{{title}}” görevinin durumunu {{status}} olarak değiştirdi",
       "task_reminder": "Hatırlatma: “{{title}}” için son tarih {{due}}",
       "task_reminder_overdue": "Gecikti: “{{title}}” için son tarih {{due}} idi",
@@ -1904,7 +1905,8 @@
       "collapse": "{{title}} üyelerini gizle",
       "created": "Görev her üye için oluşturuldu.",
       "allOption": "@all: şubenin her üyesi",
-      "allHint": "Şubenin her aktif üyesine şimdi kendi görevi verilir. Üyeleri daha sonra ekleyip çıkarabilirsiniz."
+      "allHint": "Şubenin her aktif üyesine şimdi kendi görevi verilir. Üyeleri daha sonra ekleyip çıkarabilirsiniz.",
+      "allHintVolunteer": "Her aktif gönüllüye ve şube yöneticisine şimdi kendi görevi verilir. Şube yöneticiniz bilgilendirilir."
     },
     "grouping": {
       "label": "Grupla",

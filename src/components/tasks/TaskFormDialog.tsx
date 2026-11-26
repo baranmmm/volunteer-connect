@@ -156,7 +156,8 @@ function TaskForm({
   const [draft, setDraft] = useState<ReminderDraft>(() =>
     reminderDraft(remindersWereOn ? task.reminders : DEFAULT_REMINDERS),
   );
-  // "@all": a task group with one task per active member of the branch (the branch's managers, new branch tasks).
+  // "@all": a task group with one task per active member of the branch (new branch tasks; the branch's managers and,
+  // since 20261207090000, any active volunteer of that branch, whose Branch Manager is notified).
   const [allMembers, setAllMembers] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
@@ -173,7 +174,10 @@ function TaskForm({
   });
   // A volunteer's new task is for themselves unless they choose other volunteers of their branch: preselect them.
   const handsOut = roles.some((r) => MANAGER_ROLES.includes(r));
-  const canAll = !task && handsOut && scope?.scope === "branch" && !!scope.branch_id;
+  const branchVolunteer =
+    roles.includes("volunteer") && !!profile?.branch_id && profile.branch_id === scope?.branch_id;
+  const canAll =
+    !task && (handsOut || branchVolunteer) && scope?.scope === "branch" && !!scope.branch_id;
   useEffect(() => {
     if (editing || handsOut || !people.data || !uid) return;
     if (people.data.some((p) => p.id === uid)) setAssignees((cur) => (cur.length ? cur : [uid]));
@@ -404,7 +408,7 @@ function TaskForm({
               data-testid="task-form-all-members-hint"
               className="block text-muted-foreground"
             >
-              {t("tasks.groups.allHint")}
+              {t(handsOut ? "tasks.groups.allHint" : "tasks.groups.allHintVolunteer")}
             </span>
           </span>
         </label>
