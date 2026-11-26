@@ -2,7 +2,7 @@
 // cache, no precache, so it can never serve a stale app; every page load goes to the network as without it. Registered
 // only when a signed-in member turns push on (src/lib/push/client.ts), scope "/". Bump SW_VERSION on every change so
 // browsers install the new file (it is fetched without the HTTP cache: updateViaCache "none").
-const SW_VERSION = "1";
+const SW_VERSION = "2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -15,8 +15,15 @@ self.addEventListener("activate", (event) => {
 /** A path in this app (same origin); anything else opens the notifications page. */
 function appUrl(path) {
   try {
-    const url = new URL(typeof path === "string" && path.startsWith("/") && !path.startsWith("//") ? path : "/notifications", self.location.origin);
-    return url.origin === self.location.origin ? url.href : new URL("/notifications", self.location.origin).href;
+    const url = new URL(
+      typeof path === "string" && path.startsWith("/") && !path.startsWith("//")
+        ? path
+        : "/notifications",
+      self.location.origin,
+    );
+    return url.origin === self.location.origin
+      ? url.href
+      : new URL("/notifications", self.location.origin).href;
   } catch {
     return new URL("/notifications", self.location.origin).href;
   }
@@ -29,11 +36,14 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
-  const title = typeof data.title === "string" && data.title ? data.title.slice(0, 120) : "Dialogue Society";
+  const title =
+    typeof data.title === "string" && data.title ? data.title.slice(0, 120) : "Dialogue Society";
   const options = {
     body: typeof data.body === "string" ? data.body.slice(0, 300) : "",
-    icon: "/brand/icon-192.png",
-    badge: "/brand/icon-192.png",
+    // Full-colour app icon (192x192). The badge is the status-bar icon: Android draws only its alpha channel, so it is
+    // a white silhouette on transparent (public/brand/push-badge.svg); an opaque image shows as a white square.
+    icon: "/push-icon.png",
+    badge: "/push-badge.png",
     data: { url: appUrl(data.url), v: SW_VERSION },
   };
   if (typeof data.tag === "string" && data.tag) {
