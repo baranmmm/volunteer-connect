@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { enrollTotp, ensureUser, listAllUsers } from "../api/SupabaseClient";
 import { SEED_USERS, seedEmail, type RoleKey, type SeedState, type SeededUser } from "../data/users";
 import { AUTH_DIR, NC_TOTP_FILE, SEED_STATE_FILE, isLocalTarget, isMain, userPassword } from "./env";
+import { acquireLocalStackLock } from "./local-lock";
 import { assertQaEnvironment } from "./guard";
 import { runPreflight } from "./preflight";
 
@@ -47,6 +48,7 @@ export async function seed(): Promise<SeedState> {
 }
 
 if (isMain(import.meta.url)) {
+  if (isLocalTarget()) acquireLocalStackLock("local:seed");
   seed().catch((e) => {
     console.error(`[seed] ${(e as Error).message}`);
     process.exit(1);

@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { baseUrl } from "./setup/env";
+import { baseUrl, isLocalTarget } from "./setup/env";
 import { assertQaEnvironment } from "./setup/guard";
 import { outputDirs } from "./setup/output-dirs";
 
@@ -12,6 +12,8 @@ const { outputDir, reportDir } = outputDirs(CI);
 
 export default defineConfig({
   testDir: "./tests",
+  // Local stack: one session at a time (setup/local-lock.ts).
+  ...(isLocalTarget() ? { globalSetup: "./setup/local-lock.global.ts" } : {}),
   outputDir,
   fullyParallel: true,
   forbidOnly: CI,
