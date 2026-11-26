@@ -12,18 +12,20 @@ Production endpoint:
 
 `${APP_URL}/api/public/cleanup-deleted-events`, where `APP_URL` is the GitHub repository variable holding the published app URL (`https://ds-volunteer.lovable.app`); the workflow fails with a clear message when it is empty
 
-The workflow `.github/workflows/cleanup-deleted-events.yml` runs daily at **03:30 UTC** and also supports **Run workflow**. It sends a POST with `Authorization: Bearer <secret>`. Missing/incorrect authorization returns an empty 401. Do not print the secret or use shell tracing.
+The pg_cron job `recycle-bin-cleanup` runs daily at **03:30 UTC**: `public.recycle_bin_cleanup_tick()` → `public.post_scheduled_route()` POSTs the endpoint through pg_net with `Authorization: Bearer <secret>`, reading `app_url` and `scheduled_jobs_secret` from Supabase Vault (5 minute timeout; the answer lands in `net._http_response`). It does nothing when either Vault entry is missing. The workflow `.github/workflows/cleanup-deleted-events.yml` is a **manual-only fallback** (**Run workflow**) with the same secret, to drain a backlog sooner or when pg_cron is down. Missing/incorrect authorization returns an empty 401. Do not print the secret or use shell tracing.
+
+Check (Supabase SQL editor): `select jobname, schedule, active from cron.job where jobname = 'recycle-bin-cleanup';`, and after 03:30 UTC `select status_code, content, created from net._http_response order by created desc limit 5;` (a 200 with counts only).
 
 ## Retention and execution
 
 - Only items deleted **strictly more than 30 days ago** qualify for scheduled cleanup.
 - Each run processes at most **25 events and 25 users**, with Storage deletions in batches of **100 paths**. A larger backlog drains across runs; manual runs can drain it sooner.
-- Normally deletion occurs at the next daily run after the retention window. GitHub scheduling delays and backlogs can extend that delay.
+- Normally deletion occurs at the next daily run after the retention window. Backlogs can extend that delay.
 - Files are removed through the Storage API before media and event rows. Registrations and other application data are not removed by cleanup. Future registration foreign keys must accommodate purging; a restrictive foreign key blocks finalization safely.
-- Response bodies contain only `{ "events": number, "users": number, "files": number }`. Failed processing returns 500 and fails the workflow.
+- Response bodies contain only `{ "events": number, "users": number, "files": number }`. Failed processing returns 500 (and fails a manual workflow run).
 - User deletion immediately sets an RLS-hidden, inactive profile and bans the Auth account; the existing audit/request RPCs mark completion after blocking succeeds. After retention, the durable purge operation records a personal-data-free audit before Auth erasure, then removes operation state. Profile/role cascades and existing SET NULL references apply.
 - Each authorized processing run writes count-only completion/failure details to `event_cleanup_audit`. Each type writes delete/restore/permanent-delete entries to `recycle_bin_audit_log`; events additionally retain `event_audit_log`. A null actor means scheduled cleanup.
-- The GitHub concurrency group serializes daily/manual workflow runs. Database event locks and durable purge jobs protect restore races and make repeat runs safe.
+- Database event locks and durable purge jobs protect restore races and make repeat runs safe.
 
 ## Attachment access
 

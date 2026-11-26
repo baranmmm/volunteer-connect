@@ -20,10 +20,10 @@ Status and checklist for starting the pilot from a clean production database.
 
 ## GitHub
 - Repository **variable** `APP_URL` = `https://ds-volunteer.lovable.app` (Settings → Secrets and variables → Actions →
-  Variables). Must be set **after the workflow-URL PR merges**; `Task reminders` and `Cleanup Recycle Bin` fail with a
+  Variables). `Task reminders` and `Cleanup Recycle Bin` (manual-only fallbacks; pg_cron runs both jobs) fail with a
   clear message while it is empty.
-- Secret `SCHEDULED_JOBS_SECRET`: the same value as in Lovable (used by both workflows, which are fallbacks now; the
-  minute outbox tick runs from pg_cron with the same value in Supabase Vault).
+- Secret `SCHEDULED_JOBS_SECRET`: the same value as in Lovable (used by both manual fallback workflows; pg_cron's
+  outbox tick and Recycle Bin cleanup use the same value from Supabase Vault).
 
 ## Prod reset (clean start)
 The reset keeps only the National Coordinator account with the dotted email (auth user, identities, sessions, MFA
@@ -170,4 +170,5 @@ project or your own local stack first.
   replaying `$F` as is; then re-point the app's secrets and the Auth settings to the new project.
 
 **6. After the reset:** add `BREVO_API_KEY` in Lovable, then check a sign-up, a guest registration and the scheduled
-workflows (`Task reminders`, `Cleanup Recycle Bin`) end to end.
+jobs end to end (`cron.job`, `cron.job_run_details`, `net._http_response`: `outbox-flush` and `recycle-bin-cleanup`
+answer 200).

@@ -82,10 +82,14 @@ automatically.
   (`@smoke` + the specs related to the branch's changes, `e2e/scripts/select-specs.mjs`) or `full` on the chosen
   branch; E2E runs a chosen suite on `local` (default) or `qa` (migrates QA first).
 - `e2e-local.yml` (reusable): each of three shards starts its own local Supabase stack, then one merged report.
-- `task-reminders.yml` and `cleanup-deleted-events.yml` stay scheduled: they send the emails and run the retention
-  cleanup. Do not change their schedules without asking. They call the published app at the GitHub repository
-  **variable** `APP_URL` (`https://ds-volunteer.lovable.app`) and fail with a clear message when it is empty; never
-  hardcode the app URL in a workflow.
+- Scheduled jobs run on production pg_cron, not GitHub: `outbox-flush` (every minute, sends emails and pushes),
+  `notification-digest`, `task-reminders`, `event-reminders`, `recycle-bin-cleanup` (03:30 UTC), `purge-guest-data`,
+  `extend-event-series`. Jobs that need the app POST to `/api/public/...` through pg_net with the Vault secrets
+  `app_url` and `scheduled_jobs_secret` (the same value as `SCHEDULED_JOBS_SECRET`). Do not change their schedules
+  without asking.
+- `task-reminders.yml` and `cleanup-deleted-events.yml` are **manual-only fallbacks** (`workflow_dispatch`). They call
+  the published app at the GitHub repository **variable** `APP_URL` (`https://ds-volunteer.lovable.app`) and fail with
+  a clear message when it is empty; never hardcode the app URL in a workflow.
 - `cancel-superseded.yml` is switched off (manual trigger only) and can be deleted.
 - QA runs on a small instance with a limited disk IO budget: add nothing that runs on QA regularly.
 - Branch protection / required checks are not available on this private repository's plan, so nothing blocks

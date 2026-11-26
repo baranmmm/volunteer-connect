@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// Daily task reminders, the daily summary email, event reminders and the email sender. The "Task reminders" workflow
-// calls this at 07:05, 08:05, 09:05, 13:05 and 18:05 UTC with SCHEDULED_JOBS_SECRET (src/lib/scheduled-jobs.server.ts). The queueing functions are
+// Manual fallback for the scheduled jobs (pg_cron runs them in production: notification-digest, task-reminders,
+// event-reminders and the outbox-flush tick). The manual "Task reminders" workflow calls this with SCHEDULED_JOBS_SECRET
+// (src/lib/scheduled-jobs.server.ts). The queueing functions are
 // idempotent: run_notification_digest does nothing before 08:00 London time and queues at most one summary email per
 // person and London day (none when nothing is new; `digests` counts those emails), run_task_reminders nothing before
 // 09:00, enqueue_event_reminders queues one reminder per registration two days before the start. Each run then sends
 // what the daily email limit allows (transactional first, then notice emails, reminders, announcements and the daily
-// summaries last); the later runs drain the rest, and anything over the limit continues the next day. Then it sends the
+// summaries last); the outbox tick drains the rest, and anything over the limit continues the next day. Then it sends the
 // push notifications still waiting (docs/push.md; /api/public/outbox-flush sends them within a minute). Only numbers are returned.
 export const Route = createFileRoute("/api/public/task-reminders")({
   ssr: false,

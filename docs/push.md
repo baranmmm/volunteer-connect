@@ -51,7 +51,7 @@ load or on public pages.
   waits for the daily summary); the grouped review notice when it is created or its count goes up.
 - `notify()` / `review_notice_refresh()` queue one `push_outbox` row per device; the server sends them right after the
   member action (`flushNoticeEmails()` also flushes push) and, as the backstop, from the **outbox tick** within a
-  minute (pg_cron job `outbox-flush`, below; also the "Task reminders" run). Rows waiting longer than a day expire;
+  minute (pg_cron job `outbox-flush`, below; also a manual "Task reminders" run). Rows waiting longer than a day expire;
   finished rows are deleted after 7 days.
 - **Content (no sensitive details)**: a generic title per kind ("New task for you", "New meeting invitation",
   "Requests are waiting for your review") and a generic line ("Open the Volunteer Hub to see it.", the number of
@@ -118,7 +118,7 @@ answers only counts:
 
 `vapid` is `ok` or the problem code (`missing`, `invalid_private_key`, `invalid_public_key`, `invalid_subject`,
 `mismatch`); `email` is `ok` or `not_configured` (no Brevo key: no email is claimed). A wrong or missing secret gets an
-empty 401. The GitHub workflows ("Task reminders", "Cleanup Recycle Bin") stay as fallbacks with the same secret.
+empty 401. The GitHub workflows ("Task reminders", "Cleanup Recycle Bin") are manual-only fallbacks with the same secret; the Recycle Bin cleanup runs from pg_cron too (`recycle-bin-cleanup`, `docs/event-cleanup.md`).
 
 ### One-time setup (production)
 

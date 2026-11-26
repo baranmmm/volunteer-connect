@@ -200,8 +200,9 @@ edit keeps the existing settings unless "Remind me" is turned off. The options c
   they need a due date.
 - **When reminders stop.** When the task is done or deleted, when the person is no longer an assignee, or when they
   could no longer be assigned there (for example, they moved branch).
-- **Scheduler.** `run_task_reminders()` runs at 09:00 Europe/London (pg_cron at 08:05 and 09:05 UTC when available,
-  otherwise the "Task reminders" GitHub workflow calls `/api/public/task-reminders` with `SCHEDULED_JOBS_SECRET`). The
+- **Scheduler.** `run_task_reminders()` runs at 09:00 Europe/London (pg_cron job `task-reminders` at 08:05 and 09:05 UTC;
+  the manual-only "Task reminders" GitHub workflow calls `/api/public/task-reminders` with `SCHEDULED_JOBS_SECRET` as a
+  fallback). The
   reminder emails are sent by the minute outbox tick (`/api/public/outbox-flush`, `docs/email.md`).
   - It is idempotent: `task_reminder_log` allows one reminder per task, person and London day.
   - Before 09:00 London time it does nothing.

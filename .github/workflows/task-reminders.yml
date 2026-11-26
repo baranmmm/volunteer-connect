@@ -1,14 +1,11 @@
 name: Task reminders
 
-# Daily notification summary at 08:00 and task reminders at 09:00 Europe/London. GitHub cron is UTC: 07:05, 08:05 and
-# 09:05 UTC cover winter and summer; the database skips runs before those London times and never sends twice a day
-# (idempotent). pg_cron, when the project has it, runs the same functions; this workflow is the fallback.
-# Every run also queues event reminders (2 days before) and sends queued emails within the daily limit of 300
-# (transactional first, then reminders, then announcements). The later runs (13:05, 18:05 UTC) drain the outbox;
-# announcements over the daily limit continue the next day.
+# Manual fallback only. pg_cron runs all of this in production: 'notification-digest' (daily summary from 08:00
+# London), 'task-reminders' (from 09:00 London), 'event-reminders' (2 days before) and the minute 'outbox-flush' tick,
+# which sends the emails and pushes (docs/email.md, docs/push.md). Run it by hand (Run workflow) only when pg_cron is
+# down: every step is idempotent and never sends twice. It calls /api/public/task-reminders, which queues the same
+# reminders and sends what the daily email limit allows.
 on:
-  schedule:
-    - cron: '5 7,8,9,13,18 * * *'
   workflow_dispatch:
 
 permissions: {}
