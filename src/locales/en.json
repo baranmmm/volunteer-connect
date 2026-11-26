@@ -816,6 +816,8 @@
   "requests": {
     "title": "Event requests",
     "toReview": "To review",
+    "unreadDecisions_one": "{{count}} unread decision on my requests",
+    "unreadDecisions_other": "{{count}} unread decisions on my requests",
     "waitingForMe": "Waiting for my approval",
     "myTitle": "My requests",
     "open": "Request an event",

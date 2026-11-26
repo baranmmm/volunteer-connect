@@ -816,6 +816,8 @@
   "requests": {
     "title": "Etkinlik talepleri",
     "toReview": "İncelenecek",
+    "unreadDecisions_one": "Taleplerimde {{count}} okunmamış karar",
+    "unreadDecisions_other": "Taleplerimde {{count}} okunmamış karar",
     "waitingForMe": "Onayımı bekleyenler",
     "myTitle": "Taleplerim",
     "open": "Etkinlik talep et",

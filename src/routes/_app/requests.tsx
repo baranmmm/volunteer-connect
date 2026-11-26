@@ -13,6 +13,7 @@ import { isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
 import {
   REVIEW_WAITING_KEY,
   useMarkNoticesRead,
+  useNotificationCounts,
   useRequestTargets,
   useWorkRequestCount,
 } from "@/lib/use-work-notices";
@@ -37,7 +38,8 @@ import {
 } from "@/components/requests/request-kinds";
 import { useCanRequestEvents, usePendingRequestCount } from "@/lib/use-event-requests";
 
-// The Requests badge counts these notices; opening the page marks them read.
+// Decisions on my own task and meeting requests: unread ones are counted on the "My requests" tab and in the menu's
+// Requests badge; showing that list (the page without tabs, or its "My requests" tab) marks them read.
 const REQUEST_NOTICES: { entityType: "task_request" | "meeting_request" }[] = [
   { entityType: "task_request" },
   { entityType: "meeting_request" },
@@ -78,7 +80,8 @@ function RequestsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const view = resolveRequestView(requested, reviewer, nc, reviewTotal);
   // Opening Requests marks the task and meeting request notices read (the menu badge).
-  useMarkNoticesRead(REQUEST_NOTICES, "requests", !follower);
+  const unreadDecisions = useNotificationCounts().data?.requests ?? 0;
+  useMarkNoticesRead(REQUEST_NOTICES, "requests", !follower && (!reviewer || view === "mine"));
   useMarkNoticesRead(REVIEW_NOTICES, "review", reviewer && view === "review");
   // A decision here changes what waits (menu badges, dashboard card).
   const qc = useQueryClient();
@@ -153,9 +156,19 @@ function RequestsPage() {
               <TabsTrigger
                 value="mine"
                 data-testid="requests-tab-mine"
-                className="min-h-11 flex-1 px-2 sm:px-3"
+                className="min-h-11 flex-1 gap-2 px-2 sm:px-3"
               >
                 {t("requests.myTitle")}
+                {/* Unread decisions on my requests: with the other tab's count, the menu's Requests badge. */}
+                {unreadDecisions > 0 && (
+                  <Badge
+                    variant="secondary"
+                    data-testid="requests-tab-mine-badge"
+                    aria-label={t("requests.unreadDecisions", { count: unreadDecisions })}
+                  >
+                    {unreadDecisions}
+                  </Badge>
+                )}
               </TabsTrigger>
             )}
             <TabsTrigger

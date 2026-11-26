@@ -1,6 +1,7 @@
-import { test, expect, storageFor, toastSuccess } from "../../fixtures/roles";
+import { test, expect, runId, storageFor, toastSuccess } from "../../fixtures/roles";
 import { ApprovalsPage } from "../../pages/ApprovalsPage";
 import { adminClient, getProfile } from "../../api/SupabaseClient";
+import { TASK_TITLE_PREFIX, workRpc } from "../../api/work";
 import { Sidebar } from "../../pages/components/Sidebar";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 
@@ -97,6 +98,56 @@ test.describe("Waiting for my approval badge", () => {
       await expectBoth(2);
     } finally {
       await db.from("account_deletion_requests").update({ status: "cancelled", handled_at: new Date().toISOString() }).eq("id", deletion.data!.id);
+      await db.from("volunteer_applications").delete().eq("id", application.data!.id);
+    }
+  });
+});
+
+// The menu's Requests badge is the sum of the two tab badges: "Waiting for my approval" and the unread decisions on my
+// own requests ("My requests"). Opening "My requests" marks those decisions read, which lowers the menu badge too.
+test.describe("My requests badge", () => {
+  test("an unread decision on my task request shows on My requests; with the approval tab it makes the menu badge", async ({ freshBranch, freshUser, pageAs, seed, isMobile }) => {
+    const branch = await freshBranch("mine-badge");
+    const manager = await freshUser({ role: "branch_manager", branch });
+    const applicant = await freshUser({ role: "follower", branch });
+    const db = adminClient();
+    const application = await db
+      .from("volunteer_applications")
+      .insert({ user_id: applicant.id, branch_id: branch, motivation: "I would like to help at events." })
+      .select("id")
+      .single();
+    expect(application.error).toBeNull();
+    // Managers get request decisions in the daily summary by default (held, not counted): this one chose
+    // "immediately", so the decision is an unread notice right away.
+    expect((await workRpc(manager, "set_notification_setting", { p_type: "request_decided", p_enabled: true, p_delivery: "immediate" })).error).toBeNull();
+    // The manager asks the region's director for a task; the director accepts it: one unread decision.
+    const director = seed.users.director;
+    const request = await workRpc(manager, "submit_task_request", {
+      p: { target_id: director.id, title: `${TASK_TITLE_PREFIX}${runId} mine-badge ${Date.now().toString(36)}` },
+    });
+    expect(request.error).toBeNull();
+    const accepted = await workRpc(director, "accept_task_request", { p_id: request.data });
+    expect(accepted.error).toBeNull();
+    try {
+      const page = await pageAs(manager);
+      const sidebar = new Sidebar(page, isMobile);
+      const menuBadge = async (count: number) => {
+        await expect(await sidebar.requestsBadge()).toHaveAttribute("data-count", String(count), { timeout: APP_LOAD_TIMEOUT });
+        if (isMobile) {
+          await page.keyboard.press("Escape");
+          await expect(page.getByTestId("mobile-nav-more-sheet")).toBeHidden();
+        }
+      };
+      await page.goto("/requests?tab=review");
+      await expect(page.getByTestId("manager-requests-tab-review")).toHaveText("1", { timeout: APP_LOAD_TIMEOUT });
+      await expect(page.getByTestId("requests-tab-mine-badge")).toHaveText("1");
+      await menuBadge(2);
+      // Opening My requests marks the decision read: its badge goes, the menu keeps the approval count.
+      await page.getByTestId("requests-tab-mine").click();
+      await expect(page.getByTestId("requests-tab-mine-badge")).toHaveCount(0, { timeout: APP_LOAD_TIMEOUT });
+      await expect(page.getByTestId("manager-requests-tab-review")).toHaveText("1");
+      await menuBadge(1);
+    } finally {
       await db.from("volunteer_applications").delete().eq("id", application.data!.id);
     }
   });
