@@ -24,6 +24,7 @@ export function BranchMap({ branches, onOpenBranch }: Props) {
   const counts = selected
     ? ([
         ["volunteers", selected.volunteers],
+        ["trustees", selected.trustees],
         ["followers", selected.followers],
         ["events", selected.upcoming_events],
         ["tasks", selected.open_tasks],

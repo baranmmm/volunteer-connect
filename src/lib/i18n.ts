@@ -289,6 +289,8 @@ const ERROR_KEYS: Record<string, string> = {
   "Enter a valid UK postcode": "errors.postcodeInvalid",
   "Not signed in": "errors.notSignedIn",
   "Only active Regional Directors can change roles": "errors.directorOnlyRoles",
+  "Branch Managers can only switch between Volunteer and Trustee": "errors.trusteeSwitchOnly",
+  "Choose Volunteer or Trustee": "errors.chooseVolunteerOrTrustee",
   "Only active Regional Directors can move users": "errors.directorOnlyMove",
   "Profile not found": "errors.profileNotFound",
   "Regional Directors cannot be deleted": "errors.directorCannotBeDeleted",

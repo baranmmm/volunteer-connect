@@ -92,6 +92,7 @@ function UsersPage() {
       ]
     : [
         { value: "volunteer", label: t("common.roles.volunteer") },
+        { value: "trustee", label: t("common.roles.trustee") },
         { value: "branch_manager", label: t("common.roles.branch_manager") },
       ];
 
@@ -115,11 +116,13 @@ function UsersPage() {
                   data-testid="users-branch-count"
                   data-branch-id={b.id}
                   data-volunteers={b.volunteers}
+                  data-trustees={b.trustees}
                 >
                   {t("users.branchCount", {
                     branch: b.name,
                     region: r.name,
                     volunteers: b.volunteers,
+                    trustees: b.trustees,
                     followers: b.followers,
                   })}
                 </li>

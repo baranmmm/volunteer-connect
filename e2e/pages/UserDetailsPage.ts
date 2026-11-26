@@ -3,7 +3,7 @@ import { APP_LOAD_TIMEOUT } from "./app";
 import { ConfirmDialog, DeleteUserDialog } from "./components/ConfirmDialog";
 import { pickOption } from "./components/select";
 
-export type EditableRole = "volunteer" | "branch_manager";
+export type EditableRole = "volunteer" | "trustee" | "branch_manager";
 
 export class UserDetailsPage {
   constructor(readonly page: Page) {}

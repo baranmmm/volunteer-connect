@@ -2771,7 +2771,10 @@ export type Database = {
         Returns: string
       }
       approve_volunteer_application: {
-        Args: { p_id: string }
+        Args: {
+          p_id: string
+          p_role?: Database["public"]["Enums"]["app_role"]
+        }
         Returns: undefined
       }
       archive_done_tasks: { Args: { p_ids: Json }; Returns: number }
@@ -4251,6 +4254,7 @@ export type Database = {
         | "volunteer"
         | "follower"
         | "national_coordinator"
+        | "trustee"
       deletion_request_status: "pending" | "cancelled" | "completed"
       profile_status: "pending" | "active" | "inactive"
       user_audit_action:
@@ -4394,6 +4398,7 @@ export const Constants = {
         "volunteer",
         "follower",
         "national_coordinator",
+        "trustee",
       ],
       deletion_request_status: ["pending", "cancelled", "completed"],
       profile_status: ["pending", "active", "inactive"],

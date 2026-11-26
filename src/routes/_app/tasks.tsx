@@ -275,7 +275,7 @@ function TasksPage() {
     <div className="min-w-0 space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">{t("navigation.tasks")}</h1>
-        {work.scopes.length > 0 && (
+        {work.canCreate && (
           <Button data-testid="tasks-new" className="h-11" onClick={() => setCreating(true)}>
             <Plus />
             {t("tasks.new")}

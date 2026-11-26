@@ -25,6 +25,11 @@ nothing.
 - **Volunteers.** A task a volunteer creates is a self-task (`self_task`). With nobody chosen it is assigned to the
   volunteer; they may also choose other volunteers of their own branch (`list_task_people` offers exactly those). Anyone
   else is refused with "This person cannot be assigned".
+- **Trustees** (`docs/roles.md#trustees`). They see what a volunteer of the branch sees but create and edit nothing.
+  On tasks assigned to them they change the status and write notes only (no archive: `can_archive` is false). Only the
+  branch's Branch Manager assigns them (`list_task_people` offers them only to that BM); Regional Directors and
+  volunteers cannot. "@all" groups never include them (`task_group_people`, `task_group_member_ok`,
+  `task_group_add_member`). New task and Add task are hidden for them.
 - **NC privacy.** National Coordinators never see volunteer names. National tasks can only have RD, BM or NC assignees,
   and NCs cannot see branch or region tasks.
 

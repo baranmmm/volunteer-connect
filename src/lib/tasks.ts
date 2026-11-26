@@ -50,6 +50,8 @@ export const task = z.object({
   mine: z.boolean(),
   can_edit: z.boolean(),
   can_set_status: z.boolean(),
+  /** Archive / unarchive a done task: assignees and editors, never a trustee. Absent before the trustee migration. */
+  can_archive: z.boolean().optional(),
 });
 /** A task in the views: an ordinary task, or (with `group`) one row standing for a whole task group. */
 export type Task = z.infer<typeof task> & { group?: TaskGroupData };
@@ -245,6 +247,7 @@ export function groupRow(g: TaskGroupData): Task {
     mine: false,
     can_edit: g.can_edit,
     can_set_status: false,
+    can_archive: false,
     group: g,
   };
 }
@@ -458,10 +461,14 @@ export function mineFirst<T extends { mine: boolean }>(tasks: T[]) {
   return [...tasks.filter((t) => t.mine), ...tasks.filter((t) => !t.mine)];
 }
 
+/** Archive or unarchive allowed (can_archive; before the trustee migration it followed can_set_status). */
+export const canArchive = (t: Pick<Task, "can_set_status" | "can_archive">) =>
+  t.can_archive ?? t.can_set_status;
+
 /** Ids for "Archive all done": shown done tasks that are not archived and whose status the caller may change. */
 export function archivableDoneIds(tasks: Task[]) {
   return tasks
-    .filter((t) => t.status === "done" && !t.archived_at && t.can_set_status)
+    .filter((t) => t.status === "done" && !t.archived_at && canArchive(t))
     .map((t) => t.id);
 }
 
