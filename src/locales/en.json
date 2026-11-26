@@ -1635,17 +1635,7 @@
     },
     "settings": {
       "title": "Notifications",
-      "intro": "Every notice appears in the app straight away. Choose which notices you get in the app and which also come by email: some emails come at once, the rest in one daily summary at 08:00 (UK time), only on days with something new.",
-      "inApp": "In the app",
       "email": "Email",
-      "emailOn": "Email for {{label}}",
-      "timing": {
-        "immediate": "Email right away",
-        "digest": "Email in the daily summary",
-        "mixed": "Invitations by email right away, changes in the daily summary"
-      },
-      "enabled": "On",
-      "locked": "Always on in the app, so nothing waiting for you is missed. Its email can be turned off.",
       "saved": "Notification setting saved",
       "loadError": "Notification settings could not be loaded.",
       "types": {
@@ -1656,6 +1646,31 @@
         "task_note": "New notes on my tasks",
         "task_reminder": "Task reminders",
         "meeting": "Meetings I am invited to (invited, changed, cancelled)",
+        "request_decided": "Decisions on my requests"
+      },
+      "inAppAlways": "Notices always appear in the app (the bell) straight away.",
+      "emailModes": {
+        "all": "Important ones right away, the rest in a daily summary",
+        "important": "Only important ones",
+        "none": "No email",
+        "custom": "Custom: chosen per notice in Advanced settings."
+      },
+      "advanced": "Advanced settings",
+      "columns": {
+        "type": "Notice",
+        "inapp": "App",
+        "email": "Email",
+        "push": "Push"
+      },
+      "cell": "{{label}} — {{channel}}",
+      "short": {
+        "task_assigned": "Tasks assigned to me",
+        "mention": "Mentions",
+        "review": "Requests to review",
+        "task_status": "My tasks blocked or done",
+        "task_note": "Notes on my tasks",
+        "task_reminder": "Task reminders",
+        "meeting": "Meetings",
         "request_decided": "Decisions on my requests"
       }
     }
@@ -2338,15 +2353,11 @@
       "review_other": "{{count}} requests are waiting for you. Open the Volunteer Hub to review them."
     },
     "device": {
-      "title": "Push notifications on this device",
-      "intro": "Get notices on this phone or computer even when the hub is closed. Choose below which notices also come as push notifications.",
-      "on": "Push notifications are on for this device.",
-      "off": "Push notifications are off on this device.",
+      "title": "Phone notifications (push)",
+      "intro": "When a task is assigned to you, a meeting invite arrives or a request needs your review.",
       "unsupported": "This browser cannot show push notifications. Try the installed app or another browser.",
-      "iosInstall": "On iPhone and iPad, push notifications work only in the installed app (iOS 16.4 or later). Install the app (Share, then Add to Home Screen), open it from your home screen and turn them on here.",
-      "denied": "Notifications are blocked for this app on this device. To allow them again:",
-      "enable": "Enable push on this device",
-      "disable": "Disable push on this device",
+      "iosInstall": "On iPhone and iPad, push works only in the installed app (iOS 16.4 or later): Share, then Add to Home Screen, then turn it on here.",
+      "denied": "Notifications are blocked on this device. To allow them again:",
       "enabled": "Push notifications are on for this device",
       "disabled": "Push notifications are off for this device",
       "failed": "Push notifications could not be turned on. Please try again.",
@@ -2356,10 +2367,6 @@
       "removeLabel": "Remove push on {{label}}",
       "removed": "Device removed",
       "unknownDevice": "Browser"
-    },
-    "settings": {
-      "push": "Push",
-      "pushOn": "Push for {{label}}"
     },
     "card": {
       "title": "Turn on notifications to hear about your tasks",

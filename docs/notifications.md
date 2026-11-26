@@ -28,11 +28,40 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
   grouped `review_waiting` notice replaces them. Old ones still render.
 - Task and meeting notices carry `payload.branch` (the branch name) for grouping.
 
-## Types, settings and defaults (Profile > Notifications)
+## Profile > Notifications (the screen)
+
+Short by default (the collapsed view fits on one Pixel 7 / iPhone SE screen, checked in Playwright). UI only: it uses
+the per-type RPCs below and nothing else (`src/components/app/NotificationSettings.tsx`).
+
+1. **Phone notifications (push)**: one On/Off switch for **this device** (on = ask for permission from the click and
+   register this device; off = unregister it), with one line on what is pushed by default. Where push cannot work it
+   shows a short note instead of the switch (browser without push, iPhone/iPad outside the installed app, permission
+   blocked with the steps to allow it again). See `docs/push.md`.
+2. **Email**: one choice, a shortcut over the per-type email switches (`src/lib/notification-email-mode.ts`, pure,
+   Vitest-covered):
+
+   | Choice | Per-type email |
+   |---|---|
+   | Important ones right away, the rest in a daily summary (`all`, the default) | every type on |
+   | Only important ones (`important`) | `task_assigned` (incl. `task_group_created`), `mention`, `review`, `meeting`, `task_reminder` on; the others off |
+   | No email (`none`) | every type off |
+
+   Choosing one writes only the switches that differ, in parallel, optimistically (rolled back with an error toast
+   if a call fails, then re-read). The choice shown is derived from the stored per-type email switches (the stored
+   value, also for a type turned off in the app): a mix that matches none is **Custom**, shown with a note and no
+   radio checked, never selectable.
+3. One sentence: notices always appear in the app (the bell) straight away. No switches here.
+4. **Advanced settings** (a disclosure button, collapsed by default): a compact table, one row per type with short
+   labels and three checkboxes: **App** (in-app; locked types disabled and checked), **Email** (disabled while the type
+   is off in the app), **Push** (this member's per-type push switch, independent of whether this device is
+   registered; disabled while the type is off in the app). Each checkbox is labelled "<type> — <channel>". Below it,
+   the member's other devices with push on (Remove), when there are any.
+
+## Types, settings and defaults
 
 - **In the app**: every notice that is on appears at once, for every role (never held). **Locked** (always on in the
-  app): `task_assigned`, `mention`, `review` — disabled in-app switch and a short explanation. The others can be turned
-  off in the app (`set_notification_setting`; off means no notice and so no email).
+  app): `task_assigned`, `mention`, `review` (a disabled, checked box in Advanced). The others can be turned off in the
+  app (`set_notification_setting`; off means no notice and so no email or push).
 - **Email** (`set_notification_email`, any type, locked ones included; default **on for every role**). The timing is
   fixed per kind (`notification_email_mode`), shown under each row (`notification_email_timing`):
 
@@ -50,8 +79,8 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
   everyone starts with every email on (`20261208090100_notification_emails.sql`).
 - **Push** (`set_notification_push`, any type, locked ones included): a third switch per type, default **on** for
   `task_assigned`, `review` and `meeting`, **off** for the others. When it is on, every notice of that type is pushed at
-  once to each device where the member turned push on (Profile > Notifications, or the dashboard card in the installed
-  app); off means nothing is queued and waiting pushes of the type are skipped. The in-app switch off means no notice
+  once to each device where the member turned push on (the Profile > Notifications switch, or the dashboard card in the
+  installed app); off means nothing is queued and waiting pushes of the type are skipped. The in-app switch off means no notice
   and so no push. The push shows only a generic title per kind, never the item's title or names. See `docs/push.md`.
 - **Stop links**: every notice email has a signed "Stop these emails" link for its type (`/e/notices?t=`, a click
   confirms; the daily summary has one per type in it) and a `List-Unsubscribe` one-click header
@@ -126,14 +155,19 @@ and day (the notice itself is the log), always on, never emailed. See `docs/emai
 - Waiting for you: `dashboard-waiting`, `dashboard-waiting-count` (`data-count`), `dashboard-waiting-link`.
 - Badges (`data-count`): `nav-requests-badge`, `nav-tasks-badge`, `nav-meetings-badge`, `mobile-nav-<kind>-badge`,
   `mobile-nav-more-badge`.
-- Profile: `profile-notifications` (`id="notifications"`), `profile-notification-type` (`data-type`, `data-locked`,
-  `data-enabled`, `data-email`, `data-push`, `data-email-timing`), `profile-notification-enabled`,
-  `profile-notification-email`, `profile-notification-push`, `profile-notification-email-timing`; push on this device:
-  `profile-push` and the ids in `docs/push.md`.
+- Profile: `profile-notifications` (`id="notifications"`), `profile-notifications-inapp-note`; push on this device:
+  `profile-push`, `profile-push-switch` and the ids in `docs/push.md`; Email choice `profile-email-mode` (`data-mode`
+  `all` / `important` / `none` / `custom`) with the radios `profile-email-mode-all`, `profile-email-mode-important`,
+  `profile-email-mode-none` and the Custom note `profile-email-mode-custom`; Advanced
+  `profile-notifications-advanced-toggle` (`aria-expanded`), `profile-notifications-advanced`, one
+  `profile-notification-row` per type (`data-type`, `data-locked`, `data-enabled`, `data-email`, `data-push`,
+  `data-email-timing`) with the checkboxes `profile-notification-inapp`, `profile-notification-email`,
+  `profile-notification-push`.
 - Stop link page (`/e/notices`): `notice-email-link-page`, `notice-email-unsubscribe-button`,
   `notice-email-link-state` (`data-state` `unsubscribed` / `invalid`), `notice-email-link-error`,
   `notice-email-settings-link`.
-- E2E: `e2e/tests/ui/notifications.spec.ts`.
+- E2E: `e2e/tests/ui/notifications.spec.ts` (push: `e2e/tests/ui/push-notifications.spec.ts`, fakes in
+  `e2e/pages/components/FakePush.ts`).
 
 ## One "waiting" count
 
