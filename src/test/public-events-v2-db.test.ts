@@ -594,7 +594,7 @@ describe("event emails", () => {
       await service();
       expect(await val("SELECT public.enqueue_event_reminders()")).toBe(1);
       expect(await val("SELECT public.enqueue_event_reminders()")).toBe(0);
-      expect(await outbox("template='event_reminder'")).toMatchObject([{ priority: 2 }]);
+      expect(await outbox("template='event_reminder'")).toMatchObject([{ priority: 3 }]);
     }),
   );
 });
@@ -634,7 +634,7 @@ describe("subscribers and announcements", () => {
       expect(await val("SELECT public.announce_event($1, 'branch', $2)", [e, ids.b1])).toBe(0); // once per subscriber
       await service();
       expect(await outbox("template='event_announcement'")).toMatchObject([
-        { status: "pending", priority: 3 },
+        { status: "pending", priority: 4 },
       ]);
       expect(
         await val("SELECT public.subscriber_unsubscribe($1)->>'state'", [s.subscriber_id]),
