@@ -93,7 +93,7 @@ beforeAll(async () => {
   const members = [ids.rd, ids.bm1, ids.vol1, ids.vol1b, ids.vol2, ids.nc];
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.3')
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.4')
       FROM unnest(ARRAY['${members.join("','")}']::uuid[]) x;
     UPDATE profiles SET status='active';
     UPDATE profiles SET branch_id='${ids.b1}' WHERE id IN ('${ids.bm1}','${ids.vol1}','${ids.vol1b}');
@@ -140,7 +140,7 @@ describe("one calendar: a meeting and its event are one linked record", () => {
         ).toBe(visible ? 1 : 0);
       }
       // A branch member who is not invited sees neither.
-      await db.exec(`RESET ROLE; INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${id(30)}', jsonb_build_object('full_name','Other','privacy_notice_version','1.3'));
+      await db.exec(`RESET ROLE; INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${id(30)}', jsonb_build_object('full_name','Other','privacy_notice_version','1.4'));
         UPDATE profiles SET status='active', branch_id='${ids.b1}' WHERE id='${id(30)}';`);
       await as(id(30));
       expect(await one("SELECT count(*)::int v FROM events WHERE id=$1", [e["id"]])).toBe(0);

@@ -1,6 +1,6 @@
 # Privacy Notice: Dialogue Society Volunteer Hub
 
-Version 1.3 · 24 November 2026
+Version 1.4 · 26 November 2026
 
 This notice explains what personal information the Dialogue Society Volunteer Hub collects, why we use it, who can see it and what rights you have. You need to read it before creating an account.
 
@@ -47,8 +47,9 @@ Two things are optional and are only used with your consent, which you can withd
 | Other members who can see an event you registered for | Your name in the attendee list. You can hide it for each event by ticking "Don't show my name to other volunteers". |
 | Branch Managers of your branch | Your profile details, registrations and requests for their branch, and your volunteer application |
 | Regional Directors of your region | The same, for all branches in their region |
-| National Coordinators | Numbers only for volunteers; details of branch and regional managers |
+| National Coordinators | Numbers only for volunteers and trustees; details of branch and regional managers |
 | Members of your branch | Branch tasks, including who they are assigned to and the notes on them |
+| Trustees of your branch | Your branch's activity: its events, branch tasks (including who they are assigned to and the notes on them), the branch's meetings with their agenda, decisions and files, and the names of the branch members shown there. Trustees can see this but cannot change it. |
 | The people invited to a meeting, its organiser and the managers of its branch or region | That meeting (also in the calendar), its invitees, agenda, decisions and files. Nobody else sees it. |
 | National Coordinators | National tasks and meetings only; they never see volunteers' names |
 | Nobody else in the Hub | Your email address and phone number |
