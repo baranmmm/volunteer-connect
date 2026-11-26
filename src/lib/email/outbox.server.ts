@@ -14,12 +14,7 @@ import {
   type BrevoConfig,
   type SenderAddress,
 } from "./brevo.server";
-import {
-  appOrigin,
-  emailLink,
-  isNoticeEmailType,
-  noticeUnsubscribeLinks,
-} from "./links.server";
+import { appOrigin, emailLink, isNoticeEmailType, noticeUnsubscribeLinks } from "./links.server";
 import {
   isEmailTemplate,
   renderEmail,
@@ -187,7 +182,11 @@ async function prepare(
       },
     };
   }
-  if (row.template === "task_reminder" || row.template === "daily_digest" || row.template === "notice")
+  if (
+    row.template === "task_reminder" ||
+    row.template === "daily_digest" ||
+    row.template === "notice"
+  )
     return prepareMemberNotice(admin, row, origin, base);
   return { ok: false, skip: "unknown_template" };
 }
@@ -212,7 +211,9 @@ async function prepareMemberNotice(
   const ctx: RenderContext = { ...base, language };
   const links: NonNullable<RenderContext["links"]> = {};
   if (row.template === "daily_digest") {
-    const types = Array.isArray(base.payload?.["types"]) ? (base.payload["types"] as unknown[]) : [];
+    const types = Array.isArray(base.payload?.["types"])
+      ? (base.payload["types"] as unknown[])
+      : [];
     const typeLinks: Record<string, string> = {};
     for (const type of types)
       if (typeof type === "string" && isNoticeEmailType(type))
@@ -221,7 +222,8 @@ async function prepareMemberNotice(
     return { ok: true, ctx: { ...ctx, links } };
   }
   const type = row.template === "task_reminder" ? "task_reminder" : context["type"];
-  if (typeof type !== "string" || !isNoticeEmailType(type)) return { ok: false, skip: "unknown_template" };
+  if (typeof type !== "string" || !isNoticeEmailType(type))
+    return { ok: false, skip: "unknown_template" };
   const unsubscribe = await noticeUnsubscribeLinks(row.user_id, type, origin);
   links.noticeUnsubscribe = unsubscribe.page;
   links.noticeUnsubscribeOneClick = unsubscribe.oneClick;

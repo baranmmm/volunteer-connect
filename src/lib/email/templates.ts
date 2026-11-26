@@ -672,7 +672,10 @@ const langOf = (ctx: RenderContext): Lang => (ctx.language === "tr" ? "tr" : "en
 
 /** The notice type's name as in Profile > Notifications (the app's own translations). */
 export function noticeTypeLabel(type: string, lang: Lang): string {
-  const types = (lang === "tr" ? trLocale : enLocale).notifications.settings.types as Record<string, string>;
+  const types = (lang === "tr" ? trLocale : enLocale).notifications.settings.types as Record<
+    string,
+    string
+  >;
   return types[type] ?? type;
 }
 
@@ -700,12 +703,18 @@ const MEMBER_TEXT = {
 function memberFooter(ctx: RenderContext, lang: Lang, type: string | null) {
   const text = MEMBER_TEXT[lang];
   const links: { label: string; url: string }[] = [];
-  if (type && ctx.links?.noticeUnsubscribe) links.push({ label: text.stop, url: ctx.links.noticeUnsubscribe });
+  if (type && ctx.links?.noticeUnsubscribe)
+    links.push({ label: text.stop, url: ctx.links.noticeUnsubscribe });
   links.push({ label: text.settings, url: `${ctx.origin}/profile#notifications` });
   return { footer: type ? [text.why(noticeTypeLabel(type, lang))] : [], footerLinks: links };
 }
 
-function memberBuild(ctx: RenderContext, lang: Lang, type: string, layout: Omit<Layout, "footer" | "lang">) {
+function memberBuild(
+  ctx: RenderContext,
+  lang: Lang,
+  type: string,
+  layout: Omit<Layout, "footer" | "lang">,
+) {
   const footer = memberFooter(ctx, lang, type);
   return build(
     { ...layout, lang, footer: footer.footer, footerLinks: footer.footerLinks },
@@ -759,17 +768,23 @@ function taskReminder(ctx: RenderContext): RenderedEmail {
   if (lang === "tr") {
     if (kind === "overdue") {
       subject = `Süresi geçen görev: ${title}`;
-      intro = due ? `Bu görevin son günü ${due} idi ve henüz tamamlanmadı.` : "Bu görevin süresi geçti ve henüz tamamlanmadı.";
+      intro = due
+        ? `Bu görevin son günü ${due} idi ve henüz tamamlanmadı.`
+        : "Bu görevin süresi geçti ve henüz tamamlanmadı.";
     } else if (kind === "repeat") {
       subject = `Görev hatırlatması: ${title}`;
-      intro = due ? `Son günü ${due} olan bu görev için bir hatırlatma.` : "Bu görev için bir hatırlatma.";
+      intro = due
+        ? `Son günü ${due} olan bu görev için bir hatırlatma.`
+        : "Bu görev için bir hatırlatma.";
     } else {
       subject = `Görevin son günü yaklaşıyor: ${title}`;
       intro = due ? `Bu görevin son günü ${due}.` : "Bu görevin son günü yaklaşıyor.";
     }
   } else if (kind === "overdue") {
     subject = `Overdue task: ${title}`;
-    intro = due ? `This task was due on ${due} and is not done yet.` : "This task is overdue and not done yet.";
+    intro = due
+      ? `This task was due on ${due} and is not done yet.`
+      : "This task is overdue and not done yet.";
   } else if (kind === "repeat") {
     subject = `Task reminder: ${title}`;
     intro = due ? `A reminder about this task, due on ${due}.` : "A reminder about this task.";
@@ -835,7 +850,11 @@ function notice(ctx: RenderContext): RenderedEmail {
       subject,
       preheader: intro,
       heading: tr ? "İncelemenizi bekleyenler" : "Waiting for your review",
-      blocks: [hello, { kind: "p", text: intro }, { kind: "button", label: tr ? "İncelenecekleri aç" : "Open To review", url }],
+      blocks: [
+        hello,
+        { kind: "p", text: intro },
+        { kind: "button", label: tr ? "İncelenecekleri aç" : "Open To review", url },
+      ],
     });
   }
   if (n.kind === "meeting_invited") {
@@ -848,7 +867,11 @@ function notice(ctx: RenderContext): RenderedEmail {
       : actor
         ? `${actor} invited you to a meeting:`
         : "You are invited to a meeting:";
-    const blocks: Block[] = [hello, { kind: "p", text: intro }, { kind: "strong", text: title || (tr ? "Toplantı" : "Meeting") }];
+    const blocks: Block[] = [
+      hello,
+      { kind: "p", text: intro },
+      { kind: "strong", text: title || (tr ? "Toplantı" : "Meeting") },
+    ];
     if (when) blocks.push({ kind: "p", text: `${tr ? "Ne zaman" : "When"}: ${when}` });
     blocks.push({ kind: "button", label: tr ? "Toplantıyı aç" : "Open the meeting", url });
     return memberBuild(ctx, lang, type, {
@@ -878,7 +901,12 @@ function notice(ctx: RenderContext): RenderedEmail {
         : `${group ? "New task for all members" : "New task"}: ${subjectTitle(name)}`,
       preheader: intro,
       heading: tr ? "Size bir görev var" : "A task for you",
-      blocks: [hello, { kind: "p", text: intro }, { kind: "strong", text: name }, { kind: "button", label: tr ? "Görevi aç" : "Open the task", url }],
+      blocks: [
+        hello,
+        { kind: "p", text: intro },
+        { kind: "strong", text: name },
+        { kind: "button", label: tr ? "Görevi aç" : "Open the task", url },
+      ],
     });
   }
   throw new Error("Email context missing");
@@ -897,11 +925,20 @@ const DIGEST_LINES: Record<string, { en: [string, string]; tr: string }> = {
     tr: "Yeni not eklenen {n} görev",
   },
   task_status_changed: {
-    en: ["{n} task you created was blocked or completed", "{n} tasks you created were blocked or completed"],
+    en: [
+      "{n} task you created was blocked or completed",
+      "{n} tasks you created were blocked or completed",
+    ],
     tr: "Oluşturduğunuz {n} görev engellendi veya tamamlandı",
   },
-  meeting_changed: { en: ["{n} meeting changed", "{n} meetings changed"], tr: "{n} toplantı değişti" },
-  meeting_cancelled: { en: ["{n} meeting cancelled", "{n} meetings cancelled"], tr: "{n} toplantı iptal edildi" },
+  meeting_changed: {
+    en: ["{n} meeting changed", "{n} meetings changed"],
+    tr: "{n} toplantı değişti",
+  },
+  meeting_cancelled: {
+    en: ["{n} meeting cancelled", "{n} meetings cancelled"],
+    tr: "{n} toplantı iptal edildi",
+  },
   task_request_accepted: {
     en: ["{n} of your task requests was accepted", "{n} of your task requests were accepted"],
     tr: "{n} görev isteğiniz kabul edildi",
@@ -927,7 +964,10 @@ const DIGEST_LINES: Record<string, { en: [string, string]; tr: string }> = {
     tr: "{n} gönüllü başvurusu reddedildi",
   },
 };
-const DIGEST_OTHER = { en: ["{n} other update", "{n} other updates"] as [string, string], tr: "{n} diğer güncelleme" };
+const DIGEST_OTHER = {
+  en: ["{n} other update", "{n} other updates"] as [string, string],
+  tr: "{n} diğer güncelleme",
+};
 
 const DIGEST_TEXT = {
   en: {
@@ -1011,7 +1051,10 @@ function dailyDigest(ctx: RenderContext): RenderedEmail {
       { kind: "button", label: text.button, url: `${ctx.origin}/notifications` },
     ],
     footer: [text.why],
-    footerLinks: [...typeLinks, { label: MEMBER_TEXT[lang].settings, url: `${ctx.origin}/profile#notifications` }],
+    footerLinks: [
+      ...typeLinks,
+      { label: MEMBER_TEXT[lang].settings, url: `${ctx.origin}/profile#notifications` },
+    ],
   });
 }
 

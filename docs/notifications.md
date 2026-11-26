@@ -4,7 +4,8 @@ In-app notices for tasks, meetings and requests (members only: followers get non
 person hears only about what directly concerns them, never about their own actions, and similar notices are grouped.
 Database: `supabase/migrations/20261128090000_notification_settings_self_reminders.sql` (on top of
 `20261125090100_notifications.sql`); in-app notices always immediate and the daily summary as an email:
-`20261208090000_notifications_inapp_immediate.sql`. Texts: `src/lib/notification-text.ts` (i18n keys `notifications.kinds.*`,
+`20261208090000_notifications_inapp_immediate.sql`; notice emails, email switches and stop links:
+`20261208090100_notification_emails.sql`. Texts: `src/lib/notification-text.ts` (i18n keys `notifications.kinds.*`,
 `notifications.groups.*`), never stored sentences.
 
 ## Who gets what
@@ -28,37 +29,45 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
 
 ## Types, settings and defaults (Profile > Notifications)
 
-- **Locked** (always on, immediate): `task_assigned`, `mention`, `review`. Shown with a disabled switch, no delivery
-  choice and a short explanation.
-- **Task reminders** (`task_reminder`) and **task notes** (`task_note`): always immediate, never in the daily summary
-  (`20261129090000_task_reminders_immediate.sql`, `20261129090100_task_note_notices.sql`); only the on/off switch is
-  shown (`delivery_locked`).
+- **In the app**: every notice that is on appears at once, for every role (never held). **Locked** (always on in the
+  app): `task_assigned`, `mention`, `review` — disabled in-app switch and a short explanation. The others can be turned
+  off in the app (`set_notification_setting`; off means no notice and so no email).
+- **Email** (`set_notification_email`, any type, locked ones included; default **on for every role**). The timing is
+  fixed per kind (`notification_email_mode`), shown under each row (`notification_email_timing`):
+
+  | Type | Email |
+  |---|---|
+  | `task_assigned` (`task_assigned`, `task_group_created`) | at once, one per notice (template `notice`) |
+  | `review` (the grouped `review_waiting` notice) | at once when it is created or its count goes up (a new request); while one email is still waiting it is reused (sent with the current count) |
+  | `meeting` | invitations (`meeting_invited`) at once; changes and cancellations in the daily summary |
+  | `task_reminder` | its own email at once (`task_reminder`; the switch is `notification_preferences.task_reminder_emails`) |
+  | `mention`, `task_status`, `task_note`, `request_decided` | in the daily summary |
+
+  Turning an email off cancels that type's notice emails still waiting. The old per-person delivery choice
+  (`types.<type>.delivery`, "Immediately" / "Daily summary") is no longer read; nothing stored was rewritten, and
+  everyone starts with every email on (`20261208090100_notification_emails.sql`).
+- **Stop links**: every notice email has a signed "Stop these emails" link for its type (`/e/notices?t=`, a click
+  confirms; the daily summary has one per type in it) and a `List-Unsubscribe` one-click header
+  (`POST /api/public/notice-unsubscribe?t=`), plus a link to Profile > Notifications (`/profile#notifications`).
+  See `docs/email.md`.
 - **Note notices group per task**: while a person's "new note" notice for a task is unread, further notes update it
   ("3 new notes on: <task>", `payload.count`). Note and mention notices link to `/tasks?task=<id>&note=<note id>`;
   the panel scrolls to that note and highlights it (`task-note` with `data-highlighted="true"`).
-- **Changeable**: `task_status`, `meeting`, `request_decided`: on/off, and the email choice **No email (in the app
-  only)** (`immediate`) or **Daily summary email** (`digest`) (`set_notification_setting`; the database refuses locked
-  types and keeps reminders immediate). The choice decides only the email: every notice that is on appears in the app
-  and in the badges at once, for every role. Off means no notice at all.
-- **Default delivery**: `immediate` (no email) for volunteers, `digest` (daily summary email) for Branch Managers,
-  Regional Directors and National Coordinators (`notification_default_delivery`).
-- "Email reminders for tasks" stays in the same section (`set_task_reminder_emails`).
 
 ## Daily summary email
 
-- `notify()` never holds a notice: it is listed and counted (badges) at once. A notice whose type is set to the daily
-  summary is marked for the email (`notifications.email_digest`). `immediate` sends no email per notice (in the app
-  only); only opted-in task reminders have their own email (`task_reminder`).
+- A notice of a daily-summary kind whose type's email is on is marked for the email (`notifications.email_digest`).
 - At 08:00 London time `run_notification_digest` (the Task reminders workflow, or pg_cron where available) queues per
   active person with marked notices not yet summarised **one** `email_outbox` row, template `daily_digest`,
-  `payload {count, kinds, day}`, then sets `email_digested_at` on those notices. Only types the person still has on
-  and set to the summary at that moment count. At most one per person and London day (`notification_digest_log`,
-  with `email_id`); notices that arrive after today's email wait for tomorrow's.
-- **Never an empty summary**: nothing new since the last one means no email and no log row.
+  `payload {count, kinds, types, day}`, then sets `email_digested_at` on every marked notice. Only notices **still
+  unread** at that moment, of types still on in the app with their email on, count: a notice read before the summary
+  is settled and never emailed later. At most one per person and London day (`notification_digest_log`, with
+  `email_id`); notices that arrive after today's email wait for tomorrow's.
+- **Never an empty summary**: nothing new and unread since the last one means no email and no log row.
 - No in-app `daily_digest` notice any more (the items are already in the app). Older `daily_digest` notices still
   render and expand to their items (`digest_id`). Notices held before `20261208090000` were released by that
   migration and went into the next summary email; `held` is always false now (check constraint).
-- The email itself: `docs/email.md`.
+- The emails themselves: `docs/email.md`.
 
 ## Grouping (dashboard Notifications card)
 
@@ -103,10 +112,12 @@ Database: `supabase/migrations/20261128090000_notification_settings_self_reminde
 - Waiting for you: `dashboard-waiting`, `dashboard-waiting-count` (`data-count`), `dashboard-waiting-link`.
 - Badges (`data-count`): `nav-requests-badge`, `nav-tasks-badge`, `nav-meetings-badge`, `mobile-nav-<kind>-badge`,
   `mobile-nav-more-badge`.
-- Profile: `profile-notifications`, `profile-notification-type` (`data-type`, `data-locked`, `data-enabled`,
-  `data-delivery`, `data-delivery-locked`), `profile-notification-enabled`, `profile-notification-delivery` (absent
-  when the delivery is locked) with
-  `profile-notification-delivery-immediate` / `profile-notification-delivery-digest`, `profile-task-reminder-emails`.
+- Profile: `profile-notifications` (`id="notifications"`), `profile-notification-type` (`data-type`, `data-locked`,
+  `data-enabled`, `data-email`, `data-email-timing`), `profile-notification-enabled`, `profile-notification-email`,
+  `profile-notification-email-timing`.
+- Stop link page (`/e/notices`): `notice-email-link-page`, `notice-email-unsubscribe-button`,
+  `notice-email-link-state` (`data-state` `unsubscribed` / `invalid`), `notice-email-link-error`,
+  `notice-email-settings-link`.
 - E2E: `e2e/tests/ui/notifications.spec.ts`.
 
 ## One "waiting" count

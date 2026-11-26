@@ -429,7 +429,8 @@ describe("task reminders", () => {
   };
   const outbox = () =>
     q<{ user_id: string; template: string }>(
-      "SELECT user_id, template FROM email_outbox ORDER BY user_id",
+      // Task reminder emails only (assignments queue their own immediate notice emails).
+      "SELECT user_id, template FROM email_outbox WHERE template='task_reminder' ORDER BY user_id",
     );
 
   it("3 days before by default: a notice and an email outbox row per assignee, at most once per day", () =>

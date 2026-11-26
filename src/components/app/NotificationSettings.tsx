@@ -5,10 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
-import type {
-  NotificationSetting,
-  NotificationSettings as Settings,
-} from "@/lib/notifications";
+import type { NotificationSetting, NotificationSettings as Settings } from "@/lib/notifications";
 import {
   getNotificationSettings,
   setNotificationEmail,
@@ -44,7 +41,10 @@ export function NotificationSettings() {
   });
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function change(setting: NotificationSetting, next: { enabled?: boolean; email?: boolean }) {
+  async function change(
+    setting: NotificationSetting,
+    next: { enabled?: boolean; email?: boolean },
+  ) {
     if (next.enabled !== undefined && setting.locked) return;
     const updated = { ...setting, ...next };
     setBusy(setting.type);

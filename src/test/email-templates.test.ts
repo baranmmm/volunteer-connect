@@ -287,7 +287,7 @@ describe("email templates", () => {
       from: { email: "events@example.org" },
       payload: {
         count: 4,
-        kinds: { task_status_changed: 2, meeting_invited: 1, some_new_kind: 1 },
+        kinds: { task_status_changed: 2, meeting_changed: 1, some_new_kind: 1 },
         day: "2027-01-15",
       },
     });
@@ -301,11 +301,11 @@ describe("email templates", () => {
       l.includes("2 tasks you created were blocked or completed"),
     );
     expect(first).toBeGreaterThan(-1);
-    expect(lines[first + 2]).toContain("1 meeting invitation");
+    expect(lines[first + 2]).toContain("1 meeting changed");
     expect(r.text).toContain("1 other update");
     expect(r.text).toContain(`${ORIGIN}/notifications`);
     expect(r.html).toContain(`href="${ORIGIN}/notifications"`);
-    expect(r.text).toContain(`${ORIGIN}/profile`);
+    expect(r.text).toContain(`${ORIGIN}/profile#notifications`);
     expect(r.attachments).toEqual([]);
     expect(r.listUnsubscribe).toBeNull();
     expect(
@@ -341,6 +341,134 @@ describe("email templates", () => {
     expect(digestLines({ task_status_changed: 1 }, "tr")).toEqual([
       "Oluşturduğunuz 1 görev engellendi veya tamamlandı",
     ]);
+  });
+
+  it("daily_digest has one stop link per notice type in it", () => {
+    const r = renderEmail("daily_digest", {
+      origin: ORIGIN,
+      toEmail: "bm@example.org",
+      from: { email: "events@example.org" },
+      payload: {
+        count: 2,
+        kinds: { task_status_changed: 1, task_note_mention: 1 },
+        day: "2027-01-15",
+      },
+      links: {
+        typeUnsubscribe: {
+          task_status: `${ORIGIN}/e/notices?t=a`,
+          mention: `${ORIGIN}/e/notices?t=b`,
+        },
+      },
+    });
+    expect(r.text).toContain(
+      `Stop emails for “A task I created is blocked or done”: ${ORIGIN}/e/notices?t=a`,
+    );
+    expect(r.text).toContain(`Stop emails for “I am mentioned in a note”: ${ORIGIN}/e/notices?t=b`);
+    expect(r.text).toContain("1 mention of you in a note");
+  });
+
+  const noticeCtx = (over: Partial<RenderContext> = {}): RenderContext => ({
+    origin: ORIGIN,
+    toEmail: "v@example.org",
+    toName: "Vol",
+    from: { email: "events@example.org" },
+    payload: { type: "task_assigned" },
+    notice: {
+      kind: "task_assigned",
+      title: "Book <the> hall",
+      link: "/tasks?task=abc",
+      payload: {},
+      actor_name: "Ayşe",
+    },
+    links: {
+      noticeUnsubscribe: `${ORIGIN}/e/notices?t=tok`,
+      noticeUnsubscribeOneClick: `${ORIGIN}/api/public/notice-unsubscribe?t=tok`,
+    },
+    ...over,
+  });
+
+  it("notice: a task assignment links to the task, says why, and has the stop link and List-Unsubscribe", () => {
+    const r = renderEmail("notice", noticeCtx());
+    expect(r.subject).toBe("New task: Book <the> hall");
+    expect(r.html).toContain("Book &lt;the&gt; hall");
+    expect(r.html).toContain('<html lang="en">');
+    expect(r.html).toContain("<h1");
+    expect(r.text).toContain("Ayşe assigned you a task:");
+    expect(r.text).toContain(`Open the task: ${ORIGIN}/tasks?task=abc`);
+    expect(r.text).toContain("emails for “A task is assigned to me” are on");
+    expect(r.text).toContain(`Stop these emails: ${ORIGIN}/e/notices?t=tok`);
+    expect(r.text).toContain(`Notification settings: ${ORIGIN}/profile#notifications`);
+    expect(r.listUnsubscribe).toEqual({
+      url: `${ORIGIN}/e/notices?t=tok`,
+      oneClick: `${ORIGIN}/api/public/notice-unsubscribe?t=tok`,
+    });
+  });
+
+  it("notice in Turkish: meeting invitation with the time, review waiting with the count", () => {
+    const meeting = renderEmail(
+      "notice",
+      noticeCtx({
+        language: "tr",
+        payload: { type: "meeting" },
+        notice: {
+          kind: "meeting_invited",
+          title: "Şube toplantısı",
+          link: "/meetings/m1",
+          payload: { starts_at: "2027-02-01T18:00:00Z" },
+          actor_name: "Ayşe",
+        },
+      }),
+    );
+    expect(meeting.subject).toBe("Toplantı daveti: Şube toplantısı");
+    expect(meeting.html).toContain('<html lang="tr">');
+    expect(meeting.text).toContain("Merhaba Vol,");
+    expect(meeting.text).toContain("Ayşe sizi bir toplantıya davet etti:");
+    expect(meeting.text).toMatch(/Ne zaman: .*1 Şubat 2027.*18:00 \(Birleşik Krallık saati\)/);
+    expect(meeting.text).toContain(`Toplantıyı aç: ${ORIGIN}/meetings/m1`);
+    expect(meeting.text).toContain(`Bu e-postaları durdur: ${ORIGIN}/e/notices?t=tok`);
+    expect(meeting.text).toContain("“Davet edildiğim toplantılar");
+    const review = renderEmail(
+      "notice",
+      noticeCtx({
+        payload: { type: "review" },
+        notice: {
+          kind: "review_waiting",
+          title: "",
+          link: "/requests?tab=review",
+          payload: { total: 3, branches: ["Medway", "Brighton"] },
+          actor_name: null,
+        },
+      }),
+    );
+    expect(review.subject).toBe("3 requests are waiting for your review");
+    expect(review.text).toContain(
+      "3 requests from Medway and Brighton are waiting for your decision.",
+    );
+    expect(review.text).toContain(`Open To review: ${ORIGIN}/requests?tab=review`);
+  });
+
+  it("task_reminder in Turkish with its stop link", () => {
+    const r = renderEmail("task_reminder", {
+      origin: ORIGIN,
+      toEmail: "v@example.org",
+      from: { email: "events@example.org" },
+      language: "tr",
+      payload: {
+        task_title: "Salonu ayırt",
+        due_date: "2027-06-01",
+        link: "/tasks?task=abc",
+        reminder: "overdue",
+      },
+      links: { noticeUnsubscribe: `${ORIGIN}/e/notices?t=tok` },
+    });
+    expect(r.subject).toBe("Süresi geçen görev: Salonu ayırt");
+    expect(r.text).toMatch(/1 Haziran 2027/);
+    expect(r.text).toContain(`Görevi aç: ${ORIGIN}/tasks?task=abc`);
+    expect(r.text).toContain(`Bu e-postaları durdur: ${ORIGIN}/e/notices?t=tok`);
+  });
+
+  it("notice refuses a missing notice", () => {
+    expect(() => renderEmail("notice", noticeCtx({ notice: null }))).toThrow();
   });
 
   it("daily_digest refuses an empty summary", () => {

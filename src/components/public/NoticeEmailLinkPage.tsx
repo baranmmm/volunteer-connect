@@ -61,7 +61,11 @@ export function NoticeEmailLinkPage({ token }: { token: string | undefined }) {
           <p>{t("noticeEmails.intro", { label })}</p>
           <p className="text-sm text-muted-foreground">{t("noticeEmails.inApp")}</p>
           {error && (
-            <p role="alert" data-testid="notice-email-link-error" className="text-sm text-destructive">
+            <p
+              role="alert"
+              data-testid="notice-email-link-error"
+              className="text-sm text-destructive"
+            >
               {error}
             </p>
           )}
@@ -77,7 +81,9 @@ export function NoticeEmailLinkPage({ token }: { token: string | undefined }) {
       ) : (
         <div className="space-y-3">
           <p data-testid="notice-email-link-state" data-state={state} aria-live="polite">
-            {state === "unsubscribed" ? t("noticeEmails.done", { label }) : t("noticeEmails.invalid")}
+            {state === "unsubscribed"
+              ? t("noticeEmails.done", { label })
+              : t("noticeEmails.invalid")}
           </p>
         </div>
       )}

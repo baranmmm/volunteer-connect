@@ -1,5 +1,6 @@
-// Less notification noise: Profile > Notifications (per type on/off and the email choice: no email or the daily summary
-// email, locked types), in-app notices at once for every role with the daily summary as one email,
+// Less notification noise: Profile > Notifications (per type in-app and email switches, locked types), in-app notices at
+// once for every role, notice emails (at once for assignments, invitations and requests waiting; the rest in one daily
+// summary) with a signed "stop these emails" link,
 // the header bell (grouped lines, "Mark all as read", opening a notice, See all and Load more on /notifications), and
 // requests waiting for review ("Waiting for you" card, Requests badge, mobile More badge, the grouped notice marked read
 // on To review). Every notice is created through the real RPCs by fresh users in a temporary branch (cleaned up by the
@@ -7,12 +8,12 @@
 import type { Page } from "@playwright/test";
 import { test, expect, runId } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
-import { TASK_TITLE_PREFIX, createTaskAs, workRpc } from "../../api/work";
+import { TASK_TITLE_PREFIX, createMeetingAs, createTaskAs, workRpc } from "../../api/work";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { DashboardPage } from "../../pages/DashboardPage";
 import { Sidebar } from "../../pages/components/Sidebar";
 import { NotificationBell } from "../../pages/components/NotificationBell";
-import { linkFrom, triggerScheduledRun, waitForEmail } from "../../api/outbox";
+import { appPathFrom, linkFrom, triggerScheduledRun, waitForEmail } from "../../api/outbox";
 
 let n = 0;
 const title = (label: string) => `${TASK_TITLE_PREFIX}${runId} notif-${Date.now().toString(36)}-${++n} ${label}`;
@@ -22,50 +23,102 @@ const unreadNotices = async (userId: string) =>
   (await adminClient().from("notifications").select("id", { count: "exact", head: true }).eq("user_id", userId).is("read_at", null).eq("held", false)).count;
 
 test.describe("Notifications", () => {
-  test("a branch manager changes a notice type in Profile; the choice is kept and locked types cannot change", async ({ freshUser, freshBranch, pageAs }) => {
+  test("Profile > Notifications: in-app and email switches per type; locked types stay on in the app; choices are kept", async ({ freshUser, freshBranch, pageAs }) => {
     const branch = await freshBranch("notif-settings");
     const manager = await freshUser({ role: "branch_manager", branch });
     const page = await pageAs(manager);
     await page.goto("/profile");
     const section = page.getByTestId("profile-notifications");
     await expect(section).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    // Every email is on by default, for every role; the timing is fixed per type.
+    await expect(section.locator('[data-testid="profile-notification-type"][data-email="false"]')).toHaveCount(0);
+    await expect(typeRow(page, "task_assigned")).toHaveAttribute("data-email-timing", "immediate");
+    await expect(typeRow(page, "review")).toHaveAttribute("data-email-timing", "immediate");
+    await expect(typeRow(page, "meeting")).toHaveAttribute("data-email-timing", "mixed");
+    await expect(typeRow(page, "task_status")).toHaveAttribute("data-email-timing", "digest");
 
-    // Locked: always on and immediate, controls disabled.
+    // Locked: always on in the app (switch disabled), but its email can be turned off.
     const assigned = typeRow(page, "task_assigned");
     await expect(assigned).toHaveAttribute("data-locked", "true");
     await expect(assigned.getByTestId("profile-notification-enabled")).toBeDisabled();
-    // Always immediate: no delivery choice at all.
-    await expect(assigned.getByTestId("profile-notification-delivery")).toHaveCount(0);
-    // Task reminders: always immediate too, but they can be turned off.
-    const reminders = typeRow(page, "task_reminder");
-    await expect(reminders).toHaveAttribute("data-delivery-locked", "true");
-    await expect(reminders).toHaveAttribute("data-delivery", "immediate");
-    await expect(reminders.getByTestId("profile-notification-delivery")).toHaveCount(0);
-    await expect(reminders.getByTestId("profile-notification-enabled")).toBeEnabled();
+    await assigned.getByTestId("profile-notification-email").click();
+    await expect(page.getByTestId("toast-success").first()).toBeVisible();
+    await expect(assigned).toHaveAttribute("data-email", "false");
+    await expect(assigned).toHaveAttribute("data-enabled", "true");
     await expect(typeRow(page, "review")).toHaveAttribute("data-locked", "true");
     await expect(typeRow(page, "mention")).toHaveAttribute("data-locked", "true");
 
-    // Managers get the daily summary by default; this one wants task status changes immediately and no note notices.
-    const status = typeRow(page, "task_status");
-    await expect(status).toHaveAttribute("data-locked", "false");
-    await expect(status).toHaveAttribute("data-delivery", "digest");
-    await status.getByTestId("profile-notification-delivery-immediate").click();
-    await expect(page.getByTestId("toast-success").first()).toBeVisible();
-    await expect(status).toHaveAttribute("data-delivery", "immediate");
+    // A changeable type turned off in the app: no notice, so its email switch is disabled.
     const notes = typeRow(page, "task_note");
     await notes.getByTestId("profile-notification-enabled").click();
     await expect(notes).toHaveAttribute("data-enabled", "false");
-    // Task notes are always immediate: only the switch, no delivery choice.
-    await expect(notes).toHaveAttribute("data-delivery-locked", "true");
-    await expect(notes.getByTestId("profile-notification-delivery")).toHaveCount(0);
-    await expect(section.getByTestId("profile-task-reminder-emails")).toBeVisible();
+    await expect(notes.getByTestId("profile-notification-email")).toBeDisabled();
+    // Task reminders: the email switch is the task reminder emails setting.
+    const reminders = typeRow(page, "task_reminder");
+    await reminders.getByTestId("profile-notification-email").click();
+    await expect(reminders).toHaveAttribute("data-email", "false");
 
     await page.reload();
-    await expect(typeRow(page, "task_status")).toHaveAttribute("data-delivery", "immediate", { timeout: APP_LOAD_TIMEOUT });
+    await expect(typeRow(page, "task_assigned")).toHaveAttribute("data-email", "false", { timeout: APP_LOAD_TIMEOUT });
     await expect(typeRow(page, "task_note")).toHaveAttribute("data-enabled", "false");
-    const saved = (await workRpc(manager, "get_notification_settings")).data as { types: { type: string; enabled: boolean; delivery: string }[] };
-    expect(saved.types.find((s) => s.type === "task_status")).toMatchObject({ enabled: true, delivery: "immediate" });
+    await expect(typeRow(page, "task_reminder")).toHaveAttribute("data-email", "false");
+    const saved = (await workRpc(manager, "get_notification_settings")).data as {
+      task_reminder_emails: boolean;
+      types: { type: string; enabled: boolean; email: boolean }[];
+    };
+    expect(saved.task_reminder_emails).toBe(false);
+    expect(saved.types.find((s) => s.type === "task_assigned")).toMatchObject({ enabled: true, email: false });
     expect(saved.types.find((s) => s.type === "task_note")).toMatchObject({ enabled: false });
+  });
+
+  test("a meeting invitation is emailed at once; the stop link turns off that type's emails without signing in", async ({ freshUser, freshBranch, pageAs, page }) => {
+    const branch = await freshBranch("notif-unsub");
+    const manager = await freshUser({ role: "branch_manager", branch });
+    const volunteer = await freshUser({ role: "volunteer", branch });
+    const meeting = (label: string, days: number) =>
+      createMeetingAs(manager, {
+        scope: "branch",
+        branch_id: branch,
+        title: title(label),
+        starts_at: new Date(Date.now() + days * 86400000).toISOString(),
+        ends_at: new Date(Date.now() + days * 86400000 + 3600000).toISOString(),
+        invitee_ids: [volunteer.id],
+      });
+    const first = await meeting("invite", 10);
+    await triggerScheduledRun();
+    const email = await waitForEmail({ template: "notice", userId: volunteer.id, timeoutMs: 30000 });
+    expect(email.payload).toMatchObject({ type: "meeting" });
+    expect(email.captured.subject).toContain("Meeting invitation: ");
+    expect(new URL(linkFrom(email, "/meetings/")).pathname).toBe(`/meetings/${first}`);
+    expect(email.captured.list_unsubscribe).toContain("/api/public/notice-unsubscribe?t=");
+
+    // Signed out: open the stop link, see which emails it stops, confirm with a click.
+    await page.goto(appPathFrom(email, "/e/notices"));
+    const linkPage = page.getByTestId("notice-email-link-page");
+    await expect(linkPage).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await linkPage.getByTestId("notice-email-unsubscribe-button").click();
+    await expect(linkPage.getByTestId("notice-email-link-state")).toHaveAttribute("data-state", "unsubscribed");
+    // A tampered link is refused.
+    const tampered = appPathFrom(email, "/e/notices").replace(/.(?=$)/, (c) => (c === "A" ? "B" : "A"));
+    await page.goto(tampered);
+    await expect(page.getByTestId("notice-email-link-state")).toHaveAttribute("data-state", "invalid", { timeout: APP_LOAD_TIMEOUT });
+
+    // Profile shows the meeting email off; the in-app notices stay on.
+    const member = await pageAs(volunteer);
+    await member.goto("/profile");
+    await expect(typeRow(member, "meeting")).toHaveAttribute("data-email", "false", { timeout: APP_LOAD_TIMEOUT });
+    await expect(typeRow(member, "meeting")).toHaveAttribute("data-enabled", "true");
+    await expect(typeRow(member, "task_assigned")).toHaveAttribute("data-email", "true");
+
+    // The next invitation is in the app, but no email is queued for it.
+    const since = new Date();
+    const second = await meeting("invite again", 12);
+    await expect
+      .poll(async () => (await adminClient().from("notifications").select("id").eq("user_id", volunteer.id).eq("entity_id", second)).data?.length)
+      .toBe(1);
+    await triggerScheduledRun();
+    const later = await adminClient().from("email_outbox").select("id").eq("user_id", volunteer.id).eq("template", "notice").gte("created_at", since.toISOString());
+    expect(later.data).toHaveLength(0);
   });
 
   test("similar notices are one expandable line and Mark all as read clears every unread notice", async ({ freshUser, freshBranch, pageAs }) => {

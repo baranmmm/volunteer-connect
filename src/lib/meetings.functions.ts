@@ -16,7 +16,8 @@ import {
 import { person, WORK_SCOPES } from "./tasks";
 
 /** Sends the notice emails an action just queued (assignments, invitations, requests waiting). */
-const flushNoticeEmails = async () => (await import("@/lib/notice-emails.server")).flushNoticeEmails();
+const flushNoticeEmails = async () =>
+  (await import("@/lib/notice-emails.server")).flushNoticeEmails();
 
 // Every write is a SECURITY DEFINER RPC; reads go through visibility-checked RPCs (creator, invitees, scope managers).
 const fail = (error: { message: string } | null) => {

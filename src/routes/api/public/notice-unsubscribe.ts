@@ -21,8 +21,13 @@ export const Route = createFileRoute("/api/public/notice-unsubscribe")({
         const headers = { "Cache-Control": "no-store" };
         try {
           const { unsubscribeNoticeWithToken } = await import("@/lib/notice-emails.server");
-          const result = await unsubscribeNoticeWithToken(new URL(request.url).searchParams.get("t"));
-          return new Response(null, { status: result.state === "unsubscribed" ? 200 : 400, headers });
+          const result = await unsubscribeNoticeWithToken(
+            new URL(request.url).searchParams.get("t"),
+          );
+          return new Response(null, {
+            status: result.state === "unsubscribed" ? 200 : 400,
+            headers,
+          });
         } catch {
           return new Response(null, { status: 500, headers });
         }

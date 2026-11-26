@@ -9,7 +9,10 @@ export const Route = createFileRoute("/e/notices")({
   ssr: false,
   validateSearch: validateTokenSearch,
   head: () => {
-    const head = pageHead("Email notifications", "Stop one kind of Dialogue Society Volunteer Hub email.");
+    const head = pageHead(
+      "Email notifications",
+      "Stop one kind of Dialogue Society Volunteer Hub email.",
+    );
     return { meta: [...head.meta, noReferrer] };
   },
   component: NoticesPage,

@@ -1,7 +1,11 @@
 // Notice email links (server only): the signed "stop these emails" link turns off one notice type's emails for one
 // member without signing in (/e/notices and the RFC 8058 one-click endpoint). The answer never says more than
 // valid/invalid. Logs nothing personal.
-import { isNoticeEmailType, verifyNoticeToken, type NoticeEmailType } from "@/lib/email/links.server";
+import {
+  isNoticeEmailType,
+  verifyNoticeToken,
+  type NoticeEmailType,
+} from "@/lib/email/links.server";
 
 export type NoticeLinkState =
   | { state: "valid"; type: NoticeEmailType }
@@ -26,7 +30,9 @@ export async function unsubscribeNoticeWithToken(
     p_type: link.type,
   });
   if (error) throw new Error("Email links unavailable");
-  return data === "unsubscribed" ? { state: "unsubscribed", type: link.type } : { state: "invalid" };
+  return data === "unsubscribed"
+    ? { state: "unsubscribed", type: link.type }
+    : { state: "invalid" };
 }
 
 /** Sends the notice emails a member action just queued (assignments, invitations, requests waiting). Never throws. */

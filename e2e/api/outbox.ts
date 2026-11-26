@@ -15,7 +15,8 @@ export type EmailTemplate =
   | "subscriber_confirm"
   | "event_announcement"
   | "task_reminder"
-  | "daily_digest";
+  | "daily_digest"
+  | "notice";
 
 export type CapturedEmail = {
   to: string;

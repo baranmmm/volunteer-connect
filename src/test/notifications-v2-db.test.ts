@@ -119,14 +119,26 @@ describe("who is notified", () => {
     }));
 });
 
-type Setting = { type: string; locked: boolean; enabled: boolean; email: boolean; email_timing: string };
+type Setting = {
+  type: string;
+  locked: boolean;
+  enabled: boolean;
+  email: boolean;
+  email_timing: string;
+};
 const settings = async (user: string) => {
   await as(user);
   return (await one<{ types: Setting[] }>("SELECT public.get_notification_settings() v")).types;
 };
 const outbox = async (user: string, template?: string) => {
   await as(null);
-  return q<{ template: string; status: string; priority: number; notification_id: string | null; payload: Row }>(
+  return q<{
+    template: string;
+    status: string;
+    priority: number;
+    notification_id: string | null;
+    payload: Row;
+  }>(
     "SELECT template, status, priority, notification_id, payload FROM email_outbox WHERE user_id=$1 AND ($2::text IS NULL OR template=$2) ORDER BY created_at, id",
     [user, template ?? null],
   );
@@ -176,11 +188,17 @@ describe("settings: in-app on/off, email on/off", () => {
       // Task reminders: the email switch is the task reminder emails setting.
       await as(ids.bm1);
       await one("SELECT public.set_notification_email('task_reminder', false) v");
-      expect(await one("SELECT public.get_notification_settings()->'task_reminder_emails' v")).toBe(false);
+      expect(await one("SELECT public.get_notification_settings()->'task_reminder_emails' v")).toBe(
+        false,
+      );
       // Not callable without an account.
       await as(null);
       await db.exec("SET LOCAL ROLE anon");
-      await fails("SELECT public.set_notification_email('task_status', false)", [], "permission denied");
+      await fails(
+        "SELECT public.set_notification_email('task_status', false)",
+        [],
+        "permission denied",
+      );
     }));
 });
 
@@ -188,10 +206,21 @@ describe("immediate notice emails", () => {
   it("an assignment and a meeting invitation queue one email each; nothing for a switched-off type, still in the app", () =>
     tx(async () => {
       await as(ids.bm1);
-      await createTask({ scope: "branch", branch_id: ids.b1, title: "Chairs", assignee_ids: [ids.vol1] });
+      await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Chairs",
+        assignee_ids: [ids.vol1],
+      });
       const assigned = await stored(ids.vol1, "task_assigned");
       expect(await outbox(ids.vol1)).toEqual([
-        { template: "notice", status: "pending", priority: 2, notification_id: assigned[0]!.id, payload: { type: "task_assigned" } },
+        {
+          template: "notice",
+          status: "pending",
+          priority: 2,
+          notification_id: assigned[0]!.id,
+          payload: { type: "task_assigned" },
+        },
       ]);
       await as(ids.bm1);
       await one("SELECT public.create_meeting($1::jsonb) v", [
@@ -209,7 +238,9 @@ describe("immediate notice emails", () => {
       const invited = await stored(ids.vol1, "meeting_invited");
       expect(invited).toHaveLength(1);
       // Same transaction (same created_at): compare without order.
-      const pairs = (await outbox(ids.vol1)).map((m) => `${m.notification_id} ${String(m.payload["type"])}`);
+      const pairs = (await outbox(ids.vol1)).map(
+        (m) => `${m.notification_id} ${String(m.payload["type"])}`,
+      );
       expect(pairs.sort()).toEqual(
         [`${assigned[0]!.id} task_assigned`, `${invited[0]!.id} meeting`].sort(),
       );
@@ -217,16 +248,28 @@ describe("immediate notice emails", () => {
       await as(ids.vol1);
       await one("SELECT public.set_notification_email('task_assigned', false) v");
       const byType = async () =>
-        Object.fromEntries((await outbox(ids.vol1, "notice")).map((m) => [m.payload["type"], m.status]));
+        Object.fromEntries(
+          (await outbox(ids.vol1, "notice")).map((m) => [m.payload["type"], m.status]),
+        );
       expect(await byType()).toEqual({ task_assigned: "cancelled", meeting: "pending" });
       await as(ids.bm1);
-      await createTask({ scope: "branch", branch_id: ids.b1, title: "Tables", assignee_ids: [ids.vol1] });
+      await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Tables",
+        assignee_ids: [ids.vol1],
+      });
       expect(await stored(ids.vol1, "task_assigned")).toHaveLength(2);
       expect(await listed(ids.vol1)).toEqual(expect.arrayContaining(["task_assigned"]));
       expect(await outbox(ids.vol1, "notice")).toHaveLength(2);
       // Digest kinds never get an immediate email.
       await as(ids.vol1);
-      const t = await createTask({ scope: "branch", branch_id: ids.b1, title: "Mine", assignee_ids: [ids.vol1b] });
+      const t = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Mine",
+        assignee_ids: [ids.vol1b],
+      });
       await as(ids.vol1b);
       await one("SELECT public.set_task_status($1,'done') v", [t]);
       expect(await stored(ids.vol1, "task_status_changed")).toMatchObject([{ email_digest: true }]);
@@ -242,23 +285,37 @@ describe("immediate notice emails", () => {
       expect((await outbox(ids.bm1, "notice")).map((m) => m.payload["type"])).toEqual(["review"]);
       // A second request while the first email waits: still one email (it shows the current count when sent).
       await as(ids.vol1);
-      await one("SELECT public.submit_task_request($1::jsonb) v", [JSON.stringify({ target_id: ids.bm1, title: "Tea" })]);
+      await one("SELECT public.submit_task_request($1::jsonb) v", [
+        JSON.stringify({ target_id: ids.bm1, title: "Tea" }),
+      ]);
       expect(await outbox(ids.bm1, "notice")).toHaveLength(1);
       // Sent; then a request is decided (count down): no email; a new request (count up): one more.
-      await db.exec(`UPDATE email_outbox SET status='sent', sent_at=now() WHERE user_id='${ids.bm1}'`);
+      await db.exec(
+        `UPDATE email_outbox SET status='sent', sent_at=now() WHERE user_id='${ids.bm1}'`,
+      );
       await as(ids.bm1);
       await one("SELECT public.accept_task_request($1) v", [a]);
       expect(await outbox(ids.bm1, "notice")).toHaveLength(1);
       await as(ids.vol1);
-      await one("SELECT public.submit_task_request($1::jsonb) v", [JSON.stringify({ target_id: ids.bm1, title: "Keys" })]);
-      expect((await outbox(ids.bm1, "notice")).map((m) => m.status).sort()).toEqual(["pending", "sent"]);
+      await one("SELECT public.submit_task_request($1::jsonb) v", [
+        JSON.stringify({ target_id: ids.bm1, title: "Keys" }),
+      ]);
+      expect((await outbox(ids.bm1, "notice")).map((m) => m.status).sort()).toEqual([
+        "pending",
+        "sent",
+      ]);
       // Review email off: the grouped notice still updates in the app, no email.
       await as(ids.bm1);
       await one("SELECT public.set_notification_email('review', false) v");
       await as(ids.vol1);
-      await one("SELECT public.submit_task_request($1::jsonb) v", [JSON.stringify({ target_id: ids.bm1, title: "Mugs" })]);
+      await one("SELECT public.submit_task_request($1::jsonb) v", [
+        JSON.stringify({ target_id: ids.bm1, title: "Mugs" }),
+      ]);
       expect((await stored(ids.bm1, "review_waiting"))[0]!.payload).toMatchObject({ total: 3 });
-      expect((await outbox(ids.bm1, "notice")).map((m) => m.status).sort()).toEqual(["cancelled", "sent"]);
+      expect((await outbox(ids.bm1, "notice")).map((m) => m.status).sort()).toEqual([
+        "cancelled",
+        "sent",
+      ]);
     }));
 
   it("the sender's context: language, the notice with its actor, and whether it still applies", () =>
@@ -266,14 +323,23 @@ describe("immediate notice emails", () => {
       await as(null);
       await db.exec(`UPDATE profiles SET preferred_language='tr' WHERE id='${ids.vol1}'`);
       await as(ids.bm1);
-      await createTask({ scope: "branch", branch_id: ids.b1, title: "Chairs", assignee_ids: [ids.vol1] });
+      await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Chairs",
+        assignee_ids: [ids.vol1],
+      });
       await as(null);
       const mail = await one<string>("SELECT id v FROM email_outbox WHERE user_id=$1", [ids.vol1]);
       expect(await one("SELECT public.notice_email_context($1) v", [mail])).toMatchObject({
         language: "tr",
         type: "task_assigned",
         applies: true,
-        notice: { kind: "task_assigned", title: "Chairs", actor_name: `Person ${ids.bm1.slice(0, 2)}` },
+        notice: {
+          kind: "task_assigned",
+          title: "Chairs",
+          actor_name: `Person ${ids.bm1.slice(0, 2)}`,
+        },
       });
       await db.exec(`UPDATE notifications SET read_at=now() WHERE user_id='${ids.vol1}'`);
       expect(await one("SELECT public.notice_email_context($1)->'applies' v", [mail])).toBe(false);
@@ -286,15 +352,25 @@ describe("unsubscribe from one type (signed link, service role)", () => {
   it("turns off exactly that type's email; unknown types and deleted people are invalid; clients cannot call it", () =>
     tx(async () => {
       await as(null);
-      expect(await one("SELECT public.notice_email_unsubscribe($1, 'meeting') v", [ids.vol1])).toBe("unsubscribed");
+      expect(await one("SELECT public.notice_email_unsubscribe($1, 'meeting') v", [ids.vol1])).toBe(
+        "unsubscribed",
+      );
       const s = await settings(ids.vol1);
       expect(s.filter((x) => !x.email).map((x) => x.type)).toEqual(["meeting"]);
       expect(s.find((x) => x.type === "meeting")).toMatchObject({ enabled: true });
       await as(null);
-      expect(await one("SELECT public.notice_email_unsubscribe($1, 'everything') v", [ids.vol1])).toBe("invalid");
-      expect(await one("SELECT public.notice_email_unsubscribe($1, 'meeting') v", [id(99)])).toBe("invalid");
+      expect(
+        await one("SELECT public.notice_email_unsubscribe($1, 'everything') v", [ids.vol1]),
+      ).toBe("invalid");
+      expect(await one("SELECT public.notice_email_unsubscribe($1, 'meeting') v", [id(99)])).toBe(
+        "invalid",
+      );
       await as(ids.vol1);
-      await fails("SELECT public.notice_email_unsubscribe($1, 'task_status')", [ids.vol1], "permission denied");
+      await fails(
+        "SELECT public.notice_email_unsubscribe($1, 'task_status')",
+        [ids.vol1],
+        "permission denied",
+      );
     }));
 });
 
@@ -314,14 +390,21 @@ describe("the daily summary email", () => {
       expect(await listed(ids.bm1)).toContain("task_request_accepted");
       await as(ids.bm1);
       expect(
-        await one<{ requests: number; total: number }>("SELECT public.get_unread_notification_counts() v"),
+        await one<{ requests: number; total: number }>(
+          "SELECT public.get_unread_notification_counts() v",
+        ),
       ).toMatchObject({ requests: 1, total: 1 });
     }));
 
   it("the 08:00 run queues one summary email per person with the counts, marks the notices, once a day; never an empty one", () =>
     tx(async () => {
       await as(ids.bm1);
-      const t = await createTask({ scope: "branch", branch_id: ids.b1, title: "Posters", assignee_ids: [ids.vol1] });
+      const t = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Posters",
+        assignee_ids: [ids.vol1],
+      });
       const r = await one<string>("SELECT public.submit_task_request($1::jsonb) v", [
         JSON.stringify({ target_id: ids.rd, title: "Hall" }),
       ]);
@@ -349,7 +432,10 @@ describe("the daily summary email", () => {
         kinds: { task_request_accepted: 1, task_status_changed: 1 },
         day: "2027-01-15",
       });
-      expect([...(queued[0]!.payload["types"] as string[])].sort()).toEqual(["request_decided", "task_status"]);
+      expect([...(queued[0]!.payload["types"] as string[])].sort()).toEqual([
+        "request_decided",
+        "task_status",
+      ]);
       const items = (await stored(ids.bm1)).filter((n) => n.email_digest);
       expect(items).toHaveLength(2);
       for (const n of items) expect(n).toMatchObject({ held: false, read_at: null });
@@ -358,7 +444,9 @@ describe("the daily summary email", () => {
       await as(null);
       const logged = await log();
       expect(logged).toHaveLength(1);
-      expect(logged[0]!.email_id).toBe(await one("SELECT id v FROM email_outbox WHERE template='daily_digest'"));
+      expect(logged[0]!.email_id).toBe(
+        await one("SELECT id v FROM email_outbox WHERE template='daily_digest'"),
+      );
       // A second run the same day does nothing; an empty day: no email and no log row.
       expect(await one("SELECT public.run_notification_digest('2027-01-15 09:05+00') v")).toBe(0);
       expect(await one("SELECT public.run_notification_digest('2027-01-16 08:05+00') v")).toBe(0);
@@ -369,7 +457,12 @@ describe("the daily summary email", () => {
   it("a notice after today's summary waits for tomorrow's; a type whose email is turned off is not counted", () =>
     tx(async () => {
       await as(ids.bm1);
-      const t = await createTask({ scope: "branch", branch_id: ids.b1, title: "Banners", assignee_ids: [ids.vol1] });
+      const t = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Banners",
+        assignee_ids: [ids.vol1],
+      });
       await as(ids.vol1);
       await one("SELECT public.set_task_status($1,'blocked') v", [t]);
       await as(null);
@@ -386,7 +479,9 @@ describe("the daily summary email", () => {
       await one("SELECT public.set_notification_email('task_status', false) v");
       await as(null);
       expect(await one("SELECT public.run_notification_digest('2027-01-17 08:05+00') v")).toBe(0);
-      expect(await one("SELECT count(*)::int v FROM notification_digest_log WHERE day='2027-01-17'")).toBe(0);
+      expect(
+        await one("SELECT count(*)::int v FROM notification_digest_log WHERE day='2027-01-17'"),
+      ).toBe(0);
       await as(ids.bm1);
       await one("SELECT public.set_notification_email('task_status', true) v");
       await as(null);
@@ -397,15 +492,75 @@ describe("the daily summary email", () => {
       await as(ids.vol1);
       await one("SELECT public.set_task_status($1,'done') v", [t]);
       // Same transaction (same now()): the new one is the notice not summarised.
-      const last = (await stored(ids.bm1, "task_status_changed")).filter((n) => !n.email_digested_at);
+      const last = (await stored(ids.bm1, "task_status_changed")).filter(
+        (n) => !n.email_digested_at,
+      );
       expect(last).toMatchObject([{ email_digest: false, read_at: null }]);
+    }));
+
+  it("only notices still unread count: read before 08:00 → not counted (and never emailed later); all read → no email", () =>
+    tx(async () => {
+      await as(ids.bm1);
+      const t1 = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Seen",
+        assignee_ids: [ids.vol1],
+      });
+      const t2 = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Unseen",
+        assignee_ids: [ids.vol1],
+      });
+      await as(ids.vol1);
+      await one("SELECT public.set_task_status($1,'done') v", [t1]);
+      await one("SELECT public.set_task_status($1,'blocked') v", [t2]);
+      // The manager reads one of them in the app before the summary.
+      await as(null);
+      await db.exec(
+        `UPDATE notifications SET read_at=now() WHERE user_id='${ids.bm1}' AND kind='task_status_changed' AND payload->>'status'='done'`,
+      );
+      expect(await one("SELECT public.run_notification_digest('2027-01-15 08:05+00') v")).toBe(1);
+      expect(
+        await one(
+          "SELECT payload v FROM email_outbox WHERE template='daily_digest' AND user_id=$1",
+          [ids.bm1],
+        ),
+      ).toMatchObject({ count: 1, kinds: { task_status_changed: 1 } });
+      // Both are settled: the read one is never emailed later.
+      expect((await stored(ids.bm1, "task_status_changed")).every((n) => n.email_digested_at)).toBe(
+        true,
+      );
+      // Next day: two new notices, both read before 08:00 → no email and no log row.
+      await as(ids.vol1);
+      await one("SELECT public.set_task_status($1,'todo') v", [t1]);
+      await one("SELECT public.set_task_status($1,'done') v", [t1]);
+      await one("SELECT public.set_task_status($1,'done') v", [t2]);
+      await as(null);
+      await db.exec(`UPDATE notifications SET read_at=now() WHERE user_id='${ids.bm1}'`);
+      expect(await one("SELECT public.run_notification_digest('2027-01-16 08:05+00') v")).toBe(0);
+      expect(
+        await one("SELECT count(*)::int v FROM email_outbox WHERE template='daily_digest'"),
+      ).toBe(1);
+      expect(
+        await one("SELECT count(*)::int v FROM notification_digest_log WHERE day='2027-01-16'"),
+      ).toBe(0);
+      expect((await stored(ids.bm1, "task_status_changed")).every((n) => n.email_digested_at)).toBe(
+        true,
+      );
     }));
 
   it("a type turned off in the app creates no notice (and so no email)", () =>
     tx(async () => {
       await as(ids.bm1);
       await one("SELECT public.set_notification_setting('task_status', false, 'digest') v");
-      const t = await createTask({ scope: "branch", branch_id: ids.b1, title: "Tea", assignee_ids: [ids.vol1] });
+      const t = await createTask({
+        scope: "branch",
+        branch_id: ids.b1,
+        title: "Tea",
+        assignee_ids: [ids.vol1],
+      });
       await as(ids.vol1);
       await one("SELECT public.set_task_status($1,'blocked') v", [t]);
       expect(await stored(ids.bm1, "task_status_changed")).toEqual([]);
@@ -428,8 +583,13 @@ describe("task reminders keep their own email", () => {
       });
       await as(null);
       expect(await one("SELECT public.run_task_reminders('2027-01-15 09:30+00') v")).toBe(1);
-      expect(await stored(ids.bm1, "task_reminder")).toMatchObject([{ held: false, email_digest: false }]);
-      expect((await outbox(ids.bm1)).map((m) => m.template).sort()).toEqual(["notice", "task_reminder"]);
+      expect(await stored(ids.bm1, "task_reminder")).toMatchObject([
+        { held: false, email_digest: false },
+      ]);
+      expect((await outbox(ids.bm1)).map((m) => m.template).sort()).toEqual([
+        "notice",
+        "task_reminder",
+      ]);
       // Turned off in the app: no reminder notice.
       await as(ids.bm1);
       await one("SELECT public.set_notification_setting('task_reminder', false, 'immediate') v");

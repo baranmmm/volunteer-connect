@@ -104,7 +104,11 @@ async function noticeSignature(user: string, type: string, expires: number): Pro
 }
 
 /** A notice unsubscribe token for one member and type, valid for NOTICE_LINK_DAYS days. */
-export async function signNoticeToken(user: string, type: NoticeEmailType, now = new Date()): Promise<string> {
+export async function signNoticeToken(
+  user: string,
+  type: NoticeEmailType,
+  now = new Date(),
+): Promise<string> {
   if (!UUID.test(user) || !isNoticeEmailType(type)) throw new Error("Invalid link id");
   const expires = day(now) + NOTICE_LINK_DAYS;
   return `${user}.${type}.${expires}.${await noticeSignature(user, type, expires)}`;
@@ -117,7 +121,15 @@ export async function verifyNoticeToken(
 ): Promise<{ user: string; type: NoticeEmailType } | null> {
   if (!token || token.length > 100) return null;
   const [user, type, expires, sig, extra] = token.split(".");
-  if (!user || !type || !expires || !sig || extra !== undefined || !UUID.test(user) || !isNoticeEmailType(type))
+  if (
+    !user ||
+    !type ||
+    !expires ||
+    !sig ||
+    extra !== undefined ||
+    !UUID.test(user) ||
+    !isNoticeEmailType(type)
+  )
     return null;
   if (!/^\d{1,7}$/.test(expires) || Number(expires) < day(now)) return null;
   const expected = await noticeSignature(user, type, Number(expires));
@@ -135,5 +147,8 @@ export async function noticeUnsubscribeLinks(
   now = new Date(),
 ): Promise<{ page: string; oneClick: string }> {
   const t = encodeURIComponent(await signNoticeToken(user, type, now));
-  return { page: `${origin}/e/notices?t=${t}`, oneClick: `${origin}/api/public/notice-unsubscribe?t=${t}` };
+  return {
+    page: `${origin}/e/notices?t=${t}`,
+    oneClick: `${origin}/api/public/notice-unsubscribe?t=${t}`,
+  };
 }

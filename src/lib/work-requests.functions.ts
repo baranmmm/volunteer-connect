@@ -11,7 +11,8 @@ import {
 } from "./work-requests";
 
 /** Sends the notice emails an action just queued (assignments, invitations, requests waiting). */
-const flushNoticeEmails = async () => (await import("@/lib/notice-emails.server")).flushNoticeEmails();
+const flushNoticeEmails = async () =>
+  (await import("@/lib/notice-emails.server")).flushNoticeEmails();
 
 // Task and meeting requests. The database checks the chain (who may ask whom) and who may decide.
 const fail = (error: { message: string } | null) => {

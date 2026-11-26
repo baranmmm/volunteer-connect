@@ -20,7 +20,8 @@ import {
 import { taskSources } from "./task-grouping";
 
 /** Sends the notice emails an action just queued (assignments, invitations, requests waiting). */
-const flushNoticeEmails = async () => (await import("@/lib/notice-emails.server")).flushNoticeEmails();
+const flushNoticeEmails = async () =>
+  (await import("@/lib/notice-emails.server")).flushNoticeEmails();
 
 // Every write is a SECURITY DEFINER RPC (no client write grants on tasks); the database checks every permission.
 const fail = (error: { message: string } | null) => {

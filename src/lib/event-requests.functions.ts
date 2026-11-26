@@ -12,7 +12,8 @@ import {
 } from "./event-requests";
 
 /** Sends the notice emails an action just queued (assignments, invitations, requests waiting). */
-const flushNoticeEmails = async () => (await import("@/lib/notice-emails.server")).flushNoticeEmails();
+const flushNoticeEmails = async () =>
+  (await import("@/lib/notice-emails.server")).flushNoticeEmails();
 
 // Every write is a SECURITY DEFINER RPC (no client write grants on event_requests); RLS scopes the reads.
 const requestId = z.object({ id: z.string().uuid() });
