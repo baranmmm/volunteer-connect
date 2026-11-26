@@ -133,6 +133,19 @@ describe("a database without keep data (fresh stacks, CI, QA, this fixture)", ()
       expect(notices.join("\n")).toContain("not the production database, nothing changed");
       expect(await snapshot()).toEqual(before);
     }));
+
+  it("leftover e2e channel videos (no dotted NC, no imported events) are still a no-op, not an abort", () =>
+    tx(async () => {
+      // landing.spec creates channel videos (event_id NULL, created_by NULL); some can be left on QA or a long-lived
+      // local stack. They match the video keep rule but must not make the migration fail there.
+      await db.exec(
+        `INSERT INTO public.event_videos(youtube_id, title) VALUES ('dQw4w9WgXcQ', 'Leftover e2e video');`,
+      );
+      const before = await snapshot();
+      const notices = await reset();
+      expect(notices.join("\n")).toContain("not the production database, nothing changed");
+      expect(await snapshot()).toEqual(before);
+    }));
 });
 
 describe("the production-like database", () => {

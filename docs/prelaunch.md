@@ -36,8 +36,8 @@ The rules are the same in all three scripts (never fixed ids, test data keeps ar
 | `scripts/prelaunch/storage-delete-list.sql` | read-only: every Storage object outside the keep set (`bucket_id, name`) and a summary per bucket |
 | `scripts/prelaunch/reset.sql` | one `DO` block, written to run unchanged as a migration: guard, deletes, reassignments, verification |
 
-Reset guard: with no keep data at all (no dotted NC, no imported events, no highlight videos) it only raises a
-NOTICE and changes nothing, so fresh local stacks, CI and the PGlite fixture pass it. Otherwise it aborts (nothing
+Reset guard: with no dotted NC and no imported events it only raises a NOTICE and changes nothing, so fresh local
+stacks, CI, QA and the PGlite fixture pass it (leftover e2e channel videos on QA or a local stack do not count). Otherwise it aborts (nothing
 changed) unless it finds exactly 1 dotted NC (active, with an MFA factor), 15 events and 6 videos, no kept event in a
 series or deletion job, and no unknown public table holding rows. Its final verification aborts the whole migration on
 any mismatch; a second run changes nothing. Tests: `src/test/prelaunch-reset-db.test.ts` (PGlite).
@@ -135,8 +135,11 @@ project or your own local stack first.
   here, and only here: a data-only load would otherwise fire the app's triggers (`on_auth_user_created` would create
   duplicate profiles, `validate_event` would reject published past events, guards and email triggers would run) and
   trip over circular foreign keys (`profiles.deleted_by`, `notifications.digest_id`). The dump is one consistent
-  snapshot, so skipping FK checks while loading it is safe. Supabase's own restore guide sets it the same way as
-  `postgres`. Create `~/ds-backups/restore-prepare.sql` with:
+  snapshot, so skipping FK checks while loading it is safe. **Not verified on the hosted project:** whether its
+  `postgres` role may set `session_replication_role` (it may on the local stack; on hosted Supabase `postgres` is not a
+  full superuser). Check it in the SQL editor before reset day with `BEGIN; SET LOCAL session_replication_role =
+  replica; ROLLBACK;` — if that fails, this path is not available and the new-project path below is the restore.
+  Create `~/ds-backups/restore-prepare.sql` with:
   ```sql
   SET LOCAL session_replication_role = replica;
   DO $$ BEGIN

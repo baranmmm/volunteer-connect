@@ -11,8 +11,10 @@
 -- day it is copied to supabase/migrations/<timestamp>_prelaunch_reset.sql. Any error rolls the whole migration back.
 --
 -- Guard
---   * keep NC = 0 AND keep events = 0 AND keep videos = 0: not the production database (fresh local stacks, CI, QA,
---     the PGlite test fixture): RAISE NOTICE and change nothing. This path reads only auth.users and public tables.
+--   * keep NC = 0 AND keep events = 0: not the production database (fresh local stacks, CI, QA, the PGlite test
+--     fixture): RAISE NOTICE and change nothing. Videos are not part of this test: e2e runs (landing.spec) can leave
+--     channel videos (event_id NULL, created_by NULL) on QA or a long-lived local stack, which must not make the
+--     migration fail there. This path reads only auth.users and public tables.
 --   * otherwise the counts must be exactly 1 NC, 15 events, 6 videos, the NC active (not deleted) with at least one
 --     MFA factor, and no kept event in a series / used as a series' media holder / in a deletion job; else RAISE
 --     EXCEPTION (nothing changed).
@@ -111,9 +113,10 @@ BEGIN
   FROM public.event_videos v
   WHERE (v.event_id IS NULL AND v.created_by IS NULL) OR v.event_id = ANY (_keep_events);
 
-  -- Guard 1: nothing to keep = not the production database. Change nothing.
-  IF _n_nc = 0 AND cardinality(_keep_events) = 0 AND cardinality(_keep_videos) = 0 THEN
-    RAISE NOTICE 'prelaunch reset: no keep data (no dotted National Coordinator, no imported events, no highlight videos): not the production database, nothing changed';
+  -- Guard 1: no dotted NC and no imported events = not the production database. Change nothing. (Leftover e2e channel
+  -- videos on QA or a local stack do not count.)
+  IF _n_nc = 0 AND cardinality(_keep_events) = 0 THEN
+    RAISE NOTICE 'prelaunch reset: no keep data (no dotted National Coordinator, no imported events): not the production database, nothing changed';
     RETURN;
   END IF;
 
