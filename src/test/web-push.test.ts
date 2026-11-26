@@ -320,7 +320,7 @@ describe("VAPID (RFC 8292)", () => {
     expect(checks[0]).toMatchObject({ message: expect.stringContaining("does not match") });
   });
 
-  it("the server logs one error on a mismatch (no key material) and caches the check per isolate", async () => {
+  it("the server check fails on a mismatch without logging or caching it (the sender logs: outbox-flush.test.ts)", async () => {
     const pair = nodeKeyPair();
     vi.stubEnv("VAPID_PRIVATE_KEY", pair.privateKey);
     vi.stubEnv("VAPID_SUBJECT", "mailto:medway@dialoguesociety.org");
@@ -329,13 +329,10 @@ describe("VAPID (RFC 8292)", () => {
       const { serverVapid, resetVapidCache } = await import("@/lib/push/vapid.server");
       resetVapidCache();
       const first = await serverVapid();
-      await serverVapid();
       expect(first.ok).toBe(false); // a random key never matches the committed public key
-      expect(error).toHaveBeenCalledTimes(1);
-      const logged = String(error.mock.calls[0]![0]);
-      expect(logged).toContain("VAPID_PRIVATE_KEY does not match VITE_VAPID_PUBLIC_KEY");
-      expect(logged).not.toContain(pair.privateKey);
-      expect(logged).not.toContain(DEFAULT_VAPID_PUBLIC_KEY);
+      expect(first).toMatchObject({ problem: "mismatch" });
+      expect(JSON.stringify(first)).not.toContain(pair.privateKey);
+      expect(error).not.toHaveBeenCalled();
       resetVapidCache();
     } finally {
       error.mockRestore();

@@ -1,26 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 // Daily task reminders, the daily summary email, event reminders and the email sender. The "Task reminders" workflow
-// calls this at 07:05, 08:05, 09:05, 13:05 and 18:05 UTC with the cleanup secret. The queueing functions are
+// calls this at 07:05, 08:05, 09:05, 13:05 and 18:05 UTC with SCHEDULED_JOBS_SECRET (src/lib/scheduled-jobs.server.ts). The queueing functions are
 // idempotent: run_notification_digest does nothing before 08:00 London time and queues at most one summary email per
 // person and London day (none when nothing is new; `digests` counts those emails), run_task_reminders nothing before
 // 09:00, enqueue_event_reminders queues one reminder per registration two days before the start. Each run then sends
 // what the daily email limit allows (transactional first, then notice emails, reminders, announcements and the daily
 // summaries last); the later runs drain the rest, and anything over the limit continues the next day. Then it sends the
-// push notifications still waiting (docs/push.md). Only numbers are returned.
+// push notifications still waiting (docs/push.md; /api/public/outbox-flush sends them within a minute). Only numbers are returned.
 export const Route = createFileRoute("/api/public/task-reminders")({
   ssr: false,
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { cleanupAuthorized } = await import("@/lib/event-cleanup.server");
-        if (
-          !cleanupAuthorized(
-            request.headers.get("Authorization"),
-            process.env["CLEANUP_CRON_SECRET"],
-          )
-        ) {
-          return new Response(null, { status: 401, headers: { "Cache-Control": "no-store" } });
+        const { scheduledJobAuthorized, unauthorizedResponse } =
+          await import("@/lib/scheduled-jobs.server");
+        if (!scheduledJobAuthorized(request.headers.get("Authorization"))) {
+          return unauthorizedResponse();
         }
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -34,7 +30,7 @@ export const Route = createFileRoute("/api/public/task-reminders")({
           const emails = await flushOutbox({ maxPriority: 5, max: 300 });
           // Pushes a member action could not send at once (the scheduled backstop).
           const { flushPush } = await import("@/lib/push/sender.server");
-          const pushes = await flushPush({ max: 300, timeBudgetMs: 15000 });
+          const pushes = await flushPush({ trigger: "reminders", max: 300, timeBudgetMs: 15000 });
           return Response.json(
             {
               reminders: result.data ?? 0,

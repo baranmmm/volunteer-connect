@@ -73,13 +73,20 @@ text with a heading, no images) and a plain-text part. Times are Europe/London.
     task notes with mentions, task/meeting/event requests, accepting or approving a request): up to 60 emails of
     priorities 1–2
     (`flushNoticeEmails`, `src/lib/notice-emails.server.ts`, which sends the same notices' push notifications alongside,
-    `docs/push.md`); anything else waits for the scheduled run;
+    `docs/push.md`); anything else waits for the outbox tick;
   - right after an action, for its transactional emails (member register/cancel, guest and subscriber forms, event
     changes; announcements send up to 50 at once);
-  - in the scheduled run (`/api/public/task-reminders`, the "Task reminders" workflow at 07:05, 08:05, 09:05, 13:05 and
-    18:05 UTC): it queues the daily summaries (from 08:00 London), task and event reminders, then sends up to 300 of
-    every priority (and the push notifications still waiting, which never count toward the email limit). The later runs drain the
-    outbox; announcements over the daily limit continue the next day.
+  - **every minute, from the outbox tick** (pg_cron job `outbox-flush` → `public.outbox_flush_tick()` → `POST
+    /api/public/outbox-flush` with `SCHEDULED_JOBS_SECRET`, only while something is due: `public.outbox_flush_due()`):
+    up to 300 emails of **every priority** (so reminders, announcements and the daily summaries, priorities 3–5, which
+    pg_cron queues with `run_task_reminders` / `run_notification_digest`), within the daily limit and in priority order,
+    side by side with the waiting push notifications (which never count toward the email limit); each part about 10
+    seconds. This replaces the GitHub workflow as the sender of priorities 3–5. Setup and checks: `docs/push.md`
+    "Production setup / troubleshooting";
+  - in the scheduled run (`/api/public/task-reminders`, the "Task reminders" GitHub workflow: now a manual fallback,
+    still scheduled at 07:05, 08:05, 09:05, 13:05 and 18:05 UTC with `SCHEDULED_JOBS_SECRET`): it queues the daily
+    summaries (from 08:00 London), task and event reminders, then sends up to 300 of every priority and the waiting
+    push notifications. Announcements over the daily limit continue the next day.
 - Each call is bounded (at most 300 rows, about 20 seconds) and never throws. Logs contain only template names and
   error codes, never addresses or content.
 
@@ -93,8 +100,10 @@ text with a heading, no images) and a plain-text part. Times are Europe/London.
 | `EMAIL_LINK_SECRET` | optional | Secret for signed email links. Without it a secret is derived from the service role key; rotating either invalidates links already sent. |
 | `EMAIL_TRANSPORT` | tests only | `capture`: render and store instead of sending (below). |
 
-Without `BREVO_API_KEY` or `EMAIL_FROM`, nothing is claimed: the rows stay `pending` and go out once the sender is
-configured (subject to the daily limit and the usual skip rules).
+Without `BREVO_API_KEY` or `EMAIL_FROM`, nothing is claimed: the rows stay `pending` (no attempt is used, nothing is
+marked failed) and go out once the sender is configured (subject to the daily limit and the usual skip rules). The
+outbox tick then logs `[email] flush skipped: BREVO_API_KEY or EMAIL_FROM not set` once per call and answers
+`"email": "not_configured"`; while such rows wait, pg_cron keeps calling the tick every minute (a cheap no-op).
 
 ## Capture mode (tests)
 
@@ -102,7 +111,7 @@ The e2e app server (`e2e/setup/start-app.ts`) runs with `EMAIL_TRANSPORT=capture
 `APP_URL` set to the app's base URL. A claimed email is rendered and stored on its row with `capture_email`
 (`payload.captured`: to, subject, text, html, attachments with the `.ics` text) and counts as sent. No Brevo key or
 GitHub secret is needed. Tests read emails with `e2e/api/outbox.ts` (`waitForEmail`, `linkFrom`, `icsFrom`,
-`triggerScheduledRun`).
+`triggerScheduledRun`); the scheduled routes use the fixed test `SCHEDULED_JOBS_SECRET` from `e2e/setup/email-capture.ts`.
 
 ## Retention
 

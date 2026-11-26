@@ -28,7 +28,13 @@ type Admin = SupabaseClient<Database>;
 type ClaimedRow = Database["public"]["Functions"]["claim_email_batch"]["Returns"][number];
 /** Priorities (email_priority): 1 transactional, 2 notice emails, 3 reminders, 4 announcements, 5 daily summaries. */
 export type EmailPriority = 1 | 2 | 3 | 4 | 5;
-export type FlushOptions = { maxPriority?: EmailPriority; max?: number; origin?: string | null };
+export type FlushOptions = {
+  maxPriority?: EmailPriority;
+  max?: number;
+  origin?: string | null;
+  /** About how long to keep claiming (default 20 s); rows not started by then go back for the next run. */
+  timeBudgetMs?: number;
+};
 export type FlushResult = { sent: number; skipped: number; failed: number };
 
 const TIME_BUDGET_MS = 20000;
@@ -283,7 +289,7 @@ export async function flushOutbox(opts: FlushOptions = {}): Promise<FlushResult>
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const admin = supabaseAdmin as Admin;
     const origin = appOrigin(opts.origin);
-    const deadline = Date.now() + TIME_BUDGET_MS;
+    const deadline = Date.now() + (opts.timeBudgetMs ?? TIME_BUDGET_MS);
     let remaining = Math.max(1, Math.min(Math.trunc(opts.max ?? 20), 300));
     let stop = false;
     while (!stop && remaining > 0 && Date.now() < deadline) {

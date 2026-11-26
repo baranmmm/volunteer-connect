@@ -44,6 +44,7 @@ import { Route as AppUsersIdRouteImport } from './routes/_app/users_.$id'
 import { Route as ApiPublicCleanupDeletedEventsRouteImport } from './routes/api/public/cleanup-deleted-events'
 import { Route as ApiPublicLandingRouteImport } from './routes/api/public/landing'
 import { Route as ApiPublicNoticeUnsubscribeRouteImport } from './routes/api/public/notice-unsubscribe'
+import { Route as ApiPublicOutboxFlushRouteImport } from './routes/api/public/outbox-flush'
 import { Route as ApiPublicTaskRemindersRouteImport } from './routes/api/public/task-reminders'
 import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
 import { Route as ApiPublicEventImageIdRouteImport } from './routes/api/public/event-image.$id'
@@ -224,6 +225,11 @@ const ApiPublicNoticeUnsubscribeRoute =
     path: '/api/public/notice-unsubscribe',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicOutboxFlushRoute = ApiPublicOutboxFlushRouteImport.update({
+  id: '/api/public/outbox-flush',
+  path: '/api/public/outbox-flush',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTaskRemindersRoute = ApiPublicTaskRemindersRouteImport.update({
   id: '/api/public/task-reminders',
   path: '/api/public/task-reminders',
@@ -275,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
   '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/notice-unsubscribe': typeof ApiPublicNoticeUnsubscribeRoute
+  '/api/public/outbox-flush': typeof ApiPublicOutboxFlushRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
   '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/notice-unsubscribe': typeof ApiPublicNoticeUnsubscribeRoute
+  '/api/public/outbox-flush': typeof ApiPublicOutboxFlushRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
@@ -355,6 +363,7 @@ export interface FileRoutesById {
   '/api/public/cleanup-deleted-events': typeof ApiPublicCleanupDeletedEventsRoute
   '/api/public/landing': typeof ApiPublicLandingRoute
   '/api/public/notice-unsubscribe': typeof ApiPublicNoticeUnsubscribeRoute
+  '/api/public/outbox-flush': typeof ApiPublicOutboxFlushRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
@@ -396,6 +405,7 @@ export interface FileRouteTypes {
     | '/api/public/cleanup-deleted-events'
     | '/api/public/landing'
     | '/api/public/notice-unsubscribe'
+    | '/api/public/outbox-flush'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
     | '/api/public/event-image/$id'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/api/public/cleanup-deleted-events'
     | '/api/public/landing'
     | '/api/public/notice-unsubscribe'
+    | '/api/public/outbox-flush'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
     | '/api/public/event-image/$id'
@@ -475,6 +486,7 @@ export interface FileRouteTypes {
     | '/api/public/cleanup-deleted-events'
     | '/api/public/landing'
     | '/api/public/notice-unsubscribe'
+    | '/api/public/outbox-flush'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
     | '/api/public/event-image/$id'
@@ -499,6 +511,7 @@ export interface RootRouteChildren {
   ApiPublicCleanupDeletedEventsRoute: typeof ApiPublicCleanupDeletedEventsRoute
   ApiPublicLandingRoute: typeof ApiPublicLandingRoute
   ApiPublicNoticeUnsubscribeRoute: typeof ApiPublicNoticeUnsubscribeRoute
+  ApiPublicOutboxFlushRoute: typeof ApiPublicOutboxFlushRoute
   ApiPublicTaskRemindersRoute: typeof ApiPublicTaskRemindersRoute
   ApiPublicUnsubscribeRoute: typeof ApiPublicUnsubscribeRoute
   ApiPublicEventImageIdRoute: typeof ApiPublicEventImageIdRoute
@@ -751,6 +764,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicNoticeUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/outbox-flush': {
+      id: '/api/public/outbox-flush'
+      path: '/api/public/outbox-flush'
+      fullPath: '/api/public/outbox-flush'
+      preLoaderRoute: typeof ApiPublicOutboxFlushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/task-reminders': {
       id: '/api/public/task-reminders'
       path: '/api/public/task-reminders'
@@ -838,6 +858,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCleanupDeletedEventsRoute: ApiPublicCleanupDeletedEventsRoute,
   ApiPublicLandingRoute: ApiPublicLandingRoute,
   ApiPublicNoticeUnsubscribeRoute: ApiPublicNoticeUnsubscribeRoute,
+  ApiPublicOutboxFlushRoute: ApiPublicOutboxFlushRoute,
   ApiPublicTaskRemindersRoute: ApiPublicTaskRemindersRoute,
   ApiPublicUnsubscribeRoute: ApiPublicUnsubscribeRoute,
   ApiPublicEventImageIdRoute: ApiPublicEventImageIdRoute,

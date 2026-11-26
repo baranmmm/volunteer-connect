@@ -2,8 +2,10 @@
 
 ## Deployment setup
 
-1. Set **CLEANUP_CRON_SECRET** in **Lovable → Project Settings → Secrets**. Enter your own strong random secret. It is server-only; never use a `VITE_` name.
-2. Set the identical value in **GitHub repository → Settings → Secrets and variables → Actions → New repository secret**, named **CLEANUP_CRON_SECRET**.
+1. Set **SCHEDULED_JOBS_SECRET** in **Lovable → Project Settings → Secrets** (the one secret of every scheduled route:
+   cleanup, task reminders and the outbox tick; how to make it and where else it goes: `docs/push.md` "Production setup
+   / troubleshooting"). It is server-only; never use a `VITE_` name. An unset or empty secret refuses every call (401).
+2. Set the identical value in **GitHub repository → Settings → Secrets and variables → Actions → New repository secret**, named **SCHEDULED_JOBS_SECRET**.
 3. Publish the app before enabling or manually running the workflow.
 
 Production endpoint:

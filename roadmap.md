@@ -13,7 +13,7 @@
 - [x] Add simple deletion confirmations, typed permanent deletion and audited multi-type daily cleanup.
 - [x] 169 tests passed: branch isolation, denied Volunteer APIs, non-restorable erasure requests, retention, Auth/Storage order and UI actions; fixture screenshots checked desktop/mobile EN/TR.
 - [ ] Full signed-in Recycle Bin preview verification: external unmanaged Supabase has no managed session; live /recycle-bin redirects to /auth.
-- [ ] Daily cleanup deployment: user must set CLEANUP_CRON_SECRET in Lovable Secrets and GitHub Actions secrets, then publish.
+- [ ] Daily cleanup deployment: user must set SCHEDULED_JOBS_SECRET (formerly CLEANUP_CRON_SECRET) in Lovable Secrets and GitHub Actions secrets, then publish.
 
 # Calendar ongoing events
 - [x] Include ongoing events in Upcoming and show bilingual Happening now badges; move to Past after end.
@@ -25,8 +25,8 @@
 - [x] Event form: publish-required markers, title-only drafts, enabled save buttons, inline errors and scroll to first invalid field.
 - [x] Hide soft-deleted events and media; archive files to invalidate old paths (live Storage link 200 → 400, restored).
 - [x] Regional Director recovery within 30 days, title confirmation, and audit logging.
-- [x] Daily GitHub Actions purge at 03:30 UTC: constant-time CLEANUP_CRON_SECRET check, bounded batches, count-only response, per-run audit, concurrency, manual dispatch.
-- [ ] Configure CLEANUP_CRON_SECRET in Lovable and GitHub; publish production endpoint (user-supplied secret).
+- [x] Daily GitHub Actions purge at 03:30 UTC: constant-time SCHEDULED_JOBS_SECRET (formerly CLEANUP_CRON_SECRET) check, bounded batches, count-only response, per-run audit, concurrency, manual dispatch.
+- [ ] Configure SCHEDULED_JOBS_SECRET (formerly CLEANUP_CRON_SECRET) in Lovable and GitHub; publish production endpoint (user-supplied secret).
 - [x] Database, file orchestration, form and UI regressions passed; live cleanup rejects wrong secret with empty 401.
 - [ ] Full signed-in deletion/recovery preview checks: external Supabase has no managed session; preview opens /auth.
 

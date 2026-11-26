@@ -75,10 +75,14 @@ export async function fakePush(page: Page, cfg: FakePush) {
     Object.defineProperty(window, "PushManager", { value: function PushManager() {}, configurable: true, writable: true });
     const pushManager = {
       getSubscription: () => Promise.resolve(w.__push.subscribed),
-      subscribe: () => {
+      subscribe: async () => {
         w.__push.subscribeCalls++;
         const endpoint = `https://push.example.test/e2e/${b64(random(12))}`;
-        const keys = { p256dh: b64(new Uint8Array([4, ...random(64)])), auth: b64(random(16)) };
+        // A real P-256 point (the e2e app server really encrypts and posts pushes; an invalid key would make the
+        // sender delete this device as unusable while the test still checks it).
+        const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+        const point = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+        const keys = { p256dh: b64(point), auth: b64(random(16)) };
         const sub: Sub = {
           endpoint,
           options: { applicationServerKey: null },
@@ -90,7 +94,7 @@ export async function fakePush(page: Page, cfg: FakePush) {
           },
         };
         w.__push.subscribed = sub;
-        return Promise.resolve(sub);
+        return sub;
       },
     };
     const registration = { scope: `${location.origin}/`, pushManager };

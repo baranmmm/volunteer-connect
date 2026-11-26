@@ -24,16 +24,16 @@ jobs:
     steps:
       - name: Create due reminders and send queued emails
         env:
-          CLEANUP_CRON_SECRET: ${{ secrets.CLEANUP_CRON_SECRET }}
+          SCHEDULED_JOBS_SECRET: ${{ secrets.SCHEDULED_JOBS_SECRET }}
           # The published app (repository variable APP_URL, e.g. https://ds-volunteer.lovable.app; no trailing path).
           APP_URL: ${{ vars.APP_URL }}
         run: |
-          test -n "$CLEANUP_CRON_SECRET" || { echo 'CLEANUP_CRON_SECRET is not configured'; exit 1; }
+          test -n "$SCHEDULED_JOBS_SECRET" || { echo 'SCHEDULED_JOBS_SECRET is not configured'; exit 1; }
           test -n "$APP_URL" || { echo '::error::Repository variable APP_URL is empty: set it to the published app URL (Settings → Secrets and variables → Actions → Variables).'; exit 1; }
           REMINDERS_URL="${APP_URL%/}/api/public/task-reminders"
           status=$(curl --silent --show-error --max-time 300 \
             --output /tmp/reminders-result.json --write-out '%{http_code}' \
-            --request POST --header "Authorization: Bearer $CLEANUP_CRON_SECRET" "$REMINDERS_URL")
+            --request POST --header "Authorization: Bearer $SCHEDULED_JOBS_SECRET" "$REMINDERS_URL")
           case "$status" in
             2??) cat /tmp/reminders-result.json ;;
             *) echo 'Reminders endpoint returned a non-success response'; exit 1 ;;

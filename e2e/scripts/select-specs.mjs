@@ -50,7 +50,7 @@ const SRC_RULES = [
   [/^src\/test\/|^src\/integrations\/supabase\/types\.ts$|^src\/routeTree\.gen\.ts$/, []],
   [/^src\/integrations\/supabase\/client|^src\/lib\/supabase/, "full"],
   [/components\/landing\/|lib\/landing|image-variants|ResponsiveImage|lib\/email\/|public-guest|components\/public\/(Guest|Subscribe|form-protection|GuestLink|SubscriberLink)|past-events|PastEvent|event-videos|EventVideos|youtube|attendee|Attendee|announce|Announce|event-emails|video-posters|routes\/index\.tsx|routes\/(e|updates)\.|routes\/privacy_\.attendees|routes\/api\/public\/unsubscribe|attendee-privacy/i, ["public"]],
-  [/lib\/push|push\.functions|PushNotifications|NotificationSettings/i, ["push"]],
+  [/lib\/push|push\.functions|PushNotifications|NotificationSettings|outbox-flush|scheduled-jobs/i, ["push"]],
   [/components\/tasks\/|routes\/_app\/tasks|lib\/tasks|task-reminders|EventLinkedTasks/i, ["tasks"]],
   [/components\/meetings\/|routes\/_app\/meetings|lib\/meetings/i, ["meetings"]],
   [/work-requests|WorkRequest|work-scopes|components\/work\/|notifications|Notifications/i, ["tasks", "meetings"]],
@@ -71,7 +71,7 @@ const SRC_RULES = [
 
 /** Migration objects (names of the functions, tables, policies' tables and buckets it creates or changes) → areas. */
 const SQL_RULES = [
-  [/push_|notification_push/i, ["push", "tasks", "meetings"]],
+  [/push_|notification_push|outbox_flush/i, ["push", "tasks", "meetings"]],
   [/guest|subscriber|announce|email_capture|capture_email|claim_email|finish_email|enqueue_email|email_event|landing|past_event|event_video|ics_|rate_hit|rate_limits/i, ["public"]],
   [/^(tasks?_\w*|\w*_tasks?(_\w+)?|meetings?_\w*|\w*_meetings?(_\w+)?|meeting-files|agenda\w*|\w*_agenda_\w*|notifications?\w*|\w*_notifications?\w*|notify|email_outbox|work_\w*|\w*_work_\w*|request_(target|scope)\w*|in_work_scope|scope_people|is_active_person|is_branch_member|json_uuid_array)$/i, ["tasks", "meetings"]],
   [/event_request/i, ["requests"]],

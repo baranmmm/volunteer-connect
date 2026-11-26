@@ -3,11 +3,18 @@
 // pages/components/FakePush.ts replace Notification, PushManager and navigator.serviceWorker and record what the app
 // does (window.__push), and emulate the installed app by answering "(display-mode: standalone)". The subscription the app registers is real (register_push_subscription), so
 // the database rows are checked with the service role. Fresh users in a temporary branch, cleaned up by the fixtures.
+// Delivery: the e2e app server has a test VAPID key pair (e2e/setup/start-app.ts), so queued pushes are really claimed,
+// encrypted and posted, here to endpoints that do not exist (push.invalid.test: a network error, retried later), both
+// right after a member action and from the outbox tick (POST /api/public/outbox-flush, pg_cron's call in production),
+// which also sends queued emails of every priority (capture mode).
+import { createECDH, randomBytes } from "node:crypto";
 import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/roles";
 import type { TestUser } from "../../fixtures/roles";
 import { adminClient, signIn, storageStateFor } from "../../api/SupabaseClient";
 import { TASK_TITLE_PREFIX, createTaskAs, workRpc } from "../../api/work";
+import { waitForEmail } from "../../api/outbox";
+import { e2eCronSecret } from "../../setup/email-capture";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { baseUrl } from "../../setup/env";
 import { PROD_REF } from "../../setup/guard";
@@ -233,5 +240,88 @@ test.describe("Push notifications", () => {
     await expect(blocked.getByTestId("profile-push")).toHaveAttribute("data-state", "denied", { timeout: APP_LOAD_TIMEOUT });
     await expect(blocked.getByTestId("profile-push-denied-help")).toBeVisible();
     await expect(blocked.getByTestId("profile-push-switch")).toHaveCount(0);
+  });
+});
+
+/** A device for `userId` straight in the database: a real P-256 key, an endpoint that never answers. */
+async function fakeDevice(userId: string) {
+  const ecdh = createECDH("prime256v1");
+  ecdh.generateKeys();
+  const { data, error } = await adminClient()
+    .from("push_subscriptions")
+    .insert({
+      user_id: userId,
+      endpoint: `https://push.invalid.test/e2e/${randomBytes(9).toString("base64url")}`,
+      p256dh: ecdh.getPublicKey("base64url"),
+      auth: randomBytes(16).toString("base64url"),
+      user_agent: "Chrome on Android",
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(`push_subscriptions insert: ${error.message}`);
+  return data.id as string;
+}
+const pushRows = async (userId: string) =>
+  (await adminClient().from("push_outbox").select("id, status, attempts, last_error").eq("user_id", userId)).data ?? [];
+/** Claimed at least once (a network error leaves it 'pending' with a later not_before, attempts 1). */
+const claimed = async (userId: string) => {
+  const rows = await pushRows(userId);
+  return rows.length > 0 && rows.every((r) => r.attempts >= 1 && r.status !== "sending");
+};
+const outboxTick = (secret = e2eCronSecret()) =>
+  fetch(`${baseUrl()}/api/public/outbox-flush`, { method: "POST", headers: { Authorization: `Bearer ${secret}` } });
+
+test.describe("Push delivery and the outbox tick", () => {
+  test("a task created in the app is pushed right after the action (claimed without any scheduled call)", async ({ freshUser, freshBranch, pageAs }) => {
+    const branch = await freshBranch("push-post-action");
+    const manager = await freshUser({ role: "branch_manager", branch });
+    const volunteer = await freshUser({ role: "volunteer", branch });
+    await fakeDevice(volunteer.id);
+    const page = await pageAs(manager);
+    await page.goto("/tasks");
+    await page.getByTestId("tasks-new").click({ timeout: APP_LOAD_TIMEOUT });
+    const form = page.getByTestId("task-form");
+    await form.getByTestId("task-form-title").fill(`${TASK_TITLE_PREFIX}push-${Date.now().toString(36)} post-action`);
+    await form.getByTestId("task-form-assignees-open").click();
+    await page.locator(`[data-testid="task-form-assignees-option"][data-user-id="${volunteer.id}"]`).click();
+    await page.keyboard.press("Escape");
+    await form.getByTestId("task-form-submit").click();
+    await expect(page.getByTestId("toast-success").first()).toBeVisible();
+    await expect.poll(() => claimed(volunteer.id), { timeout: 20000 }).toBe(true);
+    expect((await pushRows(volunteer.id)).map((r) => r.last_error)).toEqual(["network"]);
+  });
+
+  test("the outbox tick needs the secret, claims a queued push and sends a queued daily summary email", async ({ freshUser, freshBranch }) => {
+    expect((await fetch(`${baseUrl()}/api/public/outbox-flush`, { method: "POST" })).status).toBe(401);
+    expect((await outboxTick("wrong-secret")).status).toBe(401);
+
+    const branch = await freshBranch("push-tick");
+    const manager = await freshUser({ role: "branch_manager", branch });
+    const volunteer = await freshUser({ role: "volunteer", branch });
+    await fakeDevice(volunteer.id);
+    // Through the RPC: queued, nothing sends it (no server function ran).
+    const task = await createTaskAs(manager, {
+      scope: "branch",
+      branch_id: branch,
+      title: `${TASK_TITLE_PREFIX}push-${Date.now().toString(36)} tick`,
+      assignee_ids: [volunteer.id],
+    });
+    await expect.poll(async () => (await pushRows(volunteer.id)).length).toBe(1);
+    // The manager's daily summary (priority 5: only scheduled sending reaches it), queued for tomorrow 10:00 UTC.
+    expect((await workRpc(volunteer, "set_task_status", { p_id: task, p_status: "done" })).error).toBeNull();
+    const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+    tomorrow.setUTCHours(10, 0, 0, 0);
+    expect((await adminClient().rpc("run_notification_digest", { p_now: tomorrow.toISOString() })).error).toBeNull();
+
+    const response = await outboxTick();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body).toMatchObject({ vapid: "ok", email: "ok" });
+    expect(JSON.stringify(body)).not.toMatch(/push\.invalid|BEGIN|key/i);
+    // Another test's flush may have claimed it first: either way it was claimed.
+    await expect.poll(() => claimed(volunteer.id), { timeout: 20000 }).toBe(true);
+    const email = await waitForEmail({ template: "daily_digest", userId: manager.id, timeoutMs: 30000 });
+    expect(email.captured.subject).toBe("Your daily summary: 1 update");
   });
 });

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// Nightly cleanup (the "Cleanup Recycle Bin" workflow, with the cleanup secret): expired Recycle Bin items, then the
+// Nightly cleanup (the "Cleanup Recycle Bin" workflow, with SCHEDULED_JOBS_SECRET: src/lib/scheduled-jobs.server.ts): expired Recycle Bin items, then the
 // guest/subscriber retention rules (purge_guest_data; pg_cron runs it too where available), then YouTube poster files
 // no video points at any more. Only counts are returned.
 const GUEST_COUNTS = [
@@ -17,16 +17,12 @@ export const Route = createFileRoute("/api/public/cleanup-deleted-events")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { cleanupAuthorized, cleanupDeletedEvents } =
-          await import("@/lib/event-cleanup.server");
-        if (
-          !cleanupAuthorized(
-            request.headers.get("Authorization"),
-            process.env["CLEANUP_CRON_SECRET"],
-          )
-        ) {
-          return new Response(null, { status: 401, headers: { "Cache-Control": "no-store" } });
+        const { scheduledJobAuthorized, unauthorizedResponse } =
+          await import("@/lib/scheduled-jobs.server");
+        if (!scheduledJobAuthorized(request.headers.get("Authorization"))) {
+          return unauthorizedResponse();
         }
+        const { cleanupDeletedEvents } = await import("@/lib/event-cleanup.server");
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const result = await cleanupDeletedEvents(supabaseAdmin);
