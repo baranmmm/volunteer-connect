@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,12 +17,16 @@ import {
 } from "lucide-react";
 import { EventDialog } from "@/components/events/EventDialog";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
+import { TaskStatusBadge } from "@/components/tasks/TaskBadges";
+import { deleteTask, getTask } from "@/lib/tasks.functions";
+import type { TaskDetail } from "@/lib/tasks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { submitOnEnter } from "@/lib/enter-submit";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -66,6 +70,10 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   const [editingDecision, setEditingDecision] = useState<string | null>(null);
   const [removing, setRemoving] = useState<AgendaItem | null>(null);
   const [taskFor, setTaskFor] = useState<Decision | null>(null);
+  // A task under a decision: edit (the task form) or delete (to the Recycle Bin, after confirming).
+  const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
+  const [removingTask, setRemovingTask] = useState<DecisionTask | null>(null);
+  const removeTask = useServerFn(deleteTask);
   // Expanded agenda items (collapsed by default).
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const setOpen = (id: string, open: boolean) =>
@@ -440,27 +448,14 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                     aria-label={t("meetings.decisions.tasks")}
                                   >
                                     {d.tasks.map((task) => (
-                                      <li key={task.id} className="min-w-0">
-                                        <Link
-                                          to="/tasks"
-                                          search={{ task: task.id } as never}
-                                          data-testid="meeting-decision-task"
-                                          data-task-id={task.id}
-                                          data-status={task.status}
-                                          className="flex min-w-0 items-center gap-2 text-sm text-primary underline-offset-4 hover:underline"
-                                        >
-                                          <ListChecks className="size-4 shrink-0" aria-hidden />
-                                          <span
-                                            className="min-w-0 flex-1 truncate"
-                                            title={task.title}
-                                          >
-                                            {task.title}
-                                          </span>
-                                          <Badge variant="outline" className="shrink-0">
-                                            {t(`meetings.taskStatus.${task.status}`)}
-                                          </Badge>
-                                        </Link>
-                                      </li>
+                                      <DecisionTaskRow
+                                        key={task.id}
+                                        meetingId={meeting.id}
+                                        task={task}
+                                        busy={busy}
+                                        onEdit={(detail) => setEditingTask(detail)}
+                                        onDelete={(row) => setRemovingTask(row)}
+                                      />
                                     ))}
                                   </ul>
                                 )}
@@ -560,6 +555,57 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
           </Button>
         </div>
       </EventDialog>
+      <EventDialog
+        open={!!removingTask}
+        onClose={() => {
+          if (!busy) setRemovingTask(null);
+        }}
+        title={t("tasks.panel.deleteTitle")}
+        testId="meeting-decision-task-delete-dialog"
+      >
+        <p className="text-muted-foreground [overflow-wrap:anywhere]">
+          {t("meetings.decisions.deleteTaskText", { title: removingTask?.title ?? "" })}
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            data-testid="meeting-decision-task-delete-cancel"
+            disabled={busy}
+            onClick={() => setRemovingTask(null)}
+          >
+            {t("common.cancel")}
+          </Button>
+          <Button
+            variant="destructive"
+            data-testid="meeting-decision-task-delete-confirm"
+            disabled={busy}
+            onClick={async () => {
+              const row = removingTask;
+              if (!row) return;
+              const ok = await run(async () => {
+                await removeTask({ data: { id: row.id } });
+                await Promise.all([
+                  qc.invalidateQueries({ queryKey: ["tasks"] }),
+                  qc.invalidateQueries({ queryKey: ["recycle-bin"] }),
+                ]);
+              }, t("tasks.panel.deleted"));
+              if (ok) setRemovingTask(null);
+            }}
+          >
+            <Trash2 />
+            {t("tasks.panel.delete")}
+          </Button>
+        </div>
+      </EventDialog>
+      <TaskFormDialog
+        open={!!editingTask}
+        task={editingTask ?? undefined}
+        onClose={() => setEditingTask(null)}
+        onSaved={() => {
+          void qc.invalidateQueries({ queryKey: ["meeting", meeting.id] });
+          void qc.invalidateQueries({ queryKey: ["meeting-series-tasks"] });
+        }}
+      />
       {taskFor && (
         <TaskFormDialog
           open
@@ -579,6 +625,82 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
         />
       )}
     </section>
+  );
+}
+
+type DecisionTask = Decision["tasks"][number];
+
+/**
+ * A task created from a decision: its title and status open it in the side panel on the meeting page (?task=<id>);
+ * Edit and Delete icons appear when the caller may edit the task (can_edit from get_task, the same check the
+ * database applies to update_task and delete_task).
+ */
+function DecisionTaskRow({
+  meetingId,
+  task,
+  busy,
+  onEdit,
+  onDelete,
+}: {
+  meetingId: string;
+  task: DecisionTask;
+  busy: boolean;
+  onEdit: (detail: TaskDetail) => void;
+  onDelete: (task: DecisionTask) => void;
+}) {
+  const { t } = useTranslation();
+  const fetchTask = useServerFn(getTask);
+  // The same cache entry as the side panel.
+  const detail = useQuery({
+    queryKey: ["tasks", "detail", task.id],
+    queryFn: () => fetchTask({ data: { id: task.id } }),
+    staleTime: 60000,
+  });
+  const canEdit = !!detail.data?.can_edit;
+  return (
+    <li className="flex min-w-0 items-center gap-1" data-testid="meeting-decision-task-row">
+      <Link
+        to="/meetings/$id"
+        params={{ id: meetingId }}
+        search={{ task: task.id }}
+        resetScroll={false}
+        data-testid="meeting-decision-task"
+        data-task-id={task.id}
+        data-status={task.status}
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm text-primary underline-offset-4 hover:underline"
+      >
+        <ListChecks className="size-4 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate" title={task.title}>
+          {task.title}
+        </span>
+        <TaskStatusBadge status={task.status} className="rounded-full" />
+      </Link>
+      {canEdit && detail.data && (
+        <span className="flex shrink-0 gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            data-testid="meeting-decision-task-edit"
+            aria-label={t("meetings.decisions.editTask", { title: task.title })}
+            disabled={busy}
+            onClick={() => onEdit(detail.data!)}
+          >
+            <Pencil />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            data-testid="meeting-decision-task-delete"
+            aria-label={t("meetings.decisions.deleteTask", { title: task.title })}
+            disabled={busy}
+            onClick={() => onDelete(task)}
+          >
+            <Trash2 />
+          </Button>
+        </span>
+      )}
+    </li>
   );
 }
 
@@ -695,13 +817,21 @@ function DecisionForm({
         maxLength={2000}
         rows={2}
         aria-invalid={invalid}
-        aria-describedby={invalid ? "meeting-decision-text-error" : undefined}
+        aria-describedby={
+          invalid
+            ? "meeting-decision-text-error meeting-decision-text-hint"
+            : "meeting-decision-text-hint"
+        }
         disabled={busy}
+        onKeyDown={submitOnEnter}
         onChange={(e) => {
           setText(e.target.value);
           setInvalid(false);
         }}
       />
+      <p id="meeting-decision-text-hint" className="text-xs text-muted-foreground">
+        {t("common.enterToSave")}
+      </p>
       {invalid && (
         <p id="meeting-decision-text-error" role="alert" className="text-sm text-destructive">
           {t("meetings.decisions.textRequired")}

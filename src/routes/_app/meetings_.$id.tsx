@@ -19,7 +19,9 @@ import {
   Video,
   X,
 } from "lucide-react";
+import { z } from "zod";
 import { pageHead } from "@/components/app/head";
+import { TaskPanel } from "@/components/tasks/TaskPanel";
 import { EventDialog } from "@/components/events/EventDialog";
 import { cancelledTitle } from "@/components/events/event-status-styles";
 import { MeetingAgenda } from "@/components/meetings/MeetingAgenda";
@@ -50,8 +52,17 @@ import {
 } from "@/lib/meetings.functions";
 import { useMarkNoticesRead } from "@/lib/use-work-notices";
 
+const meetingSearch = z.object({
+  /** A task opened in the side panel on this page (decision, "From last meeting" or series tasks). */
+  task: z.string().uuid().optional().catch(undefined),
+});
+
 export const Route = createFileRoute("/_app/meetings_/$id")({
   ssr: false,
+  validateSearch: (search: Record<string, unknown>): { task?: string } => {
+    const parsed = meetingSearch.parse(search);
+    return parsed.task ? { task: parsed.task } : {};
+  },
   head: () =>
     pageHead(
       "Meeting",
@@ -62,6 +73,7 @@ export const Route = createFileRoute("/_app/meetings_/$id")({
 
 function MeetingDetailPage() {
   const { id } = Route.useParams();
+  const { task: openTask } = Route.useSearch();
   const { t } = useTranslation();
   const { session } = useAuth();
   const uid = session?.user.id;
@@ -80,6 +92,13 @@ function MeetingDetailPage() {
     staleTime: 240000,
     refetchInterval: 240000,
   });
+  // A task opens in the side panel and the user stays on the meeting (the URL keeps it, so a refresh reopens it).
+  // Closing it reads the meeting again: the panel may have changed the task's status or title, or deleted it.
+  const closeTask = () => {
+    void navigate({ to: "/meetings/$id", params: { id }, search: {}, resetScroll: false });
+    void qc.invalidateQueries({ queryKey: ["meeting", id] });
+    void qc.invalidateQueries({ queryKey: ["meeting-series-tasks"] });
+  };
   // Opening the meeting marks its notices as read.
   useMarkNoticesRead([{ entityType: "meeting", entityId: id }], "meetings", !!uid);
 
@@ -439,7 +458,7 @@ function MeetingDetailPage() {
           </div>
         </section>
       )}
-      {meeting.from_last && <MeetingFromLast fromLast={meeting.from_last} />}
+      {meeting.from_last && <MeetingFromLast fromLast={meeting.from_last} meetingId={meeting.id} />}
       <MeetingAgenda meeting={meeting} />
       <section
         data-testid="meeting-invitees"
@@ -580,6 +599,7 @@ function MeetingDetailPage() {
         onClose={() => setScopeAction(null)}
         onConfirm={(mode) => void confirmScope(meeting, mode)}
       />
+      <TaskPanel taskId={openTask ?? null} onClose={closeTask} />
     </article>
   );
 }

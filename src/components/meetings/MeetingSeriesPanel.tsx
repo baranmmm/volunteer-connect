@@ -97,8 +97,10 @@ function SeriesTasks({ meetingId }: { meetingId: string }) {
           {shown.map((task) => (
             <li key={task.id} className="min-w-0">
               <Link
-                to="/tasks"
-                search={{ task: task.id } as never}
+                to="/meetings/$id"
+                params={{ id: meetingId }}
+                search={{ task: task.id }}
+                resetScroll={false}
                 data-testid="meeting-series-task"
                 data-task-id={task.id}
                 data-status={task.status}

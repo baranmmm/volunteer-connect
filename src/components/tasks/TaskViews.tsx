@@ -3,10 +3,12 @@ import { useTranslation } from "react-i18next";
 import {
   Archive,
   ArchiveRestore,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   MessageSquare,
   UserCheck,
+  Users,
 } from "lucide-react";
 import {
   TASK_STATUSES,
@@ -15,6 +17,7 @@ import {
   groupTasks,
   isOverdue,
   mineFirst,
+  type Person,
   type Task,
   type TaskGroup,
   type TaskStatus,
@@ -29,14 +32,19 @@ import {
   TASK_MINE,
   TASK_OTHER,
   TASK_OTHER_TEXT,
+  TASK_STATUS_BADGE,
   TASK_STATUS_CARD,
   TASK_STATUS_COLUMN,
 } from "./task-status-colors";
-import { formatDay, scopeText, selectClass } from "./task-display";
+import { formatDay, initials, scopeText } from "./task-display";
 
 /**
  * `showScope`: scope labels (branch, region, national) are shown only to someone who can work in more than one place
  * (useWorkScopes().single is false); with a single scope every task comes from there.
+ *
+ * Every view uses compact one-line rows: title, a "Mine" marker, link icons (meeting, event), due date, assignee
+ * initials and the status pill. The caller's own tasks stand out: an accent bar on the left, a light tint, a bold
+ * title and the "Mine" marker.
  */
 type ViewProps = {
   tasks: Task[];
@@ -45,16 +53,82 @@ type ViewProps = {
   showScope: boolean;
 };
 
-/** "Assigned to you" marker on cards and rows (shown when the list is not filtered to my tasks only). */
-function MineBadge({ testId }: { testId: string }) {
+/** "Mine" marker on cards, rows and calendar items (shown when the list is not filtered to my tasks only). */
+export function MineBadge({ testId, iconOnly = false }: { testId: string; iconOnly?: boolean }) {
   const { t } = useTranslation();
   return (
     <span
       data-testid={testId}
-      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-primary bg-card px-2 py-0.5 text-xs font-semibold text-primary"
+      title={t("tasks.mineHint")}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary font-semibold text-primary-foreground",
+        iconOnly ? "p-0.5" : "px-2 py-0.5 text-xs",
+      )}
     >
-      <UserCheck className="size-3.5" aria-hidden />
-      {t("tasks.mine")}
+      <UserCheck className={iconOnly ? "size-3" : "size-3.5"} aria-hidden />
+      <span className={iconOnly ? "sr-only" : undefined}>{t("tasks.mine")}</span>
+    </span>
+  );
+}
+
+/** Assignee initials (at most two, then "+N"); the names are in the tooltip and for screen readers. */
+export function AssigneeAvatars({
+  people,
+  testId,
+  className,
+}: {
+  people: Pick<Person, "id" | "full_name">[];
+  testId: string;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  if (!people.length) return null;
+  const name = (p: Pick<Person, "full_name">) => p.full_name ?? t("common.formerMember");
+  const names = people.map(name).join(", ");
+  const shown = people.slice(0, 2);
+  const rest = people.length - shown.length;
+  const dot =
+    "inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-semibold leading-none text-foreground";
+  return (
+    <span
+      data-testid={testId}
+      data-count={people.length}
+      title={names}
+      className={cn("flex shrink-0 -space-x-1.5", className)}
+    >
+      {shown.map((p) => (
+        <span key={p.id} className={dot} aria-hidden>
+          {initials(p.full_name)}
+        </span>
+      ))}
+      {rest > 0 && (
+        <span className={dot} aria-hidden>
+          +{rest}
+        </span>
+      )}
+      <span className="sr-only">{names}</span>
+    </span>
+  );
+}
+
+/** Small icons for a task linked to a meeting and/or an event. */
+export function TaskLinkIcons({ task }: { task: Pick<Task, "meeting_id" | "event_id"> }) {
+  const { t } = useTranslation();
+  if (!task.meeting_id && !task.event_id) return null;
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground dark:text-inherit">
+      {task.meeting_id && (
+        <span data-testid="task-link-meeting" title={t("tasks.links.meeting")}>
+          <Users className="size-3.5" aria-hidden />
+          <span className="sr-only">{t("tasks.links.meeting")}</span>
+        </span>
+      )}
+      {task.event_id && (
+        <span data-testid="task-link-event" title={t("tasks.links.event")}>
+          <CalendarDays className="size-3.5" aria-hidden />
+          <span className="sr-only">{t("tasks.links.event")}</span>
+        </span>
+      )}
     </span>
   );
 }
@@ -70,7 +144,7 @@ function UnarchiveButton({ task }: { task: Task }) {
       type="button"
       variant="outline"
       size="sm"
-      className="h-11"
+      className="h-9"
       data-testid="task-card-unarchive"
       disabled={busy}
       aria-label={t("tasks.archive.unarchiveTitle", { title: task.title })}
@@ -114,10 +188,6 @@ export function ArchiveDoneButton({ tasks, testId }: { tasks: Task[]; testId: st
   );
 }
 
-function assigneeNames(task: Task, formerMember: string) {
-  return task.assignees.map((a) => a.full_name ?? formerMember).join(", ");
-}
-
 function DueText({ task, today }: { task: Task; today: string }) {
   const { t } = useTranslation();
   if (!task.due_date) return null;
@@ -128,13 +198,36 @@ function DueText({ task, today }: { task: Task; today: string }) {
       data-overdue={overdue}
       className={cn(
         "whitespace-nowrap text-xs",
-        overdue ? "font-semibold text-destructive" : "text-muted-foreground",
+        overdue ? "font-semibold text-destructive" : "text-muted-foreground dark:text-inherit",
       )}
     >
       {formatDay(task.due_date)}
       {overdue && ` · ${t("tasks.overdue")}`}
     </span>
   );
+}
+
+function NoteCount({ task }: { task: Task }) {
+  const { t } = useTranslation();
+  if (task.note_count <= 0) return null;
+  return (
+    <span
+      data-testid="task-card-notes"
+      data-count={task.note_count}
+      className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground dark:text-inherit"
+      title={t("tasks.notes.count", { count: task.note_count })}
+    >
+      <MessageSquare className="size-3.5" aria-hidden />
+      <span aria-hidden>{task.note_count}</span>
+      <span className="sr-only">{t("tasks.notes.count", { count: task.note_count })}</span>
+    </span>
+  );
+}
+
+/** Priority is shown on compact rows only when it asks for attention (high, urgent). */
+function LoudPriority({ task }: { task: Task }) {
+  if (task.priority !== "high" && task.priority !== "urgent") return null;
+  return <TaskPriorityBadge priority={task.priority} className="px-1.5 py-0 text-[11px]" />;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -181,7 +274,7 @@ export function KanbanView({
                 void setStatus(task.id, status);
             }}
             className={cn(
-              "flex min-w-0 flex-col gap-3 rounded-2xl border p-3",
+              "flex min-w-0 flex-col gap-2 rounded-2xl border p-2.5",
               TASK_STATUS_COLUMN[status],
               over === status && "ring-2 ring-primary",
             )}
@@ -204,7 +297,7 @@ export function KanbanView({
               )}
             </div>
             {column.length === 0 && (
-              <p className="px-1 py-4 text-center text-sm text-muted-foreground">
+              <p className="px-1 py-3 text-center text-sm text-muted-foreground">
                 {t("tasks.columnEmpty")}
               </p>
             )}
@@ -231,6 +324,37 @@ export function KanbanView({
   );
 }
 
+/** The status pill of a card: a small select in the status colours (the keyboard alternative to dragging). */
+function StatusPillSelect({
+  task,
+  onStatus,
+  testId,
+}: {
+  task: Task;
+  onStatus: (s: TaskStatus) => void;
+  testId: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <select
+      data-testid={testId}
+      aria-label={t("tasks.changeStatus", { title: task.title })}
+      className={cn(
+        "h-9 max-w-[9rem] shrink-0 cursor-pointer rounded-full border px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        TASK_STATUS_BADGE[task.status],
+      )}
+      value={task.status}
+      onChange={(e) => onStatus(e.target.value as TaskStatus)}
+    >
+      {TASK_STATUSES.map((s) => (
+        <option key={s} value={s}>
+          {t(`tasks.status.${s}`)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function TaskCard({
   task,
   markMine,
@@ -251,7 +375,7 @@ function TaskCard({
   onStatus: (s: TaskStatus) => void;
 }) {
   const { t } = useTranslation();
-  const names = assigneeNames(task, t("common.formerMember"));
+  const changeable = task.can_set_status && !task.archived_at;
   return (
     <article
       data-testid="task-card"
@@ -260,7 +384,7 @@ function TaskCard({
       data-overdue={isOverdue(task, today)}
       data-mine={task.mine}
       data-archived={!!task.archived_at}
-      draggable={task.can_set_status && !task.archived_at}
+      draggable={changeable}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", task.id);
@@ -268,75 +392,56 @@ function TaskCard({
       }}
       onDragEnd={onDragEnd}
       className={cn(
-        "min-w-0 space-y-2 rounded-xl border p-3 shadow-sm",
+        "min-w-0 rounded-lg border px-2.5 py-1.5 shadow-sm",
         TASK_STATUS_CARD[task.status],
         task.mine ? TASK_MINE : TASK_OTHER,
-        task.can_set_status && !task.archived_at && "cursor-grab active:cursor-grabbing",
+        changeable && "cursor-grab active:cursor-grabbing",
       )}
     >
-      <button
-        type="button"
-        data-testid="task-card-open"
-        onClick={() => onOpen(task.id)}
-        className={cn(
-          "block min-h-11 w-full min-w-0 text-left font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          !task.mine && TASK_OTHER_TEXT,
-        )}
-      >
-        <span className="block truncate" title={task.title}>
-          {task.title}
-        </span>
-      </button>
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        {markMine && task.mine && <MineBadge testId="task-card-mine" />}
-        <TaskPriorityBadge priority={task.priority} />
-        <DueText task={task} today={today} />
-        {task.note_count > 0 && (
-          <span
-            data-testid="task-card-notes"
-            data-count={task.note_count}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground dark:text-inherit"
-            title={t("tasks.notes.count", { count: task.note_count })}
-          >
-            <MessageSquare className="size-3.5" aria-hidden />
-            <span aria-hidden>{task.note_count}</span>
-            <span className="sr-only">{t("tasks.notes.count", { count: task.note_count })}</span>
+      <div className="flex min-w-0 items-center gap-2">
+        <button
+          type="button"
+          data-testid="task-card-open"
+          onClick={() => onOpen(task.id)}
+          className={cn(
+            "block min-h-9 min-w-0 flex-1 text-left text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
+          )}
+        >
+          <span className="block truncate" title={task.title}>
+            {task.title}
           </span>
+        </button>
+        {markMine && task.mine && <MineBadge testId="task-card-mine" />}
+      </div>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+          <TaskLinkIcons task={task} />
+          <LoudPriority task={task} />
+          <DueText task={task} today={today} />
+          <NoteCount task={task} />
+          {showScope && (
+            <span
+              className="min-w-0 truncate text-xs text-muted-foreground dark:text-inherit"
+              data-testid="task-card-scope"
+              data-scope={task.scope}
+              title={scopeText(t, task)}
+            >
+              {scopeText(t, task)}
+            </span>
+          )}
+        </span>
+        <AssigneeAvatars people={task.assignees} testId="task-card-assignees" />
+        {changeable ? (
+          <StatusPillSelect task={task} onStatus={onStatus} testId="task-card-status" />
+        ) : (
+          <TaskStatusBadge status={task.status} className="rounded-full" />
         )}
       </div>
-      {names && (
-        <p
-          className="truncate text-xs text-muted-foreground"
-          title={names}
-          data-testid="task-card-assignees"
-        >
-          {names}
-        </p>
-      )}
-      {showScope && (
-        <p
-          className="min-w-0 truncate text-xs text-muted-foreground"
-          data-testid="task-card-scope"
-          data-scope={task.scope}
-        >
-          {scopeText(t, task)}
-        </p>
-      )}
-      <UnarchiveButton task={task} />
-      {task.can_set_status && !task.archived_at && (
-        <select
-          data-testid="task-card-status"
-          aria-label={t("tasks.changeStatus", { title: task.title })}
-          className={cn(selectClass, "h-11 text-sm")}
-          value={task.status}
-          onChange={(e) => onStatus(e.target.value as TaskStatus)}
-        >
-          {TASK_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {t(`tasks.status.${s}`)}
-            </option>
-          ))}
-        </select>
+      {task.archived_at && task.can_set_status && (
+        <div className="pt-1.5">
+          <UnarchiveButton task={task} />
+        </div>
       )}
     </article>
   );
@@ -384,73 +489,70 @@ export function ListView({
             </h2>
           )}
           <ul className="min-w-0 divide-y overflow-hidden rounded-2xl border bg-card">
-            {g.tasks.map((task) => {
-              const names = assigneeNames(task, t("common.formerMember"));
-              return (
-                <li
-                  key={task.id}
-                  className={cn(
-                    "flex min-w-0 flex-col sm:flex-row sm:items-center",
-                    task.mine ? TASK_MINE : TASK_OTHER,
-                  )}
+            {g.tasks.map((task) => (
+              <li
+                key={task.id}
+                className={cn("flex min-w-0 items-center", task.mine ? TASK_MINE : TASK_OTHER)}
+              >
+                <button
+                  type="button"
+                  data-testid="tasks-list-row"
+                  data-task-id={task.id}
+                  data-status={task.status}
+                  data-overdue={isOverdue(task, today)}
+                  data-mine={task.mine}
+                  data-archived={!!task.archived_at}
+                  onClick={() => onOpen(task.id)}
+                  className="flex min-h-11 w-full min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex-nowrap"
                 >
-                  <button
-                    type="button"
-                    data-testid="tasks-list-row"
-                    data-task-id={task.id}
-                    data-status={task.status}
-                    data-overdue={isOverdue(task, today)}
-                    data-mine={task.mine}
-                    data-archived={!!task.archived_at}
-                    onClick={() => onOpen(task.id)}
-                    className="grid min-h-11 w-full min-w-0 flex-1 grid-cols-1 gap-2 px-4 py-3 text-left hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[minmax(0,1fr)_auto_auto_minmax(0,10rem)] md:items-center md:gap-4"
-                  >
-                    <span className="min-w-0">
-                      <span
-                        className={cn("block truncate font-medium", !task.mine && TASK_OTHER_TEXT)}
-                        title={task.title}
-                      >
-                        {task.title}
-                      </span>
-                      {showScope && (
-                        <span
-                          className="block min-w-0 truncate text-xs text-muted-foreground"
-                          data-testid="tasks-list-row-scope"
-                          data-scope={task.scope}
-                        >
-                          {scopeText(t, task)}
-                        </span>
-                      )}
-                    </span>
-                    <span className="flex flex-wrap items-center gap-2">
-                      {markMine && task.mine && <MineBadge testId="tasks-list-row-mine" />}
-                      <TaskStatusBadge status={task.status} />
-                      <TaskPriorityBadge priority={task.priority} />
-                    </span>
-                    <span className="min-w-0">
-                      {task.due_date ? (
-                        <DueText task={task} today={today} />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {t("tasks.noDueDate")}
-                        </span>
-                      )}
-                    </span>
+                  <span className="flex min-w-0 flex-[1_1_12rem] items-center gap-2">
                     <span
-                      className="block min-w-0 truncate text-xs text-muted-foreground"
-                      title={names}
+                      className={cn(
+                        "min-w-0 truncate text-sm",
+                        task.mine ? "font-bold" : cn("font-normal", TASK_OTHER_TEXT),
+                      )}
+                      title={task.title}
                     >
-                      {names || t("tasks.unassigned")}
+                      {task.title}
                     </span>
-                  </button>
-                  {task.archived_at && task.can_set_status && (
-                    <div className="shrink-0 px-4 pb-3 sm:py-2">
-                      <UnarchiveButton task={task} />
-                    </div>
-                  )}
-                </li>
-              );
-            })}
+                    {markMine && task.mine && <MineBadge testId="tasks-list-row-mine" />}
+                    {showScope && (
+                      <span
+                        className="min-w-0 shrink truncate text-xs text-muted-foreground"
+                        data-testid="tasks-list-row-scope"
+                        data-scope={task.scope}
+                        title={scopeText(t, task)}
+                      >
+                        {scopeText(t, task)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="ml-auto flex shrink-0 items-center gap-2">
+                    <TaskLinkIcons task={task} />
+                    <LoudPriority task={task} />
+                    <NoteCount task={task} />
+                    {task.due_date ? (
+                      <DueText task={task} today={today} />
+                    ) : (
+                      <span className="whitespace-nowrap text-xs text-muted-foreground">
+                        {t("tasks.noDueDate")}
+                      </span>
+                    )}
+                    {task.assignees.length ? (
+                      <AssigneeAvatars people={task.assignees} testId="tasks-list-row-assignees" />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{t("tasks.unassigned")}</span>
+                    )}
+                    <TaskStatusBadge status={task.status} className="rounded-full" />
+                  </span>
+                </button>
+                {task.archived_at && task.can_set_status && (
+                  <div className="shrink-0 pr-3">
+                    <UnarchiveButton task={task} />
+                  </div>
+                )}
+              </li>
+            ))}
           </ul>
         </section>
       ))}
@@ -504,6 +606,8 @@ export function CalendarView({ tasks, today, onOpen, showScope }: ViewProps) {
       if (!task.due_date) continue;
       map.set(task.due_date, [...(map.get(task.due_date) ?? []), task]);
     }
+    // The caller's own tasks first on every day.
+    for (const [day, list] of map) map.set(day, mineFirst(list));
     return map;
   }, [tasks]);
   const weekdays = useMemo(() => {
@@ -529,14 +633,15 @@ export function CalendarView({ tasks, today, onOpen, showScope }: ViewProps) {
           onClick={() => onOpen(task.id)}
           title={showScope ? `${task.title} · ${scopeText(t, task)}` : task.title}
           className={cn(
-            "group block w-full min-w-0 truncate rounded-md border px-1.5 py-1 text-left text-xs hover:bg-muted",
+            "group flex w-full min-w-0 items-center gap-1 rounded-md border px-1.5 py-1 text-left text-xs hover:bg-muted",
             phone && "min-h-11 px-3 text-sm",
             overdue ? "border-destructive/40 bg-destructive/10 text-destructive" : "bg-card",
-            task.mine ? TASK_MINE : !overdue && TASK_OTHER_TEXT,
+            task.mine ? cn(TASK_MINE, "font-bold") : !overdue && TASK_OTHER_TEXT,
             task.status === "done" && "line-through",
           )}
         >
-          {task.title}
+          {task.mine && <MineBadge testId="tasks-calendar-item-mine" iconOnly />}
+          <span className="min-w-0 flex-1 truncate">{task.title}</span>
           {showScope && (
             <span className="sr-only" data-testid="tasks-calendar-item-scope">
               {` · ${scopeText(t, task)}`}

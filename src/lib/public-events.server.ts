@@ -44,7 +44,7 @@ export async function publicBranches() {
 export async function publicStructure() {
   const client = anonClient();
   const [branches, regions] = await Promise.all([
-    client.from("branches").select("id, name, region_id").order("name"),
+    client.from("branches").select("id, name, region_id, latitude, longitude").order("name"),
     client.from("regions").select("id, name").order("name"),
   ]);
   if (branches.error || regions.error) throw new Error("Public events unavailable");

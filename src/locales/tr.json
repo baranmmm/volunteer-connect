@@ -37,7 +37,8 @@
     },
     "hubName": "Gönüllü Platformu",
     "opensInNewTab": "(yeni sekmede açılır)",
-    "goHomeLabel": "Ana sayfaya git"
+    "goHomeLabel": "Ana sayfaya git",
+    "enterToSave": "Enter kaydeder, Shift+Enter yeni satır ekler."
   },
   "navigation": {
     "main": "Ana menü",
@@ -675,7 +676,8 @@
       "postcodeHelp": "Birleşik Krallık posta kodu etkinliği herkese açık haritaya yerleştirir, örneğin SW1A 1AA. Posta kodu yoksa şubenin konumu kullanılır.",
       "postcodeOnlineHint": "Çevrim içi etkinlikler haritada gösterilmez.",
       "postcodeNotLocated": "Posta kodu kaydedildi ancak haritada bulunamadı. Harita bunun yerine şubenin konumunu kullanıyor."
-    }
+    },
+    "meetingDetails": "Ayrıntılar"
   },
   "recycleBin": {
     "note": "Öğeler 30 gün sonra kalıcı olarak silinir.",
@@ -1348,7 +1350,10 @@
       "updated": "Karar güncellendi.",
       "deleted": "Karar silindi.",
       "tasks": "Bu karardan oluşturulan görevler",
-      "createTask": "Görev oluştur"
+      "createTask": "Görev oluştur",
+      "editTask": "Görevi düzenle: {{title}}",
+      "deleteTask": "Görevi sil: {{title}}",
+      "deleteTaskText": "\"{{title}}\" Geri Dönüşüm Kutusu'na taşınır ve 30 gün boyunca geri yüklenebilir."
     },
     "files": {
       "title": "Dosyalar",
@@ -1445,6 +1450,15 @@
       "summaryNone": "{{label}} (0)",
       "summary": "{{label}} ({{total}}): {{names}}",
       "summaryMore": "{{label}} ({{total}}): {{names}} +{{more}}"
+    },
+    "empty": "Henüz toplantı yok.",
+    "timeline": {
+      "showEarlier": "Önceki toplantıları göster ({{count}})",
+      "hideEarlier": "Önceki toplantıları gizle",
+      "recent": "Son toplantılar",
+      "next": "Yaklaşan toplantılar",
+      "showLater": "Daha fazla yaklaşan toplantı göster ({{count}})",
+      "hideLater": "Sonraki toplantıları gizle"
     }
   },
   "workRequests": {
@@ -1794,7 +1808,7 @@
       "add": "Görev ekle",
       "empty": "Bu etkinliğe henüz bağlı görev yok."
     },
-    "mine": "Size atandı",
+    "mine": "Benim",
     "emptyMine": "Burada size atanmış görev yok.",
     "showAll": "Tüm görevleri göster",
     "archive": {
@@ -1837,6 +1851,11 @@
       "tooLong": "Bir not en fazla 4000 karakter olabilir.",
       "count_one": "{{count}} not",
       "count_other": "{{count}} not"
+    },
+    "mineHint": "Size atandı",
+    "links": {
+      "meeting": "Bir toplantıdan",
+      "event": "Bir etkinliğe bağlı"
     }
   },
   "landing": {
@@ -2132,5 +2151,23 @@
       "description": "Seçili etkinliklerin haritası ve zaman çizelgesi. Escape ile kapanır.",
       "close": "Haritayı kapat"
     }
+  },
+  "eventsStory": {
+    "title": "İngiltere ve Galler'deki etkinliklerimiz",
+    "intro": "Geçen yıldan bu yana ve yaklaşan etkinliklerimiz arasında gezinmek için kaydırın. Oynat'a basın, ok tuşlarını kullanın ya da zaman çizelgesinde bir nokta seçin.",
+    "introStatic": "Haritada tüm şubelerimiz; geçen yılki ve yaklaşan etkinliklerimiz aşağıdaki listede. Etkinliğini görmek için bir şubenin üzerine gelin ya da odaklanın.",
+    "skip": "Haritayı geç, etkinlik listesine git",
+    "mapLabel": "İngiltere ve Galler'deki şubelerimizin haritası",
+    "past": "Geçmiş etkinlik",
+    "upcoming": "Yaklaşan",
+    "regionWide": "{{region}} bölgesi",
+    "timeline": "Etkinlik zaman çizelgesi",
+    "today": "Bugün",
+    "position": "Etkinlik {{current}} / {{total}}",
+    "empty": "Haritada gösterilecek etkinlik henüz yok.",
+    "listToggle_one": "Haritadaki {{count}} etkinlik, liste olarak",
+    "listToggle_other": "Haritadaki {{count}} etkinlik, liste olarak",
+    "listLabel": "Yaklaşan etkinlikler",
+    "mapKeys": "Yukarı ve aşağı oklar şubeler arasında kuzeyden güneye gezinir ve her şubenin etkinliğini gösterir; Enter o etkinliğe gider. Sol ve sağ oklar etkinlikler arasında ilerler."
   }
 }

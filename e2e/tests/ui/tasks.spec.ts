@@ -85,7 +85,8 @@ test.describe("Tasks", () => {
     await expect(card(page, id)).toBeVisible();
     await expect(card(page, id)).toHaveAttribute("data-status", "todo");
     if (isMobile) await card(page, id).getByTestId("task-card-status").selectOption("in_progress");
-    else await card(page, id).dragTo(column(page, "in_progress"));
+    // Compact cards: grab the card by its padding (its middle is the title or a control).
+    else await card(page, id).dragTo(column(page, "in_progress"), { sourcePosition: { x: 6, y: 3 } });
     await expect(column(page, "in_progress").locator(`[data-testid="task-card"][data-task-id="${id}"]`)).toBeVisible();
     await expect.poll(async () => (await adminClient().from("tasks").select("status").eq("id", id).single()).data?.status).toBe("in_progress");
     await page.reload();
@@ -123,6 +124,13 @@ test.describe("Tasks", () => {
     await expect(card(page, other)).toHaveAttribute("data-mine", "false");
     await expect(card(page, other).getByTestId("task-card-mine")).toHaveCount(0);
     await expect(column(page, "todo").getByTestId("task-card").first()).toHaveAttribute("data-task-id", mine);
+    // Compact cards: mine stands out with a bold title and the accent bar; the status pill is on the same card.
+    const weight = (id: string) =>
+      card(page, id).getByTestId("task-card-open").evaluate((el) => Number(getComputedStyle(el).fontWeight));
+    expect(await weight(mine)).toBeGreaterThanOrEqual(700);
+    expect(await weight(other)).toBeLessThan(600);
+    expect(await card(page, mine).evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe("4px");
+    await expect(card(page, mine).getByTestId("task-card-status")).toHaveValue("todo");
     // A volunteer works in one branch only: no scope labels on cards.
     await expect(card(page, mine).getByTestId("task-card-scope")).toHaveCount(0);
 
@@ -155,6 +163,8 @@ test.describe("Tasks", () => {
     await page.getByTestId("tasks-view-calendar").click();
     const day = page.locator(`[data-testid="tasks-calendar-day"][data-day="${today}"]`);
     await expect(day.locator(`[data-testid="tasks-calendar-item"][data-task-id="${mine}"]`)).toHaveAttribute("data-mine", "true");
+    await expect(calendarItem(page, mine).getByTestId("tasks-calendar-item-mine")).toBeVisible();
+    await expect(calendarItem(page, other).getByTestId("tasks-calendar-item-mine")).toHaveCount(0);
     await expect(day.locator(`[data-testid="tasks-calendar-item"][data-task-id="${other}"]`)).toHaveAttribute("data-mine", "false");
     await expect(calendarItem(page, other).getByTestId("tasks-calendar-item-scope")).toHaveCount(0);
     await mineFilter.click();

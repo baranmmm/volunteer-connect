@@ -37,7 +37,8 @@
     },
     "hubName": "Volunteer Hub",
     "opensInNewTab": "(opens in a new tab)",
-    "goHomeLabel": "Go to home"
+    "goHomeLabel": "Go to home",
+    "enterToSave": "Enter saves, Shift+Enter adds a new line."
   },
   "navigation": {
     "main": "Main",
@@ -675,7 +676,8 @@
       "postcodeHelp": "A UK postcode places the event on the public map, for example SW1A 1AA. Without one, the branch's location is used.",
       "postcodeOnlineHint": "Online events are not shown on the map.",
       "postcodeNotLocated": "The postcode was saved, but it could not be found on the map. The map uses the branch's location instead."
-    }
+    },
+    "meetingDetails": "Details"
   },
   "recycleBin": {
     "note": "Items are permanently deleted after 30 days.",
@@ -1348,7 +1350,10 @@
       "updated": "Decision updated.",
       "deleted": "Decision deleted.",
       "tasks": "Tasks from this decision",
-      "createTask": "Create task"
+      "createTask": "Create task",
+      "editTask": "Edit task: {{title}}",
+      "deleteTask": "Delete task: {{title}}",
+      "deleteTaskText": "\"{{title}}\" moves to the Recycle Bin, where it can be restored for 30 days."
     },
     "files": {
       "title": "Files",
@@ -1445,6 +1450,15 @@
       "summaryNone": "{{label}} (0)",
       "summary": "{{label}} ({{total}}): {{names}}",
       "summaryMore": "{{label}} ({{total}}): {{names}} +{{more}}"
+    },
+    "empty": "No meetings yet.",
+    "timeline": {
+      "showEarlier": "Show earlier meetings ({{count}})",
+      "hideEarlier": "Hide earlier meetings",
+      "recent": "Recent meetings",
+      "next": "Coming up",
+      "showLater": "Show more upcoming ({{count}})",
+      "hideLater": "Hide later meetings"
     }
   },
   "workRequests": {
@@ -1794,7 +1808,7 @@
       "add": "Add task",
       "empty": "No tasks are linked to this event yet."
     },
-    "mine": "Assigned to you",
+    "mine": "Mine",
     "emptyMine": "No tasks are assigned to you here.",
     "showAll": "Show all tasks",
     "archive": {
@@ -1837,6 +1851,11 @@
       "tooLong": "A note can be at most 4000 characters.",
       "count_one": "{{count}} note",
       "count_other": "{{count}} notes"
+    },
+    "mineHint": "Assigned to you",
+    "links": {
+      "meeting": "From a meeting",
+      "event": "Linked to an event"
     }
   },
   "landing": {
@@ -2132,5 +2151,23 @@
       "description": "The map of the selected events with the timeline. Escape closes it.",
       "close": "Close the map"
     }
+  },
+  "eventsStory": {
+    "title": "Our events across England and Wales",
+    "intro": "Scroll to travel through our events, from the past year to the next ones. Press Play, use the arrow keys, or pick a point on the timeline.",
+    "introStatic": "Every branch on the map, with our events of the past year and the coming ones in the list below. Point at or focus a branch to see its event.",
+    "skip": "Skip the map, go to the events list",
+    "mapLabel": "Map of our branches in England and Wales",
+    "past": "Past event",
+    "upcoming": "Upcoming",
+    "regionWide": "{{region}} region",
+    "timeline": "Event timeline",
+    "today": "Today",
+    "position": "Event {{current}} of {{total}}",
+    "empty": "No events to show on the map yet.",
+    "listToggle_one": "{{count}} event on the map, as a list",
+    "listToggle_other": "{{count}} events on the map, as a list",
+    "listLabel": "Coming events",
+    "mapKeys": "Up and down arrows move between the branches, from north to south, and show each branch's event; Enter goes to that event. Left and right arrows move through the events."
   }
 }
