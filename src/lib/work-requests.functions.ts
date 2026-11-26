@@ -10,6 +10,10 @@ import {
   taskRequestInput,
 } from "./work-requests";
 
+/** Sends the notice emails an action just queued (assignments, invitations, requests waiting). */
+const flushNoticeEmails = async () =>
+  (await import("@/lib/notice-emails.server")).flushNoticeEmails();
+
 // Task and meeting requests. The database checks the chain (who may ask whom) and who may decide.
 const fail = (error: { message: string } | null) => {
   if (error) throw new Error(error.message);
@@ -31,6 +35,7 @@ export const submitTaskRequest = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("submit_task_request", { p: data });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 export const submitMeetingRequest = createServerFn({ method: "POST" })
@@ -39,6 +44,7 @@ export const submitMeetingRequest = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("submit_meeting_request", { p: data });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 
@@ -123,6 +129,7 @@ export const acceptTaskRequest = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const result = await context.supabase.rpc("accept_task_request", { p_id: data.id });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });
 
@@ -136,5 +143,6 @@ export const approveMeetingRequest = createServerFn({ method: "POST" })
       p_meeting: data.meeting,
     });
     fail(result.error);
+    await flushNoticeEmails();
     return z.string().uuid().parse(result.data);
   });

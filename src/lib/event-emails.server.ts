@@ -10,10 +10,13 @@ function origin(): string | null {
 }
 
 /**
- * Flushes the email outbox up to `maxPriority` (1 transactional, 3 announcements). Never throws: the change is
+ * Flushes the email outbox up to `maxPriority` (1 transactional … 4 announcements, 5 daily summaries). Never throws: the change is
  * already saved and the queue keeps anything that could not be sent now (the scheduled sender retries).
  */
-export async function flushEventEmails(maxPriority: 1 | 2 | 3 = 1, max?: number): Promise<void> {
+export async function flushEventEmails(
+  maxPriority: 1 | 2 | 3 | 4 | 5 = 1,
+  max?: number,
+): Promise<void> {
   try {
     const { flushOutbox } = await import("@/lib/email/outbox.server");
     await flushOutbox({ maxPriority, origin: origin(), ...(max ? { max } : {}) });

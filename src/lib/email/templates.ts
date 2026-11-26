@@ -1,8 +1,11 @@
-// Email templates (server-rendered, English only; not i18n keys). Pure: the sender passes every link and the clock.
+// Email templates (server-rendered; not i18n keys). Event and guest emails are English only; member notice emails
+// (notice, task_reminder, daily_digest) follow the member's preferred language (English or Turkish). Pure: the sender passes every link and the clock.
 // Each email has a branded HTML part (inline CSS, table layout, no remote images) and a plain-text part. All text that
 // comes from people (event titles, descriptions, names, places) is escaped in HTML.
 import { eventStart, eventWhen } from "@/lib/event-rules";
 import { eventPlace, registrationIcs, type IcsEvent } from "./ics";
+import enLocale from "@/locales/en.json";
+import trLocale from "@/locales/tr.json";
 
 export type EmailTemplate =
   | "guest_confirm"
@@ -13,7 +16,9 @@ export type EmailTemplate =
   | "event_cancelled"
   | "subscriber_confirm"
   | "event_announcement"
-  | "task_reminder";
+  | "task_reminder"
+  | "daily_digest"
+  | "notice";
 
 export const EMAIL_TEMPLATES: readonly EmailTemplate[] = [
   "guest_confirm",
@@ -25,6 +30,8 @@ export const EMAIL_TEMPLATES: readonly EmailTemplate[] = [
   "subscriber_confirm",
   "event_announcement",
   "task_reminder",
+  "daily_digest",
+  "notice",
 ];
 export const isEmailTemplate = (value: string): value is EmailTemplate =>
   (EMAIL_TEMPLATES as readonly string[]).includes(value);
@@ -46,6 +53,10 @@ export type RenderContext = {
   /** The sender address and name (ORGANIZER in calendar attachments). */
   from: { email: string; name?: string | null };
   payload?: Record<string, unknown>;
+  /** The member's preferred language (member notice emails only; English otherwise). */
+  language?: "en" | "tr" | null;
+  /** The notice of an immediate notice email (template 'notice'), read at send time. */
+  notice?: EmailNotice | null;
   event?: EmailEvent | null;
   registration?: EmailRegistration | null;
   /**
@@ -62,6 +73,11 @@ export type RenderContext = {
     unsubscribe?: string;
     /** One-click unsubscribe endpoint for the List-Unsubscribe header. */
     unsubscribeOneClick?: string;
+    /** Member notice emails: stop this notice type's emails (page and one-click endpoint). */
+    noticeUnsubscribe?: string;
+    noticeUnsubscribeOneClick?: string;
+    /** Daily summary: one stop link per notice type in it. */
+    typeUnsubscribe?: Record<string, string>;
   };
   now?: Date;
 };
@@ -119,18 +135,6 @@ function eventStarted(event: EmailEvent, now: Date): boolean {
   return Date.parse(start) <= now.getTime();
 }
 
-function londonDay(value: string): string {
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00Z`) : new Date(value);
-  if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
-
 const eventUrl = (origin: string, event: { id: string }) => `${origin}/events/${event.id}`;
 
 /** An app path from a notification (e.g. /tasks?task=…) as an absolute link on this origin. */
@@ -162,6 +166,8 @@ type Layout = {
   blocks: Block[];
   footer: string[];
   footerLinks?: { label: string; url: string }[];
+  /** The html lang attribute (default "en"). */
+  lang?: "en" | "tr";
 };
 
 function htmlParagraphs(text: string): string {
@@ -235,7 +241,7 @@ function layoutHtml(layout: Layout): string {
     )
     .join(" &middot; ");
   return (
-    `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<!DOCTYPE html><html lang="${layout.lang ?? "en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<meta name="color-scheme" content="light"><title>${escapeHtml(layout.subject)}</title></head>` +
     `<body style="margin:0;padding:0;background:${BG};font-family:${FONT};color:${SLATE};">` +
     `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(layout.preheader)}</div>` +
@@ -657,18 +663,124 @@ function eventAnnouncement(ctx: RenderContext): RenderedEmail {
   );
 }
 
+// ─── Member notice emails (notice, task_reminder, daily_digest): English or Turkish ──────────────────────────────
+// Every one names its notice type and carries a signed "stop these emails" link for that type (one per type in the
+// daily summary) and a link to Profile > Notifications.
+
+type Lang = "en" | "tr";
+const langOf = (ctx: RenderContext): Lang => (ctx.language === "tr" ? "tr" : "en");
+
+/** The notice type's name as in Profile > Notifications (the app's own translations). */
+export function noticeTypeLabel(type: string, lang: Lang): string {
+  const types = (lang === "tr" ? trLocale : enLocale).notifications.settings.types as Record<
+    string,
+    string
+  >;
+  return types[type] ?? type;
+}
+
+const MEMBER_TEXT = {
+  en: {
+    hello: (name?: string | null) => greeting(name),
+    why: (label: string) =>
+      `You are receiving this email because emails for “${label}” are on in your Dialogue Society Volunteer Hub notification settings.`,
+    stop: "Stop these emails",
+    stopType: (label: string) => `Stop emails for “${label}”`,
+    settings: "Notification settings",
+    ukTime: "UK time",
+  },
+  tr: {
+    hello: (name?: string | null) => (name?.trim() ? `Merhaba ${name.trim()},` : "Merhaba,"),
+    why: (label: string) =>
+      `Bu e-postayı, Dialogue Society Gönüllü Platformu bildirim ayarlarınızda “${label}” e-postaları açık olduğu için alıyorsunuz.`,
+    stop: "Bu e-postaları durdur",
+    stopType: (label: string) => `“${label}” e-postalarını durdur`,
+    settings: "Bildirim ayarları",
+    ukTime: "Birleşik Krallık saati",
+  },
+} as const;
+
+function memberFooter(ctx: RenderContext, lang: Lang, type: string | null) {
+  const text = MEMBER_TEXT[lang];
+  const links: { label: string; url: string }[] = [];
+  if (type && ctx.links?.noticeUnsubscribe)
+    links.push({ label: text.stop, url: ctx.links.noticeUnsubscribe });
+  links.push({ label: text.settings, url: `${ctx.origin}/profile#notifications` });
+  return { footer: type ? [text.why(noticeTypeLabel(type, lang))] : [], footerLinks: links };
+}
+
+function memberBuild(
+  ctx: RenderContext,
+  lang: Lang,
+  type: string,
+  layout: Omit<Layout, "footer" | "lang">,
+) {
+  const footer = memberFooter(ctx, lang, type);
+  return build(
+    { ...layout, lang, footer: footer.footer, footerLinks: footer.footerLinks },
+    [],
+    ctx.links?.noticeUnsubscribe
+      ? { url: ctx.links.noticeUnsubscribe, oneClick: ctx.links.noticeUnsubscribeOneClick }
+      : null,
+  );
+}
+
+function londonDayIn(value: string, lang: Lang): string {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00Z`) : new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return new Intl.DateTimeFormat(lang === "tr" ? "tr-TR" : "en-GB", {
+    timeZone: "Europe/London",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function londonDateTime(value: string, lang: Lang): string | null {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  const text = new Intl.DateTimeFormat(lang === "tr" ? "tr-TR" : "en-GB", {
+    timeZone: "Europe/London",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+  return `${text} (${MEMBER_TEXT[lang].ukTime})`;
+}
+
 function taskReminder(ctx: RenderContext): RenderedEmail {
+  const lang = langOf(ctx);
   const payload = ctx.payload ?? {};
   const rawTitle = typeof payload["task_title"] === "string" ? payload["task_title"] : "";
-  const title = subjectTitle(rawTitle || "Task");
+  const fallback = lang === "tr" ? "Görev" : "Task";
+  const title = subjectTitle(rawTitle || fallback);
   const due =
     typeof payload["due_date"] === "string" && payload["due_date"]
-      ? londonDay(payload["due_date"])
+      ? londonDayIn(payload["due_date"], lang)
       : null;
   const kind = payload["reminder"];
   const link = absoluteAppLink(ctx.origin, payload["link"]);
   let subject: string, intro: string;
-  if (kind === "overdue") {
+  if (lang === "tr") {
+    if (kind === "overdue") {
+      subject = `Süresi geçen görev: ${title}`;
+      intro = due
+        ? `Bu görevin son günü ${due} idi ve henüz tamamlanmadı.`
+        : "Bu görevin süresi geçti ve henüz tamamlanmadı.";
+    } else if (kind === "repeat") {
+      subject = `Görev hatırlatması: ${title}`;
+      intro = due
+        ? `Son günü ${due} olan bu görev için bir hatırlatma.`
+        : "Bu görev için bir hatırlatma.";
+    } else {
+      subject = `Görevin son günü yaklaşıyor: ${title}`;
+      intro = due ? `Bu görevin son günü ${due}.` : "Bu görevin son günü yaklaşıyor.";
+    }
+  } else if (kind === "overdue") {
     subject = `Overdue task: ${title}`;
     intro = due
       ? `This task was due on ${due} and is not done yet.`
@@ -680,19 +792,285 @@ function taskReminder(ctx: RenderContext): RenderedEmail {
     subject = `Task due soon: ${title}`;
     intro = due ? `This task is due on ${due}.` : "This task is due soon.";
   }
-  return build({
+  return memberBuild(ctx, lang, "task_reminder", {
     subject,
     preheader: intro,
-    heading: "Task reminder",
+    heading: lang === "tr" ? "Görev hatırlatması" : "Task reminder",
     blocks: [
-      { kind: "p", text: greeting(ctx.toName) },
-      { kind: "strong", text: rawTitle.trim() || "Task" },
+      { kind: "p", text: MEMBER_TEXT[lang].hello(ctx.toName) },
+      { kind: "strong", text: rawTitle.trim() || fallback },
       { kind: "p", text: intro },
-      { kind: "button", label: "Open the task", url: link },
+      { kind: "button", label: lang === "tr" ? "Görevi aç" : "Open the task", url: link },
     ],
-    footer: [
-      "You are receiving this email because you are assigned to this task in the Dialogue Society Volunteer Hub.",
-      "You can turn off task reminder emails in your profile.",
+  });
+}
+
+/** The notice behind an immediate notice email (from notice_email_context at send time). */
+export type EmailNotice = {
+  kind: string;
+  title: string;
+  link: string;
+  payload: Record<string, unknown>;
+  actor_name: string | null;
+};
+
+function listNames(names: string[], lang: Lang): string {
+  if (names.length <= 1) return names[0] ?? "";
+  const and = lang === "tr" ? " ve " : " and ";
+  return `${names.slice(0, -1).join(", ")}${and}${names[names.length - 1]}`;
+}
+
+function notice(ctx: RenderContext): RenderedEmail {
+  const n = ctx.notice;
+  const type = typeof ctx.payload?.["type"] === "string" ? ctx.payload["type"] : null;
+  if (!n || !type) throw new Error("Email context missing");
+  const lang = langOf(ctx);
+  const tr = lang === "tr";
+  const actor = n.actor_name?.trim() || null;
+  const title = n.title.trim();
+  const url = absoluteAppLink(ctx.origin, n.link);
+  const hello: Block = { kind: "p", text: MEMBER_TEXT[lang].hello(ctx.toName) };
+  if (n.kind === "review_waiting") {
+    const total = typeof n.payload["total"] === "number" ? n.payload["total"] : 1;
+    const branches = Array.isArray(n.payload["branches"])
+      ? (n.payload["branches"] as unknown[]).filter((b): b is string => typeof b === "string")
+      : [];
+    const from = branches.length ? listNames(branches, lang) : null;
+    const subject = tr
+      ? `${total} istek incelemenizi bekliyor`
+      : total === 1
+        ? "1 request is waiting for your review"
+        : `${total} requests are waiting for your review`;
+    const intro = tr
+      ? from
+        ? `${from} şubelerinden ${total} istek kararınızı bekliyor.`
+        : `${total} istek kararınızı bekliyor.`
+      : `${total === 1 ? "1 request" : `${total} requests`}${from ? ` from ${from}` : ""} ${total === 1 ? "is" : "are"} waiting for your decision.`;
+    return memberBuild(ctx, lang, type, {
+      subject,
+      preheader: intro,
+      heading: tr ? "İncelemenizi bekleyenler" : "Waiting for your review",
+      blocks: [
+        hello,
+        { kind: "p", text: intro },
+        { kind: "button", label: tr ? "İncelenecekleri aç" : "Open To review", url },
+      ],
+    });
+  }
+  if (n.kind === "meeting_invited") {
+    const startsAt = typeof n.payload["starts_at"] === "string" ? n.payload["starts_at"] : null;
+    const when = startsAt ? londonDateTime(startsAt, lang) : null;
+    const intro = tr
+      ? actor
+        ? `${actor} sizi bir toplantıya davet etti:`
+        : "Bir toplantıya davet edildiniz:"
+      : actor
+        ? `${actor} invited you to a meeting:`
+        : "You are invited to a meeting:";
+    const blocks: Block[] = [
+      hello,
+      { kind: "p", text: intro },
+      { kind: "strong", text: title || (tr ? "Toplantı" : "Meeting") },
+    ];
+    if (when) blocks.push({ kind: "p", text: `${tr ? "Ne zaman" : "When"}: ${when}` });
+    blocks.push({ kind: "button", label: tr ? "Toplantıyı aç" : "Open the meeting", url });
+    return memberBuild(ctx, lang, type, {
+      subject: `${tr ? "Toplantı daveti" : "Meeting invitation"}: ${subjectTitle(title || (tr ? "Toplantı" : "Meeting"))}`,
+      preheader: intro,
+      heading: tr ? "Toplantı daveti" : "You are invited to a meeting",
+      blocks,
+    });
+  }
+  if (n.kind === "task_note_mention") {
+    const intro = tr
+      ? `${actor ?? "Biri"} bu görevdeki bir notta sizden bahsetti:`
+      : `${actor ?? "Someone"} mentioned you in a note on this task:`;
+    const name = title || (tr ? "Görev" : "Task");
+    return memberBuild(ctx, lang, type, {
+      subject: `${tr ? "Sizden bahsedildi" : "You were mentioned"}: ${subjectTitle(name)}`,
+      preheader: intro,
+      heading: tr ? "Bir notta sizden bahsedildi" : "You were mentioned in a note",
+      blocks: [
+        hello,
+        { kind: "p", text: intro },
+        { kind: "strong", text: name },
+        { kind: "button", label: tr ? "Notu aç" : "Open the note", url },
+      ],
+    });
+  }
+  if (n.kind === "task_assigned" || n.kind === "task_group_created") {
+    const group = n.kind === "task_group_created";
+    const intro = tr
+      ? group
+        ? `${actor ?? "Bir yönetici"} tüm üyeler için bir görev oluşturdu:`
+        : actor
+          ? `${actor} size bir görev atadı:`
+          : "Size bir görev atandı:"
+      : group
+        ? `${actor ?? "Someone"} created a task for all members:`
+        : actor
+          ? `${actor} assigned you a task:`
+          : "You have been assigned a task:";
+    const name = title || (tr ? "Görev" : "Task");
+    return memberBuild(ctx, lang, type, {
+      subject: tr
+        ? `${group ? "Tüm üyeler için yeni görev" : "Yeni görev"}: ${subjectTitle(name)}`
+        : `${group ? "New task for all members" : "New task"}: ${subjectTitle(name)}`,
+      preheader: intro,
+      heading: tr ? "Size bir görev var" : "A task for you",
+      blocks: [
+        hello,
+        { kind: "p", text: intro },
+        { kind: "strong", text: name },
+        { kind: "button", label: tr ? "Görevi aç" : "Open the task", url },
+      ],
+    });
+  }
+  throw new Error("Email context missing");
+}
+
+// ─── Daily summary (members) ─────────────────────────────────────────────────────────────────────────────────────
+
+/** One line per kind: [singular, plural] in English ({n} is the count), one form in Turkish. */
+const DIGEST_LINES: Record<string, { en: [string, string]; tr: string }> = {
+  task_note_mention: {
+    en: ["{n} mention of you in a note", "{n} mentions of you in notes"],
+    tr: "Notlarda sizden {n} kez bahsedildi",
+  },
+  task_note_added: {
+    en: ["{n} task with new notes", "{n} tasks with new notes"],
+    tr: "Yeni not eklenen {n} görev",
+  },
+  task_status_changed: {
+    en: [
+      "{n} task you created was blocked or completed",
+      "{n} tasks you created were blocked or completed",
+    ],
+    tr: "Oluşturduğunuz {n} görev engellendi veya tamamlandı",
+  },
+  meeting_changed: {
+    en: ["{n} meeting changed", "{n} meetings changed"],
+    tr: "{n} toplantı değişti",
+  },
+  meeting_cancelled: {
+    en: ["{n} meeting cancelled", "{n} meetings cancelled"],
+    tr: "{n} toplantı iptal edildi",
+  },
+  task_request_accepted: {
+    en: ["{n} of your task requests was accepted", "{n} of your task requests were accepted"],
+    tr: "{n} görev isteğiniz kabul edildi",
+  },
+  task_request_declined: {
+    en: ["{n} of your task requests was declined", "{n} of your task requests were declined"],
+    tr: "{n} görev isteğiniz reddedildi",
+  },
+  meeting_request_approved: {
+    en: ["{n} of your meeting requests was approved", "{n} of your meeting requests were approved"],
+    tr: "{n} toplantı isteğiniz onaylandı",
+  },
+  meeting_request_declined: {
+    en: ["{n} of your meeting requests was declined", "{n} of your meeting requests were declined"],
+    tr: "{n} toplantı isteğiniz reddedildi",
+  },
+  volunteer_application_approved: {
+    en: ["{n} volunteer application approved", "{n} volunteer applications approved"],
+    tr: "{n} gönüllü başvurusu onaylandı",
+  },
+  volunteer_application_declined: {
+    en: ["{n} volunteer application declined", "{n} volunteer applications declined"],
+    tr: "{n} gönüllü başvurusu reddedildi",
+  },
+};
+const DIGEST_OTHER = {
+  en: ["{n} other update", "{n} other updates"] as [string, string],
+  tr: "{n} diğer güncelleme",
+};
+
+const DIGEST_TEXT = {
+  en: {
+    subject: (n: number) => `Your daily summary: ${n} ${n === 1 ? "update" : "updates"}`,
+    heading: "Your daily summary",
+    intro: (day: string | null) =>
+      day
+        ? `Here is what is new for you in the Volunteer Hub (summary of ${day}):`
+        : "Here is what is new for you in the Volunteer Hub:",
+    already: "These notices are already in the app, under the bell.",
+    button: "Open my notifications",
+    why: "You are receiving this email because daily summary emails are on in your Dialogue Society Volunteer Hub notification settings.",
+  },
+  tr: {
+    subject: (n: number) => `Günlük özetiniz: ${n} güncelleme`,
+    heading: "Günlük özetiniz",
+    intro: (day: string | null) =>
+      day
+        ? `Gönüllü Platformu'nda sizin için yeni olanlar (${day} özeti):`
+        : "Gönüllü Platformu'nda sizin için yeni olanlar:",
+    already: "Bu bildirimler uygulamada, zil simgesinin altında zaten duruyor.",
+    button: "Bildirimlerimi aç",
+    why: "Bu e-postayı, Dialogue Society Gönüllü Platformu bildirim ayarlarınızda günlük özet e-postaları açık olduğu için alıyorsunuz.",
+  },
+} as const;
+
+function digestDay(value: unknown, lang: Lang): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return new Intl.DateTimeFormat(lang === "tr" ? "tr-TR" : "en-GB", {
+    timeZone: "Europe/London",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${value}T12:00:00Z`));
+}
+
+/** The summary lines in a fixed order (known kinds first, then one line for anything else). */
+export function digestLines(kinds: unknown, lang: Lang): string[] {
+  const counts =
+    kinds && typeof kinds === "object" && !Array.isArray(kinds)
+      ? Object.entries(kinds as Record<string, unknown>).filter(
+          (e): e is [string, number] => typeof e[1] === "number" && e[1] > 0,
+        )
+      : [];
+  const line = (text: { en: [string, string]; tr: string }, n: number) =>
+    (lang === "tr" ? text.tr : text.en[n === 1 ? 0 : 1]).replace("{n}", String(n));
+  const lines = Object.keys(DIGEST_LINES)
+    .map((kind) => [kind, counts.find(([k]) => k === kind)?.[1] ?? 0] as const)
+    .filter(([, n]) => n > 0)
+    .map(([kind, n]) => line(DIGEST_LINES[kind]!, n));
+  const other = counts.filter(([k]) => !(k in DIGEST_LINES)).reduce((sum, [, n]) => sum + n, 0);
+  if (other > 0) lines.push(line(DIGEST_OTHER, other));
+  return lines;
+}
+
+function dailyDigest(ctx: RenderContext): RenderedEmail {
+  const payload = ctx.payload ?? {};
+  const lang = langOf(ctx);
+  const text = DIGEST_TEXT[lang];
+  const lines = digestLines(payload["kinds"], lang);
+  const count =
+    typeof payload["count"] === "number" && payload["count"] > 0 ? payload["count"] : lines.length;
+  // The database never queues an empty summary; a malformed row is retried, then fails.
+  if (count < 1 || lines.length === 0) throw new Error("Email context missing");
+  const intro = text.intro(digestDay(payload["day"], lang));
+  // One "stop" link per notice type in this summary, then Profile > Notifications.
+  const typeLinks = Object.entries(ctx.links?.typeUnsubscribe ?? {}).map(([type, url]) => ({
+    label: MEMBER_TEXT[lang].stopType(noticeTypeLabel(type, lang)),
+    url,
+  }));
+  return build({
+    lang,
+    subject: text.subject(count),
+    preheader: lines.join(" · "),
+    heading: text.heading,
+    blocks: [
+      { kind: "p", text: MEMBER_TEXT[lang].hello(ctx.toName) },
+      { kind: "p", text: intro },
+      ...lines.map((l): Block => ({ kind: "strong", text: `• ${l}` })),
+      { kind: "note", text: text.already },
+      { kind: "button", label: text.button, url: `${ctx.origin}/notifications` },
+    ],
+    footer: [text.why],
+    footerLinks: [
+      ...typeLinks,
+      { label: MEMBER_TEXT[lang].settings, url: `${ctx.origin}/profile#notifications` },
     ],
   });
 }
@@ -719,6 +1097,10 @@ export function renderEmail(template: EmailTemplate, ctx: RenderContext): Render
       return eventAnnouncement(ctx);
     case "task_reminder":
       return taskReminder(ctx);
+    case "daily_digest":
+      return dailyDigest(ctx);
+    case "notice":
+      return notice(ctx);
   }
 }
 

@@ -1579,7 +1579,8 @@
       "daily_digest_other": "Günlük özetiniz: {{count}} güncelleme",
       "task_note_added_many": "“{{title}}” görevinde {{count}} yeni not",
       "volunteer_application_approved": "Artık {{branch}} şubesinde Dialogue Society gönüllüsüsün!",
-      "volunteer_application_declined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı. Not: {{reason}}"
+      "volunteer_application_declined": "{{branch}} şubesine gönüllülük başvurun onaylanmadı. Not: {{reason}}",
+      "email_budget_warning": "Bugün {{limit}} e-postanın {{sent}} tanesi gönderildi. Günlük sınırı aşan e-postalar yarına kalır (kayıt ve şifre e-postaları her zaman gider). Ücretli bir e-posta planı düşünebilirsiniz."
     },
     "taskStatus": {
       "todo": "Yapılacak",
@@ -1592,13 +1593,6 @@
       "tasks": "{{count}} yeni görev",
       "meetings": "{{count}} toplantı güncellemesi",
       "more": "Diğer menüsünde {{count}} güncelleme"
-    },
-    "preferences": {
-      "title": "Görev hatırlatmaları",
-      "taskEmails": "Görevler için e-posta hatırlatmaları",
-      "taskEmailsOn": "Görev hatırlatmalarını size e-postayla göndereceğiz. Hatırlatmalar uygulamada da görünür.",
-      "taskEmailsOff": "Görev hatırlatmaları yalnızca uygulamada görünür.",
-      "saved": "Hatırlatma tercihi kaydedildi"
     },
     "groups": {
       "task_assigned": "Size {{count}} görev atandı",
@@ -1631,14 +1625,17 @@
     },
     "settings": {
       "title": "Bildirimler",
-      "intro": "Uygulamada hangi bildirimleri ne zaman alacağınızı seçin. Günlük özet saat 08:00'de (Birleşik Krallık saati) gelir.",
-      "defaultImmediate": "Siz değiştirmedikçe bildirimler hemen gelir.",
-      "defaultDigest": "Siz değiştirmedikçe bildirimler günlük özette gelir.",
+      "intro": "Her bildirim uygulamada hemen görünür. Hangi bildirimleri uygulamada alacağınızı ve hangilerinin e-postayla da geleceğini seçin: bazı e-postalar hemen gelir, diğerleri saat 08:00'de (Birleşik Krallık saati) tek bir günlük özet e-postasında, yalnızca yeni bir şey olan günlerde.",
+      "inApp": "Uygulamada",
+      "email": "E-posta",
+      "emailOn": "{{label}} için e-posta",
+      "timing": {
+        "immediate": "E-posta hemen gelir",
+        "digest": "E-posta günlük özette gelir",
+        "mixed": "Davetler hemen e-postayla, değişiklikler günlük özette"
+      },
       "enabled": "Açık",
-      "delivery": "Gönderim",
-      "immediate": "Hemen",
-      "digest": "Günlük özet",
-      "locked": "Sizi bekleyen hiçbir şey kaçmasın diye her zaman açık ve hemen gelir.",
+      "locked": "Sizi bekleyen hiçbir şey kaçmasın diye uygulamada her zaman açık. E-postası kapatılabilir.",
       "saved": "Bildirim ayarı kaydedildi",
       "loadError": "Bildirim ayarları yüklenemedi.",
       "types": {
@@ -2253,6 +2250,15 @@
     "mapKeys": "Yukarı ve aşağı oklar şubeler arasında kuzeyden güneye gezinir ve her şubenin etkinliğini gösterir; Enter o etkinliğe gider. Sol ve sağ oklar etkinlikler arasında ilerler.",
     "pastButton": "Geçmiş etkinlikler",
     "pastJump": "En eski geçmiş etkinliğe git"
+  },
+  "noticeEmails": {
+    "title": "E-posta bildirimleri",
+    "intro": "“{{label}}” e-postaları durdurulsun mu? Bu e-postaları artık almazsınız.",
+    "inApp": "Uygulamadaki bildirimleriniz değişmez. Bu e-postaları profilinizde, Bildirimler bölümünden yeniden açabilirsiniz.",
+    "button": "Bu e-postaları durdur",
+    "done": "Tamam: “{{label}}” e-postalarını artık almayacaksınız.",
+    "invalid": "Bu bağlantı geçersiz veya süresi dolmuş. E-postalarınızı profilinizde, Bildirimler bölümünden değiştirebilirsiniz.",
+    "settings": "Bildirim ayarları"
   },
   "installApp": {
     "button": "Uygulamayı yükle",
