@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { APP_LOAD_TIMEOUT } from "./app";
 
 /**
- * The public events map story on /events: the fixed dotted map of England and Wales (branch dots), the active
+ * The public events map story on /events: the fixed dotted map of the United Kingdom (branch dots), the active
  * event's card, the timeline (one tick per event, cursor, Today) and Play.
  */
 export class EventsMapPage {
