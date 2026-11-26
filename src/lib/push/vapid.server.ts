@@ -2,8 +2,8 @@
 // (mailto: or https: contact) are server secrets; the public key is VAPID_PUBLIC_KEY (src/lib/push/config.ts, the one the
 // browsers subscribed with). Self-check: the public point derived from the private key must equal that public key,
 // otherwise every push would be refused by the push services (or, worse, signed with a key the browsers do not know):
-// one clear error is logged (never either key) and nothing is sent until it is fixed. Workers have no long-lived
-// start-up, so the check runs lazily once per isolate and its result is cached.
+// nothing is sent until it is fixed, and every flush with pushes waiting logs the problem (never either key). Workers have
+// no long-lived start-up, so the check runs lazily; only a usable result is cached per isolate.
 import { base64urlDecode } from "./base64url";
 import { VAPID_PUBLIC_KEY } from "./config";
 import { p256PublicKey } from "./p256";
@@ -71,22 +71,25 @@ export async function checkVapidKeys(input: {
   }
 }
 
+// Only a usable result is cached: a failed check (a secret added or fixed later, a key pair published together) is
+// repeated on the next call, which is cheap, so the isolate never stays silent and disabled after the fix.
 let cached: Promise<VapidCheck> | null = null;
 
-/** The server's VAPID keys, checked once per isolate; logs one error (no key material) when they are unusable. */
-export function serverVapid(): Promise<VapidCheck> {
-  cached ??= checkVapidKeys({
+/**
+ * The server's VAPID keys. A success is cached per isolate; a failure is re-checked on every call. Logs nothing: the
+ * sender (src/lib/push/sender.server.ts) logs the problem once per flush that has pushes waiting.
+ */
+export async function serverVapid(): Promise<VapidCheck> {
+  if (cached) return cached;
+  const attempt = checkVapidKeys({
     privateKey: process.env["VAPID_PRIVATE_KEY"],
     publicKey: VAPID_PUBLIC_KEY,
     subject: process.env["VAPID_SUBJECT"],
-  }).then((result) => {
-    if (!result.ok) {
-      if (result.problem === "missing") console.warn(result.message);
-      else console.error(result.message);
-    }
-    return result;
-  });
-  return cached;
+  }).catch(() => fail("invalid_private_key"));
+  cached = attempt;
+  const result = await attempt;
+  if (!result.ok && cached === attempt) cached = null;
+  return result;
 }
 
 /** Tests only: forget the cached check. */

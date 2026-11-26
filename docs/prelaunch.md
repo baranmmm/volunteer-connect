@@ -15,12 +15,15 @@ Status and checklist for starting the pilot from a clean production database.
 | `EMAIL_LINK_SECRET` | set (signs confirm/cancel/unsubscribe links) |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET` | set (bot check on the public forms) |
 | `BREVO_API_KEY` | **added only after the prod reset**, so no email goes out for test data; until then queued emails stay pending |
+| `SCHEDULED_JOBS_SECRET` | **to add** (one secret for `/api/public/outbox-flush`, `/api/public/task-reminders` and `/api/public/cleanup-deleted-events`; the same value in GitHub and Supabase Vault, `docs/push.md` "Production setup / troubleshooting") |
+| `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push (`docs/push.md`) |
 
 ## GitHub
 - Repository **variable** `APP_URL` = `https://ds-volunteer.lovable.app` (Settings → Secrets and variables → Actions →
   Variables). Must be set **after the workflow-URL PR merges**; `Task reminders` and `Cleanup Recycle Bin` fail with a
   clear message while it is empty.
-- Secret `CLEANUP_CRON_SECRET`: the same value as in Lovable (already used by both workflows).
+- Secret `SCHEDULED_JOBS_SECRET`: the same value as in Lovable (used by both workflows, which are fallbacks now; the
+  minute outbox tick runs from pg_cron with the same value in Supabase Vault).
 
 ## Prod reset (clean start)
 The reset keeps only the National Coordinator account with the dotted email (auth user, identities, sessions, MFA

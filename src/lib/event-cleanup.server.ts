@@ -1,15 +1,11 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { purgeEventRequest, purgeMeeting, purgeRecycleItem } from "./recycle-bin.server";
 
 export const CLEANUP_EVENT_BATCH = 25;
 export const CLEANUP_FILE_BATCH = 100;
-export function cleanupAuthorized(header: string | null, secret: string | undefined) {
-  if (!secret || !header?.startsWith("Bearer ")) return false;
-  const digest = (value: string) => createHash("sha256").update(value).digest();
-  return timingSafeEqual(digest(header.slice(7)), digest(secret));
-}
+/** The scheduled routes' secret check (src/lib/scheduled-jobs.server.ts). */
+export { bearerAuthorized as cleanupAuthorized } from "./scheduled-jobs.server";
 
 export async function cleanupDeletedEvents(client: SupabaseClient<Database>, now = new Date()) {
   const counts = { events: 0, users: 0, files: 0, requests: 0 };

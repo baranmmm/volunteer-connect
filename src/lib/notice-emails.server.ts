@@ -46,8 +46,18 @@ export async function flushNoticeEmails(): Promise<void> {
   })();
   const pushes = (async () => {
     const { flushPush } = await import("@/lib/push/sender.server");
-    await flushPush({ max: 50, timeBudgetMs: 8000 });
+    await flushPush({ trigger: "post-action", max: 50, timeBudgetMs: 8000 });
   })();
-  // Non-fatal: rows stay queued for the scheduled sender.
-  await Promise.allSettled([emails, pushes]);
+  // Non-fatal: rows stay queued for the minute outbox tick (/api/public/outbox-flush). Logged (message only), e.g. a
+  // sender module that failed to load.
+  const results = await Promise.allSettled([emails, pushes]);
+  results.forEach((result, i) => {
+    if (result.status === "rejected") {
+      const reason = result.reason as { message?: unknown } | null;
+      const message = String(reason?.message ?? result.reason ?? "unknown error")
+        .replace(/[A-Za-z0-9+/_=.:%-]{24,}/g, "[redacted]")
+        .slice(0, 160);
+      console.error(`[${i === 0 ? "email" : "push"}] post-action flush failed: ${message}`);
+    }
+  });
 }

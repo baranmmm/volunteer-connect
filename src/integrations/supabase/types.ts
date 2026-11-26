@@ -3776,6 +3776,8 @@ export type Database = {
       }
       open_series: { Args: { _series: string }; Returns: Json }
       other_active_nc_exists: { Args: { _except: string }; Returns: boolean }
+      outbox_flush_due: { Args: never; Returns: boolean }
+      outbox_flush_tick: { Args: never; Returns: undefined }
       permanent_delete_item: {
         Args: { _confirmation: string; _id: string; _type: string }
         Returns: Json
