@@ -206,7 +206,7 @@ edit keeps the existing settings unless "Remind me" is turned off. The options c
 
 ## Notifications
 
-Who gets which notice, the settings (on/off, Immediately or Daily summary), grouping and the "Waiting for you" card:
+Who gets which notice, the settings (in-app and email switches, email timing), grouping and the "Waiting for you" card:
 see [notifications.md](notifications.md). For tasks in short:
 
 | Event | Who is notified | Notice |
