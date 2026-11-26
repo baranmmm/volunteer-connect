@@ -164,7 +164,7 @@ export function Gallery({
   const [shownGroups, setShownGroups] = useState(GROUPS);
   const visible = useMemo(() => groups.slice(0, shownGroups), [groups, shownGroups]);
   const photos = useFlat(visible);
-  // "/#gallery-<eventId>" (a past event's card on the map): show that group even when it is further down, then scroll.
+  // "/events#gallery-<eventId>" (a past event's card on the map): show that group even when it is further down, then scroll.
   const [target, setTarget] = useState<string | null>(null);
   useEffect(() => {
     const read = () => {

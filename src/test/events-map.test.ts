@@ -160,7 +160,7 @@ describe("timeline filtering", () => {
     expect(counts[months.indexOf("2027-03")]).toBe(1);
   });
   it("a past event's card leads to its gallery photos, else its public page", () => {
-    expect(pastEventHref("abc", new Set(["abc"]))).toBe("/#gallery-abc");
+    expect(pastEventHref("abc", new Set(["abc"]))).toBe("/events#gallery-abc");
     expect(pastEventHref("abc", new Set())).toBe("/events/abc");
   });
   it("the past window stays within get_public_events' 12-month limit", () => {

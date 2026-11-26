@@ -20,8 +20,14 @@ import {
   MapPin,
   Video,
 } from "lucide-react";
-import { pageMeta, siteOrigin } from "@/lib/public-meta";
-import { PublicShell } from "@/components/public/PublicShell";
+import { eventImageUrl, pageMeta, siteOrigin } from "@/lib/public-meta";
+import { landingHero, landingQuery } from "@/lib/landing.functions";
+import {
+  LandingFrame,
+  LandingHero,
+  LandingSections,
+  useLanding,
+} from "@/components/landing/Landing";
 import { PublicRegistrationState, publicWhere } from "@/components/public/PublicEventBits";
 import { getPublicEvents, getPublicStructure } from "@/lib/public-events.functions";
 import { branchSlug, type PublicEvent } from "@/lib/public-events";
@@ -46,7 +52,19 @@ const eventsQuery = (branch: string | undefined) =>
     staleTime: 300_000,
   });
 
-// Server-rendered for signed-out visitors (and link previews). No signed links: the list has no images.
+const SUPABASE_ORIGIN = (() => {
+  try {
+    return new URL(String(import.meta.env["VITE_SUPABASE_URL"] ?? "")).origin;
+  } catch {
+    return null;
+  }
+})();
+const TITLE = "Events · Dialogue Society";
+const DESCRIPTION =
+  "Upcoming public events of the Dialogue Society across the UK: talks, dinners and community gatherings. Register, see past events and get event updates.";
+
+// Server-rendered for signed-out visitors (and link previews): the next event (hero), the list and filters, the map
+// preview, counters, highlights and gallery. Members see the same page (with Dashboard in the top bar).
 export const Route = createFileRoute("/events/")({
   validateSearch: (search: Record<string, unknown>): Search => ({
     ...(typeof search["branch"] === "string" && search["branch"].length <= 4000
@@ -58,26 +76,42 @@ export const Route = createFileRoute("/events/")({
     ...(search["view"] === "month" ? { view: "month" as const } : {}),
   }),
   loaderDeps: ({ search }) => ({ branch: search.branch }),
-  // Server: the list and filters go into the HTML. Browser: the page shows at once and the queries load as before.
+  // Server: everything goes into the HTML. Browser: the page shows at once and the queries load as before.
   loader: async ({ context, deps }) => {
     const origin = await siteOrigin();
     if (typeof window !== "undefined")
-      return { origin, branch: deps.branch, events: null, structure: null };
-    const [events, structure] = await Promise.all([
+      return { origin, branch: deps.branch, events: null, structure: null, landing: null };
+    const [events, structure, landing] = await Promise.all([
       context.queryClient.ensureQueryData(eventsQuery(deps.branch)).catch(() => null),
       context.queryClient.ensureQueryData(structureQuery).catch(() => null),
+      context.queryClient.ensureQueryData(landingQuery).catch(() => null),
     ]);
-    return { origin, branch: deps.branch, events, structure };
+    return { origin, branch: deps.branch, events, structure, landing };
   },
-  headers: () => ({ "Cache-Control": "private, no-cache" }),
-  head: ({ loaderData }) =>
-    pageMeta({
-      title: "Events · Dialogue Society",
-      description: "Upcoming public events of the Dialogue Society, by branch and region.",
-      url: `${loaderData?.origin ?? ""}/events`,
-      image: `${loaderData?.origin ?? ""}/auth/join-1600.webp`,
-      imageAlt: "Dialogue Society volunteers at an event",
-    }),
+  // The image links in the HTML (hero, gallery) are signed for 5 minutes: never store the page in a cache.
+  headers: () => ({ "Cache-Control": "private, no-store" }),
+  head: ({ loaderData }) => {
+    const origin = loaderData?.origin ?? "";
+    const hero = loaderData?.landing ? landingHero(loaderData.landing).event : undefined;
+    // The next event's cover through the stable preview route; else a Dialogue Society photo.
+    const image =
+      hero?.image && origin ? eventImageUrl(origin, hero.id) : `${origin}/auth/join-1600.webp`;
+    const head = pageMeta({
+      title: TITLE,
+      description: DESCRIPTION,
+      url: `${origin}/events`,
+      image,
+      imageAlt: hero?.image ? hero.title : "Dialogue Society volunteers at an event",
+    });
+    return {
+      ...head,
+      // Signed image links (hero, gallery) come from the Supabase origin: open that connection early.
+      links: [
+        ...head.links,
+        ...(SUPABASE_ORIGIN ? [{ rel: "preconnect", href: SUPABASE_ORIGIN }] : []),
+      ],
+    };
+  },
   component: PublicEventsPage,
 });
 
@@ -122,127 +156,142 @@ function PublicEventsPage() {
   const branches = (structure.data?.branches ?? []).filter(
     (b) => !search.region || b.region_id === search.region,
   );
+  const landing = useLanding(loaded.landing);
   return (
-    <PublicShell wide>
-      <div data-testid="public-events-page" className="space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-bold">{t("publicEvents.title")}</h1>
-          <p className="text-muted-foreground">{t("publicEvents.intro")}</p>
-        </header>
-        <section
-          className="space-y-3 rounded-2xl border bg-card p-4"
-          aria-label={t("publicEvents.filters")}
+    <LandingFrame landing={landing}>
+      <LandingHero landing={landing} />
+      {/* The list, filters and map keep the app's own colours (also when the page follows a dark OS theme). */}
+      <section
+        id="events-list"
+        aria-labelledby="public-events-title"
+        className="scroll-mt-16 bg-background text-foreground [color-scheme:light]"
+      >
+        <div
+          data-testid="public-events-page"
+          className="mx-auto max-w-7xl space-y-6 px-4 py-10 sm:px-6 sm:py-14"
         >
-          <div className="flex flex-wrap items-center gap-3">
-            <label htmlFor="public-region" className="text-sm font-medium">
-              {t("publicEvents.region")}
-            </label>
-            <select
-              id="public-region"
-              data-testid="public-events-region-filter"
-              value={search.region ?? ""}
-              onChange={(e) => setSearch({ region: e.target.value || undefined })}
-              className="h-11 max-w-full rounded-xl border border-input bg-background px-3 text-sm"
-            >
-              <option value="">{t("publicEvents.allRegions")}</option>
-              {(structure.data?.regions ?? []).map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <fieldset data-testid="public-events-branch-filter" className="min-w-0">
-            <legend className="mb-2 text-sm font-medium">{t("publicEvents.branches")}</legend>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={selected.size ? "outline" : "default"}
-                aria-pressed={!selected.size}
-                data-testid="public-events-branch-all"
-                onClick={() => setSearch({ branch: undefined })}
+          <header className="space-y-2">
+            <h2 id="public-events-title" className="text-3xl font-bold">
+              {t("publicEvents.title")}
+            </h2>
+            <p className="text-muted-foreground">{t("publicEvents.intro")}</p>
+          </header>
+          <section
+            className="space-y-3 rounded-2xl border bg-card p-4"
+            aria-label={t("publicEvents.filters")}
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <label htmlFor="public-region" className="text-sm font-medium">
+                {t("publicEvents.region")}
+              </label>
+              <select
+                id="public-region"
+                data-testid="public-events-region-filter"
+                value={search.region ?? ""}
+                onChange={(e) => setSearch({ region: e.target.value || undefined })}
+                className="h-11 max-w-full rounded-xl border border-input bg-background px-3 text-sm"
               >
-                {t("publicEvents.allBranches")}
-              </Button>
-              {branches.map((b) => {
-                const slug = branchSlug(b.name),
-                  on = selected.has(slug);
-                return (
-                  <Button
-                    key={b.id}
-                    type="button"
-                    size="sm"
-                    variant={on ? "default" : "outline"}
-                    aria-pressed={on}
-                    data-testid="public-events-branch-option"
-                    data-slug={slug}
-                    data-branch-id={b.id}
-                    title={b.name}
-                    className="max-w-full"
-                    onClick={() => toggleBranch(slug)}
-                  >
-                    <span className="min-w-0 truncate">{b.name}</span>
-                  </Button>
-                );
-              })}
+                <option value="">{t("publicEvents.allRegions")}</option>
+                {(structure.data?.regions ?? []).map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
             </div>
-          </fieldset>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div
-              className="inline-flex rounded-xl border p-1"
-              role="group"
-              aria-label={t("publicEvents.view")}
-            >
-              <Button
-                type="button"
-                size="sm"
-                variant={view === "list" ? "default" : "ghost"}
-                aria-pressed={view === "list"}
-                data-testid="public-events-view-list"
-                onClick={() => setSearch({ view: undefined })}
+            <fieldset data-testid="public-events-branch-filter" className="min-w-0">
+              <legend className="mb-2 text-sm font-medium">{t("publicEvents.branches")}</legend>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={selected.size ? "outline" : "default"}
+                  aria-pressed={!selected.size}
+                  data-testid="public-events-branch-all"
+                  onClick={() => setSearch({ branch: undefined })}
+                >
+                  {t("publicEvents.allBranches")}
+                </Button>
+                {branches.map((b) => {
+                  const slug = branchSlug(b.name),
+                    on = selected.has(slug);
+                  return (
+                    <Button
+                      key={b.id}
+                      type="button"
+                      size="sm"
+                      variant={on ? "default" : "outline"}
+                      aria-pressed={on}
+                      data-testid="public-events-branch-option"
+                      data-slug={slug}
+                      data-branch-id={b.id}
+                      title={b.name}
+                      className="max-w-full"
+                      onClick={() => toggleBranch(slug)}
+                    >
+                      <span className="min-w-0 truncate">{b.name}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div
+                className="inline-flex rounded-xl border p-1"
+                role="group"
+                aria-label={t("publicEvents.view")}
               >
-                <List />
-                {t("publicEvents.list")}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={view === "month" ? "default" : "ghost"}
-                aria-pressed={view === "month"}
-                data-testid="public-events-view-month"
-                onClick={() => setSearch({ view: "month" })}
-              >
-                <CalendarDays />
-                {t("publicEvents.month")}
-              </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={view === "list" ? "default" : "ghost"}
+                  aria-pressed={view === "list"}
+                  data-testid="public-events-view-list"
+                  onClick={() => setSearch({ view: undefined })}
+                >
+                  <List />
+                  {t("publicEvents.list")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={view === "month" ? "default" : "ghost"}
+                  aria-pressed={view === "month"}
+                  data-testid="public-events-view-month"
+                  onClick={() => setSearch({ view: "month" })}
+                >
+                  <CalendarDays />
+                  {t("publicEvents.month")}
+                </Button>
+              </div>
+              <Subscribe branch={search.branch} />
             </div>
-            <Subscribe branch={search.branch} />
-          </div>
-        </section>
-        {events.isLoading ? (
-          <p className="text-muted-foreground">{t("common.loading")}</p>
-        ) : events.isError ? (
-          <p role="alert" className="text-destructive">
-            {t("publicEvents.loadError")}
-          </p>
-        ) : (
-          <EventsMapLayout upcoming={shown} branch={search.branch} region={search.region}>
-            {(ctx) =>
-              view === "list" ? (
-                <PublicList
-                  events={ctx.shown}
-                  highlightedId={ctx.highlightedId}
-                  onHover={ctx.onHover}
-                />
-              ) : (
-                <PublicMonth events={ctx.events} month={ctx.month} onMonth={ctx.setMonthOffset} />
-              )
-            }
-          </EventsMapLayout>
-        )}
-      </div>
-    </PublicShell>
+          </section>
+          {events.isLoading ? (
+            <p className="text-muted-foreground">{t("common.loading")}</p>
+          ) : events.isError ? (
+            <p role="alert" className="text-destructive">
+              {t("publicEvents.loadError")}
+            </p>
+          ) : (
+            <EventsMapLayout upcoming={shown} branch={search.branch} region={search.region}>
+              {(ctx) =>
+                view === "list" ? (
+                  <PublicList
+                    events={ctx.shown}
+                    highlightedId={ctx.highlightedId}
+                    onHover={ctx.onHover}
+                  />
+                ) : (
+                  <PublicMonth events={ctx.events} month={ctx.month} onMonth={ctx.setMonthOffset} />
+                )
+              }
+            </EventsMapLayout>
+          )}
+        </div>
+      </section>
+      <LandingSections landing={landing} />
+    </LandingFrame>
   );
 }
 
@@ -288,7 +337,7 @@ function PublicList({
               <Badge variant="secondary">{t(`events.categories.${e.category}`)}</Badge>
               <PublicRegistrationState state={e.registration} />
             </div>
-            <h2 className="text-lg font-semibold">{e.title}</h2>
+            <h3 className="text-lg font-semibold">{e.title}</h3>
             <p className="text-sm">{eventWhen(e, dateLocale(i18n.language))?.text}</p>
             <p className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               {publicWhere(e) && <BranchName name={publicWhere(e)} />}

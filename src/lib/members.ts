@@ -32,6 +32,25 @@ export async function fetchMembers(selfId: string): Promise<Member[]> {
   return profiles.map((m) => ({ ...m, roles: roles.get(m.id) ?? [] }));
 }
 
+/** Accounts waiting for approval (status pending) that RLS lets the caller see: its branch or region. */
+export async function fetchPendingMembers(selfId: string): Promise<Profile[]> {
+  const rows: Profile[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*, branches(name, regions(name))")
+      .eq("status", "pending")
+      .neq("id", selfId)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(offset, offset + 499);
+    if (error) throw error;
+    rows.push(...((data ?? []) as Profile[]));
+    if ((data ?? []).length < 500) break;
+  }
+  return rows;
+}
+
 export async function setStatus(userId: string, status: "active" | "inactive") {
   const { error } = await supabase.rpc("set_user_status", { _target: userId, _status: status });
   if (error) throw error;

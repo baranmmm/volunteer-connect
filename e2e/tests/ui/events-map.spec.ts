@@ -138,28 +138,6 @@ test.describe("Public events map", () => {
     await expect(strip).toBeFocused();
   });
 
-  test("landing page: the section shows the map once scrolled to, with the event's marker and Register", async ({ page, freshUser, freshEvent }) => {
-    test.setTimeout(90_000);
-    const manager = await freshUser({ role: "branch_manager" });
-    const event = await freshEvent(manager, { label: "map landing", status: "published", startInMinutes: 5 * 24 * 60, audience: "public" });
-    const map = new EventsMapPage(page);
-    await map.blockTiles();
-    await page.goto("/");
-    // The section (and its code) loads only when it nears the screen.
-    const slot = page.getByTestId("landing-map-slot");
-    await expect(slot).toBeAttached({ timeout: APP_LOAD_TIMEOUT });
-    await slot.scrollIntoViewIfNeeded();
-    const section = page.getByTestId("landing-map");
-    await expect(section).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
-    await section.scrollIntoViewIfNeeded();
-    await map.waitInteractive();
-    await expect(map.markerOf(event.id)).toBeVisible();
-    await map.markerOf(event.id).click();
-    await expect(map.cardItem(event.id).getByTestId("events-map-card-register")).toHaveAttribute("href", `/events/${event.id}`);
-    // The accessible list holds the same event.
-    await expect(section.locator(`[data-testid="landing-map-list-item"][data-event-id="${event.id}"]`)).toBeAttached();
-  });
-
   test("event form: the optional map postcode is checked before saving (no geocoding request for a malformed one)", async ({ freshUser, pageAs }) => {
     const manager = await freshUser({ role: "branch_manager" });
     const page = await pageAs(manager);
@@ -182,7 +160,7 @@ test.describe("Public events map", () => {
     await expect(page.getByTestId("event-form-section-location")).toHaveCount(0);
   });
 
-  test("no axe violations in the map, timeline, legend and Online panel (/events and the landing section)", async ({ page, isMobile, freshUser, freshEvent }) => {
+  test("no axe violations in the map, timeline, legend and Online panel (/events, also with past events)", async ({ page, isMobile, freshUser, freshEvent }) => {
     test.setTimeout(90_000);
     const manager = await freshUser({ role: "branch_manager" });
     await freshEvent(manager, { label: "map axe", status: "published", startInMinutes: 4 * 24 * 60, audience: "public" });
@@ -194,17 +172,14 @@ test.describe("Public events map", () => {
     await expect(page.getByTestId("events-map-timeline")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
     if (!isMobile) await map.waitInteractive();
     expect((await axe('[data-testid="events-map-layout"]')).violations).toEqual([]);
-    await page.goto("/");
-    const slot = page.getByTestId("landing-map-slot");
-    await expect(slot).toBeAttached({ timeout: APP_LOAD_TIMEOUT });
-    await slot.scrollIntoViewIfNeeded();
-    await map.waitInteractive();
+    // Phones show the legend only in the full-screen map: the past-events state is checked on desktop.
+    if (isMobile) return;
     await page.getByTestId("events-map-past-toggle").click();
     await expect(page.getByTestId("events-map-legend-past")).toBeVisible();
-    expect((await axe('[data-testid="landing-map"]')).violations).toEqual([]);
+    expect((await axe('[data-testid="events-map-layout"]')).violations).toEqual([]);
   });
 
-  test("the static map preview is in the server-rendered HTML of /events and /", async ({ request, isMobile, freshUser, freshEvent }) => {
+  test("the static map preview is in the server-rendered HTML of /events (one map: the join page at / has none)", async ({ request, isMobile, freshUser, freshEvent }) => {
     test.skip(isMobile, "the HTML is the same for every device");
     const manager = await freshUser({ role: "branch_manager" });
     await freshEvent(manager, { label: "map ssr", status: "published", startInMinutes: 4 * 24 * 60, audience: "public" });
@@ -213,9 +188,9 @@ test.describe("Public events map", () => {
     expect(events).toContain('data-testid="events-map-preview-dot"');
     expect(events).toContain('data-testid="events-map-timeline-slider"');
     expect(events).not.toContain("leaflet-container");
-    const landing = await (await request.get("/")).text();
-    expect(landing).toContain('data-testid="landing-map-shell"');
-    expect(landing).toContain('data-testid="events-map-preview"');
+    expect(events.match(/data-testid="events-map-preview"/g) ?? [], "one map on the page").toHaveLength(1);
+    const home = await (await request.get("/")).text();
+    expect(home).not.toContain('data-testid="events-map-preview"');
   });
 });
 
