@@ -1,6 +1,6 @@
 # Gizlilik Bildirimi: Dialogue Society Gönüllü Merkezi
 
-Sürüm 1.4 · 26 Kasım 2026
+Sürüm 1.5 · 26 Kasım 2026
 
 Bu bildirim, Dialogue Society Gönüllü Merkezi'nin (Volunteer Hub) hangi kişisel bilgileri topladığını, bunları neden kullandığımızı, kimlerin görebildiğini ve hangi haklara sahip olduğunuzu açıklar. Hesap oluşturmadan önce okumanız gerekir. Bu metin İngilizce bildirimin çevirisidir; aralarında bir fark olursa İngilizce sürüm geçerlidir.
 
@@ -25,6 +25,7 @@ Gönüllü Merkezi'ni, İngiltere ve Galler'de kayıtlı bir hayır kurumu olan 
 | Oluşturduğunuz veya davet edildiğiniz toplantılar, gündemleri, kararları ve eklenen dosyalar | Siz veya bir yönetici bir toplantı düzenlediğinde |
 | Bir görev veya toplantı için gönderdiğiniz istekler ve verilen yanıt | Böyle bir istek gönderdiğinizde veya yanıtladığınızda |
 | Bunlarla ilgili bildirimler (örneğin "X size bir görev atadı" veya "X bir notta sizden bahsetti") | Gerçekleştiklerinde |
+| Anlık bildirimler (isteğe bağlı): Açarsanız, bildirim gönderebilmek için her cihazınızın teknik bir adresini saklarız. Bu adres, bildirimleri kapattığınızda, o cihazda oturumu kapattığınızda ya da hesabınızı sildiğinizde silinir. | Bir cihazda anlık bildirimleri açtığınızda |
 | Önemli değişikliklerin kaydı (örneğin rol değişiklikleri ve silmeler) | Bu değişiklikler olduğunda, güvenlik ve hesap verebilirlik için |
 
 Merkezde özel nitelikli veri (sağlık, din veya etnik köken gibi) toplamıyoruz. Lütfen serbest metin alanlarına bu tür bilgiler yazmayın.
