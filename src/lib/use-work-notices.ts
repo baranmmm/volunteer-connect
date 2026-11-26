@@ -10,6 +10,7 @@ import {
   markNotificationsRead,
 } from "@/lib/notifications.functions";
 import { listRequestTargets, workRequestCount } from "@/lib/work-requests.functions";
+import { REVIEW_WAITING_KEY } from "@/lib/request-view";
 
 /** Active members and National Coordinators (followers have no tasks, meetings or their requests). */
 export function useWorkMember() {
@@ -31,8 +32,9 @@ export function useNotificationCounts() {
   });
 }
 
-/** Query key of the "waiting for your review" counts (Requests badge, mobile More badge, dashboard card). */
-export const REVIEW_WAITING_KEY = "review-waiting";
+// The "waiting for your review" query key lives in a module without server functions, so list components can refresh
+// it without importing this one.
+export { REVIEW_WAITING_KEY };
 
 /**
  * What waits for the signed-in person's decision: task/meeting requests, event requests and volunteer applications

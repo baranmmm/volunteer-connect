@@ -13,8 +13,8 @@ import { isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
 import {
   REVIEW_WAITING_KEY,
   useMarkNoticesRead,
+  useNotificationCounts,
   useRequestTargets,
-  useReviewWaiting,
   useWorkRequestCount,
 } from "@/lib/use-work-notices";
 import { MeetingRequestForm, TaskRequestForm } from "@/components/requests/WorkRequestForms";
@@ -27,11 +27,8 @@ import {
 import { useMyApplications } from "@/lib/volunteer-applications";
 import { requestViewSearch, resolveRequestView } from "@/lib/request-view";
 import { ManagerEventRequests } from "@/components/requests/ManagerEventRequests";
-import {
-  DeletionRequests,
-  PendingVolunteers,
-  useAccountApprovals,
-} from "@/components/requests/AccountApprovals";
+import { DeletionRequests, PendingVolunteers } from "@/components/requests/AccountApprovals";
+import { useApprovalWaiting } from "@/lib/use-approval-waiting";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MyEventRequests } from "@/components/requests/MyEventRequests";
 import {
@@ -41,7 +38,8 @@ import {
 } from "@/components/requests/request-kinds";
 import { useCanRequestEvents, usePendingRequestCount } from "@/lib/use-event-requests";
 
-// The Requests badge counts these notices; opening the page marks them read.
+// Decisions on my own task and meeting requests: unread ones are counted on the "My requests" tab and in the menu's
+// Requests badge; showing that list (the page without tabs, or its "My requests" tab) marks them read.
 const REQUEST_NOTICES: { entityType: "task_request" | "meeting_request" }[] = [
   { entityType: "task_request" },
   { entityType: "meeting_request" },
@@ -73,17 +71,17 @@ function RequestsPage() {
   const pending = usePendingRequestCount();
   const workPending = useWorkRequestCount(reviewer);
   const targets = useRequestTargets(!follower && !nc);
-  // One count everywhere: the same get_review_waiting() as the Requests badge, the dashboard card and the grouped
-  // "waiting for you" notice (task/meeting requests, event requests and volunteer applications).
-  const waiting = useReviewWaiting();
-  const reviewTotal = reviewer ? (waiting.data?.total ?? 0) : 0;
+  // One count everywhere: the menu's Requests badge uses the same total. get_review_waiting() (task/meeting requests,
+  // event requests and volunteer applications) plus the former Approvals page's pending sign-ups and account deletion
+  // requests, which are part of "Waiting for my approval" too.
+  const waiting = useApprovalWaiting();
+  const reviewTotal = reviewer ? waiting.total : 0;
   const { tab: requested } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  // The former Approvals page (pending sign-ups, account deletion requests) is part of "Waiting for my approval".
-  const approvals = useAccountApprovals();
-  const view = resolveRequestView(requested, reviewer, nc, reviewTotal + approvals.count);
+  const view = resolveRequestView(requested, reviewer, nc, reviewTotal);
   // Opening Requests marks the task and meeting request notices read (the menu badge).
-  useMarkNoticesRead(REQUEST_NOTICES, "requests", !follower);
+  const unreadDecisions = useNotificationCounts().data?.requests ?? 0;
+  useMarkNoticesRead(REQUEST_NOTICES, "requests", !follower && (!reviewer || view === "mine"));
   useMarkNoticesRead(REVIEW_NOTICES, "review", reviewer && view === "review");
   // A decision here changes what waits (menu badges, dashboard card).
   const qc = useQueryClient();
@@ -138,7 +136,7 @@ function RequestsPage() {
           </Button>
         )}
       </header>
-      {reviewer && !requested && (waiting.data === undefined || !approvals.settled) ? (
+      {reviewer && !requested && !waiting.settled ? (
         // The default tab depends on what waits: decide once the count is known (no flash of another tab).
         <p data-testid="requests-loading" className="text-muted-foreground">
           {t("common.loading")}
@@ -158,9 +156,19 @@ function RequestsPage() {
               <TabsTrigger
                 value="mine"
                 data-testid="requests-tab-mine"
-                className="min-h-11 flex-1 px-2 sm:px-3"
+                className="min-h-11 flex-1 gap-2 px-2 sm:px-3"
               >
                 {t("requests.myTitle")}
+                {/* Unread decisions on my requests: with the other tab's count, the menu's Requests badge. */}
+                {unreadDecisions > 0 && (
+                  <Badge
+                    variant="secondary"
+                    data-testid="requests-tab-mine-badge"
+                    aria-label={t("requests.unreadDecisions", { count: unreadDecisions })}
+                  >
+                    {unreadDecisions}
+                  </Badge>
+                )}
               </TabsTrigger>
             )}
             <TabsTrigger
