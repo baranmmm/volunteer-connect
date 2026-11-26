@@ -91,10 +91,10 @@ beforeAll(async () => {
   await initializeRecycleDatabase(db);
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','Riverside','${ids.region}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.5')
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.6')
       FROM unnest(ARRAY['${ids.bm}','${ids.vol}','${ids.vol2}','${ids.nc}']::uuid[]) x;
     INSERT INTO auth.users(id, raw_user_meta_data) VALUES ('${ids.fol}', jsonb_build_object('full_name','Follower',
-      'privacy_notice_version','1.5','branch_id','${ids.b1}','follower',true));
+      'privacy_notice_version','1.6','branch_id','${ids.b1}','follower',true));
     UPDATE profiles SET status='active', branch_id='${ids.b1}' WHERE id <> '${ids.fol}';
     UPDATE profiles SET branch_id=NULL WHERE id='${ids.nc}';
     UPDATE user_roles SET role='branch_manager' WHERE user_id='${ids.bm}';

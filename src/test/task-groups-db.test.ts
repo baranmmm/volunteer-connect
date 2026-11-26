@@ -86,7 +86,7 @@ beforeAll(async () => {
   const members = [ids.rd, ids.bm1, ids.vol1, ids.vol1b, ids.vol1c, ids.vol2, ids.nc, ids.fol];
   await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
     INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}');
-    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.5')
+    INSERT INTO auth.users(id, raw_user_meta_data) SELECT x, jsonb_build_object('full_name','Person '||left(x::text,2),'privacy_notice_version','1.6')
       FROM unnest(ARRAY['${members.join("','")}']::uuid[]) x;
     UPDATE profiles SET status='active';
     UPDATE profiles SET branch_id='${ids.b1}' WHERE id IN ('${ids.bm1}','${ids.vol1}','${ids.vol1b}','${ids.vol1c}');

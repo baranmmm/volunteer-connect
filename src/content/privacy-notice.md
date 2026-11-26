@@ -1,6 +1,6 @@
 # Privacy Notice: Dialogue Society Volunteer Hub
 
-Version 1.5 · 26 November 2026
+Version 1.6 · 26 November 2026
 
 This notice explains what personal information the Dialogue Society Volunteer Hub collects, why we use it, who can see it and what rights you have. You need to read it before creating an account.
 
@@ -18,6 +18,8 @@ The Volunteer Hub is run by the Dialogue Society, a registered charity in Englan
 | Event registrations, waiting list place and attendance | When you register for events and when a manager records attendance |
 | Event requests, including any leaflet or invitation you upload | When you ask us to add or organise an event |
 | Files you upload to events | When you add images or documents to an event |
+| Photos you add to your branch's Media area or send in a photo upload request (with the album or event you chose, your note and the manager's decision) | When you add photos or send such a request |
+| Photos taken at our events and activities, which may show you | When our organisers or volunteers share them in the Hub |
 | Your privacy notice confirmation and optional preferences | When you sign up or change them in your profile |
 | Branches you follow | When you sign up or change them in your profile |
 | Volunteer application (motivation, availability, skills, phone if given) | When you apply to become a volunteer |
@@ -36,10 +38,14 @@ We use your information to run our volunteering activities: organising events, m
 
 We use tasks, meetings and notices to coordinate volunteering in your branch and region. If reminders are turned on for a task assigned to you, we remind you in the Hub and, unless you turn it off in your profile, by email.
 
-Two things are optional and are only used with your consent, which you can withdraw at any time in your profile:
+One thing is optional and is only used with your consent, which you can withdraw at any time in your profile: sending you occasional updates by email.
 
-- Using photos or videos of you taken at our events
-- Sending you occasional updates by email
+## Photos at our events
+
+We take photos at Dialogue Society events and activities. These photos may be shared in the members' Media area of the Hub (seen only by members of the branch) and on public event pages. We do this on the basis of our legitimate interests in recording and showing the work of our charity. Agreeing to be photographed is not a condition of joining.
+
+- If you do not want to be photographed, please tell the organiser at the event.
+- If you would like a photo of you to be removed, email medway@dialoguesociety.org and we will remove it.
 
 ## Who can see it
 
@@ -50,6 +56,7 @@ Two things are optional and are only used with your consent, which you can withd
 | Regional Directors of your region | The same, for all branches in their region |
 | National Coordinators | Numbers only for volunteers and trustees; details of branch and regional managers |
 | Members of your branch | Branch tasks, including who they are assigned to and the notes on them |
+| Members and trustees of your branch, its Branch Managers and the Regional Directors of your region | The photos in your branch's Media area. Photos you send in an upload request are seen only by you and the managers who review it, until they are approved. |
 | Trustees of your branch | Your branch's activity: its events, branch tasks (including who they are assigned to and the notes on them), the branch's meetings with their agenda, decisions and files, and the names of the branch members shown there. Trustees can see this but cannot change it. |
 | The people invited to a meeting, its organiser and the managers of its branch or region | That meeting (also in the calendar), its invitees, agenda, decisions and files. Nobody else sees it. |
 | National Coordinators | National tasks and meetings only; they never see volunteers' names |
@@ -64,6 +71,7 @@ We do not sell your information or share it for marketing. We use these service 
 - Your account stays active while you volunteer with us. If you stop volunteering, you can delete your account in your Profile, or ask us to.
 - Anything deleted in the Hub (events, requests, accounts) stays in the Recycle Bin for 30 days so it can be restored by mistake, then is permanently removed.
 - Deleted tasks and meetings stay in the Recycle Bin for 30 days, then are removed with their notes and files.
+- Photos in the Media area stay until a manager deletes them or someone asks us to remove a photo of them. Photos in an upload request that are not approved are deleted straight away.
 - If you ask us to erase your account, it is scheduled for erasure and cannot be restored. Your name and contact details are removed; event numbers stay as anonymous counts.
 - Past event records are kept only as long as needed for reporting, then anonymised.
 
@@ -75,7 +83,8 @@ You have the right to:
 - Correct information that is wrong (you can edit most of it in your Profile)
 - Ask us to erase your information (use "Delete my account" in your Profile)
 - Object to how we use your information or ask us to restrict it
-- Withdraw consent for the optional photo and email preferences at any time
+- Withdraw your consent to the optional email updates at any time
+- Ask us to remove a photo of you (see Photos at our events)
 
 To use any of these rights, email info@dialoguesociety.org. We will reply within one month.
 

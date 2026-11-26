@@ -73,6 +73,11 @@ counts(tbl, total, kept) AS (
   UNION ALL SELECT 'event_request_media', (SELECT count(*) FROM public.event_request_media), 0
   UNION ALL SELECT 'event_requests', (SELECT count(*) FROM public.event_requests), 0
   UNION ALL SELECT 'event_series', (SELECT count(*) FROM public.event_series), 0
+  UNION ALL SELECT 'media_albums', (SELECT count(*) FROM public.media_albums), 0
+  UNION ALL SELECT 'media_chapter_views', (SELECT count(*) FROM public.media_chapter_views), 0
+  UNION ALL SELECT 'media_photos', (SELECT count(*) FROM public.media_photos), 0
+  UNION ALL SELECT 'media_upload_files', (SELECT count(*) FROM public.media_upload_files), 0
+  UNION ALL SELECT 'media_upload_requests', (SELECT count(*) FROM public.media_upload_requests), 0
   UNION ALL SELECT 'meeting_agenda_items', (SELECT count(*) FROM public.meeting_agenda_items), 0
   UNION ALL SELECT 'meeting_decisions', (SELECT count(*) FROM public.meeting_decisions), 0
   UNION ALL SELECT 'meeting_files', (SELECT count(*) FROM public.meeting_files), 0

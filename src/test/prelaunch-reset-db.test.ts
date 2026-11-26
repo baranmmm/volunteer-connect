@@ -131,7 +131,7 @@ describe(
         // Runs before the auth.* stubs exist: the no-op path reads only auth.users and public tables, so the script is
         // safe as a migration in the PGlite fixture too. An undotted NC (like the e2e seed's) is not keep data.
         await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES
-        ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.5'));
+        ('${id(90)}', 'nc@fresh.test', jsonb_build_object('privacy_notice_version','1.6'));
         UPDATE public.user_roles SET role = 'national_coordinator' WHERE user_id = '${id(90)}';
         UPDATE public.profiles SET status = 'active' WHERE id = '${id(90)}';`);
         const before = await snapshot();
@@ -188,9 +188,9 @@ describe("the production-like database", { timeout: 30000 }, () => {
     await db.exec(`INSERT INTO regions(id,name) VALUES ('${ids.region}','Region');
       INSERT INTO branches(id,name,region_id) VALUES ('${ids.b1}','One','${ids.region}'),('${ids.b2}','Two','${ids.region}'),
         ('${ids.bGone}','Closed','${ids.region}');
-      ${people.map((p) => `INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${p}', '${email[p]}', jsonb_build_object('full_name','Person ${p.slice(0, 2)}','privacy_notice_version','1.5','branch_id','${ids.b1}'));`).join("\n")}
+      ${people.map((p) => `INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${p}', '${email[p]}', jsonb_build_object('full_name','Person ${p.slice(0, 2)}','privacy_notice_version','1.6','branch_id','${ids.b1}'));`).join("\n")}
       INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${ids.fol}', 'follower@x.test',
-        jsonb_build_object('full_name','Follower','privacy_notice_version','1.5','branch_id','${ids.b1}','follower',true,
+        jsonb_build_object('full_name','Follower','privacy_notice_version','1.6','branch_id','${ids.b1}','follower',true,
           'photo_consent',true,'updates_email_consent',true));
       UPDATE profiles SET status='active' WHERE id <> '${ids.pend}' AND id <> '${ids.fol}';
       UPDATE profiles SET branch_id=NULL WHERE id IN ('${ids.nc}','${ids.nc2}','${ids.rd}');
@@ -264,7 +264,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
     await db.exec("BEGIN");
     await db.exec(`DO $$
       DECLARE _e uuid; _pub uuid; _mem uuid; _s uuid; _m uuid; _a1 uuid; _a2 uuid; _d uuid; _t uuid; _r uuid; _v uuid;
-        _ua uuid; _req uuid; _n uuid; _sub uuid; _ms uuid; _mail uuid;
+        _ua uuid; _req uuid; _n uuid; _sub uuid; _ms uuid; _mail uuid; _ke uuid; _al uuid; _ph uuid; _mr uuid;
       BEGIN
         -- A past record without an imported photo, and an imported-looking one in the Recycle Bin (both deleted).
         PERFORM set_config('app.past_event', 'on', true);
@@ -379,6 +379,31 @@ describe("the production-like database", { timeout: 30000 }, () => {
           ('${ids.vol}', 'https://push.example.test/vol', repeat('C', 87), repeat('D', 22), 'Chrome on Android');
         INSERT INTO public.push_outbox(user_id, subscription_id, notification_id, type)
         SELECT s.user_id, s.id, _n, 'meeting' FROM public.push_subscriptions s;
+        -- Media library (20261216090000): an album with a cover, a photo sent for a KEPT imported event (it goes: only
+        -- the imported event_media rows are kept), an upload request with a pending file, viewed markers, Storage
+        -- objects with copies in media-library, and a hash on a kept event file (the kept row stays as it is).
+        SELECT id INTO _ke FROM public.events WHERE past_record AND branch_id = '${ids.b1}' AND deleted_at IS NULL ORDER BY id LIMIT 1;
+        INSERT INTO public.media_albums(branch_id, title, created_by) VALUES ('${ids.b1}', 'Volunteer meet-ups', '${ids.bm}') RETURNING id INTO _al;
+        _ph := gen_random_uuid();
+        INSERT INTO public.media_photos(id, branch_id, album_id, storage_path, content_hash, ready, uploaded_by)
+        VALUES (_ph, '${ids.b1}', _al, '${ids.b1}/' || _ph || '.jpg', repeat('a', 64), true, '${ids.bm}');
+        UPDATE public.media_albums SET cover_photo_id = _ph WHERE id = _al;
+        INSERT INTO storage.objects(bucket_id, name) VALUES ('media-library', '${ids.b1}/' || _ph || '.jpg'),
+          ('media-library', '${ids.b1}/' || _ph || '.w640.webp'), ('media-library', '${ids.b1}/' || _ph || '.w1280.webp');
+        _ph := gen_random_uuid();
+        INSERT INTO public.media_upload_requests(branch_id, requester_id, event_id, note, status, result_event_id, reviewer_id)
+        VALUES ('${ids.b1}', '${ids.vol}', _ke, 'From the evening', 'approved', _ke, '${ids.bm}') RETURNING id INTO _mr;
+        INSERT INTO public.media_photos(id, branch_id, event_id, storage_path, ready, uploaded_by, approved_by, request_id)
+        VALUES (_ph, '${ids.b1}', _ke, '${ids.b1}/' || _ph || '.png', true, '${ids.vol}', '${ids.bm}', _mr);
+        INSERT INTO storage.objects(bucket_id, name) VALUES ('media-library', '${ids.b1}/' || _ph || '.png');
+        INSERT INTO public.media_upload_requests(branch_id, requester_id, proposed_title, status, submitted_at)
+        VALUES ('${ids.b1}', '${ids.vol}', 'Peace Walk', 'submitted', now()) RETURNING id INTO _mr;
+        _ph := gen_random_uuid();
+        INSERT INTO public.media_upload_files(id, request_id, branch_id, storage_path, ready)
+        VALUES (_ph, _mr, '${ids.b1}', '${ids.b1}/' || _ph || '.webp', true);
+        INSERT INTO storage.objects(bucket_id, name) VALUES ('media-library', '${ids.b1}/' || _ph || '.webp');
+        INSERT INTO public.media_chapter_views(user_id, album_id) VALUES ('${ids.vol}', _al);
+        INSERT INTO public.media_chapter_views(user_id, event_id) VALUES ('${ids.vol}', _ke), ('${ids.nc}', _ke);
       END $$;`);
     // A task group ("@all") created through its RPC by the Branch Manager (tasks, assignees, notices).
     await as(ids.bm);
@@ -549,7 +574,7 @@ describe("the production-like database", { timeout: 30000 }, () => {
   it("aborts with nothing changed when a second dotted NC exists", () =>
     tx(async () => {
       await db.exec(`INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES ('${id(30)}', 'other.nc@x.test',
-          jsonb_build_object('privacy_notice_version','1.5'));
+          jsonb_build_object('privacy_notice_version','1.6'));
         UPDATE user_roles SET role='national_coordinator' WHERE user_id='${id(30)}';
         UPDATE profiles SET status='active' WHERE id='${id(30)}';`);
       const before = await snapshot();

@@ -7,7 +7,8 @@
 --     copies (<name>.w640.webp, <name>.w1280.webp) live in the same folder;
 --   * event-media posters of the kept videos (event_videos.thumb_path, videos/<video id>.jpg).
 --   Nothing else in Storage is kept: the app's static and brand assets are bundled with the app (public/), not stored
---   in a bucket. Every object of meeting-files and event-request-files is deleted, and so is everything under
+--   in a bucket. Every object of meeting-files, event-request-files and media-library (members' album photos, photos
+--   sent for events, pending upload request files, with their copies) is deleted, and so is everything under
 --   event-media/deleted/ (Recycle Bin copies).
 --
 -- Output: one table (bucket_id, name). The first rows, whose name starts with "#", are the per-bucket summary (not
