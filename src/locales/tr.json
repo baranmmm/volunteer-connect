@@ -1635,17 +1635,7 @@
     },
     "settings": {
       "title": "Bildirimler",
-      "intro": "Her bildirim uygulamada hemen görünür. Hangi bildirimleri uygulamada alacağınızı ve hangilerinin e-postayla da geleceğini seçin: bazı e-postalar hemen gelir, diğerleri saat 08:00'de (Birleşik Krallık saati) tek bir günlük özet e-postasında, yalnızca yeni bir şey olan günlerde.",
-      "inApp": "Uygulamada",
       "email": "E-posta",
-      "emailOn": "{{label}} için e-posta",
-      "timing": {
-        "immediate": "E-posta hemen gelir",
-        "digest": "E-posta günlük özette gelir",
-        "mixed": "Davetler hemen e-postayla, değişiklikler günlük özette"
-      },
-      "enabled": "Açık",
-      "locked": "Sizi bekleyen hiçbir şey kaçmasın diye uygulamada her zaman açık. E-postası kapatılabilir.",
       "saved": "Bildirim ayarı kaydedildi",
       "loadError": "Bildirim ayarları yüklenemedi.",
       "types": {
@@ -1657,6 +1647,31 @@
         "task_reminder": "Görev hatırlatmaları",
         "meeting": "Davet edildiğim toplantılar (davet, değişiklik, iptal)",
         "request_decided": "Taleplerime verilen kararlar"
+      },
+      "inAppAlways": "Bildirimler her zaman uygulamada (zil simgesinde) hemen görünür.",
+      "emailModes": {
+        "all": "Önemliler hemen, diğerleri günlük özette",
+        "important": "Yalnızca önemliler",
+        "none": "E-posta yok",
+        "custom": "Özel: Gelişmiş ayarlarda bildirim türüne göre seçildi."
+      },
+      "advanced": "Gelişmiş ayarlar",
+      "columns": {
+        "type": "Bildirim",
+        "inapp": "Uygulama",
+        "email": "E-posta",
+        "push": "Anlık"
+      },
+      "cell": "{{label}} — {{channel}}",
+      "short": {
+        "task_assigned": "Bana atanan görevler",
+        "mention": "Bahsedilmeler",
+        "review": "İncelenecek talepler",
+        "task_status": "Görevim engellendi/bitti",
+        "task_note": "Görevlerimdeki notlar",
+        "task_reminder": "Görev hatırlatmaları",
+        "meeting": "Toplantılar",
+        "request_decided": "Taleplerime kararlar"
       }
     }
   },
@@ -2338,15 +2353,11 @@
       "review_other": "Sizi bekleyen {{count}} talep var. İncelemek için Gönüllü Merkezi'ni açın."
     },
     "device": {
-      "title": "Bu cihazda anlık bildirimler",
-      "intro": "Merkez kapalıyken bile bildirimleri bu telefonda veya bilgisayarda alın. Hangi bildirimlerin anlık bildirim olarak da geleceğini aşağıda seçin.",
-      "on": "Bu cihazda anlık bildirimler açık.",
-      "off": "Bu cihazda anlık bildirimler kapalı.",
+      "title": "Telefon bildirimleri (anlık)",
+      "intro": "Size bir görev atandığında, bir toplantı daveti geldiğinde veya bir talep incelemenizi beklediğinde.",
       "unsupported": "Bu tarayıcı anlık bildirim gösteremiyor. Yüklü uygulamayı veya başka bir tarayıcıyı deneyin.",
-      "iosInstall": "iPhone ve iPad'de anlık bildirimler yalnızca yüklü uygulamada çalışır (iOS 16.4 veya üstü). Uygulamayı yükleyin (Paylaş, ardından Ana Ekrana Ekle), ana ekranınızdan açın ve bildirimleri burada açın.",
-      "denied": "Bu cihazda uygulamanın bildirimleri engellenmiş. Yeniden izin vermek için:",
-      "enable": "Bu cihazda anlık bildirimleri aç",
-      "disable": "Bu cihazda anlık bildirimleri kapat",
+      "iosInstall": "iPhone ve iPad'de anlık bildirimler yalnızca yüklü uygulamada çalışır (iOS 16.4 veya üstü): Paylaş, ardından Ana Ekrana Ekle, sonra burada açın.",
+      "denied": "Bu cihazda bildirimler engellenmiş. Yeniden izin vermek için:",
       "enabled": "Bu cihazda anlık bildirimler açıldı",
       "disabled": "Bu cihazda anlık bildirimler kapatıldı",
       "failed": "Anlık bildirimler açılamadı. Lütfen tekrar deneyin.",
@@ -2356,10 +2367,6 @@
       "removeLabel": "{{label}} için anlık bildirimleri kaldır",
       "removed": "Cihaz kaldırıldı",
       "unknownDevice": "Tarayıcı"
-    },
-    "settings": {
-      "push": "Anlık bildirim",
-      "pushOn": "{{label}} için anlık bildirim"
     },
     "card": {
       "title": "Görevlerinizden haberdar olmak için bildirimleri açın",

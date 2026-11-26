@@ -1,10 +1,13 @@
-// Web Push UI (signed-in pages only): the "this device" panel in Profile > Notifications and the dashboard card in the
-// installed app. Nothing asks for permission on page load: only the buttons here do, from the click itself.
+// Web Push UI (signed-in pages only): the "this device" switch and the other devices in Profile > Notifications, and the
+// dashboard card in the installed app. Nothing asks for permission on page load: only the switch and the card's button
+// do, from the click itself.
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { BellRing, BellOff } from "lucide-react";
+import { BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/lib/toast";
 import { APP_SHORT_NAME } from "@/lib/push/config";
 import {
@@ -65,12 +68,69 @@ function useEnable() {
     });
 }
 
-/** Profile > Notifications: push on this device (state, enable / disable), and my other devices. */
-export function PushDevicePanel() {
+/**
+ * Profile > Notifications, top: one On/Off switch for push on this device (on = ask for permission from the click and
+ * register this device; off = unregister it). Where push cannot work here it shows a short note instead of the switch.
+ */
+export function PushSwitch() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const push = usePushState();
   const enable = useEnable();
+  const state = push.device;
+
+  async function disable() {
+    if (await disablePush()) {
+      toast.success(t("push.device.disabled"));
+      void qc.invalidateQueries({ queryKey: ["push-devices"] });
+    } else toast.error(t("push.device.disableFailed"));
+  }
+
+  const switchable = state === null || state === "off" || state === "on";
+  return (
+    <div data-testid="profile-push" data-state={state ?? "loading"} className="space-y-1">
+      <div className="flex min-h-11 items-center justify-between gap-3">
+        <Label htmlFor="profile-push-switch" className="text-base font-medium leading-snug">
+          {t("push.device.title")}
+        </Label>
+        {switchable && (
+          <Switch
+            id="profile-push-switch"
+            data-testid="profile-push-switch"
+            checked={state === "on"}
+            disabled={state === null || push.busy}
+            aria-describedby="profile-push-hint"
+            // Straight from the click: enablePush() asks for permission first.
+            onCheckedChange={(on) => (on ? enable() : void disable())}
+          />
+        )}
+      </div>
+      <p id="profile-push-hint" className="text-sm text-muted-foreground">
+        {t("push.device.intro")}
+      </p>
+      {state === "unsupported" ? (
+        <p data-testid="profile-push-unsupported" className="text-sm">
+          {t("push.device.unsupported")}
+        </p>
+      ) : state === "ios-install" ? (
+        <p data-testid="profile-push-ios-install" className="text-sm">
+          {t("push.device.iosInstall")}
+        </p>
+      ) : state === "denied" ? (
+        <div data-testid="profile-push-denied" className="space-y-1">
+          <p className="text-sm">{t("push.device.denied")}</p>
+          <SettingsHelp testId="profile-push-denied-help" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Profile > Notifications > Advanced: my other devices with push on (Remove). Nothing when there are none. */
+export function PushOtherDevices() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const push = usePushState();
   const devices = useQuery({
     queryKey: ["push-devices", push.endpoint],
     queryFn: () => listPushDevices(),
@@ -80,12 +140,6 @@ export function PushDevicePanel() {
   const [removing, setRemoving] = useState<string | null>(null);
   const others = (devices.data ?? []).filter((d) => !d.current);
 
-  async function disable() {
-    if (await disablePush()) {
-      toast.success(t("push.device.disabled"));
-      void qc.invalidateQueries({ queryKey: ["push-devices"] });
-    } else toast.error(t("push.device.disableFailed"));
-  }
   async function remove(id: string) {
     setRemoving(id);
     try {
@@ -99,90 +153,35 @@ export function PushDevicePanel() {
     }
   }
 
+  if (others.length === 0) return null;
   return (
-    <div
-      data-testid="profile-push"
-      data-state={push.device ?? "loading"}
-      className="space-y-3 rounded-xl border bg-muted/30 p-4"
-    >
-      <div className="space-y-1">
-        <h3 className="font-semibold">{t("push.device.title")}</h3>
-        <p className="text-sm text-muted-foreground">{t("push.device.intro")}</p>
-      </div>
-      {push.device === null ? (
-        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
-      ) : push.device === "unsupported" ? (
-        <p data-testid="profile-push-unsupported" className="text-sm">
-          {t("push.device.unsupported")}
-        </p>
-      ) : push.device === "ios-install" ? (
-        <p data-testid="profile-push-ios-install" className="text-sm">
-          {t("push.device.iosInstall")}
-        </p>
-      ) : push.device === "denied" ? (
-        <div data-testid="profile-push-denied" className="space-y-2">
-          <p className="text-sm">{t("push.device.denied")}</p>
-          <SettingsHelp testId="profile-push-denied-help" />
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <p data-testid="profile-push-status" className="text-sm">
-            {t(push.device === "on" ? "push.device.on" : "push.device.off")}
-          </p>
-          {push.device === "on" ? (
-            <Button
-              data-testid="profile-push-disable"
-              variant="outline"
-              className="h-11 rounded-xl"
-              disabled={push.busy}
-              onClick={() => void disable()}
+    <div className="space-y-1">
+      <p className="text-sm font-medium">{t("push.device.otherDevices")}</p>
+      <ul className="divide-y">
+        {others.map((d) => {
+          const label = d.user_agent ?? t("push.device.unknownDevice");
+          return (
+            <li
+              key={d.id}
+              data-testid="profile-push-device"
+              data-device-id={d.id}
+              className="flex min-h-11 items-center justify-between gap-3 py-1 text-sm"
             >
-              <BellOff className="mr-2 h-4 w-4" aria-hidden />
-              {t("push.device.disable")}
-            </Button>
-          ) : (
-            <Button
-              data-testid="profile-push-enable"
-              className="h-11 rounded-xl"
-              disabled={push.busy}
-              onClick={enable}
-            >
-              <BellRing className="mr-2 h-4 w-4" aria-hidden />
-              {t("push.device.enable")}
-            </Button>
-          )}
-        </div>
-      )}
-      {others.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-sm font-medium">{t("push.device.otherDevices")}</p>
-          <ul className="divide-y">
-            {others.map((d) => {
-              const label = d.user_agent ?? t("push.device.unknownDevice");
-              return (
-                <li
-                  key={d.id}
-                  data-testid="profile-push-device"
-                  data-device-id={d.id}
-                  className="flex min-h-11 items-center justify-between gap-3 py-1 text-sm"
-                >
-                  <span className="[overflow-wrap:anywhere]">{label}</span>
-                  <Button
-                    data-testid="profile-push-device-remove"
-                    variant="ghost"
-                    className="h-11 rounded-xl"
-                    disabled={removing !== null}
-                    aria-label={t("push.device.removeLabel", { label })}
-                    onClick={() => void remove(d.id)}
-                  >
-                    {t("push.device.remove")}
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+              <span className="[overflow-wrap:anywhere]">{label}</span>
+              <Button
+                data-testid="profile-push-device-remove"
+                variant="ghost"
+                className="h-11 rounded-xl"
+                disabled={removing !== null}
+                aria-label={t("push.device.removeLabel", { label })}
+                onClick={() => void remove(d.id)}
+              >
+                {t("push.device.remove")}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
