@@ -9,7 +9,14 @@ import { meetingDay } from "./meeting-ui";
  * "From last meeting" on an occurrence of a recurring meeting: the previous occurrence's unresolved agenda items and
  * its open tasks, read live (marking an item resolved or a task done there removes it here).
  */
-export function MeetingFromLast({ fromLast }: { fromLast: FromLastMeeting }) {
+export function MeetingFromLast({
+  fromLast,
+  meetingId,
+}: {
+  fromLast: FromLastMeeting;
+  /** The meeting page this is shown on: a task opens in the side panel there (?task=<id>). */
+  meetingId: string;
+}) {
   const { t } = useTranslation();
   const empty = fromLast.items.length === 0 && fromLast.tasks.length === 0;
   return (
@@ -72,8 +79,10 @@ export function MeetingFromLast({ fromLast }: { fromLast: FromLastMeeting }) {
                 {fromLast.tasks.map((task) => (
                   <li key={task.id} className="min-w-0">
                     <Link
-                      to="/tasks"
-                      search={{ task: task.id } as never}
+                      to="/meetings/$id"
+                      params={{ id: meetingId }}
+                      search={{ task: task.id }}
+                      resetScroll={false}
                       data-testid="meeting-from-last-task"
                       data-task-id={task.id}
                       data-status={task.status}

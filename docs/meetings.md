@@ -64,12 +64,24 @@ On the meeting page each agenda item is a toggle row (Notion-style), collapsed b
   tasks created from them with their status badges. The toggle is a button with `aria-expanded` and `aria-controls`.
 - "Expand all / Collapse all" opens or closes every item. A just-added item opens expanded, ready for its decisions.
 
+**Decision editor.** Enter saves the decision and Shift+Enter adds a new line (Enter is ignored while an input
+method is composing text, so IME users can confirm characters).
+
 **Decision to task.** "Create task" on a decision opens the task form prefilled:
 - the title comes from the decision;
 - the scope is the meeting's scope;
 - the meeting and the decision are linked.
 
 The decision then shows the linked task and its status, and the task links back to the meeting.
+- **Side panel.** Clicking a task under a decision (and in "From last meeting" and the series tasks) opens it in the
+  task side panel on the meeting page, with every detail and action (`/meetings/<id>?task=<task id>`, so a refresh
+  keeps it open). Closing the panel reads the meeting again.
+- **Edit and Delete.** Each task row under a decision has Edit (the task form) and Delete (asks first; the task goes
+  to the Recycle Bin) icon buttons, shown when the caller may edit that task (`can_edit` from `get_task`; the
+  database checks again in `update_task` / `delete_task`).
+- **On the calendar entry.** The meeting's calendar entry (`/events/<event_id>`) lists these tasks under "Linked
+  tasks", next to the tasks linked to the event itself. There the scope, branch and region are under a collapsed
+  "Details" toggle.
 
 **Files.** Files go in the private bucket `meeting-files`, which the migration creates only when it is missing.
 - Limits: 25 MB per file, at most 20 per meeting. Types: PDF, JPEG/PNG/WebP, DOCX, PPTX, XLSX.
@@ -122,7 +134,10 @@ changes. Invitees are copied to every occurrence and told once (about the first 
 
 ## Pages
 
-- `/meetings` has Upcoming and Past tabs.
+- `/meetings` is one timeline, oldest at the top: older past meetings behind "Show earlier meetings (N)", the two
+  most recent past meetings (faded: dashed border and muted background, no opacity), the next three upcoming meetings
+  (prominent, under "Coming up"), then the later upcoming ones behind "Show more upcoming (N)"
+  (`meetingTimeline` in `src/lib/meetings.ts`). The old `?tab=past` link opens the same page.
 - `/meetings/<id>` shows, in order: details (with "Open in calendar" and, for a series, its position and links), the
   editor actions, "From last meeting", the agenda with decisions, invitees, files, and for a series the series tasks
   and (editors) the standing agenda items.
@@ -177,8 +192,8 @@ All kebab-case, never derived from text. Lists expose `data-meeting-id`, `data-i
 `data-file-id` and `data-user-id`.
 
 - **List** (`/meetings`):
-  - Header and tabs: `meetings-new`, `meetings-tab-upcoming|past`
-  - Lists: `meetings-list` and `meetings-empty` (data-when), `meetings-retry`
+  - Header: `meetings-new`
+  - Timeline: `meetings-timeline`, `meetings-list`, `meetings-show-earlier` / `meetings-show-later` (aria-expanded, data-count), `meetings-earlier`, `meetings-recent`, `meetings-next` (with `meetings-empty-upcoming`), `meetings-later`; `meetings-empty` (no meetings at all), `meetings-retry`
   - Cards: `meeting-card` (data-meeting-id, data-status), with `meeting-card-title`, `meeting-card-status`, `meeting-card-invited`, `meeting-card-scope` (only with more than one scope), `meeting-card-recurring`
 - **Detail**:
   - Page: `meeting-detail` (data-meeting-id, data-status), `meeting-not-found`, `meeting-back`
@@ -199,7 +214,9 @@ All kebab-case, never derived from text. Lists expose `data-meeting-id`, `data-i
 - **Decisions**:
   - `meeting-decision` (data-decision-id), `meeting-decision-text-value`, `meeting-decisions-empty`
   - Editing: `meeting-decision-add`, `meeting-decision-form`, `meeting-decision-text`, `meeting-decision-save`, `meeting-decision-cancel`, `meeting-decision-edit`, `meeting-decision-delete`
-  - Tasks: `meeting-decision-task` (data-task-id, data-status), `meeting-decision-create-task`
+  - Tasks: `meeting-decision-task-row` with `meeting-decision-task` (data-task-id, data-status; opens the side panel), `meeting-decision-task-edit`, `meeting-decision-task-delete`, then `meeting-decision-task-delete-dialog` with `-confirm` / `-cancel`; `meeting-decision-create-task`
+  - Side panel on the meeting page: `task-panel` (see docs/tasks.md)
+  - Calendar entry: `event-meeting-details` with `event-meeting-details-toggle` (aria-expanded, collapsed by default)
 - **Files**: `meeting-files`, `meeting-files-empty`, `meeting-file-upload`, `meeting-file-input`, `meeting-file` (data-file-id), `meeting-file-name`, `meeting-file-download`, `meeting-file-delete`, `meeting-file-errors`
 - **Form** (prefix `meeting-form`, or `work-review-meeting` when approving a request, or `meeting-reschedule-form`):
   - Shell and scope: `-dialog`, `-scope` (or `-scope-fixed`); neither is shown when the user has one scope
