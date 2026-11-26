@@ -1,8 +1,14 @@
 # England and Wales dot map
 
-Generates `src/components/public/events-map/england-wales-dots.ts`: the halftone dots of England and Wales that the
-public events map (`/events`) draws as SVG. Nothing is fetched at run time or during the app build; the generated file
-is committed, so Lovable and CI builds need no network.
+Generates the halftone dots of England and Wales for the public events map (`/events`):
+
+- `public/maps/england-wales-dots.svg`: the dots, a static asset the page shows as an image. It stays out of the JS
+  module graph and the server-rendered HTML (a 30 KB generated module slowed the dev server's compiles and the page
+  chunk).
+- `src/components/public/events-map/england-wales-dots.ts`: only the geometry (land bounds, the SVG's box, URL).
+
+Nothing is fetched from the network at run time or during the app build; both generated files are committed, so
+Lovable and CI builds need no network.
 
 ## Source
 
