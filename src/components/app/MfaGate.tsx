@@ -7,6 +7,7 @@ import { translateError } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PublicTopBar } from "@/components/public/PublicTopBar";
 
 /** Current assurance level and the verified TOTP factor, if any. */
 export function useMfaStatus(enabled: boolean, userId: string | undefined) {
@@ -201,23 +202,27 @@ export function MfaScreen({
     await qc.refetchQueries({ queryKey: ["mfa-status", userId] });
   };
   return (
-    <main data-testid="mfa-gate" className="mx-auto max-w-xl space-y-6 px-4 py-10">
-      <header className="flex items-start gap-3">
-        <ShieldCheck className="mt-1 size-7 shrink-0 text-primary" aria-hidden />
-        <div>
-          <h1 className="text-2xl font-bold">{t("mfa.title")}</h1>
-          <p className="text-muted-foreground">{t("mfa.required")}</p>
-        </div>
-      </header>
-      {factorId ? (
-        <MfaVerify factorId={factorId} onDone={() => void done()} />
-      ) : (
-        <MfaSetup onDone={() => void done()} />
-      )}
-      <Button data-testid="mfa-signout" variant="outline" className="h-11" onClick={onSignOut}>
-        <LogOut />
-        {t("navigation.signOut")}
-      </Button>
-    </main>
+    <>
+      {/* The public top bar without account links: Dashboard opens only after the code. */}
+      <PublicTopBar current={null} account={false} />
+      <main data-testid="mfa-gate" className="mx-auto max-w-xl space-y-6 px-4 py-10">
+        <header className="flex items-start gap-3">
+          <ShieldCheck className="mt-1 size-7 shrink-0 text-primary" aria-hidden />
+          <div>
+            <h1 className="text-2xl font-bold">{t("mfa.title")}</h1>
+            <p className="text-muted-foreground">{t("mfa.required")}</p>
+          </div>
+        </header>
+        {factorId ? (
+          <MfaVerify factorId={factorId} onDone={() => void done()} />
+        ) : (
+          <MfaSetup onDone={() => void done()} />
+        )}
+        <Button data-testid="mfa-signout" variant="outline" className="h-11" onClick={onSignOut}>
+          <LogOut />
+          {t("navigation.signOut")}
+        </Button>
+      </main>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { requestViewSearch, resolveRequestView } from "@/lib/request-view";
+import { approvalWaitingTotal, requestViewSearch, resolveRequestView } from "@/lib/request-view";
 import { NAV_ITEMS } from "@/components/app/nav";
 
 describe("unified Requests views", () => {
@@ -42,5 +42,25 @@ describe("unified Requests views", () => {
       "national_coordinator",
     ]); // NCs review the task and meeting requests sent to them
     expect(items[0]?.badge).toBe("requests");
+  });
+});
+
+describe("Waiting for my approval total", () => {
+  it("sums the shared review count, pending sign-ups and deletion requests", () => {
+    expect(approvalWaitingTotal({ shared: 2, pendingMembers: 1, deletionRequests: 1 })).toBe(4);
+    expect(approvalWaitingTotal({ shared: 0, pendingMembers: 0, deletionRequests: 3 })).toBe(3);
+  });
+  it("counts still loading (or not loaded for the role) add nothing", () => {
+    expect(approvalWaitingTotal({ shared: 5 })).toBe(5);
+    expect(
+      approvalWaitingTotal({ shared: undefined, pendingMembers: null, deletionRequests: 2 }),
+    ).toBe(2);
+    expect(approvalWaitingTotal({})).toBe(0);
+  });
+  it("never shows a negative, fractional or non-finite number", () => {
+    expect(
+      approvalWaitingTotal({ shared: -1, pendingMembers: 1.7, deletionRequests: Number.NaN }),
+    ).toBe(1);
+    expect(approvalWaitingTotal({ shared: Number.POSITIVE_INFINITY, pendingMembers: 2 })).toBe(2);
   });
 });

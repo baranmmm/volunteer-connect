@@ -1,8 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { ArrowLeft } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
 import { pageMeta, siteOrigin } from "@/lib/public-meta";
-import { LogoLink } from "@/components/app/LogoLink";
+import { PublicTopBar } from "@/components/public/PublicTopBar";
 import { PrivacyNotice } from "@/components/app/PrivacyNotice";
 import { parseMarkdown } from "@/lib/markdown";
 import notice from "@/content/attendee-privacy-notice.md?raw";
@@ -26,23 +24,13 @@ export const Route = createFileRoute("/privacy_/attendees")({
 });
 
 function AttendeePrivacyPage() {
-  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-background">
+      <PublicTopBar />
       <main
         data-testid="attendee-privacy-page"
         className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6"
       >
-        <div className="flex items-center justify-between gap-4">
-          <LogoLink size="sm" />
-          <Link
-            to="/events"
-            className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-primary"
-          >
-            <ArrowLeft className="size-4" aria-hidden />
-            {t("attendeePrivacy.back")}
-          </Link>
-        </div>
         <PrivacyNotice blocks={BLOCKS} testId="attendee-privacy-notice" />
       </main>
     </div>
