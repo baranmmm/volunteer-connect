@@ -17,6 +17,7 @@ import {
   listTaskNotes,
   updateTaskNote,
 } from "@/lib/tasks.functions";
+import { submitOnEnter } from "@/lib/enter-submit";
 import { formatDate, translateError } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -321,6 +322,7 @@ function NoteComposer({
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     const text = body.trim();
     if (!text) return setError(t("tasks.notes.required"));
     if (text.length > TASK_NOTE_MAX) return setError(t("tasks.notes.tooLong"));
@@ -359,6 +361,8 @@ function NoteComposer({
             maxLength={TASK_NOTE_MAX}
             placeholder={t("tasks.notes.placeholder")}
             aria-invalid={!!error}
+            aria-describedby={`${inputId}-hint`}
+            onKeyDown={submitOnEnter}
             onChange={(e) => {
               const next = e.target.value;
               const at = e.target.selectionStart ?? next.length;
@@ -448,6 +452,9 @@ function NoteComposer({
           ))}
         </ul>
       )}
+      <p id={`${inputId}-hint`} className="text-xs text-muted-foreground">
+        {t("common.enterToSave")}
+      </p>
       {error && (
         <p role="alert" className="text-sm text-destructive" data-testid="task-note-error">
           {error}

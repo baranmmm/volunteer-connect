@@ -17,5 +17,14 @@ export function scopeText(
   return t("work.scope.branchNamed", { name: s.branch ?? "" });
 }
 
+/** Up to two initials of a name ("Ayse Yilmaz" → "AY"); "?" when there is no name. */
+export function initials(name: string | null | undefined) {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const first = Array.from(parts[0]!)[0] ?? "";
+  const last = parts.length > 1 ? (Array.from(parts[parts.length - 1]!)[0] ?? "") : "";
+  return (first + last).toLocaleUpperCase();
+}
+
 export const selectClass =
   "h-11 w-full min-w-0 max-w-full rounded-xl border border-input bg-card px-3 text-base";

@@ -292,6 +292,30 @@ export function archivableDoneIds(tasks: Task[]) {
     .map((t) => t.id);
 }
 
+/**
+ * The event page's linked tasks: the tasks linked to the event plus, for a meeting's calendar entry, the tasks from
+ * the meeting's decisions. Each task once (a task can be both), ordered by due date (none last), then as given.
+ */
+export function mergeLinkedTasks<T extends { id: string; due_date?: string | null | undefined }>(
+  linked: readonly T[],
+  fromMeeting: readonly T[],
+) {
+  const seen = new Set<string>();
+  const all: { task: T; order: number }[] = [];
+  for (const task of [...linked, ...fromMeeting]) {
+    if (seen.has(task.id)) continue;
+    seen.add(task.id);
+    all.push({ task, order: all.length });
+  }
+  return all
+    .sort(
+      (a, b) =>
+        (a.task.due_date ?? "9999-12-31").localeCompare(b.task.due_date ?? "9999-12-31") ||
+        a.order - b.order,
+    )
+    .map((x) => x.task);
+}
+
 /** The event page's linked tasks: archived ones are hidden unless there is nothing else to show. */
 export function visibleEventTasks<T extends { archived_at?: string | null | undefined }>(
   tasks: T[],

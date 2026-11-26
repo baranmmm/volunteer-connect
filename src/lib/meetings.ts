@@ -137,6 +137,31 @@ export type MeetingCreateInput = z.infer<typeof meetingCreateInput>;
 export const MEETING_SERIES_MODES = ["this", "following", "all"] as const;
 export type MeetingSeriesMode = (typeof MEETING_SERIES_MODES)[number];
 
+/** How many recent past meetings and next upcoming meetings the /meetings timeline shows without expanding. */
+export const TIMELINE_RECENT_PAST = 2;
+export const TIMELINE_NEXT_UPCOMING = 3;
+/**
+ * The /meetings timeline, oldest first in every part: `earlier` (older past meetings, collapsed), `recent` (the two
+ * most recent past ones, shown faded), `next` (the next three upcoming, prominent) and `later` (the rest of the
+ * upcoming ones, collapsed). Inputs: list_meetings('upcoming') (soonest first) and list_meetings('past') (latest first).
+ */
+export function meetingTimeline<T extends { id: string; starts_at: string }>(
+  upcoming: readonly T[],
+  past: readonly T[],
+) {
+  const byStart = (a: T, b: T) =>
+    Date.parse(a.starts_at) - Date.parse(b.starts_at) || a.id.localeCompare(b.id);
+  const pastAsc = [...past].sort(byStart);
+  const upcomingAsc = [...upcoming].sort(byStart);
+  const split = Math.max(0, pastAsc.length - TIMELINE_RECENT_PAST);
+  return {
+    earlier: pastAsc.slice(0, split),
+    recent: pastAsc.slice(split),
+    next: upcomingAsc.slice(0, TIMELINE_NEXT_UPCOMING),
+    later: upcomingAsc.slice(TIMELINE_NEXT_UPCOMING),
+  };
+}
+
 export type MeetingFormErrors = Partial<
   Record<"title" | "start" | "end" | "location" | "online_url", string>
 >;

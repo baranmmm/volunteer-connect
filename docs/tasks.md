@@ -38,7 +38,7 @@ nothing.
 | Priority | `low`, `medium`, `high` or `urgent` |
 | Due date | Optional London calendar date |
 | Assignees | Several people, at most 50 |
-| Linked event | Optional. Must be an event the user can see, in the same scope. Everyone who can see the event sees the linked tasks they may see on the event page (`get_event_tasks`). |
+| Linked event | Optional. Must be an event the user can see, in the same scope. Everyone who can see the event sees the linked tasks they may see on the event page (`get_event_tasks`). A meeting's calendar entry also lists the tasks created from that meeting's decisions (`tasks.meeting_id`, read through RLS in `getEventTasks`), each task once. |
 | Archived | Only done tasks. Set by assignees and editors; cleared automatically when the task leaves "done". Not a delete. |
 | Source meeting decision | Optional. "Create task" on a decision sets `decision_id` and `meeting_id`. The task's scope is the meeting's scope. |
 
@@ -69,9 +69,14 @@ nothing.
   try/catch). Without storage the default is Kanban.
 - **Default view: every task.** `/tasks` shows every task you can see. The "My tasks" chip narrows the list to tasks
   assigned to you; it starts **off** on every visit.
-- **Mine and others.** Your own tasks (assigned to you) stand out on Kanban cards, list rows and calendar items: an
-  accent left border, a light primary tint over the status tint and, on cards and rows, an "Assigned to you" badge.
-  They come first in each Kanban column. Other people's tasks are quieter: muted title text and no shadow, back to full
+- **Compact rows.** Kanban cards, list rows and calendar items are compact: the title on one line, then (cards) one
+  small line with the link icons (meeting, event), high/urgent priority, the due date, notes, the assignees' initials
+  (at most two, then "+N"; names in the tooltip and for screen readers) and the status pill. On Kanban the pill is a
+  small select in the status colours (the keyboard alternative to dragging). Low and medium priority are not shown on
+  rows (the panel and the priority filter still have them).
+- **Mine and others.** Your own tasks (assigned to you) stand out in every view: an accent left border, a light
+  primary tint over the status tint, a bold title and a filled "Mine" marker (an icon-only marker with screen-reader
+  text in the calendar, where your tasks also come first on each day). They come first in each Kanban column. Other people's tasks are quieter: muted title text and no shadow, back to full
   strength on hover and keyboard focus (`focus-within`). No opacity is used, because at 0.75 the muted and red text
   fell below 4.5:1; `src/test/task-status-colors.test.ts` checks the muted text and every text colour on the mine tint
   (`TASK_MINE`, `TASK_OTHER`, `TASK_OTHER_TEXT` in `task-status-colors.ts`).
@@ -95,7 +100,8 @@ nothing.
 
 ## Notes
 
-Every task has a notes thread in the side panel (oldest first; author, time, "edited", mentioned people).
+Every task has a notes thread in the side panel (oldest first; author, time, "edited", mentioned people). In the note
+box Enter saves the note and Shift+Enter adds a new line (Enter is ignored while an input method is composing text).
 - **Who writes.** Assignees, the creator and the scope's managers (`can_set_task_status`). Everyone who can see the
   task reads the notes. Authors edit and delete their own notes (deleting asks for confirmation). At most 500 notes per
   task and 4000 characters per note.
@@ -196,11 +202,11 @@ All kebab-case, never derived from text. Lists expose `data-task-id` / `data-req
   - List filters: `tasks-filter-status|priority|assignee|due`, `tasks-sort`, `tasks-group` (none, status, assignee, mine), `tasks-archive-done` (data-count)
 - **Kanban**:
   - Board: `tasks-kanban`, `tasks-kanban-column` (data-status), `tasks-kanban-count`, `tasks-kanban-archive-done` (data-count, Done column)
-  - Cards: `task-card` (data-task-id, data-status, data-overdue, data-mine, data-archived), `task-card-open`, `task-card-mine`, `task-card-scope` (data-scope; more than one scope only), `task-card-notes` (data-count), `task-card-assignees`, `task-card-status` (the keyboard alternative to dragging), `task-card-unarchive`, `task-due` (data-overdue)
-- **List**: `tasks-list`, `tasks-list-group` (data-group: a status, a user id, `mine` / `others`), `tasks-list-archive-done`, `tasks-list-row` (data-task-id, data-status, data-overdue, data-mine, data-archived), `tasks-list-row-mine`, `tasks-list-row-scope` (data-scope; more than one scope only), `task-card-unarchive`
+  - Cards: `task-card` (data-task-id, data-status, data-overdue, data-mine, data-archived), `task-card-open`, `task-card-mine`, `task-card-scope` (data-scope; more than one scope only), `task-card-notes` (data-count), `task-card-assignees` (data-count), `task-card-status` (the status pill select, the keyboard alternative to dragging), `task-card-unarchive`, `task-due` (data-overdue), `task-link-meeting`, `task-link-event`
+- **List**: `tasks-list`, `tasks-list-group` (data-group: a status, a user id, `mine` / `others`), `tasks-list-archive-done`, `tasks-list-row` (data-task-id, data-status, data-overdue, data-mine, data-archived), `tasks-list-row-mine`, `tasks-list-row-assignees` (data-count), `tasks-list-row-scope` (data-scope; more than one scope only), `task-card-unarchive`
 - **Calendar**:
   - `tasks-calendar` (data-month), `tasks-calendar-previous|next`, `tasks-calendar-title`
-  - `tasks-calendar-day` (data-day), `tasks-calendar-item` (data-task-id, data-overdue, data-mine), `tasks-calendar-item-scope` (screen-reader text; more than one scope only)
+  - `tasks-calendar-day` (data-day), `tasks-calendar-item` (data-task-id, data-overdue, data-mine), `tasks-calendar-item-mine`, `tasks-calendar-item-scope` (screen-reader text; more than one scope only)
   - On phones: `tasks-calendar-agenda`, `tasks-calendar-empty`, plus `tasks-calendar-undated`
 - **Side panel**:
   - `task-panel` (data-task-id), `task-panel-detail` (data-status, data-archived), `task-panel-not-found`

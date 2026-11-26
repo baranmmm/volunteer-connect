@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireMember } from "@/lib/require-member";
 import {
   linkedTask,
+  mergeLinkedTasks,
   reminderSettings,
   person,
   task,
@@ -117,14 +118,38 @@ export const getMyTaskSummary = createServerFn({ method: "GET" })
     return taskSummary.parse(result.data);
   });
 
-/** Tasks linked to an event, for everyone who can see the event (each task only when visible). */
+/**
+ * Tasks linked to an event, for everyone who can see the event (each task only when visible). For a meeting's
+ * calendar entry this also includes the tasks created from that meeting's decisions (tasks.meeting_id): both reads go
+ * through RLS (meetings_read / tasks_read), so only the meeting and tasks the caller may see are found.
+ */
 export const getEventTasks = createServerFn({ method: "GET" })
   .middleware([requireMember])
   .inputValidator(z.object({ eventId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
-    const result = await context.supabase.rpc("get_event_tasks", { p_event: data.eventId });
+    const [result, meeting] = await Promise.all([
+      context.supabase.rpc("get_event_tasks", { p_event: data.eventId }),
+      context.supabase
+        .from("meetings")
+        .select("id")
+        .eq("event_id", data.eventId)
+        .is("deleted_at", null)
+        .maybeSingle(),
+    ]);
     fail(result.error);
-    return z.array(linkedTask).parse(result.data ?? []);
+    fail(meeting.error);
+    const linked = z.array(linkedTask).parse(result.data ?? []);
+    if (!meeting.data) return linked;
+    const fromMeeting = await context.supabase
+      .from("tasks")
+      .select("id, title, status, due_date, archived_at, created_at")
+      .eq("meeting_id", meeting.data.id)
+      .is("deleted_at", null)
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true })
+      .limit(500);
+    fail(fromMeeting.error);
+    return mergeLinkedTasks(linked, z.array(linkedTask).parse(fromMeeting.data ?? []));
   });
 
 // Archive ------------------------------------------------------------------------------------------------------
