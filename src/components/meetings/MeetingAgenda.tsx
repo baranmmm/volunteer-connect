@@ -19,7 +19,12 @@ import { EventDialog } from "@/components/events/EventDialog";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { TaskStatusBadge } from "@/components/tasks/TaskBadges";
 import { deleteTask, getTask } from "@/lib/tasks.functions";
-import type { TaskDetail } from "@/lib/tasks";
+import { linkedRows, type TaskDetail, type TaskGroupData } from "@/lib/tasks";
+import {
+  TaskGroupDeleteDialog,
+  TaskGroupFormDialog,
+  TaskGroupLinkedRow,
+} from "@/components/tasks/TaskGroupParts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -74,6 +79,9 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   const [editingTask, setEditingTask] = useState<TaskDetail | null>(null);
   const [removingTask, setRemovingTask] = useState<DecisionTask | null>(null);
   const removeTask = useServerFn(deleteTask);
+  // An "@all" group under a decision: edit (to every member task) or delete (every member task to the Recycle Bin).
+  const [editingGroup, setEditingGroup] = useState<TaskGroupData | null>(null);
+  const [removingGroup, setRemovingGroup] = useState<TaskGroupData | null>(null);
   // Expanded agenda items (collapsed by default).
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const setOpen = (id: string, open: boolean) =>
@@ -447,16 +455,32 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                     className="mt-2 grid min-w-0 grid-cols-1 gap-1"
                                     aria-label={t("meetings.decisions.tasks")}
                                   >
-                                    {d.tasks.map((task) => (
-                                      <DecisionTaskRow
-                                        key={task.id}
-                                        meetingId={meeting.id}
-                                        task={task}
-                                        busy={busy}
-                                        onEdit={(detail) => setEditingTask(detail)}
-                                        onDelete={(row) => setRemovingTask(row)}
-                                      />
-                                    ))}
+                                    {linkedRows(d.tasks).map((row) =>
+                                      row.kind === "group" ? (
+                                        <TaskGroupLinkedRow
+                                          key={row.groupId}
+                                          groupId={row.groupId}
+                                          testId="meeting-decision-group"
+                                          taskLink={(id) => ({
+                                            to: "/meetings/$id",
+                                            params: { id: meeting.id },
+                                            search: { task: id },
+                                          })}
+                                          editable
+                                          onEdit={setEditingGroup}
+                                          onDelete={setRemovingGroup}
+                                        />
+                                      ) : (
+                                        <DecisionTaskRow
+                                          key={row.task.id}
+                                          meetingId={meeting.id}
+                                          task={row.task}
+                                          busy={busy}
+                                          onEdit={(detail) => setEditingTask(detail)}
+                                          onDelete={(r) => setRemovingTask(r)}
+                                        />
+                                      ),
+                                    )}
                                   </ul>
                                 )}
                                 {editable && editingDecision !== d.id && (
@@ -597,6 +621,8 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
           </Button>
         </div>
       </EventDialog>
+      <TaskGroupFormDialog group={editingGroup} onClose={() => setEditingGroup(null)} />
+      <TaskGroupDeleteDialog group={removingGroup} onClose={() => setRemovingGroup(null)} />
       <TaskFormDialog
         open={!!editingTask}
         task={editingTask ?? undefined}

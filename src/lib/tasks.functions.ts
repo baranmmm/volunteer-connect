@@ -11,10 +11,13 @@ import {
   taskInput,
   taskNote,
   taskSummary,
+  taskGroup,
+  taskGroupInput,
   TASK_NOTE_MAX,
   TASK_STATUSES,
   WORK_SCOPES,
 } from "./tasks";
+import { taskSources } from "./task-grouping";
 
 // Every write is a SECURITY DEFINER RPC (no client write grants on tasks); the database checks every permission.
 const fail = (error: { message: string } | null) => {
@@ -28,6 +31,15 @@ export const listTasks = createServerFn({ method: "GET" })
     const result = await context.supabase.rpc("list_tasks");
     fail(result.error);
     return z.array(task).parse(result.data ?? []);
+  });
+
+/** Labels for the source groups of the Tasks page (agenda items, meetings, events of the visible tasks). */
+export const listTaskSources = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .handler(async ({ context }) => {
+    const result = await context.supabase.rpc("list_task_sources");
+    fail(result.error);
+    return taskSources.parse(result.data ?? {});
   });
 
 export const getTask = createServerFn({ method: "GET" })
@@ -142,7 +154,7 @@ export const getEventTasks = createServerFn({ method: "GET" })
     if (!meeting.data) return linked;
     const fromMeeting = await context.supabase
       .from("tasks")
-      .select("id, title, status, due_date, archived_at, created_at")
+      .select("id, title, status, due_date, archived_at, created_at, group_id")
       .eq("meeting_id", meeting.data.id)
       .is("deleted_at", null)
       .order("due_date", { ascending: true, nullsFirst: false })
@@ -243,4 +255,86 @@ export const setMyTaskReminders = createServerFn({ method: "POST" })
     });
     fail(result.error);
     return { reminders: reminderSettings.nullable().parse(result.data ?? null) };
+  });
+
+// Task groups ("@all") ----------------------------------------------------------------------------------------
+
+const groupId = z.object({ id: z.string().uuid() });
+const uuidList = z.array(z.string().uuid()).max(500);
+
+/** Every task group the caller can see (same visibility as branch tasks), with members, counts and derived status. */
+export const listTaskGroups = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .handler(async ({ context }) => {
+    const result = await context.supabase.rpc("list_task_groups");
+    fail(result.error);
+    return z.array(taskGroup).parse(result.data ?? []);
+  });
+
+export const getTaskGroup = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(groupId)
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("get_task_group", { p_id: data.id });
+    fail(result.error);
+    return result.data === null ? null : taskGroup.parse(result.data);
+  });
+
+/**
+ * "@all": one group and one task per active member of the branch (the branch's managers only). The extra fields are
+ * copied to every member task.
+ */
+export const createTaskGroup = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(
+    taskGroupInput.extend({
+      branch_id: z.string().uuid(),
+      event_id: z.string().uuid().nullable().optional(),
+      decision_id: z.string().uuid().nullable().optional(),
+      reminders: reminderSettings.optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("create_task_group", {
+      p: { ...data, scope: "branch" },
+    });
+    fail(result.error);
+    return z.string().uuid().parse(result.data);
+  });
+
+/** Title, description, priority and due date go to every member task. */
+export const updateTaskGroup = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(groupId.extend({ group: taskGroupInput }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("update_task_group", {
+      p_id: data.id,
+      p: data.group,
+    });
+    fail(result.error);
+    return { ok: true };
+  });
+
+/** Every member task goes to the Recycle Bin, then the group is removed. Returns how many tasks. */
+export const deleteTaskGroup = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(groupId)
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("delete_task_group", { p_id: data.id });
+    fail(result.error);
+    return { count: z.number().parse(result.data) };
+  });
+
+/** Adds members (their own task and notice) and removes members (their task to the Recycle Bin). */
+export const setTaskGroupMembers = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(groupId.extend({ add: uuidList, remove: uuidList }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("set_task_group_members", {
+      p_id: data.id,
+      p_add: data.add,
+      p_remove: data.remove,
+    });
+    fail(result.error);
+    return z.object({ added: z.number(), removed: z.number() }).parse(result.data);
   });

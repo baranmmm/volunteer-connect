@@ -109,6 +109,17 @@ are London time.
 - **Repeat**: does not repeat, weekly or monthly; every 1-4 weeks/months; 2-52 meetings, the last at most 12 months
   after the first. Sent as `recurrence`.
 
+**Carry over** (create only; `meeting-form-carry`, shown when there is something to carry, collapsed): the unresolved,
+not yet carried agenda items of the last 10 earlier meetings in the same place that the caller may edit
+(`list_meeting_carry_over`), with their decisions and the decisions' not-done tasks. Ticking an item ticks all its
+decisions and tasks; each can be unticked (an "@all" group is one entry). After the meeting is created,
+`carry_over_agenda` copies the chosen items (title, notes) and decisions into it and moves the chosen tasks to the new
+decisions (same task ids, nothing duplicated; a group moves whole), in one transaction; the old item gets `carried_to`
+and is no longer offered or shown under "From last meeting". If the carry-over is refused, the meeting stays and an
+error toast says why. Test ids: `-carry` (data-count), `-carry-toggle` (aria-expanded), `-carry-meeting`
+(data-meeting-id), `-carry-item` (data-item-id), `-carry-decision` (data-decision-id), `-carry-task` (data-task-id or
+data-group-id).
+
 Approving a meeting request uses the same form without the people picker and the create-only options.
 
 ## Recurring meetings

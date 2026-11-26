@@ -98,6 +98,42 @@ nothing.
 - **Detail.** The task opens in a side panel: `/tasks?task=<id>`. Opening it marks its notices read (assignments,
   status changes, reminders, mentions and notes are all `task` notices).
 
+## Task groups ("@all")
+
+Schema and RPCs: `supabase/migrations/20261205090000_task_groups.sql`.
+- **Creating.** In the task form a branch's managers (its Branch Manager, the region's Regional Director) can tick
+  "@all: every member of the branch" (`task-form-all-members`, new branch tasks only, also from a meeting decision).
+  `create_task_group` creates one `task_groups` row (title, description, priority, due date, branch, creator, event /
+  meeting decision link) and one ordinary task per active member of the branch at save time (volunteers and Branch
+  Managers of the branch: `is_branch_member` + `task_assignee_ok`), each with `tasks.group_id`. Every member gets the
+  normal `task_assigned` notice (never the creator for their own task).
+- **Members.** Each member owns their task (status, notes, done, archive, own reminders) and sees only that task in
+  their views and My tasks.
+- **Everyone else** who can see branch tasks sees ONE row per group: Kanban (by the derived status, not draggable),
+  list (with a toggle that lists each member's task and status), calendar, the meeting decision and the event's
+  Linked tasks. The row shows the title, "All members (N)", a progress bar (done of all) and the counts per status.
+- **Derived status.** Never stored (`task_group_status`): all done → Done; any In progress or Done → In progress;
+  otherwise To do (blocked members count as To do; the counts show them).
+- **Group panel** (`/tasks?group=<id>`): details, progress and members (each opens its task). Editors (the creator and
+  the branch's managers, `can_edit_task_group`) edit title, description, priority and due date (written to every
+  member task in the same transaction), add members (their own task and notice) or remove them (their task goes to the
+  Recycle Bin; a group keeps at least one member), and delete the group after confirming (every member task goes to
+  the Recycle Bin, then the group row is removed; `tasks.group_id` is ON DELETE SET NULL, so a restored task comes back
+  as an ordinary task).
+- **Visibility.** `task_groups` has RLS with the branch-task rule (`can_view_task_group`); writes only through the
+  SECURITY DEFINER RPCs, each starting with `require_privacy_accepted()`.
+- **Test ids**: `task-form-all-members` (`-hint`), `task-group-card` (data-group-id, data-status) with
+  `task-group-card-open`, `task-group-row` (data-group-id) with `task-group-row-toggle` (aria-expanded) and
+  `task-group-row-open`, `tasks-calendar-item` (data-group-id), `task-group-members-label` (data-count),
+  `task-group-progress` (data-done, data-total), `task-group-counts`, `task-group-members`, `task-group-member`
+  (data-task-id, data-user-id, data-status) with `task-group-member-open` and `task-group-member-remove`; panel
+  `task-group-panel` (data-group-id), `task-group-panel-detail`, `-title`, `-description`, `-due`, `-edit`, `-delete`,
+  `-meeting-link`, `-not-found`; `task-group-add` with `task-group-add-people` (PeopleCombobox) and
+  `task-group-add-submit`; `task-group-remove-dialog` (`-confirm`, `-cancel`); `task-group-form` (`-title`,
+  `-description`, `-due-date`, `-priority`, `-submit`, `-cancel`, `-error`); `task-group-delete-dialog` (`-confirm`,
+  `-cancel`, `-error`); meeting decision `meeting-decision-group` (`-toggle`, `-edit`, `-delete`); event page
+  `event-linked-group` (`-toggle`).
+
 ## Notes
 
 Every task has a notes thread in the side panel (oldest first; author, time, "edited", mentioned people). In the note

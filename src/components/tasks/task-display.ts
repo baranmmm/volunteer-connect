@@ -1,3 +1,4 @@
+import type { TaskSection } from "@/lib/task-grouping";
 import type { TFunction } from "i18next";
 import { formatDate } from "@/lib/i18n";
 import type { WorkScope } from "@/lib/tasks";
@@ -28,3 +29,12 @@ export function initials(name: string | null | undefined) {
 
 export const selectClass =
   "h-11 w-full min-w-0 max-w-full rounded-xl border border-input bg-card px-3 text-base";
+
+/** The header text of a section: "<agenda item> · <meeting> (<date>)", "<title> (<date>)", a due bucket, a name. */
+export function sectionLabel(t: TFunction, s: TaskSection) {
+  const day = s.date ? formatDay(s.date) : null;
+  if (s.kind === "agenda") return `${s.title} · ${s.meeting ?? ""}${day ? ` (${day})` : ""}`;
+  if (s.kind === "meeting" || s.kind === "event") return `${s.title}${day ? ` (${day})` : ""}`;
+  if (s.kind === "due") return t(`tasks.grouping.due.${s.title}`);
+  return s.title;
+}

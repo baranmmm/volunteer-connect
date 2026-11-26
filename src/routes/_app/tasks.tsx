@@ -12,6 +12,7 @@ import {
   REGION_WIDE,
   TASK_PRIORITIES,
   TASK_STATUSES,
+  collapseGroups,
   filterTasks,
   effectiveScopeSelection,
   londonDay,
@@ -22,16 +23,27 @@ import {
   scopeFilterOptions,
   sortTasks,
   type TaskFilters,
-  type TaskGroup,
   type TaskSort,
   type TaskView,
 } from "@/lib/tasks";
-import { listTasks } from "@/lib/tasks.functions";
+import {
+  NO_SOURCES,
+  TASK_GROUPINGS,
+  groupTaskSections,
+  readCollapsed,
+  readTaskGrouping,
+  saveCollapsed,
+  saveTaskGrouping,
+  type TaskGrouping,
+} from "@/lib/task-grouping";
+import { listTasks, listTaskSources } from "@/lib/tasks.functions";
 import { pageHead } from "@/components/app/head";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { TaskPanel } from "@/components/tasks/TaskPanel";
+import { TaskGroupPanel } from "@/components/tasks/TaskGroupParts";
+import { useTaskGroups } from "@/components/tasks/use-task-groups";
 import { TaskScopeFilter } from "@/components/tasks/TaskScopeFilter";
 import {
   ArchiveDoneButton,
@@ -41,18 +53,23 @@ import {
 } from "@/components/tasks/TaskViews";
 import { selectClass } from "@/components/tasks/task-display";
 import { useWorkScopes } from "@/components/work/use-work-scopes";
+import { cn } from "@/lib/utils";
 
 const tasksSearch = z.object({
   task: z.string().uuid().optional().catch(undefined),
+  /** An "@all" task group opened in the group panel. */
+  group: z.string().uuid().optional().catch(undefined),
   /** A note to highlight in the open task (links from note notices). */
   note: z.string().uuid().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/_app/tasks")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>): { task?: string; note?: string } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { task?: string; note?: string; group?: string } => {
     const parsed = tasksSearch.parse(search);
-    if (!parsed.task) return {};
+    if (!parsed.task) return parsed.group ? { group: parsed.group } : {};
     return parsed.note ? { task: parsed.task, note: parsed.note } : { task: parsed.task };
   },
   head: () => pageHead("Tasks", "Plan and follow up Dialogue Society tasks."),
@@ -60,23 +77,49 @@ export const Route = createFileRoute("/_app/tasks")({
 });
 
 const VIEW_ICONS = { kanban: Columns3, list: List, calendar: CalendarDays } as const;
+// Phones open in the List view (one-line rows); the remembered choice is for larger screens.
+const PHONE = "(max-width: 767px)";
+const isPhone = () => typeof window !== "undefined" && !!window.matchMedia?.(PHONE).matches;
 
 function TasksPage() {
   const { t } = useTranslation();
   const { session } = useAuth();
   const uid = session?.user.id;
   const navigate = useNavigate();
-  const { task: openTask, note: highlightNote } = Route.useSearch();
+  const { task: openTask, note: highlightNote, group: openGroup } = Route.useSearch();
   const fetchTasks = useServerFn(listTasks);
   const tasks = useQuery({ queryKey: ["tasks", uid], queryFn: () => fetchTasks(), enabled: !!uid });
+  // "@all" groups: one row per group for everyone who is not a member; members see only their own task.
+  const groups = useTaskGroups(uid);
   const work = useWorkScopes();
   // Scope labels only for someone who works in more than one place (nothing to tell apart otherwise).
   const showScope = !work.loading && !work.single;
-  const [view, setViewState] = useState<TaskView>(() => readTaskView(uid));
+  const [view, setViewState] = useState<TaskView>(() => (isPhone() ? "list" : readTaskView(uid)));
   const setView = (v: TaskView) => {
     setViewState(v);
-    saveTaskView(uid, v);
+    if (!isPhone()) saveTaskView(uid, v);
   };
+  // Group by (List and Board) and the sections the user collapsed or opened, remembered per user.
+  const [grouping, setGroupingState] = useState<TaskGrouping>(() => readTaskGrouping(uid));
+  const setGrouping = (g: TaskGrouping) => {
+    setGroupingState(g);
+    saveTaskGrouping(uid, g);
+  };
+  const [remembered, setRemembered] = useState<Record<string, boolean>>(() => readCollapsed(uid));
+  const toggleSection = (key: string, collapsed: boolean) =>
+    setRemembered((cur) => {
+      const { [key]: _drop, ...rest } = cur;
+      const next = { ...rest, [key]: collapsed };
+      saveCollapsed(uid, next);
+      return next;
+    });
+  const fetchSources = useServerFn(listTaskSources);
+  const sources = useQuery({
+    queryKey: ["task-sources", uid],
+    queryFn: () => fetchSources(),
+    enabled: !!uid && grouping === "source",
+    staleTime: 60_000,
+  });
   // Every task the user can see by default; "My tasks" starts off (their own tasks are marked instead).
   // The branch/region choice is remembered per user (applies to every view).
   const [filters, setFilters] = useState<TaskFilters>(() => ({
@@ -84,10 +127,12 @@ function TasksPage() {
     ...readTaskScopeFilter(uid),
   }));
   const [sort, setSort] = useState<TaskSort>("due");
-  const [group, setGroup] = useState<TaskGroup>("none");
   const [creating, setCreating] = useState(false);
   const today = londonDay();
-  const all = useMemo(() => tasks.data ?? [], [tasks.data]);
+  const all = useMemo(
+    () => collapseGroups(tasks.data ?? [], groups.data ?? []),
+    [tasks.data, groups.data],
+  );
 
   // Branch/region filters only for someone who works in more than one place (RD, NC). Options come from the visible
   // tasks and the work scopes; branch options narrow to the chosen regions, and a remembered value that is no longer
@@ -136,6 +181,17 @@ function TasksPage() {
     return sortTasks(filterTasks(all, active, today), view === "list" ? sort : "due");
   }, [all, filters, view, sort, today, branchesKey, regionsKey]);
 
+  const sections = useMemo(
+    () =>
+      groupTaskSections(shown, grouping, sources.data ?? NO_SOURCES, today, {
+        other: t("tasks.grouping.other"),
+        unassigned: t("tasks.unassigned"),
+        allMembers: t("tasks.grouping.allMembers"),
+        formerMember: t("common.formerMember"),
+      }),
+    [shown, grouping, sources.data, today, t],
+  );
+
   const assigneeOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const x of all)
@@ -143,7 +199,9 @@ function TasksPage() {
     return [...map].sort((a, b) => a[1].localeCompare(b[1]));
   }, [all, t]);
 
-  const open = (id: string) => void navigate({ to: "/tasks", search: { task: id } });
+  const groupIds = useMemo(() => new Set((groups.data ?? []).map((g) => g.id)), [groups.data]);
+  const open = (id: string) =>
+    void navigate({ to: "/tasks", search: groupIds.has(id) ? { group: id } : { task: id } });
   const close = () => void navigate({ to: "/tasks", search: {} });
   const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
@@ -210,7 +268,27 @@ function TasksPage() {
             );
           })}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {view !== "calendar" && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="tasks-group-by" className="text-sm text-muted-foreground">
+                {t("tasks.grouping.label")}
+              </Label>
+              <select
+                id="tasks-group-by"
+                data-testid="tasks-group-by"
+                className={cn(selectClass, "h-11 w-auto")}
+                value={grouping}
+                onChange={(e) => setGrouping(e.target.value as TaskGrouping)}
+              >
+                {TASK_GROUPINGS.map((g) => (
+                  <option key={g} value={g}>
+                    {t(`tasks.grouping.by.${g}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <Button
             data-testid="tasks-filter-mine"
             variant={filters.mine ? "default" : "outline"}
@@ -268,7 +346,7 @@ function TasksPage() {
         </div>
       )}
       {view === "list" && (
-        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           {filterSelect(
             "status",
             t("tasks.form.status"),
@@ -303,32 +381,14 @@ function TasksPage() {
               ))}
             </select>
           </div>
-          <div className="min-w-0 space-y-1">
-            <Label htmlFor="tasks-group" className="text-xs text-muted-foreground">
-              {t("tasks.filters.group")}
-            </Label>
-            <select
-              id="tasks-group"
-              data-testid="tasks-group"
-              className={selectClass}
-              value={group}
-              onChange={(e) => setGroup(e.target.value as TaskGroup)}
-            >
-              {(["none", "status", "assignee", "mine"] as const).map((g) => (
-                <option key={g} value={g}>
-                  {t(`tasks.filters.groupBy.${g}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          {!filters.archived && group !== "status" && (
-            <div className="flex min-w-0 items-end">
+          {!filters.archived && (
+            <div className="col-span-2 flex min-w-0 items-end lg:col-span-1">
               <ArchiveDoneButton tasks={shown} testId="tasks-archive-done" />
             </div>
           )}
         </div>
       )}
-      {tasks.isLoading ? (
+      {tasks.isLoading || groups.isLoading ? (
         <p className="py-10 text-center text-muted-foreground">{t("common.loading")}</p>
       ) : tasks.isError ? (
         <div role="alert" className="space-y-3">
@@ -367,23 +427,36 @@ function TasksPage() {
           tasks={shown}
           today={today}
           onOpen={open}
-          markMine={!filters.mine}
           showScope={showScope}
+          sections={sections}
+          remembered={remembered}
+          onToggle={toggleSection}
+          grouping={grouping}
+          autoCollapse={!filters.archived}
         />
       ) : view === "list" ? (
         <ListView
           tasks={shown}
           today={today}
           onOpen={open}
-          group={group}
-          markMine={!filters.mine}
           showScope={showScope}
+          sections={sections}
+          remembered={remembered}
+          onToggle={toggleSection}
+          grouping={grouping}
+          autoCollapse={!filters.archived}
         />
       ) : (
         <CalendarView tasks={shown} today={today} onOpen={open} showScope={showScope} />
       )}
       <TaskPanel taskId={openTask ?? null} highlightNote={highlightNote} onClose={close} />
-      <TaskFormDialog open={creating} onClose={() => setCreating(false)} onSaved={open} />
+      <TaskGroupPanel groupId={openTask ? null : (openGroup ?? null)} onClose={close} />
+      <TaskFormDialog
+        open={creating}
+        onClose={() => setCreating(false)}
+        onSaved={open}
+        onSavedGroup={(id) => void navigate({ to: "/tasks", search: { group: id } })}
+      />
     </div>
   );
 }

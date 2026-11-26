@@ -21,7 +21,7 @@ import {
   type TaskStatus,
   type WorkScope,
 } from "@/lib/tasks";
-import { createTask, listTaskPeople, updateTask } from "@/lib/tasks.functions";
+import { createTask, createTaskGroup, listTaskPeople, updateTask } from "@/lib/tasks.functions";
 import { scopeKey, type WorkScopeOption } from "@/lib/work-scopes";
 import { listEvents } from "@/lib/events.functions";
 import { eventStart } from "@/lib/event-rules";
@@ -70,12 +70,15 @@ export function TaskFormDialog({
   task,
   initial,
   onSaved,
+  onSavedGroup,
 }: {
   open: boolean;
   onClose: () => void;
   task?: TaskDetail | undefined;
   initial?: Initial | undefined;
   onSaved?: ((taskId: string) => void) | undefined;
+  /** After "@all" created a task group (instead of one task). */
+  onSavedGroup?: ((groupId: string) => void) | undefined;
 }) {
   const { t } = useTranslation();
   return (
@@ -85,7 +88,15 @@ export function TaskFormDialog({
       title={task ? t("tasks.form.editTitle") : t("tasks.form.createTitle")}
       testId="task-form"
     >
-      {open && <TaskForm onClose={onClose} task={task} initial={initial} onSaved={onSaved} />}
+      {open && (
+        <TaskForm
+          onClose={onClose}
+          task={task}
+          initial={initial}
+          onSaved={onSaved}
+          onSavedGroup={onSavedGroup}
+        />
+      )}
     </EventDialog>
   );
 }
@@ -95,11 +106,13 @@ function TaskForm({
   task,
   initial,
   onSaved,
+  onSavedGroup,
 }: {
   onClose: () => void;
   task?: TaskDetail | undefined;
   initial?: Initial | undefined;
   onSaved?: ((taskId: string) => void) | undefined;
+  onSavedGroup?: ((groupId: string) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const { session, profile, roles } = useAuth();
@@ -143,6 +156,9 @@ function TaskForm({
   const [draft, setDraft] = useState<ReminderDraft>(() =>
     reminderDraft(remindersWereOn ? task.reminders : DEFAULT_REMINDERS),
   );
+  // "@all": a task group with one task per active member of the branch (new branch tasks; the branch's managers and,
+  // since 20261207090000, any active volunteer of that branch, whose Branch Manager is notified).
+  const [allMembers, setAllMembers] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -158,6 +174,10 @@ function TaskForm({
   });
   // A volunteer's new task is for themselves unless they choose other volunteers of their branch: preselect them.
   const handsOut = roles.some((r) => MANAGER_ROLES.includes(r));
+  const branchVolunteer =
+    roles.includes("volunteer") && !!profile?.branch_id && profile.branch_id === scope?.branch_id;
+  const canAll =
+    !task && (handsOut || branchVolunteer) && scope?.scope === "branch" && !!scope.branch_id;
   useEffect(() => {
     if (editing || handsOut || !people.data || !uid) return;
     if (people.data.some((p) => p.id === uid)) setAssignees((cur) => (cur.length ? cur : [uid]));
@@ -248,6 +268,28 @@ function TaskForm({
     };
     setBusy(true);
     try {
+      if (canAll && allMembers) {
+        const groupId = await createGroup({
+          data: {
+            branch_id: scope.branch_id!,
+            title: body.title,
+            description: body.description,
+            priority,
+            due_date: body.due_date,
+            event_id: body.event_id,
+            ...(initial?.decision_id ? { decision_id: initial.decision_id } : {}),
+            ...(body.reminders ? { reminders: body.reminders } : {}),
+          },
+        });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+          queryClient.invalidateQueries({ queryKey: ["meeting"] }),
+        ]);
+        toast.success(t("tasks.groups.created"));
+        onSavedGroup?.(groupId);
+        onClose();
+        return;
+      }
       let id: string;
       if (task) {
         await update({ data: { id: task.id, task: body } });
@@ -274,6 +316,7 @@ function TaskForm({
     }
   }
   const create = useServerFn(createTask);
+  const createGroup = useServerFn(createTaskGroup);
   const update = useServerFn(updateTask);
 
   const err = (key: keyof FieldErrors) =>
@@ -347,16 +390,41 @@ function TaskForm({
         />
         {err("title")}
       </div>
-      <PeopleCombobox
-        testId="task-form-assignees"
-        label={t("tasks.form.assignees")}
-        people={peopleList}
-        selected={assignees}
-        onChange={setAssignees}
-        disabled={busy}
-        loading={people.isLoading}
-        emptyText={t("tasks.form.assigneesEmpty")}
-      />
+      {canAll && (
+        <label className="flex min-h-11 cursor-pointer items-start gap-2 rounded-xl border p-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 shrink-0"
+            data-testid="task-form-all-members"
+            checked={allMembers}
+            disabled={busy}
+            aria-describedby="task-form-all-members-hint"
+            onChange={(e) => setAllMembers(e.target.checked)}
+          />
+          <span className="min-w-0">
+            <span className="block font-medium">{t("tasks.groups.allOption")}</span>
+            <span
+              id="task-form-all-members-hint"
+              data-testid="task-form-all-members-hint"
+              className="block text-muted-foreground"
+            >
+              {t(handsOut ? "tasks.groups.allHint" : "tasks.groups.allHintVolunteer")}
+            </span>
+          </span>
+        </label>
+      )}
+      {!(canAll && allMembers) && (
+        <PeopleCombobox
+          testId="task-form-assignees"
+          label={t("tasks.form.assignees")}
+          people={peopleList}
+          selected={assignees}
+          onChange={setAssignees}
+          disabled={busy}
+          loading={people.isLoading}
+          emptyText={t("tasks.form.assigneesEmpty")}
+        />
+      )}
       <DateField
         testId="task-form-due-date"
         label={t("tasks.form.dueDate")}
@@ -399,7 +467,8 @@ function TaskForm({
               {err("description")}
             </div>
             <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="min-w-0 space-y-1.5">
+              {/* A group's status comes from its members' tasks, so "@all" has no status field. */}
+              <div className="min-w-0 space-y-1.5" hidden={canAll && allMembers}>
                 <Label htmlFor="task-form-status">{t("tasks.form.status")}</Label>
                 <select
                   id="task-form-status"

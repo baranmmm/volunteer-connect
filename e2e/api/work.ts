@@ -137,6 +137,10 @@ export async function deleteWorkOfUsers(userIds: string[]): Promise<number> {
     if (tasks.error || meetings.error) throw new Error(`find work: ${(tasks.error ?? meetings.error)!.message}`);
     await deleteWork({ tasks: tasks.data.map((t) => t.id), meetings: meetings.data.map((m) => m.id) });
     n += tasks.data.length + meetings.data.length;
+    // "@all" task groups reference their branch: remove them so the test's branch can be deleted.
+    const groups = await db.from("task_groups").delete().in("created_by", batch).select("id");
+    if (groups.error) throw new Error(`delete task groups: ${groups.error.message}`);
+    n += groups.data.length;
   }
   return n;
 }
@@ -167,7 +171,9 @@ export async function deleteLeftoverWork(staleBefore: number, runId?: string): P
   const tasks = await pick("tasks", "title", TASK_TITLE_PREFIX);
   const meetings = await pick("meetings", "title", MEETING_TITLE_PREFIX);
   await deleteWork({ tasks, meetings });
-  return n + tasks.length + meetings.length;
+  const groups = await db.from("task_groups").delete().like("title", `${TASK_TITLE_PREFIX}%`).lt("created_at", stale).select("id");
+  if (groups.error) throw new Error(`delete leftover task groups: ${groups.error.message}`);
+  return n + tasks.length + meetings.length + groups.data.length;
 }
 
 /** A recurring meeting (create_meeting with recurrence and agenda titles); returns the first occurrence's id. */

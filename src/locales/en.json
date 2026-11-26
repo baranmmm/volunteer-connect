@@ -425,7 +425,12 @@
     "volunteerTime": "Choose how much time you can give.",
     "volunteerCommitment": "Please confirm the volunteering commitment.",
     "volunteerInvalid": "The volunteer application is not valid. Please check your answers.",
-    "postcodeInvalid": "Enter a valid UK postcode."
+    "postcodeInvalid": "Enter a valid UK postcode.",
+    "taskGroupNotFound": "This task group does not exist or was deleted.",
+    "taskGroupNoMembers": "Nobody in this branch can be assigned.",
+    "taskGroupAlreadyMember": "This person is already in the group.",
+    "taskGroupLastMember": "A task group needs at least one member. Delete the group instead.",
+    "carryOverItem": "This agenda item can no longer be carried over. Reload and try again."
   },
   "events": {
     "title": "Calendar & Events",
@@ -1458,6 +1463,15 @@
       "next": "Coming up",
       "showLater": "Show more upcoming ({{count}})",
       "hideLater": "Hide later meetings"
+    },
+    "carry": {
+      "toggle_one": "Carry over from earlier meetings ({{count}} open item)",
+      "toggle_other": "Carry over from earlier meetings ({{count}} open items)",
+      "chosen_one": "{{count}} chosen",
+      "chosen_other": "{{count}} chosen",
+      "hint": "Tick an agenda item to bring it, its decisions and their open tasks to this meeting. Tasks move here; they are not copied.",
+      "done_one": "{{count}} agenda item carried over.",
+      "done_other": "{{count}} agenda items carried over."
     }
   },
   "workRequests": {
@@ -1539,6 +1553,7 @@
     "someone": "Someone",
     "kinds": {
       "task_assigned": "{{actor}} assigned you a task: “{{title}}”",
+      "task_group_created": "{{actor}} created a task for all members: “{{title}}”",
       "task_status_changed": "{{actor}} changed the status of “{{title}}” to {{status}}",
       "task_reminder": "Reminder: “{{title}}” is due {{due}}",
       "task_reminder_overdue": "Overdue: “{{title}}” was due {{due}}",
@@ -1855,6 +1870,63 @@
     "links": {
       "meeting": "From a meeting",
       "event": "Linked to an event"
+    },
+    "groups": {
+      "allMembers": "All members ({{count}})",
+      "countPart": "{{count}} {{status}}",
+      "progress": "{{done}} of {{total}} done",
+      "removeMember": "Remove {{name}} from the group",
+      "edit": "Edit group: {{title}}",
+      "delete": "Delete group: {{title}}",
+      "editTitle": "Edit task group",
+      "editHint": "Changes go to every member's task.",
+      "saved": "Task group updated.",
+      "deleted_one": "{{count}} task moved to the Recycle Bin.",
+      "deleted_other": "{{count}} tasks moved to the Recycle Bin.",
+      "deleteTitle": "Delete this task group?",
+      "deleteText": "\"{{title}}\" and every member's task ({{count}}) move to the Recycle Bin.",
+      "deleteConfirm": "Delete group",
+      "panelTitle": "Task group",
+      "notFoundTitle": "Task group not found",
+      "notFoundText": "This group does not exist, was deleted, or you cannot see it.",
+      "derivedHint": "The group's status comes from its members' tasks.",
+      "members": "Members",
+      "addMembers": "Add members",
+      "noneToAdd": "Everyone who can be assigned is already in the group.",
+      "addSubmit_one": "Add {{count}} member",
+      "addSubmit_other": "Add {{count}} members",
+      "membersAdded_one": "{{count}} member added.",
+      "membersAdded_other": "{{count}} members added.",
+      "memberRemoved": "Member removed; their task moved to the Recycle Bin.",
+      "removeTitle": "Remove this member?",
+      "removeText": "{{name}}'s task in this group moves to the Recycle Bin.",
+      "removeConfirm": "Remove",
+      "expand": "Show the members of {{title}}",
+      "collapse": "Hide the members of {{title}}",
+      "created": "Task created for every member.",
+      "allOption": "@all: every member of the branch",
+      "allHint": "Each active member of the branch gets their own task now. You can add or remove members later.",
+      "allHintVolunteer": "Each active volunteer and the branch manager get their own task now. Your branch manager is notified."
+    },
+    "grouping": {
+      "label": "Group by",
+      "by": {
+        "source": "Source",
+        "assignee": "Assignee",
+        "due": "Due date",
+        "none": "None"
+      },
+      "due": {
+        "overdue": "Overdue",
+        "thisWeek": "This week",
+        "nextWeek": "Next week",
+        "later": "Later",
+        "earlier": "Earlier",
+        "none": "No date"
+      },
+      "other": "Other tasks",
+      "allMembers": "All members (@all)",
+      "progress": "{{done}} of {{total}} done"
     }
   },
   "landing": {

@@ -23,6 +23,7 @@ import {
   MEETING_REPEAT_FREQS,
   validateMeetingFile,
   validateMeetingForm,
+  type CarryOverChoice,
   type MeetingDetail,
   type MeetingFormErrors,
   type MeetingInput,
@@ -30,6 +31,7 @@ import {
   type MeetingSeriesMode,
 } from "@/lib/meetings";
 import {
+  carryOverAgenda,
   createMeeting,
   deleteMeetingFile,
   listMeetingPeople,
@@ -37,6 +39,7 @@ import {
   updateMeetingSeries,
 } from "@/lib/meetings.functions";
 import { listMyWorkScopes, scopeKey, type WorkScopeOption } from "@/lib/work-scopes";
+import { MeetingCarryOver } from "./MeetingCarryOver";
 import { MeetingScopeDialog } from "./MeetingScopeDialog";
 import { inviteesHeader, meetingRecurrenceError } from "./meeting-ui";
 import { uploadMeetingFiles } from "./meeting-upload";
@@ -124,6 +127,7 @@ function MeetingForm({
   const fetchScopes = useServerFn(listMyWorkScopes),
     fetchPeople = useServerFn(listMeetingPeople),
     create = useServerFn(createMeeting),
+    carryOver = useServerFn(carryOverAgenda),
     updateSeries = useServerFn(updateMeetingSeries),
     reserve = useServerFn(reserveMeetingFile),
     removeFileRow = useServerFn(deleteMeetingFile);
@@ -217,6 +221,8 @@ function MeetingForm({
   // More options: collapsed on every open.
   const [more, setMore] = useState(false);
   const [agenda, setAgenda] = useState<string[]>([]);
+  // Carry-over from earlier meetings of the same place (create only): applied once the meeting exists.
+  const [carry, setCarry] = useState<CarryOverChoice[]>([]);
   const [agendaDraft, setAgendaDraft] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [fileErrors, setFileErrors] = useState<string[]>([]);
@@ -315,6 +321,16 @@ function MeetingForm({
       });
       const created =
         count > 1 ? t("meetings.form.createdSeries", { count }) : t("meetings.form.created");
+      if (carry.length) {
+        // One transaction for every chosen item (copies, task moves); the meeting stays if it is refused.
+        try {
+          const { count: carried } = await carryOver({ data: { meetingId: id, items: carry } });
+          toast.success(t("meetings.carry.done", { count: carried }));
+        } catch (e) {
+          toast.error(translateError(e));
+        }
+        await qc.invalidateQueries({ queryKey: ["meeting-carry-over"] });
+      }
       if (files.length) {
         // Files go to the (first) meeting once it exists; a rejected file does not undo the meeting.
         const { failed } = await uploadMeetingFiles({
@@ -766,6 +782,15 @@ function MeetingForm({
             />
           </CollapsibleContent>
         </Collapsible>
+      )}
+      {mode === "create" && !submit && (
+        <MeetingCarryOver
+          scope={effectiveScope}
+          value={carry}
+          onChange={setCarry}
+          disabled={busy || !!createdId}
+          testId={testId}
+        />
       )}
       <Collapsible open={more} onOpenChange={setMore} className="min-w-0 rounded-lg border">
         <CollapsibleTrigger asChild>

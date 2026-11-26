@@ -1176,6 +1176,7 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
+          carried_to: string | null
           created_at: string
           id: string
           meeting_id: string
@@ -1186,6 +1187,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          carried_to?: string | null
           created_at?: string
           id?: string
           meeting_id: string
@@ -1196,6 +1198,7 @@ export type Database = {
           title: string
         }
         Update: {
+          carried_to?: string | null
           created_at?: string
           id?: string
           meeting_id?: string
@@ -1206,6 +1209,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meeting_agenda_items_carried_to_fkey"
+            columns: ["carried_to"]
+            isOneToOne: false
+            referencedRelation: "meeting_agenda_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meeting_agenda_items_meeting_id_fkey"
             columns: ["meeting_id"]
@@ -2019,6 +2029,100 @@ export type Database = {
           },
         ]
       }
+      task_groups: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          decision_id: string | null
+          description: string | null
+          due_date: string | null
+          event_id: string | null
+          id: string
+          meeting_id: string | null
+          priority: string
+          region_id: string
+          scope: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          decision_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          priority?: string
+          region_id: string
+          scope?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          decision_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          priority?: string
+          region_id?: string
+          scope?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_groups_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_notes: {
         Row: {
           author_id: string | null
@@ -2213,6 +2317,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           event_id: string | null
+          group_id: string | null
           id: string
           meeting_id: string | null
           overdue_every_days: number | null
@@ -2242,6 +2347,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           event_id?: string | null
+          group_id?: string | null
           id?: string
           meeting_id?: string | null
           overdue_every_days?: number | null
@@ -2271,6 +2377,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           event_id?: string | null
+          group_id?: string | null
           id?: string
           meeting_id?: string | null
           overdue_every_days?: number | null
@@ -2288,6 +2395,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "task_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_archived_by_fkey"
             columns: ["archived_by"]
@@ -2668,6 +2782,10 @@ export type Database = {
       }
       can_edit_meeting: { Args: { _meeting: string }; Returns: boolean }
       can_edit_task: { Args: { _task: string }; Returns: boolean }
+      can_edit_task_group: {
+        Args: { _group: string }
+        Returns: boolean
+      }
       can_manage_deleted_user: {
         Args: { _actor: string; _target: string }
         Returns: boolean
@@ -2703,6 +2821,10 @@ export type Database = {
       can_view_meeting: { Args: { _meeting: string }; Returns: boolean }
       can_view_series: { Args: { _series: string }; Returns: boolean }
       can_view_task: { Args: { _task: string }; Returns: boolean }
+      can_view_task_group: {
+        Args: { _group: string }
+        Returns: boolean
+      }
       can_write_event_file: { Args: { _path: string }; Returns: boolean }
       can_write_event_request_file: {
         Args: { _path: string }
@@ -2715,6 +2837,10 @@ export type Database = {
       capture_email: {
         Args: { p_id: string; p_rendered: Json }
         Returns: undefined
+      }
+      carry_over_agenda: {
+        Args: { p: Json; p_meeting: string }
+        Returns: number
       }
       check_volunteer_answers: {
         Args: { _commitment: boolean; _help: string; _time: string }
@@ -2758,6 +2884,10 @@ export type Database = {
       create_region: { Args: { p_name: string }; Returns: string }
       create_series: { Args: { _data: Json; _rule: string }; Returns: Json }
       create_task: { Args: { p: Json }; Returns: string }
+      create_task_group: {
+        Args: { p: Json }
+        Returns: string
+      }
       decline_event_request: {
         Args: { p_id: string; p_reason: string }
         Returns: undefined
@@ -2797,6 +2927,10 @@ export type Database = {
       delete_region: { Args: { p_id: string }; Returns: undefined }
       delete_series: { Args: { _event: string; _mode: string }; Returns: Json }
       delete_task: { Args: { p_id: string }; Returns: undefined }
+      delete_task_group: {
+        Args: { p_id: string }
+        Returns: number
+      }
       delete_task_note: { Args: { p_id: string }; Returns: undefined }
       delete_volunteer_application: {
         Args: { p_id: string }
@@ -3094,6 +3228,10 @@ export type Database = {
       get_regions_tree: { Args: never; Returns: Json }
       get_review_waiting: { Args: Record<PropertyKey, never>; Returns: Json }
       get_task: { Args: { p_id: string }; Returns: Json }
+      get_task_group: {
+        Args: { p_id: string }
+        Returns: Json
+      }
       get_unread_notification_counts: {
         Args: never
         Returns: Json
@@ -3207,6 +3345,10 @@ export type Database = {
         Args: { p_offset?: number; p_status?: string }
         Returns: Json
       }
+      list_meeting_carry_over: {
+        Args: { p_branch?: string; p_region?: string; p_scope: string }
+        Returns: Json
+      }
       list_meeting_people: {
         Args: { p_branch?: string; p_region?: string; p_scope: string }
         Returns: Json
@@ -3251,6 +3393,10 @@ export type Database = {
         }[]
       }
       list_request_targets: { Args: never; Returns: Json }
+      list_task_groups: {
+        Args: never
+        Returns: Json
+      }
       list_task_mention_people: { Args: { p_task: string }; Returns: Json }
       list_task_notes: { Args: { p_task: string }; Returns: Json }
       list_task_people: {
@@ -3261,6 +3407,7 @@ export type Database = {
         Args: { p_filter?: string }
         Returns: Json
       }
+      list_task_sources: { Args: never; Returns: Json }
       list_tasks: { Args: never; Returns: Json }
       list_volunteer_applications: {
         Args: { p_filter?: string }
@@ -3708,6 +3855,10 @@ export type Database = {
         Args: { p_event_id: string; p_show_name: boolean }
         Returns: undefined
       }
+      set_task_group_members: {
+        Args: { p_add?: Json; p_id: string; p_remove?: Json }
+        Returns: Json
+      }
       set_task_reminder_emails: { Args: { p_on: boolean }; Returns: boolean }
       set_task_reminder_mute: {
         Args: { p_id: string; p_muted: boolean }
@@ -3803,6 +3954,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      task_group_people: {
+        Args: { _branch: string; _region: string }
+        Returns: string[]
+      }
+      task_group_status: {
+        Args: { _group: string }
+        Returns: string
+      }
+      task_group_trash_task: {
+        Args: { _task: string }
+        Returns: undefined
       }
       task_insert: {
         Args: {
@@ -4015,6 +4178,10 @@ export type Database = {
         Returns: Json
       }
       update_task: { Args: { p: Json; p_id: string }; Returns: string }
+      update_task_group: {
+        Args: { p: Json; p_id: string }
+        Returns: string
+      }
       update_task_note: {
         Args: { p_body: string; p_id: string; p_mentions?: Json }
         Returns: string

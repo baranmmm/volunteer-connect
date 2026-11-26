@@ -4,6 +4,7 @@ import { z } from "zod";
 // stored sentences.
 export const NOTIFICATION_KINDS = [
   "task_assigned",
+  "task_group_created",
   "task_status_changed",
   "task_reminder",
   "task_note_mention",

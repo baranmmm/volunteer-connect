@@ -137,6 +137,80 @@ export type MeetingCreateInput = z.infer<typeof meetingCreateInput>;
 export const MEETING_SERIES_MODES = ["this", "following", "all"] as const;
 export type MeetingSeriesMode = (typeof MEETING_SERIES_MODES)[number];
 
+/**
+ * Carry-over candidates (list_meeting_carry_over): the unresolved, not yet carried agenda items of earlier meetings in
+ * the same scope that the caller may edit, with their decisions and the decisions' not-done tasks.
+ */
+export const carryOverMeeting = z.object({
+  meeting_id: z.string().uuid(),
+  meeting_title: z.string(),
+  starts_at: z.string(),
+  items: z.array(
+    z.object({
+      id: z.string().uuid(),
+      title: z.string(),
+      notes: z.string().nullable(),
+      decisions: z.array(
+        z.object({
+          id: z.string().uuid(),
+          text: z.string(),
+          tasks: z.array(
+            z.object({
+              id: z.string().uuid(),
+              title: z.string(),
+              status: z.enum(["todo", "in_progress", "blocked", "done"]),
+              group_id: z.string().uuid().nullable(),
+              assignees: z.array(z.string().nullable()),
+            }),
+          ),
+        }),
+      ),
+    }),
+  ),
+});
+export type CarryOverMeeting = z.infer<typeof carryOverMeeting>;
+export type CarryOverItem = CarryOverMeeting["items"][number];
+/** What carry_over_agenda receives: per chosen item, the chosen decisions and tasks. */
+export const carryOverChoice = z.object({
+  item_id: z.string().uuid(),
+  decision_ids: z.array(z.string().uuid()).max(50),
+  task_ids: z.array(z.string().uuid()).max(500),
+});
+export type CarryOverChoice = z.infer<typeof carryOverChoice>;
+
+/** Everything of an item: every decision and every not-done task (the default when an item is ticked). */
+export function fullCarryOver(item: CarryOverItem): CarryOverChoice {
+  return {
+    item_id: item.id,
+    decision_ids: item.decisions.map((d) => d.id),
+    task_ids: item.decisions.flatMap((d) => d.tasks.map((x) => x.id)),
+  };
+}
+/**
+ * Ticks or unticks one decision of a chosen item: its tasks follow it. A task of an "@all" group stands for the whole
+ * group (the database moves the group), so one id per group is enough.
+ */
+export function toggleCarryDecision(
+  choice: CarryOverChoice,
+  item: CarryOverItem,
+  decisionId: string,
+  on: boolean,
+): CarryOverChoice {
+  const decision = item.decisions.find((d) => d.id === decisionId);
+  const taskIds = decision?.tasks.map((x) => x.id) ?? [];
+  return on
+    ? {
+        ...choice,
+        decision_ids: [...new Set([...choice.decision_ids, decisionId])],
+        task_ids: [...new Set([...choice.task_ids, ...taskIds])],
+      }
+    : {
+        ...choice,
+        decision_ids: choice.decision_ids.filter((x) => x !== decisionId),
+        task_ids: choice.task_ids.filter((x) => !taskIds.includes(x)),
+      };
+}
+
 /** How many recent past meetings and next upcoming meetings the /meetings timeline shows without expanding. */
 export const TIMELINE_RECENT_PAST = 2;
 export const TIMELINE_NEXT_UPCOMING = 3;
