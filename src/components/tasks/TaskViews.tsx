@@ -22,8 +22,13 @@ import {
   type Task,
   type TaskStatus,
 } from "@/lib/tasks";
-import { isCollapsed, type TaskGrouping, type TaskSection } from "@/lib/task-grouping";
-import { dateLocale } from "@/lib/i18n";
+import {
+  isCollapsed,
+  type DecisionInfo,
+  type TaskGrouping,
+  type TaskSection,
+} from "@/lib/task-grouping";
+import { dateLocale, formatDate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,19 +84,44 @@ export function CreatedText({ task, today }: { task: Pick<Task, "created_at">; t
   );
 }
 
-/** "Decision: …" under a task created from a meeting decision: one line, the full text on hover and focus. */
-function DecisionLine({ text, testId }: { text: string | undefined; testId: string }) {
+/**
+ * "Decision: …" under a task created from a meeting decision, then "Also in: Weekly meeting, 2 Dec" when the decision
+ * was carried into later meetings (the task shows under the copies too, but is listed once, under its own meeting).
+ * One line each, the full text on hover and focus.
+ */
+function DecisionLine({ info, testId }: { info: DecisionInfo | undefined; testId: string }) {
   const { t } = useTranslation();
-  if (!text) return null;
-  const line = t("tasks.decisionLine", { text });
+  if (!info) return null;
+  const cls =
+    "block min-w-0 truncate text-xs font-normal text-muted-foreground group-focus-visible:whitespace-normal dark:text-inherit";
+  const line = info.text ? t("tasks.decisionLine", { text: info.text }) : null;
+  const also = info.alsoIn.length
+    ? t("tasks.alsoIn", {
+        meetings: info.alsoIn
+          .map(
+            (m) => `${m.meeting}, ${formatDate(m.starts_at, { day: "numeric", month: "short" })}`,
+          )
+          .join("; "),
+      })
+    : null;
   return (
-    <span
-      data-testid={testId}
-      title={line}
-      className="block min-w-0 truncate text-xs font-normal text-muted-foreground group-focus-visible:whitespace-normal dark:text-inherit"
-    >
-      {line}
-    </span>
+    <>
+      {line && (
+        <span data-testid={testId} title={line} className={cls}>
+          {line}
+        </span>
+      )}
+      {also && (
+        <span
+          data-testid={`${testId}-also-in`}
+          data-count={info.alsoIn.length}
+          title={also}
+          className={cls}
+        >
+          {also}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -361,8 +391,8 @@ type SectionProps = {
   grouping: TaskGrouping;
   /** All-done sections start collapsed (off in the Archived view). */
   autoCollapse: boolean;
-  /** Decision id → text, for the "Decision: …" line. */
-  decisions: Map<string, string>;
+  /** Decision id → text and later meetings, for the "Decision: …" and "Also in: …" lines. */
+  decisions: Map<string, DecisionInfo>;
 };
 
 /** The status of a task as a small menu: a pill (list rows) or a "…" button (board cards). */
@@ -600,7 +630,7 @@ function TaskCard({
   onStatus,
 }: {
   task: Task;
-  decision: string | undefined;
+  decision: DecisionInfo | undefined;
   showScope: boolean;
   today: string;
   onOpen: (id: string) => void;
@@ -650,7 +680,7 @@ function TaskCard({
             {task.title}
           </span>
           {task.mine && <MineText />}
-          <DecisionLine text={decision} testId="task-card-decision" />
+          <DecisionLine info={decision} testId="task-card-decision" />
         </button>
         {changeable && (
           <StatusMenu task={task} onStatus={onStatus} testId="task-card-menu" variant="more" />
@@ -929,7 +959,7 @@ function TaskListRow({
   today: string;
   showScope: boolean;
   onOpen: (id: string) => void;
-  decision: string | undefined;
+  decision: DecisionInfo | undefined;
   onStatus: (s: TaskStatus) => void;
 }) {
   const { t } = useTranslation();
@@ -961,7 +991,7 @@ function TaskListRow({
             {task.title}
             {task.mine && <MineText />}
           </span>
-          <DecisionLine text={decision} testId="tasks-list-row-decision" />
+          <DecisionLine info={decision} testId="tasks-list-row-decision" />
         </span>
         {showScope && (
           <span

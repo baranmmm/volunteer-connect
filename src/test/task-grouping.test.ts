@@ -8,6 +8,7 @@ import {
   TASK_ROW_SORTS,
   compareTasks,
   createdDateOptions,
+  decisionInfo,
   decisionTexts,
   dueBucket,
   formatCreatedDate,
@@ -210,6 +211,16 @@ describe("meeting hierarchy", () => {
   it("a source the caller may not see (no label from the server) falls back to Other tasks", () => {
     const t = task(1, { event_id: HIDDEN_EVENT, decision_id: uuid(299), meeting_id: uuid(399) });
     expect(taskPlace(t, SOURCES)).toEqual({ kind: "other" });
+  });
+
+  it("decision info: text and the later meetings a carried decision also shows in", () => {
+    const later = { meeting_id: uuid(398), meeting: "Weekly", starts_at: "2026-12-02T18:00:00Z" };
+    const m = decisionInfo({
+      ...SOURCES,
+      decisions: SOURCES.decisions.map((d, i) => (i === 0 ? { ...d, also_in: [later] } : d)),
+    });
+    expect(m.get(SOURCES.decisions[0]!.id)!.alsoIn).toEqual([later]);
+    expect(m.get(SOURCES.decisions[1]!.id)!.alsoIn).toEqual([]);
   });
 
   it("decision texts by decision id (missing texts are left out)", () => {

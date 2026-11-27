@@ -1481,7 +1481,8 @@
       "toggle_other": "Önceki toplantılardan aktar ({{count}} açık madde)",
       "chosen_one": "{{count}} seçildi",
       "chosen_other": "{{count}} seçildi",
-      "hint": "Bir gündem maddesini, kararlarını ve açık görevlerini bu toplantıya getirmek için işaretleyin. Görevler buraya taşınır, kopyalanmaz.",
+      "hint": "Bir gündem maddesini ve kararlarını bu toplantıya getirmek için işaretleyin. Görevler taşınmaz veya kopyalanmaz: aynı görevler iki toplantıda da kararların altında görünür.",
+      "tasksShared": "Bu toplantıda da görünür",
       "done_one": "{{count}} gündem maddesi aktarıldı.",
       "done_other": "{{count}} gündem maddesi aktarıldı."
     }
@@ -1973,6 +1974,7 @@
       "label": "Atananlar: {{names}}"
     },
     "decisionLine": "Karar: {{text}}",
+    "alsoIn": "Şu toplantılarda da: {{meetings}}",
     "created": "Oluşturulma: {{date}}",
     "createdBy": "{{date}} tarihinde {{name}} oluşturdu"
   },
