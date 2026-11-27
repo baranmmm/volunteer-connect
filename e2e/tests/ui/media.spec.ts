@@ -366,4 +366,40 @@ test.describe("Media", () => {
     await expect(volunteer.getByTestId("media-upload-target")).toHaveValue(`event:${event}`);
     await expect(volunteer).not.toHaveURL(/request=/);
   });
+
+  test("phones: a follower opens Media of the branch they follow, read-only (public events and albums)", async ({ freshBranch, freshUser, pageAs }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-pixel7", "The follower's phone layout");
+    const branch = await freshBranch("media-follower");
+    const bm = await freshUser({ branch, role: "branch_manager" });
+    const follower = await freshUser({ branch, role: "follower" });
+    const album = await createAlbumAs(bm.email, branch, "Volunteer meet-ups");
+    await addLibraryPhotoAs(bm.email, branch, { album_id: album }, await photo());
+    // A public event that has started (its cover counts: added after the start) and a members-only one.
+    const open = await createEventAs(bm.email, { title: `${EVENT_TITLE_PREFIX}follower open`, branchId: branch, status: "published", audience: "public", startInMinutes: -30, durationMinutes: 180 });
+    const members = await createEventAs(bm.email, { title: `${EVENT_TITLE_PREFIX}follower members`, branchId: branch, status: "published", startInMinutes: -30, durationMinutes: 180 });
+    await addLibraryPhotoAs(bm.email, branch, { event_id: members }, await photo());
+
+    const page = await pageAs(follower);
+    await page.goto("/dashboard");
+    const bar = page.getByTestId("mobile-bottom-nav");
+    await expect(bar).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    const keys = await bar.locator('a[data-testid^="nav-"]').evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+    expect(keys).toEqual(["nav-dashboard", "nav-calendar", "nav-requests", "nav-media"]);
+    await bar.getByTestId("nav-media").click();
+    await expect(page.getByTestId("media-mobile")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    // The album and the public event; never the members-only event.
+    await expect(page.locator(`[data-testid="media-story"][data-chapter-id="${album}"]`)).toBeVisible();
+    await expect(page.locator(`[data-testid="media-story"][data-chapter-id="${open}"]`)).toBeVisible();
+    await expect(page.locator(`[data-testid="media-story"][data-chapter-id="${members}"]`)).toHaveCount(0);
+    // Read-only: no "+" circle, no add in the ⋯ menu, no actions in the lightbox.
+    await expect(page.getByTestId("media-story-add")).toHaveCount(0);
+    await page.getByTestId("media-more").click();
+    await expect(page.getByTestId("media-more-add")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.getByTestId("media-grid-photo").first().click();
+    const lightbox = page.getByTestId("media-lightbox");
+    await expect(lightbox).toBeVisible();
+    for (const id of ["media-lightbox-request-download", "media-lightbox-star", "media-lightbox-download", "media-lightbox-delete"])
+      await expect(lightbox.getByTestId(id)).toHaveCount(0);
+  });
 });

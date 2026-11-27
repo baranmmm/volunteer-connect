@@ -52,6 +52,8 @@ import {
 } from "@/lib/media";
 import { translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
+import { useAuth } from "@/lib/auth";
+import { isFollowerRoles } from "@/lib/roles";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -146,6 +148,7 @@ function MediaPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const desktop = useMediaDesktop();
+  const { roles } = useAuth();
   const qc = useQueryClient();
   const refresh = useMediaRefresh();
   const fetchPhotos = useServerFn(getMediaPhotos),
@@ -319,6 +322,8 @@ function MediaPage() {
 
   const canManage = !!home.data?.can_manage;
   const canAdd = canManage || !!home.data?.can_request;
+  // Followers only view (the database refuses their requests too): no download requests.
+  const canRequestDownload = !canManage && !isFollowerRoles(roles);
   // The header's Slideshow plays the highlights when there are any, otherwise the newest photos.
   const playHeader = () => open({ slideshow: highlightPhotos.length ? "highlights" : "gallery" });
 
@@ -334,6 +339,7 @@ function MediaPage() {
 
   const lightboxActions = (photo: ViewerPhoto) => {
     const c = pcChapter.data;
+    if (!canManage && !canRequestDownload) return null;
     if (!canManage)
       // Volunteers and trustees: the full-size file only through an approved download request.
       return (
@@ -478,7 +484,9 @@ function MediaPage() {
                 : null
             }
             onMoved={showTarget}
-            onRequestDownload={canManage ? null : (items) => setDialog({ kind: "download", items })}
+            onRequestDownload={
+              canRequestDownload ? (items) => setDialog({ kind: "download", items }) : null
+            }
           />
         ) : (
           <div data-testid="media-chapter-missing" className="space-y-3">

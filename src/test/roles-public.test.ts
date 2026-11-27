@@ -91,11 +91,12 @@ describe("roles and menus", () => {
     expect(isFollowerRoles(["volunteer"])).toBe(false);
   });
 
-  it("followers see no member pages; NCs get Regions; Donate is for everyone", () => {
+  it("followers see no member pages (Media of the branches they follow, read-only); NCs get Regions; Donate is for everyone", () => {
     const follower = navItemsFor("follower").map((i) => i.testId);
     expect(follower).toEqual([
       "nav-dashboard",
       "nav-calendar",
+      "nav-media",
       "nav-requests",
       "nav-profile",
       "nav-donate",
@@ -103,7 +104,6 @@ describe("roles and menus", () => {
     for (const path of [
       "/tasks",
       "/meetings",
-      "/media",
       "/training",
       "/users",
       "/recycle-bin",

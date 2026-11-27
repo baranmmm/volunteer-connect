@@ -63,7 +63,14 @@ export const NAV_ITEMS: NavItem[] = [
     badge: "meetings",
     roles: MEMBERS,
   },
-  { to: "/media", testId: "nav-media", labelKey: "navigation.media", icon: Image, roles: MEMBERS },
+  // Followers: the Media of the branches they follow, read-only (20261219090000_media_followers.sql).
+  {
+    to: "/media",
+    testId: "nav-media",
+    labelKey: "navigation.media",
+    icon: Image,
+    roles: ["follower", ...MEMBERS],
+  },
   {
     to: "/training",
     testId: "nav-training",
@@ -128,8 +135,9 @@ export const forbiddenItem = (role: AppRole, pathname: string) =>
 
 /**
  * The phone bottom bar (< 1024 px): the first four of these the role has, then "More" with the rest. Members who see
- * Media: Dashboard · Calendar · Tasks · Media (Meetings is the first item under More). National Coordinators (no
- * branch gallery) and followers keep Dashboard · Calendar · Tasks · Meetings / Requests.
+ * Media: Dashboard · Calendar · Tasks · Media (Meetings is the first item under More). Followers: Dashboard ·
+ * Calendar · Requests · Media (Media in the 4th slot as for members). National Coordinators (no branch gallery) keep
+ * Dashboard · Calendar · Tasks · Meetings.
  */
 export const MOBILE_PRIMARY = [
   "/dashboard",
@@ -141,10 +149,16 @@ export const MOBILE_PRIMARY = [
   "/regions",
 ];
 const MOBILE_PRIMARY_NO_MEDIA = MOBILE_PRIMARY.filter((to) => to !== "/media");
+const MOBILE_PRIMARY_FOLLOWER = ["/dashboard", "/calendar", "/requests", "/media"];
 
 /** The bottom bar's items for a role and the items under "More" (in menu order: Meetings first for members). */
 export function mobileNavFor(role: AppRole, items: NavItem[] = navItemsFor(role)) {
-  const order = role === "national_coordinator" ? MOBILE_PRIMARY_NO_MEDIA : MOBILE_PRIMARY;
+  const order =
+    role === "national_coordinator"
+      ? MOBILE_PRIMARY_NO_MEDIA
+      : role === "follower"
+        ? MOBILE_PRIMARY_FOLLOWER
+        : MOBILE_PRIMARY;
   // In the bar's own order (Media before Meetings), not the sidebar's.
   const primary = order
     .map((to) => items.find((i) => i.to === to))

@@ -6,7 +6,7 @@ export type NavKey = "dashboard" | "calendar" | "tasks" | "meetings" | "media" |
  * requests there; National Coordinators (no branch gallery) keep Meetings instead of Media. */
 export const MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "media"];
 export const NC_MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "tasks", "meetings"];
-export const FOLLOWER_MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "requests"];
+export const FOLLOWER_MOBILE_PRIMARY: NavKey[] = ["dashboard", "calendar", "requests", "media"];
 
 /** Desktop sidebar (`app-sidebar`) or mobile bottom nav (`mobile-bottom-nav`) + "More" sheet (`mobile-nav-more-sheet`). */
 export class Sidebar {
