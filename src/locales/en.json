@@ -1477,14 +1477,27 @@
       "hideLater": "Hide later meetings"
     },
     "carry": {
-      "toggle_one": "Carry over from earlier meetings ({{count}} open item)",
-      "toggle_other": "Carry over from earlier meetings ({{count}} open items)",
+      "toggle_one": "Carry over from other meetings ({{count}} open item)",
+      "toggle_other": "Carry over from other meetings ({{count}} open items)",
       "chosen_one": "{{count}} chosen",
       "chosen_other": "{{count}} chosen",
       "hint": "Tick an agenda item to bring it and its decisions to this meeting. Their tasks are not moved or copied: the same tasks show under the decisions in both meetings.",
       "tasksShared": "Shows in this meeting too",
       "done_one": "{{count}} agenda item carried over.",
-      "done_other": "{{count}} agenda items carried over."
+      "done_other": "{{count}} agenda items carried over.",
+      "search": "Search agenda items and decisions",
+      "noMatch": "No agenda item or decision matches your search.",
+      "more_one": "Show {{count}} more meeting",
+      "more_other": "Show {{count}} more meetings"
+    },
+    "carryIn": {
+      "open": "Add from other meetings",
+      "title": "Add from other meetings",
+      "hint": "Tick unfinished agenda items of other meetings of this place, past or upcoming. They are added after this meeting's agenda, with the decisions you tick. Their tasks are not moved or copied: the same tasks show under the decisions here too.",
+      "empty": "Nothing to add: the other meetings of this place have no unfinished agenda items that this meeting does not already have.",
+      "submitNone": "Add",
+      "submit_one": "Add {{count}} agenda item",
+      "submit_other": "Add {{count}} agenda items"
     }
   },
   "workRequests": {

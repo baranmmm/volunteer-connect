@@ -330,7 +330,7 @@ export const getMeetingSeriesTasks = createServerFn({ method: "GET" })
 
 // Carry-over --------------------------------------------------------------------------------------------------
 
-/** Unresolved agenda items of earlier meetings in this scope (that the caller may edit), with decisions and open tasks. */
+/** For a new meeting: unresolved agenda items of meetings of this place (that the caller may edit), with decisions and open tasks. */
 export const listMeetingCarryOver = createServerFn({ method: "GET" })
   .middleware([requireMember])
   .inputValidator(
@@ -350,9 +350,21 @@ export const listMeetingCarryOver = createServerFn({ method: "GET" })
     return z.array(carryOverMeeting).parse(result.data ?? []);
   });
 
+/** For an existing meeting ("Add from other meetings"): the same list, without what the meeting already has. */
+export const listMeetingCarryIn = createServerFn({ method: "GET" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ meetingId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("list_meeting_carry_in", {
+      p_meeting: data.meetingId,
+    });
+    fail(result.error);
+    return z.array(carryOverMeeting).parse(result.data ?? []);
+  });
+
 /**
- * Copies the chosen items and decisions into the meeting and moves the chosen open tasks to the new decisions, in
- * one transaction (carry_over_agenda). Returns how many items.
+ * Copies the chosen items (after the meeting's agenda) and decisions into the meeting, in one transaction
+ * (carry_over_agenda). Tasks are never moved or copied: they show under the copies. Returns how many items.
  */
 export const carryOverAgenda = createServerFn({ method: "POST" })
   .middleware([requireMember])

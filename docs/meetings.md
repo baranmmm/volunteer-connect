@@ -122,12 +122,26 @@ are London time.
 - **Repeat**: does not repeat, weekly or monthly; every 1-4 weeks/months; 2-52 meetings, the last at most 12 months
   after the first. Sent as `recurrence`.
 
-**Carry over** (create only; `meeting-form-carry`, shown when there is something to carry, collapsed): the unresolved,
-not yet carried agenda items of the last 10 earlier meetings in the same place that the caller may edit
-(`list_meeting_carry_over`), with their decisions and the decisions' not-done tasks. Ticking an item ticks all its
+**Carry over** (`20261222090000_carry_over_anywhere.sql`): any unresolved agenda item of another meeting of the same
+place that the caller may edit, past or upcoming, carried before or not, can be copied with its chosen decisions into
+a meeting, in two places that share one picker (`MeetingCarryPicker`):
+- *New meeting form* (`meeting-form-carry`, shown when there is something to carry, collapsed): `list_meeting_carry_over`;
+  the copies are made after the meeting is created.
+- *Meeting page*, for people who can edit it: "Add from other meetings" next to the agenda (`meeting-add-from-open`,
+  dialog `meeting-add-from-dialog`, `meeting-add-from-submit`): `list_meeting_carry_in`. The items go after the
+  meeting's agenda.
+
+Each copied item points to its source (`meeting_agenda_items.carried_from`; it replaced the single `carried_to` link),
+so an item can be carried into several meetings and its copies form a tree. The picker offers a tree once, as its most
+recently created copy, and only while that copy is unresolved (a copy in a deleted meeting does not count). It never
+offers a tree that already has a copy in the target meeting: `carry_over_agenda` refuses that too. The list is the
+100 newest meetings with something to carry, newest first, 10 at a time ("Show more"), with a search box that filters
+by agenda item title and decision text (every word, ignoring case and accents). Ticking an item ticks all its
 decisions; each can be unticked. A ticked decision lists its open tasks read-only (an "@all" group is one entry).
-After the meeting is created, `carry_over_agenda` copies the chosen items (title, notes) and decisions into it in one
-transaction; the old item gets `carried_to` and is no longer offered or shown under "From last meeting".
+`carry_over_agenda` copies the chosen items (title, notes) and decisions in one transaction (everything or nothing)
+with the same permission checks in both places. "From last meeting" shows the previous meeting's open items that
+were not carried anywhere. When an item is deleted for good, its copies point to the item it was copied from
+(trigger `meeting_agenda_items_pass_on`).
 
 **Tasks are shared, never moved or copied** (`20261221090000_carry_over_shared_tasks.sql`). Each copied decision points
 to its original (`meeting_decisions.carried_from`). A task stays on the decision (and meeting) where it was created and
@@ -136,14 +150,16 @@ shows under that decision and under every later copy, never earlier ones (`decis
 include it in every meeting. A task made with "+ Task" on a copy belongs to the copy and shows on its later copies.
 The Tasks page lists each task once, under its own meeting, with "Also in: …" naming the later meetings
 (`list_task_sources` → `also_in`, `tasks-list-row-decision-also-in` / `task-card-decision-also-in`, data-count). When a
-decision is deleted for good, its tasks, groups and place in the chain pass to its copy (trigger
-`meeting_decisions_pass_on`; a copy in a meeting that is not deleted first). Carry-overs made before this migration had
+decision is deleted for good, its tasks, groups and place in the chain pass to its earliest copy (trigger
+`meeting_decisions_pass_on`; a copy in a meeting that is not deleted first), and its other copies then hang under that
+copy. Both delete triggers read the link afresh, so the nightly purge can remove a chain spread over several meetings
+in one statement. Carry-overs made before this migration had
 moved the tasks; the migration put them back, matching each copy by the item link (one decision carried) or by
 identical text within that item pair (several), and stopped without changes if anything could not be matched
-(`scripts/carry-over-repair/preview.sql` previews the same logic read-only). If the carry-over is refused, the meeting stays and an
-error toast says why. Test ids: `-carry` (data-count), `-carry-toggle` (aria-expanded), `-carry-meeting`
-(data-meeting-id), `-carry-item` (data-item-id), `-carry-decision` (data-decision-id), `-carry-task` (data-task-id or
-data-group-id).
+(`scripts/carry-over-repair/preview.sql` previewed the same logic read-only). If the carry-over is refused, the meeting
+stays and an error toast says why. Test ids (prefix `meeting-form` or `meeting-add-from`): `-carry` and `-carry-toggle`
+(form only), `-carry-search`, `-carry-no-match`, `-carry-more`, `-carry-meeting` (data-meeting-id), `-carry-item`
+(data-item-id), `-carry-decision` (data-decision-id), `-carry-task` (data-task-id or data-group-id).
 
 Approving a meeting request uses the same form without the people picker and the create-only options.
 

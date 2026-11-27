@@ -246,4 +246,67 @@ test.describe("Task groups (@all)", () => {
     await expect(also).toHaveAttribute("data-count", "1");
     await expect(also).toContainText(newTitle);
   });
+
+  test("add from other meetings: an item already carried into an upcoming meeting is added to an extra meeting; search, shared task, not offered twice", async ({ freshUser, freshBranch, pageAs }) => {
+    const { branch, manager, v1 } = await team(freshBranch, freshUser, "groups-carry-in");
+    const at = (days: number, label: string) => ({ scope: "branch" as const, branch_id: branch, title: `${MEETING_TITLE_PREFIX}${runId} ${label}`, starts_at: inDays(days), ends_at: inDays(days, 1) });
+    const nov = await createMeetingAs(manager, at(-2, "monthly"));
+    const xmas = (await workRpc(manager, "add_agenda_item", { p_meeting: nov, p_title: "Christmas Dinner" })).data as string;
+    const venue = (await workRpc(manager, "add_meeting_decision", { p_item: xmas, p_text: "Book a venue" })).data as string;
+    const task = (await workRpc(manager, "create_task", { p: { scope: "branch", branch_id: branch, title: title("restaurant"), decision_id: venue, assignee_ids: [v1.id] } })).data as string;
+    const flyers = (await workRpc(manager, "add_agenda_item", { p_meeting: nov, p_title: "Flyers" })).data as string;
+    // Already carried into the upcoming weekly meeting.
+    const dec = await createMeetingAs(manager, at(5, "weekly"));
+    expect((await workRpc(manager, "carry_over_agenda", { p_meeting: dec, p: [{ item_id: xmas, decision_ids: [venue], task_ids: [] }] })).error).toBeNull();
+    const decCopy = (await adminClient().from("meeting_agenda_items").select("id").eq("meeting_id", dec).single()).data!.id as string;
+    const extra = await createMeetingAs(manager, { ...at(3, "extra"), invitee_ids: [v1.id] });
+    expect((await workRpc(manager, "add_agenda_item", { p_meeting: extra, p_title: "Welcome" })).error).toBeNull();
+
+    const page = await pageAs(manager);
+    await page.goto(`/meetings/${extra}`);
+    await page.getByTestId("meeting-add-from-open").click({ timeout: APP_LOAD_TIMEOUT });
+    const dialog = page.getByTestId("meeting-add-from-dialog");
+    const items = dialog.getByTestId("meeting-add-from-carry-item");
+    // The chain shows once, as its latest copy (the upcoming 2 Dec one); the extra meeting's own item is not offered.
+    await expect(items).toHaveCount(2, { timeout: APP_LOAD_TIMEOUT });
+    expect(await items.evaluateAll((els) => els.map((el) => el.getAttribute("data-item-id")))).toEqual([decCopy, flyers]);
+    const search = dialog.getByTestId("meeting-add-from-carry-search");
+    await search.fill("zzz nothing");
+    await expect(dialog.getByTestId("meeting-add-from-carry-no-match")).toBeVisible();
+    await expect(items).toHaveCount(0);
+    // Decision text is searched too.
+    await search.fill("venue");
+    await expect(items).toHaveCount(1);
+    await dialog.locator(`[data-testid="meeting-add-from-carry-item"][data-item-id="${decCopy}"]`).check();
+    const copiedDecision = (await adminClient().from("meeting_decisions").select("id").eq("meeting_id", dec).single()).data!.id as string;
+    await expect(dialog.locator(`[data-testid="meeting-add-from-carry-decision"][data-decision-id="${copiedDecision}"]`)).toBeChecked();
+    await expect(dialog.locator(`[data-testid="meeting-add-from-carry-task"][data-task-id="${task}"]`)).toBeVisible();
+    // Searching keeps what was ticked.
+    await search.fill("");
+    await expect(items).toHaveCount(2);
+    await expect(dialog.getByTestId("meeting-add-from-submit")).toHaveAttribute("data-count", "1");
+    await dialog.getByTestId("meeting-add-from-submit").click();
+    await expect(dialog).toBeHidden({ timeout: APP_LOAD_TIMEOUT });
+    await expect(page.getByTestId("toast-success")).toBeVisible();
+
+    // Appended after the agenda; the copy points to the 2 Dec copy; the task stays on 25 Nov and shows here too.
+    await expect(page.getByTestId("meeting-agenda-item-title")).toHaveText(["Welcome", "Christmas Dinner"], { timeout: APP_LOAD_TIMEOUT });
+    const added = (await adminClient().from("meeting_agenda_items").select("position, carried_from").eq("meeting_id", extra).eq("title", "Christmas Dinner").single()).data!;
+    expect(added).toEqual({ position: 1, carried_from: decCopy });
+    expect((await adminClient().from("tasks").select("meeting_id, decision_id").eq("id", task).single()).data).toEqual({ meeting_id: nov, decision_id: venue });
+    await expect(page.getByTestId("meeting-agenda-item").nth(1).getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-tasks", "1");
+
+    // Not offered again here, nor to 2 Dec; only Flyers is left.
+    await page.getByTestId("meeting-add-from-open").click();
+    await expect(items).toHaveCount(1, { timeout: APP_LOAD_TIMEOUT });
+    await expect(items).toHaveAttribute("data-item-id", flyers);
+    await dialog.getByTestId("meeting-add-from-cancel").click();
+    await expect(dialog).toBeHidden();
+
+    // An invited volunteer sees the meeting but cannot add from other meetings.
+    const volunteer = await pageAs(v1);
+    await volunteer.goto(`/meetings/${extra}`);
+    await expect(volunteer.getByTestId("meeting-agenda")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(volunteer.getByTestId("meeting-add-from-open")).toHaveCount(0);
+  });
 });

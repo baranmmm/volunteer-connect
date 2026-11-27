@@ -1477,14 +1477,27 @@
       "hideLater": "Sonraki toplantıları gizle"
     },
     "carry": {
-      "toggle_one": "Önceki toplantılardan aktar ({{count}} açık madde)",
-      "toggle_other": "Önceki toplantılardan aktar ({{count}} açık madde)",
+      "toggle_one": "Diğer toplantılardan aktar ({{count}} açık madde)",
+      "toggle_other": "Diğer toplantılardan aktar ({{count}} açık madde)",
       "chosen_one": "{{count}} seçildi",
       "chosen_other": "{{count}} seçildi",
       "hint": "Bir gündem maddesini ve kararlarını bu toplantıya getirmek için işaretleyin. Görevler taşınmaz veya kopyalanmaz: aynı görevler iki toplantıda da kararların altında görünür.",
       "tasksShared": "Bu toplantıda da görünür",
       "done_one": "{{count}} gündem maddesi aktarıldı.",
-      "done_other": "{{count}} gündem maddesi aktarıldı."
+      "done_other": "{{count}} gündem maddesi aktarıldı.",
+      "search": "Gündem maddelerinde ve kararlarda ara",
+      "noMatch": "Aramanızla eşleşen gündem maddesi veya karar yok.",
+      "more_one": "{{count}} toplantı daha göster",
+      "more_other": "{{count}} toplantı daha göster"
+    },
+    "carryIn": {
+      "open": "Diğer toplantılardan ekle",
+      "title": "Diğer toplantılardan ekle",
+      "hint": "Bu yerin geçmiş veya yaklaşan diğer toplantılarındaki bitmemiş gündem maddelerini işaretleyin. İşaretlediğiniz kararlarla birlikte bu toplantının gündeminin sonuna eklenirler. Görevler taşınmaz veya kopyalanmaz: aynı görevler burada da kararların altında görünür.",
+      "empty": "Eklenecek bir şey yok: bu yerin diğer toplantılarında bu toplantıda olmayan bitmemiş gündem maddesi yok.",
+      "submitNone": "Ekle",
+      "submit_one": "{{count}} gündem maddesini ekle",
+      "submit_other": "{{count}} gündem maddesini ekle"
     }
   },
   "workRequests": {

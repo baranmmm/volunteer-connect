@@ -1176,7 +1176,7 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
-          carried_to: string | null
+          carried_from: string | null
           created_at: string
           id: string
           meeting_id: string
@@ -1187,7 +1187,7 @@ export type Database = {
           title: string
         }
         Insert: {
-          carried_to?: string | null
+          carried_from?: string | null
           created_at?: string
           id?: string
           meeting_id: string
@@ -1198,7 +1198,7 @@ export type Database = {
           title: string
         }
         Update: {
-          carried_to?: string | null
+          carried_from?: string | null
           created_at?: string
           id?: string
           meeting_id?: string
@@ -1210,8 +1210,8 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "meeting_agenda_items_carried_to_fkey"
-            columns: ["carried_to"]
+            foreignKeyName: "meeting_agenda_items_carried_from_fkey"
+            columns: ["carried_from"]
             isOneToOne: false
             referencedRelation: "meeting_agenda_items"
             referencedColumns: ["id"]
@@ -3595,6 +3595,7 @@ export type Database = {
         Args: { p_box: string }
         Returns: Json
       }
+      list_meeting_carry_in: { Args: { p_meeting: string }; Returns: Json }
       list_meeting_carry_over: {
         Args: { p_branch?: string; p_region?: string; p_scope: string }
         Returns: Json
