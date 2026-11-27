@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EventCard } from "@/components/events/EventCard";
+import { cardEvents, useEventCovers } from "@/lib/use-event-covers";
 import { MonthEvents } from "@/components/events/MonthEvents";
 import { EventForm } from "@/components/events/EventForm";
 import { PastEventDialog } from "@/components/events/PastEventDialog";
@@ -129,6 +130,9 @@ function CalendarPage() {
       (!canCreate || !publicOnly || e.audience === "public"),
   );
   const filtered = filterEvents(inScope, view === "month" ? null : past, category, organizer, now);
+  // Covers only for the cards on screen: every listed event in List, only the unscheduled section in Month (the
+  // month grid shows no covers, so past records and dated events there sign nothing).
+  const covers = useEventCovers(cardEvents(view, filtered), session?.user.id);
   const organizers = [...new Set((events.data ?? []).map((e) => e.organizer))].sort();
   // Phones (< 640px): one slim header row, the filters in a bottom sheet, Create event as a floating button and the
   // other actions in one row below the header.
@@ -410,7 +414,9 @@ function CalendarPage() {
       ) : (
         <section data-testid="calendar-list-view" className="space-y-3">
           {filtered.length ? (
-            filtered.map((e) => <EventCard key={e.id} event={e} now={now} />)
+            filtered.map((e) => (
+              <EventCard key={e.id} event={e} now={now} coverUrl={covers.get(e.id)} />
+            ))
           ) : (
             <p className="border-y py-12 text-center text-muted-foreground">{t("events.empty")}</p>
           )}
@@ -443,7 +449,7 @@ function CalendarPage() {
           {filtered
             .filter((e) => !isScheduled(e))
             .map((e) => (
-              <EventCard key={e.id} event={e} now={now} />
+              <EventCard key={e.id} event={e} now={now} coverUrl={covers.get(e.id)} />
             ))}
         </section>
       )}

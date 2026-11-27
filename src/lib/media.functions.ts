@@ -4,7 +4,10 @@ import { z } from "zod";
 import { requireMember } from "@/lib/require-member";
 import {
   MEDIA_BUCKET,
+  MEDIA_CHAPTERS_PAGE,
   MEDIA_SOURCES,
+  photoSignPaths,
+  type PhotoSizes,
   mediaChapterRow,
   mediaDownloadRequestRow,
   mediaHighlightRow,
@@ -50,34 +53,46 @@ async function signPaths(supabase: SupabaseClient, bucket: string, paths: string
   return result;
 }
 
-/** Replaces paths with signed links (the 640 and 1280 copies; the original only when there are no copies). */
-async function signPhotos(supabase: SupabaseClient, rows: MediaPhotoRow[]): Promise<MediaPhoto[]> {
+/**
+ * Replaces paths with signed links: one createSignedUrls batch per bucket, the buckets in parallel. `sizes` decides
+ * which files (photoSignPaths): "tiles" signs only the 640 copy, so `src` stays empty (the viewers fall back to the
+ * tile, and the chapter/story viewers load the 1280 copies of their chapter when opened).
+ */
+export async function signPhotos(
+  supabase: SupabaseClient,
+  rows: MediaPhotoRow[],
+  sizes: PhotoSizes = "viewer",
+): Promise<MediaPhoto[]> {
   const byBucket = new Map<string, string[]>();
-  for (const r of rows) {
-    const list = byBucket.get(r.bucket) ?? [];
-    if (r.w640) list.push(r.w640);
-    if (r.w1280) list.push(r.w1280);
-    if (!r.w640 && r.original) list.push(r.original);
-    byBucket.set(r.bucket, list);
-  }
-  const signed = new Map<string, Map<string, string>>();
-  for (const [bucket, paths] of byBucket)
-    signed.set(bucket, await signPaths(supabase, bucket, paths));
+  for (const r of rows)
+    byBucket.set(r.bucket, [...(byBucket.get(r.bucket) ?? []), ...photoSignPaths(r, sizes)]);
+  const signed = new Map(
+    await Promise.all(
+      [...byBucket].map(
+        async ([bucket, paths]) => [bucket, await signPaths(supabase, bucket, paths)] as const,
+      ),
+    ),
+  );
   return rows.map(({ original, w640, w1280, bucket, ...rest }) => {
-    const urls = signed.get(bucket)!;
+    const urls = signed.get(bucket) ?? new Map<string, string>();
     const fallback = !w640 && original ? (urls.get(original) ?? null) : null;
     return {
       ...rest,
       thumb: (w640 && urls.get(w640)) || fallback,
-      src: (w1280 && urls.get(w1280)) || fallback,
+      src: (sizes === "viewer" && w1280 && urls.get(w1280)) || fallback,
     };
   });
 }
 
-async function signChapters(supabase: SupabaseClient, rows: z.infer<typeof mediaChapterRow>[]) {
+export async function signChapters(
+  supabase: SupabaseClient,
+  rows: z.infer<typeof mediaChapterRow>[],
+  sizes: PhotoSizes = "viewer",
+) {
   const photos = await signPhotos(
     supabase,
     rows.flatMap((c) => c.photos),
+    sizes,
   );
   const byId = new Map(photos.map((p) => [p.id, p]));
   return rows.map((c): MediaChapter => ({
@@ -137,11 +152,12 @@ export const getMediaChapters = createServerFn({ method: "GET" })
       ...(data.search ? { p_search: data.search } : {}),
       ...(data.beforeAt ? { p_before_at: data.beforeAt } : {}),
       ...(data.beforeId ? { p_before_id: data.beforeId } : {}),
-      p_limit: 6,
+      p_limit: MEDIA_CHAPTERS_PAGE,
     });
     fail(r.error);
     const rows = z.object({ chapters: z.array(mediaChapterRow) }).parse(r.data).chapters;
-    return signChapters(context.supabase, rows);
+    // The timeline shows each chapter's five preview tiles: only their 640 copies.
+    return signChapters(context.supabase, rows, "tiles");
   });
 
 export const getMediaChapter = createServerFn({ method: "GET" })
@@ -785,5 +801,6 @@ export const getLatestMediaPhotos = createServerFn({ method: "GET" })
     const r = await context.supabase.rpc("get_media_photos", { p_branch: branch.id, p_limit: 12 });
     fail(r.error);
     const rows = z.object({ photos: z.array(mediaPhotoRow) }).parse(r.data).photos;
-    return { branchId: branch.id, photos: await signPhotos(context.supabase, rows) };
+    // The strip shows 12 tiles: only their 640 copies (a click opens the lightbox, which loads its chapter).
+    return { branchId: branch.id, photos: await signPhotos(context.supabase, rows, "tiles") };
   });

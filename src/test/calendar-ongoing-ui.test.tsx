@@ -21,6 +21,12 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({ data: mocks.rows, isLoading: false, isError: false }),
+  // useEventCovers' per-event cover cache (no covers in these tests).
+  useQueryClient: () => ({
+    getQueryState: () => undefined,
+    getQueryData: () => undefined,
+    setQueryData: vi.fn(),
+  }),
 }));
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
@@ -30,7 +36,7 @@ vi.mock("@/lib/auth", () => ({
     roles: ["volunteer"],
   }),
 }));
-vi.mock("@/lib/events.functions", () => ({ listEvents: vi.fn() }));
+vi.mock("@/lib/events.functions", () => ({ listEvents: vi.fn(), getEventCovers: vi.fn() }));
 vi.mock("@/components/events/EventForm", () => ({ EventForm: () => null }));
 vi.mock("@/components/events/PastEventDialog", () => ({ PastEventDialog: () => null }));
 vi.mock("@/components/events/RecentlyDeletedEvents", () => ({ RecentlyDeletedEvents: () => null }));

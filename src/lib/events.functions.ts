@@ -6,6 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { EventMedia, HubEvent, EventRow, MediaRow } from "./event-rules";
 import { normalizeEventExtension } from "./event-rules";
 import { eventDeletionState } from "./event-deletion";
+import { imageVariantPaths } from "./image-variants";
 import type { SeriesInfo } from "./recurrence";
 import type { RegistrationStatus } from "./registrations";
 
@@ -19,58 +20,94 @@ async function active(client: SupabaseClient<Database>, uid: string) {
   const { data, error } = await client.from("profiles").select("status").eq("id", uid).single();
   if (error || data.status !== "active") throw new Error("Not allowed");
 }
-async function withMedia(
+/** Chunks of `size`, for `.in()` filters and Storage batches. */
+const chunks = <T>(items: T[], size: number) =>
+  Array.from({ length: Math.ceil(items.length / size) }, (_, i) =>
+    items.slice(i * size, i * size + size),
+  );
+
+/** Browser-facing signed links of one createSignedUrls batch per 100 paths (all batches in parallel). */
+async function signEventPaths(client: SupabaseClient<Database>, paths: string[], seconds: number) {
+  const urls = new Map<string, string>();
+  const unique = [...new Set(paths)];
+  const batches = await Promise.all(
+    chunks(unique, 100).map((batch) =>
+      client.storage.from("event-media").createSignedUrls(batch, seconds),
+    ),
+  );
+  for (const result of batches) {
+    if (result.error) throw result.error;
+    for (const item of result.data) {
+      if (item.error || !item.signedUrl || !item.path) continue;
+      // Keep browser-facing URLs on the browser's Supabase origin, not a server-only endpoint.
+      const raw = new URL(item.signedUrl);
+      urls.set(item.path, `${import.meta.env["VITE_SUPABASE_URL"]}${raw.pathname}${raw.search}`);
+    }
+  }
+  return urls;
+}
+
+/** The media rows of events (series occurrences: their series' holder event), in position order; RLS decides. */
+async function mediaRows(
   client: SupabaseClient<Database>,
-  events: EventRow[],
-): Promise<HubEvent[]> {
-  if (!events.length) return [];
+  events: Pick<EventRow, "id" | "series_id">[],
+) {
   // Occurrences of a series show the series' files, held by its media holder event (RLS: can_view_event_media).
   const seriesIds = [...new Set(events.flatMap((e) => (e.series_id ? [e.series_id] : [])))];
   const holderOf = new Map<string, string>();
-  for (let i = 0; i < seriesIds.length; i += 100) {
-    const result = await client
-      .from("event_series")
-      .select("id, media_event_id")
-      .in("id", seriesIds.slice(i, i + 100));
+  const series = await Promise.all(
+    chunks(seriesIds, 100).map((ids) =>
+      client.from("event_series").select("id, media_event_id").in("id", ids),
+    ),
+  );
+  for (const result of series) {
     if (result.error) throw result.error;
     for (const s of result.data) if (s.media_event_id) holderOf.set(s.id, s.media_event_id);
   }
-  const ownerOf = (e: EventRow) => (e.series_id && holderOf.get(e.series_id)) || e.id;
+  const ownerOf = (e: Pick<EventRow, "id" | "series_id">) =>
+    (e.series_id && holderOf.get(e.series_id)) || e.id;
   const owners = [...new Set(events.map(ownerOf))];
+  const pages = await Promise.all(
+    chunks(owners, 100).map((ids) =>
+      client.from("event_media").select("*").in("event_id", ids).order("position").order("id"),
+    ),
+  );
   const media: MediaRow[] = [];
-  for (let i = 0; i < owners.length; i += 100) {
-    const ids = owners.slice(i, i + 100);
-    const result = await client
-      .from("event_media")
-      .select("*")
-      .in("event_id", ids)
-      .order("position")
-      .order("id");
+  for (const result of pages) {
     if (result.error) throw result.error;
     media.push(...result.data);
   }
-  const signed: EventMedia[] = [];
-  for (let i = 0; i < media.length; i += 100) {
-    const batch = media.slice(i, i + 100);
-    const urls = await client.storage.from("event-media").createSignedUrls(
-      batch.map((m) => m.storage_path),
-      300,
-    );
-    if (urls.error) throw urls.error;
-    for (const m of batch) {
-      const raw = urls.data.find((u) => u.path === m.storage_path)?.signedUrl;
-      // Keep browser-facing URLs on the browser's Supabase origin, not a server-only endpoint.
-      const url = raw
-        ? `${import.meta.env["VITE_SUPABASE_URL"]}${new URL(raw).pathname}${new URL(raw).search}`
-        : null;
-      signed.push({ ...m, url });
-    }
-  }
+  return { media, ownerOf };
+}
+
+/**
+ * Events with their media rows. `sign`: signed links for every file (one event's page); lists pass false and the
+ * cards ask getEventCovers for the covers they show, so a list never signs files it does not display.
+ */
+async function withMedia(
+  client: SupabaseClient<Database>,
+  events: EventRow[],
+  { sign }: { sign: boolean },
+): Promise<HubEvent[]> {
+  if (!events.length) return [];
+  const { media, ownerOf } = await mediaRows(client, events);
+  const urls = sign
+    ? await signEventPaths(
+        client,
+        media.map((m) => m.storage_path),
+        300,
+      )
+    : null;
+  const rows: EventMedia[] = media.map((m) => ({ ...m, url: urls?.get(m.storage_path) ?? null }));
   return events.map((e) => ({
     ...e,
-    media: signed.filter((m) => m.event_id === ownerOf(e)).sort((a, b) => a.position - b.position),
+    media: rows.filter((m) => m.event_id === ownerOf(e)).sort((a, b) => a.position - b.position),
   }));
 }
+
+/** Signed links last 10 minutes; the client keeps covers 4 minutes (the events list's staleTime). */
+const COVER_SECONDS = 600;
+export const MAX_COVER_IDS = 100;
 export const listEvents = createServerFn({ method: "POST" })
   .middleware([requireMember])
   .handler(async ({ context }) => {
@@ -112,11 +149,44 @@ export const listEvents = createServerFn({ method: "POST" })
       if (result.error) throw result.error;
       for (const m of result.data) meetingOf.set(m.event_id, m.id);
     }
-    return (await withMedia(context.supabase, events)).map((e) => ({
+    return (await withMedia(context.supabase, events, { sign: false })).map((e) => ({
       ...e,
       my_registration: (mine.get(e.id) ?? null) as RegistrationStatus | null,
       meeting_id: meetingOf.get(e.id) ?? null,
     }));
+  });
+/**
+ * The cover (first image) of each listed event the viewer can see, as a signed link to its 640 copy (the original
+ * when it has no copies): one Storage batch for the cards a page shows. Events without an image are left out.
+ */
+export const getEventCovers = createServerFn({ method: "POST" })
+  .middleware([requireMember])
+  .inputValidator(z.object({ ids: z.array(z.string().uuid()).max(MAX_COVER_IDS) }))
+  .handler(async ({ data, context }): Promise<Record<string, string>> => {
+    const ids = [...new Set(data.ids)];
+    if (!ids.length) return {};
+    const events = await context.supabase.from("events").select("id, series_id").in("id", ids);
+    if (events.error) throw events.error;
+    const { media, ownerOf } = await mediaRows(context.supabase, events.data);
+    const coverOf = new Map<string, MediaRow>();
+    for (const m of media)
+      if (m.kind === "image" && !coverOf.has(m.event_id)) coverOf.set(m.event_id, m);
+    const pathOf = new Map<string, string>();
+    for (const e of events.data) {
+      const cover = coverOf.get(ownerOf(e));
+      if (cover)
+        pathOf.set(
+          e.id,
+          cover.has_variants ? imageVariantPaths(cover.storage_path).w640 : cover.storage_path,
+        );
+    }
+    const urls = await signEventPaths(context.supabase, [...pathOf.values()], COVER_SECONDS);
+    const result: Record<string, string> = {};
+    for (const [id, path] of pathOf) {
+      const url = urls.get(path);
+      if (url) result[id] = url;
+    }
+    return result;
   });
 export const getEvent = createServerFn({ method: "POST" })
   .middleware([requireMember])
@@ -169,7 +239,7 @@ export const getEvent = createServerFn({ method: "POST" })
       meetingId = m.data?.id ?? null;
     }
     return {
-      event: (await withMedia(context.supabase, [result.data]))[0] ?? null,
+      event: (await withMedia(context.supabase, [result.data], { sign: true }))[0] ?? null,
       meetingId,
       canManage: deletion.canManage,
       deletion,
