@@ -21,7 +21,8 @@ import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { TaskStatusBadge } from "@/components/tasks/TaskBadges";
 import { AssigneeNames } from "@/components/tasks/AssigneeNames";
 import { deleteTask, getTask } from "@/lib/tasks.functions";
-import { linkedRows, type TaskDetail, type TaskGroupData } from "@/lib/tasks";
+import { linkedRows, londonDay, type TaskDetail, type TaskGroupData } from "@/lib/tasks";
+import { CreatedText, DueText } from "@/components/tasks/TaskViews";
 import {
   TaskGroupDeleteDialog,
   TaskGroupFormDialog,
@@ -55,7 +56,7 @@ import {
   updateAgendaItem,
   updateMeetingDecision,
 } from "@/lib/meetings.functions";
-import { agendaCounts } from "./meeting-ui";
+import { agendaCounts, decisionTaskCount } from "./meeting-ui";
 
 type Decision = AgendaItem["decisions"][number];
 
@@ -63,7 +64,9 @@ type Decision = AgendaItem["decisions"][number];
  * Agenda items with their decisions and the tasks created from them. Invitees see everything read-only.
  * Each item is a toggle row (chevron, title, "2 decisions, 3 tasks"), collapsed by default; expanding it shows the
  * notes, decisions, tasks and the editing controls. A just-added item opens expanded. "Expand all / Collapse all"
- * (meeting-agenda-expand-all, aria-pressed) opens or closes every item.
+ * (meeting-agenda-expand-all, aria-pressed) opens or closes every item and every decision's task list.
+ * A decision with linked tasks has a toggle (chevron, "3 tasks") that shows its tasks underneath, collapsed by default;
+ * a task created with "+ Task" opens its decision. Open/closed states last while the page is open.
  */
 export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   const { t } = useTranslation();
@@ -95,6 +98,15 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const setOpen = (id: string, open: boolean) =>
     setExpanded((cur) => {
+      const next = new Set(cur);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  // Decisions whose task lists are open (collapsed by default).
+  const [openDecisions, setOpenDecisions] = useState<ReadonlySet<string>>(() => new Set());
+  const setDecisionOpen = (id: string, open: boolean) =>
+    setOpenDecisions((cur) => {
       const next = new Set(cur);
       if (open) next.add(id);
       else next.delete(id);
@@ -139,7 +151,11 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
   }
 
   const items = [...meeting.agenda].sort((a, b) => a.position - b.position);
-  const allOpen = items.length > 0 && items.every((item) => expanded.has(item.id));
+  const withTasks = items.flatMap((item) => item.decisions.filter((d) => d.tasks.length > 0));
+  const allOpen =
+    items.length > 0 &&
+    items.every((item) => expanded.has(item.id)) &&
+    withTasks.every((d) => openDecisions.has(d.id));
   return (
     <section
       data-testid="meeting-agenda"
@@ -158,9 +174,10 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
               aria-pressed={allOpen}
               variant="ghost"
               className="h-11"
-              onClick={() =>
-                setExpanded(allOpen ? new Set() : new Set(items.map((item) => item.id)))
-              }
+              onClick={() => {
+                setExpanded(allOpen ? new Set() : new Set(items.map((item) => item.id)));
+                setOpenDecisions(allOpen ? new Set() : new Set(withTasks.map((d) => d.id)));
+              }}
             >
               {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
               {allOpen ? t("meetings.agenda.collapseAll") : t("meetings.agenda.expandAll")}
@@ -394,89 +411,119 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                         )}
                         {item.decisions.length > 0 && (
                           <ul className="mt-2 grid min-w-0 grid-cols-1 gap-2">
-                            {item.decisions.map((d) => (
-                              <li
-                                key={d.id}
-                                data-testid="meeting-decision"
-                                data-decision-id={d.id}
-                                className="min-w-0 rounded-lg bg-muted/50 p-3"
-                              >
-                                {editingDecision === d.id ? (
-                                  <DecisionForm
-                                    busy={busy}
-                                    text={d.text}
-                                    onCancel={() => setEditingDecision(null)}
-                                    onSave={async (text) => {
-                                      if (
-                                        await run(
-                                          () => updateDecision({ data: { id: d.id, text } }),
-                                          t("meetings.decisions.updated"),
-                                        )
-                                      )
-                                        setEditingDecision(null);
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="flex min-w-0 items-start gap-2">
-                                    <p
-                                      data-testid="meeting-decision-text-value"
-                                      className="min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere]"
-                                    >
-                                      {d.text}
-                                    </p>
-                                    {editable && (
-                                      <DecisionActions
-                                        busy={busy}
-                                        onCreateTask={() => setTaskFor(d)}
-                                        onEdit={() => {
-                                          setDecisionFor(null);
-                                          setEditingDecision(d.id);
-                                        }}
-                                        onDelete={() =>
-                                          void run(
-                                            () => removeDecision({ data: { id: d.id } }),
-                                            t("meetings.decisions.deleted"),
+                            {item.decisions.map((d) => {
+                              const taskCount = decisionTaskCount(d.tasks);
+                              const tasksOpen = taskCount > 0 && openDecisions.has(d.id);
+                              const tasksId = `meeting-decision-tasks-${d.id}`;
+                              return (
+                                <li
+                                  key={d.id}
+                                  data-testid="meeting-decision"
+                                  data-decision-id={d.id}
+                                  data-expanded={tasksOpen}
+                                  className="min-w-0 rounded-lg bg-muted/50 p-3"
+                                >
+                                  {editingDecision === d.id ? (
+                                    <DecisionForm
+                                      busy={busy}
+                                      text={d.text}
+                                      onCancel={() => setEditingDecision(null)}
+                                      onSave={async (text) => {
+                                        if (
+                                          await run(
+                                            () => updateDecision({ data: { id: d.id, text } }),
+                                            t("meetings.decisions.updated"),
                                           )
-                                        }
-                                      />
-                                    )}
-                                  </div>
-                                )}
-                                {d.tasks.length > 0 && (
-                                  <ul
-                                    className="mt-2 grid min-w-0 grid-cols-1 gap-1"
-                                    aria-label={t("meetings.decisions.tasks")}
-                                  >
-                                    {linkedRows(d.tasks).map((row) =>
-                                      row.kind === "group" ? (
-                                        <TaskGroupLinkedRow
-                                          key={row.groupId}
-                                          groupId={row.groupId}
-                                          testId="meeting-decision-group"
-                                          taskLink={(id) => ({
-                                            to: "/meetings/$id",
-                                            params: { id: meeting.id },
-                                            search: { task: id },
-                                          })}
-                                          editable
-                                          onEdit={setEditingGroup}
-                                          onDelete={setRemovingGroup}
-                                        />
-                                      ) : (
-                                        <DecisionTaskRow
-                                          key={row.task.id}
-                                          meetingId={meeting.id}
-                                          task={row.task}
+                                        )
+                                          setEditingDecision(null);
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="flex min-w-0 items-start gap-2">
+                                      <p
+                                        data-testid="meeting-decision-text-value"
+                                        className="min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere]"
+                                      >
+                                        {d.text}
+                                      </p>
+                                      {taskCount > 0 && (
+                                        <button
+                                          type="button"
+                                          data-testid="meeting-decision-tasks-toggle"
+                                          data-tasks={taskCount}
+                                          aria-expanded={tasksOpen}
+                                          aria-controls={tasksId}
+                                          onClick={() => setDecisionOpen(d.id, !tasksOpen)}
+                                          className="flex min-h-11 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
+                                        >
+                                          <ChevronRight
+                                            className={cn(
+                                              "size-4 shrink-0 transition-transform",
+                                              tasksOpen && "rotate-90",
+                                            )}
+                                            aria-hidden
+                                          />
+                                          <span data-testid="meeting-decision-tasks-count">
+                                            {t("meetings.agenda.tasksCount", { count: taskCount })}
+                                          </span>
+                                        </button>
+                                      )}
+                                      {editable && (
+                                        <DecisionActions
                                           busy={busy}
-                                          onEdit={(detail) => setEditingTask(detail)}
-                                          onDelete={(r) => setRemovingTask(r)}
+                                          onCreateTask={() => setTaskFor(d)}
+                                          onEdit={() => {
+                                            setDecisionFor(null);
+                                            setEditingDecision(d.id);
+                                          }}
+                                          onDelete={() =>
+                                            void run(
+                                              () => removeDecision({ data: { id: d.id } }),
+                                              t("meetings.decisions.deleted"),
+                                            )
+                                          }
                                         />
-                                      ),
-                                    )}
-                                  </ul>
-                                )}
-                              </li>
-                            ))}
+                                      )}
+                                    </div>
+                                  )}
+                                  {tasksOpen && (
+                                    <ul
+                                      id={tasksId}
+                                      data-testid="meeting-decision-tasks"
+                                      className="mt-2 grid min-w-0 grid-cols-1 gap-1"
+                                      aria-label={t("meetings.decisions.tasks")}
+                                    >
+                                      {linkedRows(d.tasks).map((row) =>
+                                        row.kind === "group" ? (
+                                          <TaskGroupLinkedRow
+                                            key={row.groupId}
+                                            groupId={row.groupId}
+                                            testId="meeting-decision-group"
+                                            taskLink={(id) => ({
+                                              to: "/meetings/$id",
+                                              params: { id: meeting.id },
+                                              search: { task: id },
+                                            })}
+                                            editable
+                                            onEdit={setEditingGroup}
+                                            onDelete={setRemovingGroup}
+                                          />
+                                        ) : (
+                                          <DecisionTaskRow
+                                            key={row.task.id}
+                                            meetingId={meeting.id}
+                                            task={row.task}
+                                            busy={busy}
+                                            onEdit={(detail) => setEditingTask(detail)}
+                                            onDelete={(r) => setRemovingTask(r)}
+                                          />
+                                        ),
+                                      )}
+                                    </ul>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                         {editable &&
@@ -624,8 +671,15 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
             decision_id: taskFor.id,
           }}
           onSaved={() => {
+            // The new task shows in its decision's list, opened.
+            setDecisionOpen(taskFor.id, true);
             setTaskFor(null);
             void qc.invalidateQueries({ queryKey: ["meeting", meeting.id] });
+            void qc.invalidateQueries({ queryKey: ["meeting-series-tasks"] });
+          }}
+          // An "@all" group from the decision (the dialog refreshes the meeting): its row shows, opened.
+          onSavedGroup={() => {
+            setDecisionOpen(taskFor.id, true);
             void qc.invalidateQueries({ queryKey: ["meeting-series-tasks"] });
           }}
         />
@@ -663,6 +717,7 @@ function DecisionTaskRow({
     staleTime: 60000,
   });
   const canEdit = !!detail.data?.can_edit;
+  const today = londonDay();
   return (
     <li className="flex min-w-0 items-center gap-1" data-testid="meeting-decision-task-row">
       <Link
@@ -680,7 +735,14 @@ function DecisionTaskRow({
           {task.title}
         </span>
         {detail.data && (
-          <AssigneeNames people={detail.data.assignees} testId="meeting-decision-task-assignees" />
+          <>
+            <CreatedText task={detail.data} today={today} />
+            <DueText task={detail.data} today={today} />
+            <AssigneeNames
+              people={detail.data.assignees}
+              testId="meeting-decision-task-assignees"
+            />
+          </>
         )}
         <TaskStatusBadge status={task.status} className="rounded-full" />
       </Link>

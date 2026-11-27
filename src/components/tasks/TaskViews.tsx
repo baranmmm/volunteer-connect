@@ -65,7 +65,7 @@ type ViewProps = {
 };
 
 /** "Created 25 Nov" on wide screens (hidden on phones, where the row has no room). */
-function CreatedText({ task, today }: { task: Task; today: string }) {
+export function CreatedText({ task, today }: { task: Pick<Task, "created_at">; today: string }) {
   const { t } = useTranslation();
   const date = createdDay(task.created_at, today);
   if (!date) return null;
@@ -190,7 +190,13 @@ export function ArchiveDoneButton({ tasks, testId }: { tasks: Task[]; testId: st
   );
 }
 
-function DueText({ task, today }: { task: Task; today: string }) {
+export function DueText({
+  task,
+  today,
+}: {
+  task: Pick<Task, "due_date" | "status">;
+  today: string;
+}) {
   const { t } = useTranslation();
   if (!task.due_date) return null;
   const overdue = isOverdue(task, today);
