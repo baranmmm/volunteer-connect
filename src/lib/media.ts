@@ -9,6 +9,22 @@ export type MediaSource = (typeof MEDIA_SOURCES)[number];
 export type ChapterKind = "event" | "album";
 /** At most this many photos in one upload request (the database enforces the same). */
 export const MAX_REQUEST_PHOTOS = 20;
+/** Timeline chapters per page (the first page comes at once, the next ones on scroll). */
+export const MEDIA_CHAPTERS_PAGE = 4;
+
+/**
+ * Which stored files to sign for photos. "tiles": only what a tile shows, the 640 copy (the original when there are
+ * no copies) — the timeline previews and the dashboard strip; the viewers load their chapter's 1280 copies when
+ * opened. "viewer": the 640 and 1280 copies (the original only without copies) for grids and viewers.
+ */
+export type PhotoSizes = "tiles" | "viewer";
+export function photoSignPaths(
+  row: { original: string | null; w640: string | null; w1280: string | null },
+  sizes: PhotoSizes,
+): string[] {
+  if (!row.w640) return row.original ? [row.original] : [];
+  return sizes === "tiles" || !row.w1280 ? [row.w640] : [row.w640, row.w1280];
+}
 
 /** One photo as the database returns it (storage paths; the server replaces them with signed links). */
 export const mediaPhotoRow = z.object({

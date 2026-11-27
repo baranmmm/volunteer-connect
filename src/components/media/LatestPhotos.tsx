@@ -11,6 +11,7 @@ import { MEDIA_KEY } from "./use-media";
 /**
  * Dashboard "Latest photos": the newest photos of the member's branch (events and albums) in one horizontal strip;
  * a photo opens in the Media tab's lightbox. Hidden when there are none (and for people without a branch gallery).
+ * While it loads, the strip shows skeleton tiles; the rest of the dashboard never waits for it.
  */
 export function LatestPhotos() {
   const { t } = useTranslation();
@@ -21,7 +22,8 @@ export function LatestPhotos() {
     staleTime: 4 * 60_000,
   });
   const photos = latest.data?.photos ?? [];
-  if (!photos.length) return null;
+  const loading = latest.isPending;
+  if (!loading && !photos.length) return null;
   return (
     <section
       data-testid="dashboard-latest-photos"
@@ -45,7 +47,19 @@ export function LatestPhotos() {
           <ChevronRight className="size-4" aria-hidden />
         </Link>
       </div>
-      <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+      <ul
+        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
+        aria-busy={loading || undefined}
+      >
+        {loading &&
+          Array.from({ length: 12 }, (_, i) => (
+            <li
+              key={i}
+              data-testid="dashboard-latest-photo-skeleton"
+              aria-hidden
+              className="size-24 shrink-0 animate-pulse rounded-xl bg-muted sm:size-28"
+            />
+          ))}
         {photos.map((p, i) =>
           p.chapter_kind && p.chapter_id ? (
             <li key={p.id} className="shrink-0">
