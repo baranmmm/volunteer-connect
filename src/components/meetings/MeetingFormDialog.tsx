@@ -442,12 +442,12 @@ function MeetingForm({
     <div className="min-w-0 space-y-2" data-testid={`${testId}-agenda`} data-count={agenda.length}>
       <Label htmlFor={`${testId}-agenda-input`}>{t("meetings.form.agenda")}</Label>
       {agenda.length > 0 && (
-        <ol className="grid min-w-0 grid-cols-1 gap-1.5">
+        <ol className="grid min-w-0 grid-cols-1 gap-1">
           {agenda.map((item, i) => (
             <li
               key={`${i}-${item}`}
               data-testid={`${testId}-agenda-item`}
-              className="flex min-w-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
+              className="flex min-w-0 items-center gap-2 rounded-md border px-3 py-1 text-sm sm:py-0.5"
             >
               <span className="shrink-0 text-muted-foreground" aria-hidden>
                 {i + 1}.
@@ -457,7 +457,7 @@ function MeetingForm({
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="shrink-0"
+                className="shrink-0 sm:size-8"
                 data-testid={`${testId}-agenda-remove`}
                 aria-label={t("meetings.form.agendaRemove", { title: item })}
                 disabled={busy || !!createdId}

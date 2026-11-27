@@ -503,10 +503,11 @@ test.describe("Meetings", () => {
     await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-tasks", "3");
   });
 
-  test("decisions are compact: 14 px text, short rows, line breaks kept, 44 px tap targets on phones", async ({ freshUser, freshBranch, pageAs }, testInfo) => {
+  test("agenda items and decisions are compact: 14 px text, short rows, line breaks kept, 44 px tap targets on phones", async ({ freshUser, freshBranch, pageAs }, testInfo) => {
     const { branch, manager, volunteer } = await branchTeam(freshBranch, freshUser, "meetings-compact");
     const id = await createMeetingAs(manager, meetingAt(branch, "compact"));
     const itemId = (await workRpc(manager, "add_agenda_item", { p_meeting: id, p_title: "Iftar" })).data as string;
+    const nextId = (await workRpc(manager, "add_agenda_item", { p_meeting: id, p_title: "Rota" })).data as string;
     const single = (await workRpc(manager, "add_meeting_decision", { p_item: itemId, p_text: "Book the hall" })).data as string;
     const menu = (await workRpc(manager, "add_meeting_decision", { p_item: itemId, p_text: "Menu:\n- soup\n- rice\n- dates" })).data as string;
     expect((await workRpc(manager, "create_task", { p: { scope: "branch", branch_id: branch, title: `${TASK_TITLE_PREFIX}${runId} hall`, decision_id: single, assignee_ids: [volunteer.id] } })).error).toBeNull();
@@ -519,10 +520,18 @@ test.describe("Meetings", () => {
     const text = one.getByTestId("meeting-decision-text-value");
     expect(await text.evaluate((el) => getComputedStyle(el).fontSize)).toBe("14px");
     const phone = testInfo.project.name === "mobile-pixel7";
-    // A one-line decision: the 44 px (phone) / 36 px controls plus 6 px above and below (was 12 px each).
-    expect((await one.boundingBox())!.height).toBeLessThanOrEqual(phone ? 58 : 50);
+    // A one-line decision: the 44 px (phone) / 28 px (wider screens) controls plus 2 px above and below.
+    expect((await one.boundingBox())!.height).toBeLessThanOrEqual(phone ? 50 : 34);
     const gap = (await many.boundingBox())!.y - ((await one.boundingBox())!.y + (await one.boundingBox())!.height);
-    expect(gap).toBeLessThanOrEqual(5);
+    expect(gap).toBeLessThanOrEqual(3);
+    if (!phone) expect((await one.getByTestId("meeting-decision-create-task").boundingBox())!.height).toBeLessThanOrEqual(28);
+    // Agenda items: 6 px apart, the item header 44 px on phones and 36 px on wider screens.
+    const next = page.locator(`[data-testid="meeting-agenda-item"][data-item-id="${nextId}"]`);
+    const itemGap = (await next.boundingBox())!.y - ((await item.boundingBox())!.y + (await item.boundingBox())!.height);
+    expect(itemGap).toBeLessThanOrEqual(7);
+    const header = (await next.getByTestId("meeting-agenda-item-toggle").boundingBox())!;
+    expect(header.height).toBeGreaterThanOrEqual(phone ? 44 : 36);
+    expect(header.height).toBeLessThanOrEqual(phone ? 45 : 37);
     // The menu keeps its line breaks.
     expect(await many.getByTestId("meeting-decision-text-value").innerText()).toBe("Menu:\n- soup\n- rice\n- dates");
     expect((await many.boundingBox())!.height).toBeGreaterThan(70);
@@ -532,11 +541,11 @@ test.describe("Meetings", () => {
         expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(44);
       }
     }
-    // Task rows in an open decision: 44 px tall on phones, tighter on wider screens.
+    // Task rows in an open decision: 44 px tall on phones, 28 px on wider screens.
     await expandDecision(one);
     const row = (await one.getByTestId("meeting-decision-task").boundingBox())!;
-    expect(row.height).toBeGreaterThanOrEqual(phone ? 44 : 36);
-    expect(row.height).toBeLessThanOrEqual(phone ? 46 : 38);
+    expect(row.height).toBeGreaterThanOrEqual(phone ? 44 : 28);
+    expect(row.height).toBeLessThanOrEqual(phone ? 46 : 30);
   });
 
   test("the meetings page is one timeline: earlier past meetings collapsed, the two latest past, the next three, later ones collapsed", async ({ freshUser, freshBranch, pageAs }) => {

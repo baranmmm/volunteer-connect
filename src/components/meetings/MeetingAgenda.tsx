@@ -221,7 +221,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
           {t("meetings.agenda.empty")}
         </p>
       ) : (
-        <ol className="mt-4 grid min-w-0 grid-cols-1 gap-3">
+        <ol className="mt-4 grid min-w-0 grid-cols-1 gap-1.5">
           {items.map((item, index) => {
             const open = expanded.has(item.id);
             const counts = agendaCounts(item);
@@ -234,7 +234,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                 data-resolved={resolving[item.id] ?? item.resolved}
                 data-standing={item.standing}
                 data-expanded={open}
-                className="min-w-0 rounded-xl border p-2 sm:p-3"
+                className="min-w-0 rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5"
               >
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   <h3 className="min-w-0 flex-1">
@@ -244,7 +244,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                       aria-expanded={open}
                       aria-controls={bodyId}
                       onClick={() => setOpen(item.id, !open)}
-                      className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-1 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-1 text-left hover:bg-muted/50 sm:min-h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <ChevronRight
                         className={cn(
@@ -318,10 +318,10 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                         />
                       ) : (
                         (editable || item.notes) && (
-                          <div className="mt-1 flex min-w-0 flex-wrap items-start gap-3">
+                          <div className="mt-0.5 flex min-w-0 flex-wrap items-start gap-2">
                             <div className="min-w-0 flex-1">
                               {editable && (
-                                <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                                <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm sm:min-h-8">
                                   <Checkbox
                                     data-testid="meeting-agenda-resolved"
                                     checked={resolving[item.id] ?? item.resolved}
@@ -336,7 +336,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                               {item.notes && (
                                 <p
                                   data-testid="meeting-agenda-item-notes"
-                                  className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground [overflow-wrap:anywhere]"
+                                  className="mt-0.5 whitespace-pre-wrap text-sm text-muted-foreground [overflow-wrap:anywhere]"
                                 >
                                   {item.notes}
                                 </p>
@@ -347,6 +347,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                 <Button
                                   size="icon"
                                   variant="ghost"
+                                  className="sm:size-8"
                                   data-testid="meeting-agenda-up"
                                   aria-label={t("meetings.agenda.moveUp")}
                                   disabled={busy || index === 0}
@@ -359,6 +360,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                 <Button
                                   size="icon"
                                   variant="ghost"
+                                  className="sm:size-8"
                                   data-testid="meeting-agenda-down"
                                   aria-label={t("meetings.agenda.moveDown")}
                                   disabled={busy || index === items.length - 1}
@@ -371,6 +373,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                 <Button
                                   size="icon"
                                   variant="ghost"
+                                  className="sm:size-8"
                                   data-testid="meeting-agenda-edit"
                                   aria-label={t("meetings.agenda.edit")}
                                   disabled={busy}
@@ -384,7 +387,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="text-destructive hover:text-destructive"
+                                  className="text-destructive hover:text-destructive sm:size-8"
                                   data-testid="meeting-agenda-delete"
                                   aria-label={t("meetings.agenda.delete")}
                                   disabled={busy}
@@ -397,7 +400,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                           </div>
                         )
                       )}
-                      <div className="mt-3 min-w-0 border-t pt-3">
+                      <div className="mt-1.5 min-w-0 border-t pt-1.5">
                         <h4 className="text-sm font-medium text-muted-foreground">
                           {t("meetings.decisions.title")}
                         </h4>
@@ -410,7 +413,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                           </p>
                         )}
                         {item.decisions.length > 0 && (
-                          <ul className="mt-2 grid min-w-0 grid-cols-1 gap-1">
+                          <ul className="mt-1 grid min-w-0 grid-cols-1 gap-0.5">
                             {item.decisions.map((d) => {
                               const taskCount = decisionTaskCount(d.tasks);
                               const tasksOpen = taskCount > 0 && openDecisions.has(d.id);
@@ -424,7 +427,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                   className={cn(
                                     "min-w-0 rounded-lg bg-muted/50 px-3",
                                     // Compact rows; the inline editor keeps room for its buttons.
-                                    editingDecision === d.id ? "py-3" : "py-1.5",
+                                    editingDecision === d.id ? "py-3" : "py-0.5",
                                   )}
                                 >
                                   {editingDecision === d.id ? (
@@ -446,7 +449,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                     <div className="flex min-w-0 items-start gap-1">
                                       <p
                                         data-testid="meeting-decision-text-value"
-                                        className="min-w-0 flex-1 whitespace-pre-wrap py-3 text-sm leading-5 [overflow-wrap:anywhere] sm:py-2"
+                                        className="min-w-0 flex-1 whitespace-pre-wrap py-2.5 text-sm leading-5 [overflow-wrap:anywhere] sm:py-1"
                                       >
                                         {d.text}
                                       </p>
@@ -458,7 +461,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                           aria-expanded={tasksOpen}
                                           aria-controls={tasksId}
                                           onClick={() => setDecisionOpen(d.id, !tasksOpen)}
-                                          className="flex min-h-11 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
+                                          className="flex min-h-11 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7"
                                         >
                                           <ChevronRight
                                             className={cn(
@@ -732,7 +735,7 @@ function DecisionTaskRow({
         data-testid="meeting-decision-task"
         data-task-id={task.id}
         data-status={task.status}
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm text-primary sm:min-h-9 underline-offset-4 hover:underline"
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm text-primary sm:min-h-7 underline-offset-4 hover:underline"
       >
         <ListChecks className="size-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate" title={task.title}>
@@ -755,6 +758,7 @@ function DecisionTaskRow({
           <Button
             size="icon"
             variant="ghost"
+            className="sm:size-7"
             data-testid="meeting-decision-task-edit"
             aria-label={t("meetings.decisions.editTask", { title: task.title })}
             disabled={busy}
@@ -765,7 +769,7 @@ function DecisionTaskRow({
           <Button
             size="icon"
             variant="ghost"
-            className="text-destructive hover:text-destructive"
+            className="text-destructive hover:text-destructive sm:size-7"
             data-testid="meeting-decision-task-delete"
             aria-label={t("meetings.decisions.deleteTask", { title: task.title })}
             disabled={busy}
@@ -999,7 +1003,7 @@ function DecisionActions({
       <Button
         size="sm"
         variant="ghost"
-        className="h-9 gap-1 px-2 text-primary"
+        className="h-9 gap-1 px-2 text-primary sm:h-7"
         data-testid="meeting-decision-create-task"
         aria-label={t("meetings.decisions.createTask")}
         disabled={busy}
@@ -1011,6 +1015,7 @@ function DecisionActions({
       <Button
         size="icon"
         variant="ghost"
+        className="sm:size-7"
         data-testid="meeting-decision-edit"
         aria-label={t("meetings.decisions.edit")}
         disabled={busy}
@@ -1021,7 +1026,7 @@ function DecisionActions({
       <Button
         size="icon"
         variant="ghost"
-        className="text-destructive hover:text-destructive"
+        className="text-destructive hover:text-destructive sm:size-7"
         data-testid="meeting-decision-delete"
         aria-label={t("meetings.decisions.delete")}
         disabled={busy}
