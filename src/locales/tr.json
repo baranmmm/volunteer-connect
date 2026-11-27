@@ -1367,7 +1367,9 @@
       "createTask": "Görev oluştur",
       "editTask": "Görevi düzenle: {{title}}",
       "deleteTask": "Görevi sil: {{title}}",
-      "deleteTaskText": "\"{{title}}\" Geri Dönüşüm Kutusu'na taşınır ve 30 gün boyunca geri yüklenebilir."
+      "deleteTaskText": "\"{{title}}\" Geri Dönüşüm Kutusu'na taşınır ve 30 gün boyunca geri yüklenebilir.",
+      "taskShort": "Görev",
+      "actions": "Karar işlemleri"
     },
     "files": {
       "title": "Dosyalar",

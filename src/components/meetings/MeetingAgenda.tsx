@@ -11,6 +11,7 @@ import {
   ChevronsUpDown,
   ListChecks,
   Pencil,
+  MoreHorizontal,
   Plus,
   Repeat,
   Trash2,
@@ -27,6 +28,13 @@ import {
   TaskGroupLinkedRow,
 } from "@/components/tasks/TaskGroupParts";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useNarrowScreen } from "@/hooks/use-narrow-screen";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -417,37 +425,20 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                       {d.text}
                                     </p>
                                     {editable && (
-                                      <div className="flex shrink-0 gap-1">
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          data-testid="meeting-decision-edit"
-                                          aria-label={t("meetings.decisions.edit")}
-                                          disabled={busy}
-                                          onClick={() => {
-                                            setDecisionFor(null);
-                                            setEditingDecision(d.id);
-                                          }}
-                                        >
-                                          <Pencil />
-                                        </Button>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="text-destructive hover:text-destructive"
-                                          data-testid="meeting-decision-delete"
-                                          aria-label={t("meetings.decisions.delete")}
-                                          disabled={busy}
-                                          onClick={() =>
-                                            void run(
-                                              () => removeDecision({ data: { id: d.id } }),
-                                              t("meetings.decisions.deleted"),
-                                            )
-                                          }
-                                        >
-                                          <Trash2 />
-                                        </Button>
-                                      </div>
+                                      <DecisionActions
+                                        busy={busy}
+                                        onCreateTask={() => setTaskFor(d)}
+                                        onEdit={() => {
+                                          setDecisionFor(null);
+                                          setEditingDecision(d.id);
+                                        }}
+                                        onDelete={() =>
+                                          void run(
+                                            () => removeDecision({ data: { id: d.id } }),
+                                            t("meetings.decisions.deleted"),
+                                          )
+                                        }
+                                      />
                                     )}
                                   </div>
                                 )}
@@ -483,18 +474,6 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                       ),
                                     )}
                                   </ul>
-                                )}
-                                {editable && editingDecision !== d.id && (
-                                  <Button
-                                    variant="link"
-                                    className="mt-1 h-auto min-h-11 px-0"
-                                    data-testid="meeting-decision-create-task"
-                                    disabled={busy}
-                                    onClick={() => setTaskFor(d)}
-                                  >
-                                    <Plus />
-                                    {t("meetings.decisions.createTask")}
-                                  </Button>
                                 )}
                               </li>
                             ))}
@@ -882,5 +861,108 @@ function DecisionForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * A decision's actions (people who may edit the meeting; never trustees): "+ Task" (the task form linked to the
+ * decision), Edit and Delete in the decision's row; on phones (< 640 px) the three sit in the decision's ⋯ menu, like
+ * the other compact mobile toolbars. One of the two is rendered, so the test ids are the same on every device.
+ */
+function DecisionActions({
+  busy,
+  onCreateTask,
+  onEdit,
+  onDelete,
+}: {
+  busy: boolean;
+  onCreateTask: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+  const narrow = useNarrowScreen();
+  // The task form, the inline editor and the delete run after the menu has closed (a closing modal menu and an opening
+  // dialog would otherwise fight over focus and pointer events).
+  const after = (fn: () => void) => () => window.setTimeout(fn, 0);
+  if (narrow)
+    return (
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-11 shrink-0"
+            data-testid="meeting-decision-menu"
+            aria-label={t("meetings.decisions.actions")}
+            disabled={busy}
+          >
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-44">
+          <DropdownMenuItem
+            className="min-h-11"
+            data-testid="meeting-decision-create-task"
+            onSelect={after(onCreateTask)}
+          >
+            <Plus />
+            {t("meetings.decisions.createTask")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="min-h-11"
+            data-testid="meeting-decision-edit"
+            onSelect={after(onEdit)}
+          >
+            <Pencil />
+            {t("meetings.decisions.edit")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="min-h-11 text-destructive focus:text-destructive"
+            data-testid="meeting-decision-delete"
+            onSelect={after(onDelete)}
+          >
+            <Trash2 />
+            {t("meetings.decisions.delete")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-9 gap-1 px-2 text-primary"
+        data-testid="meeting-decision-create-task"
+        aria-label={t("meetings.decisions.createTask")}
+        disabled={busy}
+        onClick={onCreateTask}
+      >
+        <Plus />
+        {t("meetings.decisions.taskShort")}
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        data-testid="meeting-decision-edit"
+        aria-label={t("meetings.decisions.edit")}
+        disabled={busy}
+        onClick={onEdit}
+      >
+        <Pencil />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="text-destructive hover:text-destructive"
+        data-testid="meeting-decision-delete"
+        aria-label={t("meetings.decisions.delete")}
+        disabled={busy}
+        onClick={onDelete}
+      >
+        <Trash2 />
+      </Button>
+    </div>
   );
 }
