@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Download,
   ChevronLeft,
   FolderInput,
   Pencil,
@@ -44,6 +45,7 @@ export function ChapterView({
   onSlideshow,
   onAdd,
   onMoved,
+  onRequestDownload,
 }: {
   chapter: MediaChapter;
   branchId: string;
@@ -53,6 +55,8 @@ export function ChapterView({
   onSlideshow: () => void;
   onAdd: (() => void) | null;
   onMoved: (target: MediaTarget) => void;
+  /** Volunteers and trustees: "Request download" for the selected photos (null for managers: they download). */
+  onRequestDownload?: ((items: MediaItemRef[]) => void) | null;
 }) {
   const { t } = useTranslation();
   const meta = useChapterMeta();
@@ -263,6 +267,43 @@ export function ChapterView({
                 </>
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {!canManage && onRequestDownload && chapter.photos.length > 0 && (
+        <div
+          data-testid="media-chapter-tools"
+          className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-2"
+        >
+          {selecting ? (
+            <>
+              <p data-testid="media-selected-count" className="px-2 text-sm font-medium" aria-live="polite">
+                {t("media.selected", { count: selected.length })}
+              </p>
+              <span className="flex-1" />
+              <Button
+                data-testid="media-request-download-selected"
+                variant="outline"
+                className="h-11"
+                disabled={!selected.length}
+                onClick={() => {
+                  onRequestDownload(items);
+                  stopSelecting();
+                }}
+              >
+                <Download className="size-4" aria-hidden />
+                {t("media.downloads.request")}
+              </Button>
+              <Button variant="ghost" className="h-11" onClick={stopSelecting}>
+                {t("common.cancel")}
+              </Button>
+            </>
+          ) : (
+            <Button data-testid="media-select" variant="ghost" className="h-11" onClick={() => setSelecting(true)}>
+              <Check className="size-4" aria-hidden />
+              {t("media.selectToDownload")}
+            </Button>
           )}
         </div>
       )}

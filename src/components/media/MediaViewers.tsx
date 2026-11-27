@@ -188,18 +188,22 @@ export function LightboxAction({
   children,
   testId,
   icon,
+  pressed,
 }: {
   onClick: () => void;
   children: ReactNode;
   testId: string;
   icon?: ReactNode;
+  /** A toggle (the highlight star): its state for assistive technology. */
+  pressed?: boolean;
 }) {
   return (
     <button
       type="button"
       data-testid={testId}
+      aria-pressed={pressed}
       onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/30 px-4 text-sm font-medium hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/30 px-4 text-sm font-medium hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white aria-pressed:border-media-amber aria-pressed:text-media-amber"
     >
       {icon}
       {children}

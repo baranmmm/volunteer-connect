@@ -4,8 +4,10 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   getMediaChapter,
   getMediaChapters,
+  getMediaHighlights,
   getMediaHome,
   getMediaPhotos,
+  listMediaDownloadRequests,
   listMediaTargets,
   listMediaUploadRequests,
 } from "@/lib/media.functions";
@@ -125,4 +127,25 @@ export function useMediaDesktop() {
     return () => mql.removeEventListener("change", update);
   }, []);
   return desktop;
+}
+
+/** The branch's starred photos (highlights strip / card / slideshow), most recently starred first. */
+export function useMediaHighlights(branchId: string | undefined) {
+  const fetch = useServerFn(getMediaHighlights);
+  return useQuery({
+    queryKey: [MEDIA_KEY, "highlights", branchId],
+    enabled: !!branchId,
+    queryFn: () => fetch({ data: { branchId: branchId! } }),
+    staleTime: FRESH,
+  });
+}
+
+export function useMediaDownloadRequests(box: "mine" | "review", enabled = true) {
+  const fetch = useServerFn(listMediaDownloadRequests);
+  return useQuery({
+    queryKey: [MEDIA_KEY, "downloads", box],
+    enabled,
+    queryFn: () => fetch({ data: { box } }),
+    staleTime: 60_000,
+  });
 }

@@ -47,6 +47,7 @@ import { Route as ApiPublicNoticeUnsubscribeRouteImport } from './routes/api/pub
 import { Route as ApiPublicOutboxFlushRouteImport } from './routes/api/public/outbox-flush'
 import { Route as ApiPublicTaskRemindersRouteImport } from './routes/api/public/task-reminders'
 import { Route as ApiPublicUnsubscribeRouteImport } from './routes/api/public/unsubscribe'
+import { Route as AppMediaDownloadIdRouteImport } from './routes/_app/media_.download.$id'
 import { Route as ApiPublicEventImageIdRouteImport } from './routes/api/public/event-image.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -240,6 +241,11 @@ const ApiPublicUnsubscribeRoute = ApiPublicUnsubscribeRouteImport.update({
   path: '/api/public/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppMediaDownloadIdRoute = AppMediaDownloadIdRouteImport.update({
+  id: '/media_/download/$id',
+  path: '/media/download/$id',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const ApiPublicEventImageIdRoute = ApiPublicEventImageIdRouteImport.update({
   id: '/api/public/event-image/$id',
   path: '/api/public/event-image/$id',
@@ -284,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/api/public/outbox-flush': typeof ApiPublicOutboxFlushRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
+  '/media/download/$id': typeof AppMediaDownloadIdRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
 }
 export interface FileRoutesByTo {
@@ -324,6 +331,7 @@ export interface FileRoutesByTo {
   '/api/public/outbox-flush': typeof ApiPublicOutboxFlushRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
+  '/media/download/$id': typeof AppMediaDownloadIdRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
 }
 export interface FileRoutesById {
@@ -366,6 +374,7 @@ export interface FileRoutesById {
   '/api/public/outbox-flush': typeof ApiPublicOutboxFlushRoute
   '/api/public/task-reminders': typeof ApiPublicTaskRemindersRoute
   '/api/public/unsubscribe': typeof ApiPublicUnsubscribeRoute
+  '/_app/media_/download/$id': typeof AppMediaDownloadIdRoute
   '/api/public/event-image/$id': typeof ApiPublicEventImageIdRoute
 }
 export interface FileRouteTypes {
@@ -408,6 +417,7 @@ export interface FileRouteTypes {
     | '/api/public/outbox-flush'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
+    | '/media/download/$id'
     | '/api/public/event-image/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/api/public/outbox-flush'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
+    | '/media/download/$id'
     | '/api/public/event-image/$id'
   id:
     | '__root__'
@@ -489,6 +500,7 @@ export interface FileRouteTypes {
     | '/api/public/outbox-flush'
     | '/api/public/task-reminders'
     | '/api/public/unsubscribe'
+    | '/_app/media_/download/$id'
     | '/api/public/event-image/$id'
   fileRoutesById: FileRoutesById
 }
@@ -785,6 +797,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/media_/download/$id': {
+      id: '/_app/media_/download/$id'
+      path: '/media/download/$id'
+      fullPath: '/media/download/$id'
+      preLoaderRoute: typeof AppMediaDownloadIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/api/public/event-image/$id': {
       id: '/api/public/event-image/$id'
       path: '/api/public/event-image/$id'
@@ -813,6 +832,7 @@ interface AppRouteRouteChildren {
   AppEventsIdRoute: typeof AppEventsIdRoute
   AppMeetingsIdRoute: typeof AppMeetingsIdRoute
   AppUsersIdRoute: typeof AppUsersIdRoute
+  AppMediaDownloadIdRoute: typeof AppMediaDownloadIdRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -833,6 +853,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppEventsIdRoute: AppEventsIdRoute,
   AppMeetingsIdRoute: AppMeetingsIdRoute,
   AppUsersIdRoute: AppUsersIdRoute,
+  AppMediaDownloadIdRoute: AppMediaDownloadIdRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

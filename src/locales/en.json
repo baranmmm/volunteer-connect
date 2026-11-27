@@ -976,7 +976,8 @@
       "task": "Task",
       "meeting": "Meeting",
       "volunteer": "Volunteer application",
-      "media": "Media upload"
+      "media": "Media upload",
+      "mediaDownload": "Photo download"
     },
     "newRequest": "New request",
     "comingSoon": "Coming soon",
@@ -1593,7 +1594,11 @@
       "email_budget_warning": "{{sent}} of {{limit}} emails were sent today. Emails over the daily limit wait until tomorrow (sign-up and password emails always go out). Consider a paid email plan.",
       "media_upload_approved_one": "{{actor}} added {{count}} of your photos to “{{title}}”",
       "media_upload_approved_other": "{{actor}} added {{count}} of your photos to “{{title}}”",
-      "media_upload_declined": "{{actor}} declined your photos for “{{title}}”. Reason: {{reason}}"
+      "media_upload_declined": "{{actor}} declined your photos for “{{title}}”. Reason: {{reason}}",
+      "media_download_approved_one": "{{actor}} approved your download request ({{count}} photo). The link works for 24 hours.",
+      "media_download_approved_other": "{{actor}} approved your download request ({{count}} photos). The link works for 24 hours.",
+      "media_download_declined": "{{actor}} declined your download request. Reason: {{reason}}",
+      "media_photo_nudge": "Share your photos from “{{title}}”"
     },
     "taskStatus": {
       "todo": "To do",
@@ -1649,7 +1654,8 @@
         "task_note": "New notes on my tasks",
         "task_reminder": "Task reminders",
         "meeting": "Meetings I am invited to (invited, changed, cancelled)",
-        "request_decided": "Decisions on my requests"
+        "request_decided": "Decisions on my requests",
+        "media": "Photo reminders after events"
       },
       "inAppAlways": "Notices always appear in the app (the bell) straight away.",
       "emailModes": {
@@ -1674,7 +1680,8 @@
         "task_note": "Notes on my tasks",
         "task_reminder": "Task reminders",
         "meeting": "Meetings",
-        "request_decided": "Decisions on my requests"
+        "request_decided": "Decisions on my requests",
+        "media": "Photo reminders"
       }
     }
   },
@@ -2350,7 +2357,10 @@
       "volunteer_application_declined": "Your application has been answered",
       "other": "New notification",
       "media_upload_approved": "Your request has been answered",
-      "media_upload_declined": "Your request has been answered"
+      "media_upload_declined": "Your request has been answered",
+      "media_download_approved": "Your request has been answered",
+      "media_download_declined": "Your request has been answered",
+      "media_photo_nudge": "Share your photos from yesterday's event"
     },
     "bodies": {
       "default": "Open the Volunteer Hub to see it.",
@@ -2598,7 +2608,56 @@
       "eventPageToAlbum": "Event page photos can only be moved to an album.",
       "publicKeepsPhoto": "A public event must keep at least one photo.",
       "moveFailed": "Moving the photos failed. Nothing was changed.",
-      "invalidCover": "Choose a photo of this album as its cover."
-    }
+      "invalidCover": "Choose a photo of this album as its cover.",
+      "notStarted": "This event has not started yet: photos can be added once it has begun."
+    },
+    "downloads": {
+      "request": "Request download",
+      "requestTitle_one": "Download request for {{count}} photo",
+      "requestTitle_other": "Download request for {{count}} photos",
+      "intro": "A Branch Manager reviews your request. If it is approved, you get a link to the full-size photos that works for 24 hours.",
+      "reason": "Why do you need them? (optional)",
+      "reasonLabel": "Reason",
+      "send": "Send request",
+      "sent": "Download request sent",
+      "download": "Download full size",
+      "mine": "Photo downloads",
+      "review": "Photo downloads to review",
+      "reviewHint": "If you approve, the member gets a link to these photos in full size, valid for 24 hours.",
+      "approve": "Approve",
+      "approvedToast": "Approved: the member has a link for 24 hours",
+      "declinedToast": "Download request declined",
+      "declined": "Your download request was not approved.",
+      "declinedReason": "Not approved. Reason: {{reason}}",
+      "open": "Open the download page",
+      "expiredShort": "The 24-hour download link has expired.",
+      "pageTitle": "Photo download",
+      "backToMedia": "Back to Media",
+      "missing": "This download link is not available. It may belong to someone else, or the request was removed.",
+      "waiting": "Your request is still waiting for a Branch Manager's decision.",
+      "withdrawn": "This request was withdrawn.",
+      "expired": "This download link expired on {{when}}. Send a new download request from the Media tab if you still need the photos.",
+      "validUntil_one": "{{count}} photo, available in full size until {{when}}.",
+      "validUntil_other": "{{count}} photos, available in full size until {{when}}.",
+      "prepare_one": "Get the download link",
+      "prepare_other": "Get the {{count}} download links",
+      "photoN": "Photo {{n}}",
+      "fileN": "Download photo {{n}}"
+    },
+    "highlights": {
+      "title": "Highlights",
+      "play": "Play highlights",
+      "open": "Highlight from {{title}}",
+      "eyebrow": "Highlight",
+      "star": "Star as highlight",
+      "unstar": "Remove from highlights",
+      "starred": "Added to the highlights",
+      "unstarred": "Removed from the highlights"
+    },
+    "latest": {
+      "title": "Latest photos",
+      "all": "All photos"
+    },
+    "selectToDownload": "Select to download"
   }
 }

@@ -18,6 +18,7 @@ import {
   finishMediaPhoto,
   finishMediaUploadFile,
   moveMediaPhotos,
+  requestMediaDownload,
   submitMediaUploadRequest,
   updateMediaAlbum,
   withdrawMediaUploadRequest,
@@ -704,6 +705,73 @@ export function UploadDialog({
           </div>
         </form>
       )}
+    </EventDialog>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Download request (volunteers and trustees)
+
+/**
+ * "Request download" for one or several photos with an optional reason. The branch's Branch Manager / the region's
+ * Regional Director decides in Requests; on approval a link valid for 24 hours arrives as a notice.
+ */
+export function DownloadRequestDialog({
+  items,
+  onClose,
+  onSent,
+}: {
+  items: MediaItemRef[];
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const { t } = useTranslation();
+  const send = useServerFn(requestMediaDownload);
+  const refresh = useMediaRefresh();
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await send({ data: { items, reason: reason.trim() || undefined } });
+      await refresh();
+      toast.success(t("media.downloads.sent"));
+      onSent();
+    } catch (err) {
+      toast.error(translateError(err));
+      setBusy(false);
+    }
+  }
+  return (
+    <EventDialog
+      open
+      onClose={onClose}
+      title={t("media.downloads.requestTitle", { count: items.length })}
+      testId="media-download-dialog"
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm text-muted-foreground">{t("media.downloads.intro")}</p>
+        <div className="space-y-1.5">
+          <Label htmlFor="media-download-reason">{t("media.downloads.reason")}</Label>
+          <Textarea
+            id="media-download-reason"
+            data-testid="media-download-reason"
+            maxLength={500}
+            rows={3}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" className="h-11" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit" data-testid="media-download-submit" className="h-11" disabled={busy}>
+            {t("media.downloads.send")}
+          </Button>
+        </div>
+      </form>
     </EventDialog>
   );
 }

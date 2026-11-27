@@ -3,11 +3,12 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { FolderInput, ImageIcon, Trash2 } from "lucide-react";
+import { Download, FolderInput, ImageIcon, Star, Trash2 } from "lucide-react";
 import { pageHead } from "@/components/app/head";
 import { ChapterView } from "@/components/media/ChapterView";
 import {
   DeletePhotosDialog,
+  DownloadRequestDialog,
   MoveDialog,
   UploadDialog,
   AlbumDialog,
@@ -26,17 +27,26 @@ import {
   useMediaChapter,
   useMediaChapters,
   useMediaDesktop,
+  useMediaHighlights,
   useMediaHome,
   useMediaPhotos,
   useMediaRefresh,
   type MediaFilters,
 } from "@/components/media/use-media";
-import { getMediaPhotos, markMediaChapterViewed, setMediaAlbumCover } from "@/lib/media.functions";
+import {
+  getMediaOriginalUrl,
+  getMediaPhotos,
+  markMediaChapterViewed,
+  setMediaAlbumCover,
+  setMediaHighlight,
+} from "@/lib/media.functions";
 import {
   chapterRef,
   parseChapterRef,
   type ChapterKind,
   type MediaChapter,
+  type MediaHighlight,
+  type MediaItemRef,
   type MediaPhoto,
   type MediaTarget,
 } from "@/lib/media";
@@ -50,9 +60,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * link opens the same view (for members who can see it):
  *   album / event  the full chapter view (notice links use these)
  *   story          the story viewer: "album:<id>" | "event:<id>"
- *   photo, pc, lb  the lightbox: the photo, its chapter ("album:<id>"), and "grid" when it browses the phone grid
- *   slideshow      "gallery" (the branch's newest photos) | "album:<id>" | "event:<id>"
+ *   photo, pc, lb  the lightbox: the photo, its chapter ("album:<id>"), and "grid" / "highlights" when it browses the
+ *                  phone grid or the highlights
+ *   slideshow      "highlights" | "gallery" (the branch's newest photos) | "album:<id>" | "event:<id>"
  *   menu           "1": the ⋯ menu on phones
+ *   request        "event:<id>" | "album:<id>": opens the upload (request) form for it (the post-event nudge's link)
  *   branch         the Regional Director's branch choice
  */
 type MediaSearch = {
@@ -62,9 +74,10 @@ type MediaSearch = {
   story?: string | undefined;
   photo?: string | undefined;
   pc?: string | undefined;
-  lb?: "grid" | undefined;
+  lb?: "grid" | "highlights" | undefined;
   slideshow?: string | undefined;
   menu?: "1" | undefined;
+  request?: string | undefined;
 };
 const OVERLAY_KEYS = ["story", "photo", "pc", "lb", "slideshow", "menu"] as const;
 
@@ -80,9 +93,13 @@ export const Route = createFileRoute("/_app/media")({
       story: ref(s["story"]),
       photo: pick(s["photo"]),
       pc: ref(s["pc"]),
-      lb: s["lb"] === "grid" ? "grid" : undefined,
-      slideshow: s["slideshow"] === "gallery" ? "gallery" : ref(s["slideshow"]),
+      lb: s["lb"] === "grid" || s["lb"] === "highlights" ? s["lb"] : undefined,
+      slideshow:
+        s["slideshow"] === "gallery" || s["slideshow"] === "highlights"
+          ? s["slideshow"]
+          : ref(s["slideshow"]),
       menu: s["menu"] === "1" || s["menu"] === 1 ? "1" : undefined,
+      request: ref(s["request"]),
     };
   },
   head: () => pageHead("Media", "Your branch's photos from events and albums (members only)."),
@@ -94,6 +111,7 @@ type Dialog =
   | { kind: "new-album" }
   | { kind: "move"; photo: ViewerPhoto; chapter: MediaChapter }
   | { kind: "delete"; photo: ViewerPhoto; chapter: MediaChapter }
+  | { kind: "download"; items: MediaItemRef[] }
   | null;
 
 const withCaption = (
@@ -103,6 +121,15 @@ const withCaption = (
   photos.map((p) => ({
     ...p,
     caption: { title: chapter.title, date: chapter.date, venue: chapter.venue },
+  }));
+const highlightCaption = (photos: MediaHighlight[]): ViewerPhoto[] =>
+  photos.map((p) => ({
+    ...p,
+    caption: {
+      title: p.chapter_title ?? "",
+      date: p.chapter_date ?? null,
+      venue: p.chapter_venue ?? null,
+    },
   }));
 const gridCaption = (photos: MediaPhoto[]): ViewerPhoto[] =>
   photos.map((p) => ({
@@ -123,7 +150,9 @@ function MediaPage() {
   const refresh = useMediaRefresh();
   const fetchPhotos = useServerFn(getMediaPhotos),
     markViewed = useServerFn(markMediaChapterViewed),
-    setCover = useServerFn(setMediaAlbumCover);
+    setCover = useServerFn(setMediaAlbumCover),
+    setStar = useServerFn(setMediaHighlight),
+    originalUrl = useServerFn(getMediaOriginalUrl);
   const home = useMediaHome(search.branch ?? null);
   const branchId = home.data?.branch.id;
   const [filters, setFilters] = useState<MediaFilters>({ source: "all", year: null, search: "" });
@@ -145,6 +174,8 @@ function MediaPage() {
   const chapterList = useMemo(() => chapters.data?.pages.flat() ?? [], [chapters.data]);
   const storyChapters = useMemo(() => chapterList.filter((c) => c.photo_count > 0), [chapterList]);
   const gridPhotos = useMemo(() => grid.data?.pages.flat() ?? [], [grid.data]);
+  const highlights = useMediaHighlights(branchId);
+  const highlightPhotos = useMemo(() => highlights.data ?? [], [highlights.data]);
 
   // ---- History: opening pushes an entry (flagged); moving inside a viewer replaces it; closing goes back. ----
   const open = (patch: Partial<MediaSearch>) =>
@@ -211,20 +242,28 @@ function MediaPage() {
     });
   };
 
-  // ---- Lightbox (?photo=&pc=[&lb=grid]) ----
+  // ---- Lightbox (?photo=&pc=[&lb=grid|highlights]) ----
   const pcRef = search.photo && search.pc ? parseChapterRef(search.pc) : null;
   const pcChapter = useMediaChapter(pcRef?.kind ?? null, pcRef?.id ?? null);
   const gridHasPhoto = search.lb === "grid" && gridPhotos.some((p) => p.id === search.photo);
+  const highlightHasPhoto =
+    search.lb === "highlights" && highlightPhotos.some((p) => p.id === search.photo);
   const lightboxPhotos: ViewerPhoto[] | null = !search.photo
     ? null
     : gridHasPhoto
       ? gridCaption(gridPhotos)
-      : pcChapter.data
+      : highlightHasPhoto
+        ? highlightCaption(highlightPhotos)
+        : pcChapter.data
         ? withCaption(pcChapter.data, pcChapter.data.photos)
         : null;
   const lightboxIndex = lightboxPhotos?.findIndex((p) => p.id === search.photo) ?? -1;
-  const openPhoto = (c: Pick<MediaChapter, "kind" | "id">, photoId: string, fromGrid = false) => {
-    open({ photo: photoId, pc: chapterRef(c), lb: fromGrid ? "grid" : undefined });
+  const openPhoto = (
+    c: Pick<MediaChapter, "kind" | "id">,
+    photoId: string,
+    from?: "grid" | "highlights",
+  ) => {
+    open({ photo: photoId, pc: chapterRef(c), lb: from });
     viewed(c);
   };
   // A photo that is gone (deleted, moved, not visible) closes the lightbox instead of showing nothing.
@@ -232,6 +271,7 @@ function MediaPage() {
     !!search.photo &&
     !pcChapter.isLoading &&
     !(search.lb === "grid" && grid.isLoading) &&
+    !(search.lb === "highlights" && highlights.isLoading) &&
     (lightboxPhotos === null || lightboxIndex < 0);
   useEffect(() => {
     if (lightboxMissing) close(["photo", "pc", "lb"]);
@@ -248,9 +288,11 @@ function MediaPage() {
   );
   const storyList = storyIndex >= 0 ? storyChapters : storyAlone.data ? [storyAlone.data] : null;
 
-  // ---- Slideshow (?slideshow=gallery | album:<id>) ----
+  // ---- Slideshow (?slideshow=highlights | gallery | album:<id>) ----
   const slideRef =
-    search.slideshow && search.slideshow !== "gallery" ? parseChapterRef(search.slideshow) : null;
+    search.slideshow && search.slideshow !== "gallery" && search.slideshow !== "highlights"
+      ? parseChapterRef(search.slideshow)
+      : null;
   const slideChapter = useMediaChapter(slideRef?.kind ?? null, slideRef?.id ?? null);
   const galleryShow = useQuery({
     queryKey: [MEDIA_KEY, "slideshow", branchId, debounced.source, debounced.year],
@@ -265,7 +307,11 @@ function MediaPage() {
     staleTime: 4 * 60_000,
   });
   const slidePhotos: ViewerPhoto[] | null =
-    search.slideshow === "gallery"
+    search.slideshow === "highlights"
+      ? highlights.data
+        ? highlightCaption(highlights.data)
+        : null
+      : search.slideshow === "gallery"
       ? (galleryShow.data ?? null)
       : slideChapter.data
         ? withCaption(slideChapter.data, slideChapter.data.photos)
@@ -273,12 +319,67 @@ function MediaPage() {
 
   const canManage = !!home.data?.can_manage;
   const canAdd = canManage || !!home.data?.can_request;
+  // The header's Slideshow plays the highlights when there are any, otherwise the newest photos.
+  const playHeader = () => open({ slideshow: highlightPhotos.length ? "highlights" : "gallery" });
+
+  // The upload (request) form for a chapter (?request=event:<id>, the post-event nudge's link): opened once, then
+  // the parameter goes (the form is not part of the history).
+  const requestRef = search.request ? parseChapterRef(search.request) : null;
+  useEffect(() => {
+    if (!requestRef || !home.data) return;
+    if (canAdd) setDialog({ kind: "upload", initial: requestRef });
+    replace({ request: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.request, home.data]);
+
   const lightboxActions = (photo: ViewerPhoto) => {
     const c = pcChapter.data;
-    if (!canManage || !c) return null;
+    if (!canManage)
+      // Volunteers and trustees: the full-size file only through an approved download request.
+      return (
+        <LightboxAction
+          testId="media-lightbox-request-download"
+          icon={<Download className="size-4" aria-hidden />}
+          onClick={() =>
+            setDialog({ kind: "download", items: [{ source: photo.source, id: photo.id }] })
+          }
+        >
+          {t("media.downloads.request")}
+        </LightboxAction>
+      );
     return (
       <>
-        {c.kind === "album" && photo.source === "library" && photo.id !== c.cover_photo_id && (
+        <LightboxAction
+          testId="media-lightbox-star"
+          pressed={!!photo.starred}
+          icon={<Star className={photo.starred ? "size-4 fill-current" : "size-4"} aria-hidden />}
+          onClick={() =>
+            void setStar({ data: { source: photo.source, id: photo.id, on: !photo.starred } })
+              .then(async () => {
+                await refresh();
+                toast.success(t(photo.starred ? "media.highlights.unstarred" : "media.highlights.starred"));
+              })
+              .catch((e) => toast.error(translateError(e)))
+          }
+        >
+          {t(photo.starred ? "media.highlights.unstar" : "media.highlights.star")}
+        </LightboxAction>
+        {c && (
+          <LightboxAction
+            testId="media-lightbox-download"
+            icon={<Download className="size-4" aria-hidden />}
+            onClick={() =>
+              void originalUrl({ data: { chapterKind: c.kind, chapterId: c.id, photoId: photo.id } })
+                .then(({ url }) => {
+                  window.location.href = url;
+                })
+                .catch((e) => toast.error(translateError(e)))
+            }
+          >
+            {t("media.downloads.download")}
+          </LightboxAction>
+        )}
+        {c?.kind === "album" && photo.source === "library" && photo.id !== c.cover_photo_id && (
           <LightboxAction
             testId="media-lightbox-cover"
             icon={<ImageIcon className="size-4" aria-hidden />}
@@ -294,14 +395,16 @@ function MediaPage() {
             {t("media.setCover")}
           </LightboxAction>
         )}
-        <LightboxAction
-          testId="media-lightbox-move"
-          icon={<FolderInput className="size-4" aria-hidden />}
-          onClick={() => setDialog({ kind: "move", photo, chapter: c })}
-        >
-          {t("media.moveTo")}
-        </LightboxAction>
-        {photo.source === "library" && (
+        {c && (
+          <LightboxAction
+            testId="media-lightbox-move"
+            icon={<FolderInput className="size-4" aria-hidden />}
+            onClick={() => setDialog({ kind: "move", photo, chapter: c })}
+          >
+            {t("media.moveTo")}
+          </LightboxAction>
+        )}
+        {c && photo.source === "library" && (
           <LightboxAction
             testId="media-lightbox-delete"
             icon={<Trash2 className="size-4" aria-hidden />}
@@ -371,6 +474,9 @@ function MediaPage() {
                 : null
             }
             onMoved={showTarget}
+            onRequestDownload={
+              canManage ? null : (items) => setDialog({ kind: "download", items })
+            }
           />
         ) : (
           <div data-testid="media-chapter-missing" className="space-y-3">
@@ -395,8 +501,15 @@ function MediaPage() {
           onLoadMore={() => void chapters.fetchNextPage()}
           onOpenPhoto={(c, id) => openPhoto(c, id)}
           onOpenChapter={openChapter}
-          onSlideshow={() => open({ slideshow: "gallery" })}
+          onSlideshow={playHeader}
           onAdd={canAdd ? () => setDialog({ kind: "upload", initial: null }) : null}
+          highlights={highlightPhotos}
+          onOpenHighlight={(i) => {
+            const p = highlightPhotos[i];
+            if (p?.chapter_kind && p.chapter_id)
+              openPhoto({ kind: p.chapter_kind, id: p.chapter_id }, p.id, "highlights");
+          }}
+          onPlayHighlights={() => open({ slideshow: "highlights" })}
           loading={chapters.isLoading}
         />
       ) : (
@@ -413,10 +526,16 @@ function MediaPage() {
           onOpenGridPhoto={(i) => {
             const p = gridPhotos[i];
             if (p?.chapter_kind && p.chapter_id)
-              openPhoto({ kind: p.chapter_kind, id: p.chapter_id }, p.id, true);
+              openPhoto({ kind: p.chapter_kind, id: p.chapter_id }, p.id, "grid");
           }}
-          onSlideshow={() => open({ slideshow: "gallery" })}
+          onSlideshow={playHeader}
           onAdd={canAdd ? () => setDialog({ kind: "upload", initial: null }) : null}
+          highlights={highlightPhotos}
+          onOpenHighlight={(i) => {
+            const p = highlightPhotos[i];
+            if (p?.chapter_kind && p.chapter_id)
+              openPhoto({ kind: p.chapter_kind, id: p.chapter_id }, p.id, "highlights");
+          }}
           onNewAlbum={canManage ? () => setDialog({ kind: "new-album" }) : null}
           menuOpen={search.menu === "1"}
           onMenuOpenChange={(v) => (v ? open({ menu: "1" }) : search.menu && close(["menu"]))}
@@ -435,13 +554,13 @@ function MediaPage() {
             // chapter changes with it (actions and a reload use it).
             replace({
               photo: p.id,
-              ...(gridHasPhoto && p.chapter_kind && p.chapter_id
+              ...((gridHasPhoto || highlightHasPhoto) && p.chapter_kind && p.chapter_id
                 ? { pc: chapterRef({ kind: p.chapter_kind, id: p.chapter_id }) }
                 : {}),
             });
           }}
           onClose={closeOverlay}
-          actions={canManage ? lightboxActions : undefined}
+          actions={lightboxActions}
         />
       )}
       {storyList && storyRef && (
@@ -492,6 +611,13 @@ function MediaPage() {
             setDialog(null);
             showTarget(target);
           }}
+        />
+      )}
+      {dialog?.kind === "download" && (
+        <DownloadRequestDialog
+          items={dialog.items}
+          onClose={() => setDialog(null)}
+          onSent={() => setDialog(null)}
         />
       )}
       {dialog?.kind === "delete" && (

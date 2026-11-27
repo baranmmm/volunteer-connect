@@ -37,7 +37,12 @@ import {
   type RequestListFilter,
 } from "@/components/requests/request-kinds";
 import { useCanRequestEvents, usePendingRequestCount } from "@/lib/use-event-requests";
-import { MyMediaRequests, ReviewMediaRequests } from "@/components/media/MediaRequests";
+import {
+  MyDownloadRequests,
+  MyMediaRequests,
+  ReviewDownloadRequests,
+  ReviewMediaRequests,
+} from "@/components/media/MediaRequests";
 import { UploadDialog } from "@/components/media/MediaDialogs";
 import { useMediaHome } from "@/components/media/use-media";
 
@@ -126,6 +131,7 @@ function RequestsPage() {
         {!follower && !director && <MyEventRequests filter={filter} />}
         {!follower && <MyWorkRequests filter={filter} showEmpty={director} />}
         {!follower && !nc && <MyMediaRequests filter={filter} />}
+        {!follower && !nc && <MyDownloadRequests filter={filter} />}
         <MyVolunteerApplications />
       </>
     );
@@ -221,6 +227,7 @@ function RequestsPage() {
                     <PendingVolunteers />
                     <ManagerEventRequests group="review" />
                     <ReviewMediaRequests filter="open" />
+                    <ReviewDownloadRequests filter="open" />
                   </>
                 )}
                 <ReviewWorkRequests filter="open" showEmpty={nc} />
@@ -232,6 +239,7 @@ function RequestsPage() {
                     <ReviewVolunteerApplications filter="decided" />
                     <ManagerEventRequests group="decided" />
                     <ReviewMediaRequests filter="decided" />
+                    <ReviewDownloadRequests filter="decided" />
                   </>
                 )}
                 <ReviewWorkRequests filter="decided" showEmpty={nc} />

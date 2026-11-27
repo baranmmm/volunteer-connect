@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarDays, MapPin, Pencil, PencilLine, Plus, Repeat, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { primaryRole, isFollowerRoles, isNationalCoordinator } from "@/lib/roles";
+import { LatestPhotos } from "@/components/media/LatestPhotos";
 import {
   FollowerCards,
   FollowerStrip,
@@ -98,6 +99,8 @@ function Dashboard() {
         </section>
       )}
       {follower && !welcome && <FollowerStrip />}
+      {/* The branch's newest photos (members of a branch; hidden when there are none). */}
+      {!follower && !nc && <LatestPhotos />}
       <div data-testid="dashboard-grid" className="grid gap-5 lg:grid-cols-2">
         {!follower && <WaitingForYouCard />}
         {nc && <NcDashboard />}

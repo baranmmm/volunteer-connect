@@ -146,6 +146,7 @@ const ERROR_KEYS: Record<string, string> = {
   "Copied files are missing": "media.errors.moveFailed",
   "Moving the photo failed": "media.errors.moveFailed",
   "Invalid album cover": "media.errors.invalidCover",
+  "Event has not started yet": "media.errors.notStarted",
   "Choose a branch to follow": "errors.chooseFollowBranch",
   "Only followers can apply to volunteer": "errors.notFollower",
   "You already have an open application": "errors.openApplication",

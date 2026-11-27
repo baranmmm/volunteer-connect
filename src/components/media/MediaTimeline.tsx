@@ -10,12 +10,14 @@ import {
   mediaYears,
   MEDIA_SOURCES,
   type MediaChapter,
+  type MediaHighlight,
   type MediaHome,
   type MediaPhoto,
 } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import { chapterDate, MediaThumb, photoAlt, useChapterMeta } from "./MediaParts";
 import type { MediaFilters } from "./use-media";
+import { HighlightsStrip } from "./MediaHighlights";
 
 export type OpenPhoto = (chapter: Pick<MediaChapter, "kind" | "id">, photoId: string) => void;
 export type OpenChapter = (chapter: Pick<MediaChapter, "kind" | "id">) => void;
@@ -33,6 +35,9 @@ export function MediaTimeline({
   onOpenChapter,
   onSlideshow,
   onAdd,
+  highlights,
+  onOpenHighlight,
+  onPlayHighlights,
   loading,
 }: {
   home: MediaHome;
@@ -46,6 +51,9 @@ export function MediaTimeline({
   onOpenChapter: OpenChapter;
   onSlideshow: () => void;
   onAdd: (() => void) | null;
+  highlights: MediaHighlight[];
+  onOpenHighlight: (index: number) => void;
+  onPlayHighlights: () => void;
   loading: boolean;
 }) {
   const { t } = useTranslation();
@@ -93,6 +101,8 @@ export function MediaTimeline({
           )}
         </div>
       </header>
+
+      <HighlightsStrip photos={highlights} onOpen={onOpenHighlight} onPlay={onPlayHighlights} />
 
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_200px] gap-10">
         <main className="min-w-0">
@@ -241,8 +251,8 @@ function ChapterBlock({
 }
 
 /**
- * Two rows of 150 px: one large photo over both rows (2fr) and three small ones beside it (1fr each, the third across
- * the lower row); the last tile carries "+N" when the chapter has more photos. The large photo alternates sides.
+ * Two rows of 150 px: one large photo over both rows (2fr) and four small ones beside it (1fr each, 2 × 2); the last
+ * tile carries "+N" when the chapter has more photos. The large photo alternates sides.
  */
 function Collage({
   chapter,
@@ -269,12 +279,17 @@ function Collage({
   const largeCol = side === "left" || n <= 2 ? "col-start-1" : "col-start-3";
   const smallCols =
     side === "left" ? ["col-start-2", "col-start-3"] : ["col-start-1", "col-start-2"];
+  // 5 tiles (the mockup): the large one over both rows and four small ones in a 2 × 2 block. Fewer photos fill the
+  // block as evenly as they can: 4 = two small on top and a wide one below; 3 = two wide ones; 2 = one tall one.
   const place = (i: number) => {
     if (i === 0) return cn("row-span-2 row-start-1", largeCol);
     if (n === 2) return "row-span-2 row-start-1 col-start-2";
     if (n === 3) return cn(i === 1 ? "row-start-1" : "row-start-2", "col-span-2", smallCols[0]);
-    if (i === 3) return cn("row-start-2 col-span-2", smallCols[0]);
-    return cn("row-start-1", smallCols[i - 1]);
+    if (n === 4) {
+      if (i === 3) return cn("row-start-2 col-span-2", smallCols[0]);
+      return cn("row-start-1", smallCols[i - 1]);
+    }
+    return cn(i <= 2 ? "row-start-1" : "row-start-2", smallCols[(i - 1) % 2]);
   };
   return (
     <div className={cn("mt-4 grid grid-rows-[150px_150px] gap-2.5", cols)}>

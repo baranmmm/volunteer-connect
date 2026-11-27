@@ -976,7 +976,8 @@
       "task": "Görev",
       "meeting": "Toplantı",
       "volunteer": "Gönüllü başvurusu",
-      "media": "Medya yükleme"
+      "media": "Medya yükleme",
+      "mediaDownload": "Fotoğraf indirme"
     },
     "newRequest": "Yeni talep",
     "comingSoon": "Yakında",
@@ -1593,7 +1594,11 @@
       "email_budget_warning": "Bugün {{limit}} e-postanın {{sent}} tanesi gönderildi. Günlük sınırı aşan e-postalar yarına kalır (kayıt ve şifre e-postaları her zaman gider). Ücretli bir e-posta planı düşünebilirsiniz.",
       "media_upload_approved_one": "{{actor}}, “{{title}}” için {{count}} fotoğrafınızı ekledi",
       "media_upload_approved_other": "{{actor}}, “{{title}}” için {{count}} fotoğrafınızı ekledi",
-      "media_upload_declined": "{{actor}}, “{{title}}” için fotoğraflarınızı reddetti. Gerekçe: {{reason}}"
+      "media_upload_declined": "{{actor}}, “{{title}}” için fotoğraflarınızı reddetti. Gerekçe: {{reason}}",
+      "media_download_approved_one": "{{actor}} indirme isteğinizi onayladı ({{count}} fotoğraf). Bağlantı 24 saat geçerli.",
+      "media_download_approved_other": "{{actor}} indirme isteğinizi onayladı ({{count}} fotoğraf). Bağlantı 24 saat geçerli.",
+      "media_download_declined": "{{actor}} indirme isteğinizi reddetti. Gerekçe: {{reason}}",
+      "media_photo_nudge": "“{{title}}” fotoğraflarınızı paylaşın"
     },
     "taskStatus": {
       "todo": "Yapılacak",
@@ -1649,7 +1654,8 @@
         "task_note": "Görevlerime eklenen yeni notlar",
         "task_reminder": "Görev hatırlatmaları",
         "meeting": "Davet edildiğim toplantılar (davet, değişiklik, iptal)",
-        "request_decided": "Taleplerime verilen kararlar"
+        "request_decided": "Taleplerime verilen kararlar",
+        "media": "Etkinlik sonrası fotoğraf hatırlatmaları"
       },
       "inAppAlways": "Bildirimler her zaman uygulamada (zil simgesinde) hemen görünür.",
       "emailModes": {
@@ -1674,7 +1680,8 @@
         "task_note": "Görevlerimdeki notlar",
         "task_reminder": "Görev hatırlatmaları",
         "meeting": "Toplantılar",
-        "request_decided": "Taleplerime kararlar"
+        "request_decided": "Taleplerime kararlar",
+        "media": "Fotoğraf hatırlatmaları"
       }
     }
   },
@@ -2350,7 +2357,10 @@
       "volunteer_application_declined": "Başvurunuz yanıtlandı",
       "other": "Yeni bildirim",
       "media_upload_approved": "İsteğiniz yanıtlandı",
-      "media_upload_declined": "İsteğiniz yanıtlandı"
+      "media_upload_declined": "İsteğiniz yanıtlandı",
+      "media_download_approved": "İsteğiniz yanıtlandı",
+      "media_download_declined": "İsteğiniz yanıtlandı",
+      "media_photo_nudge": "Dünkü etkinlikten fotoğraflarınızı paylaşın"
     },
     "bodies": {
       "default": "Görmek için Gönüllü Merkezi'ni açın.",
@@ -2598,7 +2608,56 @@
       "eventPageToAlbum": "Etkinlik sayfası fotoğrafları yalnızca bir albüme taşınabilir.",
       "publicKeepsPhoto": "Herkese açık bir etkinlikte en az bir fotoğraf kalmalıdır.",
       "moveFailed": "Fotoğraflar taşınamadı. Hiçbir şey değişmedi.",
-      "invalidCover": "Kapak olarak bu albümün bir fotoğrafını seçin."
-    }
+      "invalidCover": "Kapak olarak bu albümün bir fotoğrafını seçin.",
+      "notStarted": "Bu etkinlik henüz başlamadı: fotoğraflar etkinlik başladıktan sonra eklenebilir."
+    },
+    "downloads": {
+      "request": "İndirme iste",
+      "requestTitle_one": "{{count}} fotoğraf için indirme isteği",
+      "requestTitle_other": "{{count}} fotoğraf için indirme isteği",
+      "intro": "İsteğinizi bir Şube Yöneticisi inceler. Onaylanırsa, tam boyutlu fotoğraflar için 24 saat geçerli bir bağlantı alırsınız.",
+      "reason": "Neden ihtiyacınız var? (isteğe bağlı)",
+      "reasonLabel": "Gerekçe",
+      "send": "İsteği gönder",
+      "sent": "İndirme isteği gönderildi",
+      "download": "Tam boyutlu indir",
+      "mine": "Fotoğraf indirmeleri",
+      "review": "İncelenecek fotoğraf indirmeleri",
+      "reviewHint": "Onaylarsanız üye bu fotoğrafların tam boyutu için 24 saat geçerli bir bağlantı alır.",
+      "approve": "Onayla",
+      "approvedToast": "Onaylandı: üyenin 24 saat geçerli bir bağlantısı var",
+      "declinedToast": "İndirme isteği reddedildi",
+      "declined": "İndirme isteğiniz onaylanmadı.",
+      "declinedReason": "Onaylanmadı. Gerekçe: {{reason}}",
+      "open": "İndirme sayfasını aç",
+      "expiredShort": "24 saatlik indirme bağlantısının süresi doldu.",
+      "pageTitle": "Fotoğraf indirme",
+      "backToMedia": "Medya'ya dön",
+      "missing": "Bu indirme bağlantısı kullanılamıyor. Başka birine ait olabilir ya da istek kaldırılmış olabilir.",
+      "waiting": "İsteğiniz hâlâ bir Şube Yöneticisinin kararını bekliyor.",
+      "withdrawn": "Bu istek geri çekildi.",
+      "expired": "Bu indirme bağlantısının süresi {{when}} tarihinde doldu. Fotoğraflara hâlâ ihtiyacınız varsa Medya sekmesinden yeni bir indirme isteği gönderin.",
+      "validUntil_one": "{{count}} fotoğraf, {{when}} tarihine kadar tam boyutlu indirilebilir.",
+      "validUntil_other": "{{count}} fotoğraf, {{when}} tarihine kadar tam boyutlu indirilebilir.",
+      "prepare_one": "İndirme bağlantısını al",
+      "prepare_other": "{{count}} indirme bağlantısını al",
+      "photoN": "Fotoğraf {{n}}",
+      "fileN": "{{n}}. fotoğrafı indir"
+    },
+    "highlights": {
+      "title": "Öne çıkanlar",
+      "play": "Öne çıkanları oynat",
+      "open": "{{title}} içinden öne çıkan",
+      "eyebrow": "Öne çıkan",
+      "star": "Öne çıkar",
+      "unstar": "Öne çıkanlardan kaldır",
+      "starred": "Öne çıkanlara eklendi",
+      "unstarred": "Öne çıkanlardan kaldırıldı"
+    },
+    "latest": {
+      "title": "Son fotoğraflar",
+      "all": "Tüm fotoğraflar"
+    },
+    "selectToDownload": "İndirmek için seç"
   }
 }

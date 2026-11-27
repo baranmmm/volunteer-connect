@@ -9,7 +9,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { mediaYears, type MediaChapter, type MediaHome, type MediaPhoto } from "@/lib/media";
+import {
+  mediaYears,
+  type MediaChapter,
+  type MediaHighlight,
+  type MediaHome,
+  type MediaPhoto,
+} from "@/lib/media";
+import { HighlightCard } from "./MediaHighlights";
 import { cn } from "@/lib/utils";
 import { MediaThumb, photoAlt } from "./MediaParts";
 import { FilterChip } from "./MediaTimeline";
@@ -30,6 +37,8 @@ export function MediaStories({
   onSlideshow,
   onAdd,
   onNewAlbum,
+  highlights,
+  onOpenHighlight,
   menuOpen,
   onMenuOpenChange,
   loading,
@@ -47,6 +56,8 @@ export function MediaStories({
   onSlideshow: () => void;
   onAdd: (() => void) | null;
   onNewAlbum: (() => void) | null;
+  highlights: MediaHighlight[];
+  onOpenHighlight: (index: number) => void;
   /** The ⋯ menu (controlled: the page keeps it in the URL, so Back closes it). */
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
@@ -67,6 +78,10 @@ export function MediaStories({
   }, [hasMore, loadingMore, onLoadMore]);
   const years = mediaYears(home.years);
   const storyChapters = chapters.filter((c) => c.photo_count > 0);
+  const highlightMeta = (p: MediaHighlight) =>
+    [p.chapter_kind === "album" ? t("media.album") : p.chapter_venue, t("media.photoCount", { count: p.chapter_photo_count ?? 0 })]
+      .filter(Boolean)
+      .join(" · ");
   return (
     <div data-testid="media-mobile" className="min-w-0">
       <header className="flex items-center gap-2 pb-3">
@@ -195,6 +210,8 @@ export function MediaStories({
           </li>
         )}
       </ul>
+
+      <HighlightCard photos={highlights} onOpen={onOpenHighlight} meta={highlightMeta} />
 
       <div
         role="group"
