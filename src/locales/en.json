@@ -1481,7 +1481,8 @@
       "toggle_other": "Carry over from earlier meetings ({{count}} open items)",
       "chosen_one": "{{count}} chosen",
       "chosen_other": "{{count}} chosen",
-      "hint": "Tick an agenda item to bring it, its decisions and their open tasks to this meeting. Tasks move here; they are not copied.",
+      "hint": "Tick an agenda item to bring it and its decisions to this meeting. Their tasks are not moved or copied: the same tasks show under the decisions in both meetings.",
+      "tasksShared": "Shows in this meeting too",
       "done_one": "{{count}} agenda item carried over.",
       "done_other": "{{count}} agenda items carried over."
     }
@@ -1973,6 +1974,7 @@
       "label": "Assigned to: {{names}}"
     },
     "decisionLine": "Decision: {{text}}",
+    "alsoIn": "Also in: {{meetings}}",
     "created": "Created {{date}}",
     "createdBy": "Created {{date}} by {{name}}"
   },

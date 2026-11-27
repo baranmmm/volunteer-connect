@@ -22,6 +22,12 @@ export const taskSources = z.object({
         starts_at: z.string(),
         /** The decision text (read through RLS next to the RPC; missing when that read failed). */
         text: z.string().nullable().optional(),
+        /** Later meetings the decision was carried into: its tasks show there too (20261221090000). */
+        also_in: z
+          .array(
+            z.object({ meeting_id: z.string().uuid(), meeting: z.string(), starts_at: z.string() }),
+          )
+          .optional(),
       }),
     )
     .default([]),
@@ -172,6 +178,19 @@ export function taskPlace(
   if (task.event_id && sources.events.some((e) => e.id === task.event_id))
     return { kind: "event", eventId: task.event_id };
   return { kind: "other" };
+}
+
+/** A task's decision on the Tasks page: its text ("Decision: …") and the later meetings it also shows in ("Also in: …"). */
+export type DecisionInfo = {
+  text: string | null;
+  alsoIn: NonNullable<TaskSources["decisions"][number]["also_in"]>;
+};
+/** Decision id → text and later meetings. A task is listed once, under its own meeting; "Also in" names the others. */
+export function decisionInfo(sources: TaskSources) {
+  const map = new Map<string, DecisionInfo>();
+  for (const d of sources.decisions)
+    map.set(d.id, { text: d.text ?? null, alsoIn: d.also_in ?? [] });
+  return map;
 }
 
 /** Decision id → decision text, for the "Decision: …" line under a task created from a decision. */

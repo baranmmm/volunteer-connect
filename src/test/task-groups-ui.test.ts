@@ -163,17 +163,17 @@ describe("carry-over choices", () => {
       { id: uuid(4), text: "Date", tasks: [] },
     ],
   };
-  it("ticking an item selects every decision and open task", () => {
+  it("ticking an item selects every decision; tasks are never sent (they are shared, not moved)", () => {
     expect(fullCarryOver(item)).toEqual({
       item_id: uuid(1),
       decision_ids: [uuid(2), uuid(4)],
-      task_ids: [uuid(3)],
+      task_ids: [],
     });
   });
-  it("unticking a decision drops its tasks; ticking it again brings them back", () => {
-    const off = toggleCarryDecision(fullCarryOver(item), item, uuid(2), false);
+  it("unticking a decision drops it; ticking it again brings it back", () => {
+    const off = toggleCarryDecision(fullCarryOver(item), uuid(2), false);
     expect(off).toEqual({ item_id: uuid(1), decision_ids: [uuid(4)], task_ids: [] });
-    expect(toggleCarryDecision(off, item, uuid(2), true).task_ids).toEqual([uuid(3)]);
+    expect(toggleCarryDecision(off, uuid(2), true).decision_ids).toEqual([uuid(4), uuid(2)]);
   });
 });
 

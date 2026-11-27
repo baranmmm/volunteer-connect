@@ -170,7 +170,10 @@ export const carryOverMeeting = z.object({
 });
 export type CarryOverMeeting = z.infer<typeof carryOverMeeting>;
 export type CarryOverItem = CarryOverMeeting["items"][number];
-/** What carry_over_agenda receives: per chosen item, the chosen decisions and tasks. */
+/**
+ * What carry_over_agenda receives: per chosen item, the chosen decisions. Tasks are never moved (20261221090000): the
+ * copies show their original decisions' tasks, so task_ids stays empty (the database ignores it).
+ */
 export const carryOverChoice = z.object({
   item_id: z.string().uuid(),
   decision_ids: z.array(z.string().uuid()).max(50),
@@ -178,37 +181,22 @@ export const carryOverChoice = z.object({
 });
 export type CarryOverChoice = z.infer<typeof carryOverChoice>;
 
-/** Everything of an item: every decision and every not-done task (the default when an item is ticked). */
+/** Everything of an item: every decision (the default when an item is ticked). */
 export function fullCarryOver(item: CarryOverItem): CarryOverChoice {
-  return {
-    item_id: item.id,
-    decision_ids: item.decisions.map((d) => d.id),
-    task_ids: item.decisions.flatMap((d) => d.tasks.map((x) => x.id)),
-  };
+  return { item_id: item.id, decision_ids: item.decisions.map((d) => d.id), task_ids: [] };
 }
-/**
- * Ticks or unticks one decision of a chosen item: its tasks follow it. A task of an "@all" group stands for the whole
- * group (the database moves the group), so one id per group is enough.
- */
+/** Ticks or unticks one decision of a chosen item. */
 export function toggleCarryDecision(
   choice: CarryOverChoice,
-  item: CarryOverItem,
   decisionId: string,
   on: boolean,
 ): CarryOverChoice {
-  const decision = item.decisions.find((d) => d.id === decisionId);
-  const taskIds = decision?.tasks.map((x) => x.id) ?? [];
-  return on
-    ? {
-        ...choice,
-        decision_ids: [...new Set([...choice.decision_ids, decisionId])],
-        task_ids: [...new Set([...choice.task_ids, ...taskIds])],
-      }
-    : {
-        ...choice,
-        decision_ids: choice.decision_ids.filter((x) => x !== decisionId),
-        task_ids: choice.task_ids.filter((x) => !taskIds.includes(x)),
-      };
+  return {
+    ...choice,
+    decision_ids: on
+      ? [...new Set([...choice.decision_ids, decisionId])]
+      : choice.decision_ids.filter((x) => x !== decisionId),
+  };
 }
 
 /** How many recent past meetings and next upcoming meetings the /meetings timeline shows without expanding. */

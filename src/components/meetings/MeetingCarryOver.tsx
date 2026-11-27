@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ListChecks } from "lucide-react";
 import { linkedRows } from "@/lib/tasks";
 import {
   fullCarryOver,
@@ -18,13 +18,14 @@ import { formatDate } from "@/lib/i18n";
 
 /**
  * Creating a meeting: optional carry-over from earlier meetings of the same place (list_meeting_carry_over). Collapsed,
- * and shown only when there is something to carry. Ticking an agenda item selects all its decisions and their open
- * tasks; each can then be unticked. The new meeting gets copies of the items and decisions, and the tasks are moved to
- * it (carry_over_agenda, after the meeting is created), never duplicated. An "@all" group is one entry.
+ * and shown only when there is something to carry. Ticking an agenda item selects all its decisions; each can then be
+ * unticked. The new meeting gets copies of the items and decisions (carry_over_agenda, after the meeting is created).
+ * A ticked decision lists its open tasks read-only: they are never moved or copied, and show under the copy too. An
+ * "@all" group is one entry.
  *
  * Test ids (prefix = testId): `-carry` (data-count), `-carry-toggle` (aria-expanded), `-carry-meeting`
  * (data-meeting-id), `-carry-item` (checkbox, data-item-id), `-carry-decision` (checkbox, data-decision-id),
- * `-carry-task` (checkbox, data-task-id or data-group-id).
+ * `-carry-task` (read-only row, data-task-id or data-group-id).
  */
 export function MeetingCarryOver({
   scope,
@@ -141,9 +142,7 @@ export function MeetingCarryOver({
                                       checked={decisionOn}
                                       disabled={disabled}
                                       onChange={(e) =>
-                                        update(
-                                          toggleCarryDecision(choice, item, d.id, e.target.checked),
-                                        )
+                                        update(toggleCarryDecision(choice, d.id, e.target.checked))
                                       }
                                     />
                                     <span className="min-w-0 [overflow-wrap:anywhere]">
@@ -151,58 +150,40 @@ export function MeetingCarryOver({
                                     </span>
                                   </label>
                                   {decisionOn && d.tasks.length > 0 && (
-                                    <ul className="ml-6 min-w-0 space-y-1">
+                                    <ul
+                                      className="ml-6 min-w-0 space-y-1"
+                                      aria-label={t("meetings.carry.tasksShared")}
+                                    >
                                       {linkedRows(d.tasks).map((row) => {
-                                        const ids =
-                                          row.kind === "group"
-                                            ? row.tasks.map((x) => x.id)
-                                            : [row.task.id];
                                         const first =
                                           row.kind === "group" ? row.tasks[0]! : row.task;
-                                        const on = ids.every((x) => choice.task_ids.includes(x));
                                         return (
                                           <li
                                             key={row.kind === "group" ? row.groupId : row.task.id}
+                                            data-testid={`${testId}-carry-task`}
+                                            data-task-id={
+                                              row.kind === "task" ? row.task.id : undefined
+                                            }
+                                            data-group-id={
+                                              row.kind === "group" ? row.groupId : undefined
+                                            }
+                                            className="flex min-h-9 min-w-0 items-center gap-2 text-sm text-muted-foreground"
                                           >
-                                            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
-                                              <input
-                                                type="checkbox"
-                                                className="size-4 shrink-0"
-                                                data-testid={`${testId}-carry-task`}
-                                                data-task-id={
-                                                  row.kind === "task" ? row.task.id : undefined
-                                                }
-                                                data-group-id={
-                                                  row.kind === "group" ? row.groupId : undefined
-                                                }
-                                                checked={on}
-                                                disabled={disabled}
-                                                onChange={(e) =>
-                                                  update({
-                                                    ...choice,
-                                                    task_ids: e.target.checked
-                                                      ? [...new Set([...choice.task_ids, ...ids])]
-                                                      : choice.task_ids.filter(
-                                                          (x) => !ids.includes(x),
-                                                        ),
-                                                  })
-                                                }
+                                            <ListChecks className="size-4 shrink-0" aria-hidden />
+                                            <span
+                                              className="min-w-0 flex-1 truncate"
+                                              title={first.title}
+                                            >
+                                              {first.title}
+                                              {row.kind === "group" &&
+                                                ` · ${t("tasks.groups.allMembers", { count: row.tasks.length })}`}
+                                            </span>
+                                            {row.kind === "task" && (
+                                              <TaskStatusBadge
+                                                status={row.task.status}
+                                                className="rounded-full"
                                               />
-                                              <span
-                                                className="min-w-0 flex-1 truncate"
-                                                title={first.title}
-                                              >
-                                                {first.title}
-                                                {row.kind === "group" &&
-                                                  ` · ${t("tasks.groups.allMembers", { count: row.tasks.length })}`}
-                                              </span>
-                                              {row.kind === "task" && (
-                                                <TaskStatusBadge
-                                                  status={row.task.status}
-                                                  className="rounded-full"
-                                                />
-                                              )}
-                                            </label>
+                                            )}
                                           </li>
                                         );
                                       })}

@@ -125,10 +125,22 @@ are London time.
 **Carry over** (create only; `meeting-form-carry`, shown when there is something to carry, collapsed): the unresolved,
 not yet carried agenda items of the last 10 earlier meetings in the same place that the caller may edit
 (`list_meeting_carry_over`), with their decisions and the decisions' not-done tasks. Ticking an item ticks all its
-decisions and tasks; each can be unticked (an "@all" group is one entry). After the meeting is created,
-`carry_over_agenda` copies the chosen items (title, notes) and decisions into it and moves the chosen tasks to the new
-decisions (same task ids, nothing duplicated; a group moves whole), in one transaction; the old item gets `carried_to`
-and is no longer offered or shown under "From last meeting". If the carry-over is refused, the meeting stays and an
+decisions; each can be unticked. A ticked decision lists its open tasks read-only (an "@all" group is one entry).
+After the meeting is created, `carry_over_agenda` copies the chosen items (title, notes) and decisions into it in one
+transaction; the old item gets `carried_to` and is no longer offered or shown under "From last meeting".
+
+**Tasks are shared, never moved or copied** (`20261221090000_carry_over_shared_tasks.sql`). Each copied decision points
+to its original (`meeting_decisions.carried_from`). A task stays on the decision (and meeting) where it was created and
+shows under that decision and under every later copy, never earlier ones (`decision_lineage` in `get_meeting` and
+`list_meeting_carry_over`): one task, so status, assignees, notes and dates are the same everywhere, and the counts
+include it in every meeting. A task made with "+ Task" on a copy belongs to the copy and shows on its later copies.
+The Tasks page lists each task once, under its own meeting, with "Also in: …" naming the later meetings
+(`list_task_sources` → `also_in`, `tasks-list-row-decision-also-in` / `task-card-decision-also-in`, data-count). When a
+decision is deleted for good, its tasks, groups and place in the chain pass to its copy (trigger
+`meeting_decisions_pass_on`; a copy in a meeting that is not deleted first). Carry-overs made before this migration had
+moved the tasks; the migration put them back, matching each copy by the item link (one decision carried) or by
+identical text within that item pair (several), and stopped without changes if anything could not be matched
+(`scripts/carry-over-repair/preview.sql` previews the same logic read-only). If the carry-over is refused, the meeting stays and an
 error toast says why. Test ids: `-carry` (data-count), `-carry-toggle` (aria-expanded), `-carry-meeting`
 (data-meeting-id), `-carry-item` (data-item-id), `-carry-decision` (data-decision-id), `-carry-task` (data-task-id or
 data-group-id).

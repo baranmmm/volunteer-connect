@@ -36,7 +36,7 @@ import {
   NO_SOURCES,
   TASK_GROUPINGS,
   TASK_ROW_SORTS,
-  decisionTexts,
+  decisionInfo,
   groupTaskSections,
   readCollapsed,
   readTaskGrouping,
@@ -240,7 +240,7 @@ function TasksPage() {
       ),
     [shown, grouping, sources.data, today, t, sort],
   );
-  const decisions = useMemo(() => decisionTexts(sources.data ?? NO_SOURCES), [sources.data]);
+  const decisions = useMemo(() => decisionInfo(sources.data ?? NO_SOURCES), [sources.data]);
 
   const assigneeOptions = useMemo(() => {
     const map = new Map<string, string>();

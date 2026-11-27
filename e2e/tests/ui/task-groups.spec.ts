@@ -187,9 +187,11 @@ test.describe("Task groups (@all)", () => {
     await expect(page.getByTestId("event-linked-task")).toHaveCount(0);
   });
 
-  test("carry-over: a new meeting brings an unresolved item with its decision and open task (moved, not copied)", async ({ freshUser, freshBranch, pageAs }) => {
+  test("carry-over: a new meeting brings an unresolved item and its decision; the open task is shared (never moved or copied)", async ({ freshUser, freshBranch, pageAs }) => {
     const { branch, manager, v1 } = await team(freshBranch, freshUser, "groups-carry");
-    const old = await createMeetingAs(manager, { scope: "branch", branch_id: branch, title: `${MEETING_TITLE_PREFIX}${runId} carry old`, starts_at: inDays(-7), ends_at: inDays(-7, 1) });
+    const oldTitle = `${MEETING_TITLE_PREFIX}${runId} carry old`;
+    const newTitle = `${MEETING_TITLE_PREFIX}${runId} carry new`;
+    const old = await createMeetingAs(manager, { scope: "branch", branch_id: branch, title: oldTitle, starts_at: inDays(-7), ends_at: inDays(-7, 1) });
     const item = (await workRpc(manager, "add_agenda_item", { p_meeting: old, p_title: "Hall booking" })).data as string;
     const decision = (await workRpc(manager, "add_meeting_decision", { p_item: item, p_text: "Ask for quotes" })).data as string;
     const task = (await workRpc(manager, "create_task", { p: { scope: "branch", branch_id: branch, title: title("quotes"), decision_id: decision, assignee_ids: [v1.id] } })).data as string;
@@ -198,7 +200,7 @@ test.describe("Task groups (@all)", () => {
     await page.goto("/meetings");
     await page.getByTestId("meetings-new").click({ timeout: APP_LOAD_TIMEOUT });
     const form = page.getByTestId("meeting-form");
-    await form.getByTestId("meeting-form-title").fill(`${MEETING_TITLE_PREFIX}${runId} carry new`);
+    await form.getByTestId("meeting-form-title").fill(newTitle);
     await form.getByTestId("meeting-form-start-date").fill(londonDay(4));
     await pickOption(page, "meeting-form-start-time", "meeting-form-start-time-option", "18:00");
     await form.getByTestId("meeting-form-location").fill("Hall");
@@ -207,15 +209,41 @@ test.describe("Task groups (@all)", () => {
     await toggle.click();
     await form.locator(`[data-testid="meeting-form-carry-item"][data-item-id="${item}"]`).check();
     await expect(form.locator(`[data-testid="meeting-form-carry-decision"][data-decision-id="${decision}"]`)).toBeChecked();
-    await expect(form.locator(`[data-testid="meeting-form-carry-task"][data-task-id="${task}"]`)).toBeChecked();
+    // The decision's open task is listed read-only (no checkbox): it is shared, not moved.
+    const listed = form.locator(`[data-testid="meeting-form-carry-task"][data-task-id="${task}"]`);
+    await expect(listed).toBeVisible();
+    await expect(listed.locator("input")).toHaveCount(0);
     await form.getByTestId("meeting-form-submit").click();
     await expect(page).toHaveURL(/\/meetings\/[0-9a-f-]{36}/, { timeout: APP_LOAD_TIMEOUT });
     const created = page.url().split("/meetings/")[1]!.split("?")[0]!;
     await expect(page.getByTestId("meeting-agenda-item-title")).toHaveText("Hall booking", { timeout: APP_LOAD_TIMEOUT });
-    const moved = (await adminClient().from("tasks").select("meeting_id").eq("id", task).single()).data!;
-    expect(moved.meeting_id).toBe(created);
-    // Moved, not copied: the new meeting has exactly that task.
-    expect((await adminClient().from("tasks").select("id").eq("meeting_id", created)).data!.map((x) => x.id)).toEqual([task]);
+    // One task, still on the earlier meeting and its decision; the copy points to the decision.
+    expect((await adminClient().from("tasks").select("meeting_id, decision_id").eq("id", task).single()).data).toEqual({ meeting_id: old, decision_id: decision });
+    const copy = (await adminClient().from("meeting_decisions").select("id, carried_from").eq("meeting_id", created).single()).data!;
+    expect(copy.carried_from).toBe(decision);
+    // Not copied: no task on the copy, and the new meeting owns none.
+    expect((await adminClient().from("tasks").select("id").eq("decision_id", copy.id)).data).toEqual([]);
+    expect((await adminClient().from("tasks").select("id").eq("meeting_id", created)).data).toEqual([]);
     expect((await adminClient().from("meeting_agenda_items").select("carried_to").eq("id", item).single()).data!.carried_to).not.toBeNull();
+
+    // The task shows under the decision in both meetings, counted in both.
+    for (const meetingId of [created, old]) {
+      await page.goto(`/meetings/${meetingId}`);
+      const agendaItem = page.getByTestId("meeting-agenda-item").first();
+      await expect(agendaItem.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-tasks", "1", { timeout: APP_LOAD_TIMEOUT });
+      await agendaItem.getByTestId("meeting-agenda-item-toggle").click();
+      const toggleTasks = agendaItem.getByTestId("meeting-decision-tasks-toggle");
+      await expect(toggleTasks).toHaveAttribute("data-tasks", "1");
+      await toggleTasks.click();
+      await expect(agendaItem.locator(`[data-testid="meeting-decision-task"][data-task-id="${task}"]`)).toBeVisible();
+    }
+
+    // Tasks page: listed once (under the meeting where it was created), with "Also in" naming the new meeting.
+    await page.goto("/tasks");
+    const row = page.locator(`[data-testid="tasks-list-row"][data-task-id="${task}"]`);
+    await expect(row).toHaveCount(1, { timeout: APP_LOAD_TIMEOUT });
+    const also = row.getByTestId("tasks-list-row-decision-also-in");
+    await expect(also).toHaveAttribute("data-count", "1");
+    await expect(also).toContainText(newTitle);
   });
 });
