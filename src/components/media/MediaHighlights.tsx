@@ -20,7 +20,11 @@ export function HighlightsStrip({
   const { t } = useTranslation();
   if (!photos.length) return null;
   return (
-    <section data-testid="media-highlights" aria-labelledby="media-highlights-h" className="min-w-0 space-y-3">
+    <section
+      data-testid="media-highlights"
+      aria-labelledby="media-highlights-h"
+      className="min-w-0 space-y-3"
+    >
       <div className="flex items-center justify-between gap-3">
         <h2
           id="media-highlights-h"
@@ -80,7 +84,11 @@ export function HighlightCard({
   const [active, setActive] = useState(0);
   if (!photos.length) return null;
   return (
-    <section data-testid="media-highlight-card" aria-label={t("media.highlights.title")} className="relative mb-3">
+    <section
+      data-testid="media-highlight-card"
+      aria-label={t("media.highlights.title")}
+      className="relative mb-3"
+    >
       <ul
         ref={list}
         onScroll={(e) => {
@@ -103,7 +111,9 @@ export function HighlightCard({
                 <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-media-amber">
                   {t("media.highlights.eyebrow")}
                 </span>
-                <span className="mt-0.5 block truncate text-xl font-semibold leading-tight">{p.chapter_title}</span>
+                <span className="mt-0.5 block truncate text-xl font-semibold leading-tight">
+                  {p.chapter_title}
+                </span>
                 <span className="block truncate pr-16 text-sm text-white/85">{meta(p)}</span>
               </span>
             </button>

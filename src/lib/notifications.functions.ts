@@ -107,7 +107,14 @@ export const setNotificationSetting = createServerFn({ method: "POST" })
   .middleware([requireMember])
   .inputValidator(
     z.object({
-      type: z.enum(["task_status", "task_note", "task_reminder", "meeting", "request_decided", "media"]),
+      type: z.enum([
+        "task_status",
+        "task_note",
+        "task_reminder",
+        "meeting",
+        "request_decided",
+        "media",
+      ]),
       enabled: z.boolean(),
     }),
   )

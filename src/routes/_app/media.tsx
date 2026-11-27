@@ -255,8 +255,8 @@ function MediaPage() {
       : highlightHasPhoto
         ? highlightCaption(highlightPhotos)
         : pcChapter.data
-        ? withCaption(pcChapter.data, pcChapter.data.photos)
-        : null;
+          ? withCaption(pcChapter.data, pcChapter.data.photos)
+          : null;
   const lightboxIndex = lightboxPhotos?.findIndex((p) => p.id === search.photo) ?? -1;
   const openPhoto = (
     c: Pick<MediaChapter, "kind" | "id">,
@@ -312,10 +312,10 @@ function MediaPage() {
         ? highlightCaption(highlights.data)
         : null
       : search.slideshow === "gallery"
-      ? (galleryShow.data ?? null)
-      : slideChapter.data
-        ? withCaption(slideChapter.data, slideChapter.data.photos)
-        : null;
+        ? (galleryShow.data ?? null)
+        : slideChapter.data
+          ? withCaption(slideChapter.data, slideChapter.data.photos)
+          : null;
 
   const canManage = !!home.data?.can_manage;
   const canAdd = canManage || !!home.data?.can_request;
@@ -357,7 +357,9 @@ function MediaPage() {
             void setStar({ data: { source: photo.source, id: photo.id, on: !photo.starred } })
               .then(async () => {
                 await refresh();
-                toast.success(t(photo.starred ? "media.highlights.unstarred" : "media.highlights.starred"));
+                toast.success(
+                  t(photo.starred ? "media.highlights.unstarred" : "media.highlights.starred"),
+                );
               })
               .catch((e) => toast.error(translateError(e)))
           }
@@ -369,7 +371,9 @@ function MediaPage() {
             testId="media-lightbox-download"
             icon={<Download className="size-4" aria-hidden />}
             onClick={() =>
-              void originalUrl({ data: { chapterKind: c.kind, chapterId: c.id, photoId: photo.id } })
+              void originalUrl({
+                data: { chapterKind: c.kind, chapterId: c.id, photoId: photo.id },
+              })
                 .then(({ url }) => {
                   window.location.href = url;
                 })
@@ -474,9 +478,7 @@ function MediaPage() {
                 : null
             }
             onMoved={showTarget}
-            onRequestDownload={
-              canManage ? null : (items) => setDialog({ kind: "download", items })
-            }
+            onRequestDownload={canManage ? null : (items) => setDialog({ kind: "download", items })}
           />
         ) : (
           <div data-testid="media-chapter-missing" className="space-y-3">

@@ -29,7 +29,10 @@ export function LatestPhotos() {
       className="min-w-0 rounded-2xl border bg-card p-5 shadow-soft"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 id="dashboard-latest-photos-h" className="flex items-center gap-2 text-lg font-semibold">
+        <h2
+          id="dashboard-latest-photos-h"
+          className="flex items-center gap-2 text-lg font-semibold"
+        >
           <Images className="size-5 text-primary" aria-hidden />
           {t("media.latest.title")}
         </h2>
@@ -51,7 +54,11 @@ export function LatestPhotos() {
                 search={{ photo: p.id, pc: chapterRef({ kind: p.chapter_kind, id: p.chapter_id }) }}
                 data-testid="dashboard-latest-photo"
                 data-photo-id={p.id}
-                aria-label={t("media.photoAlt", { title: p.chapter_title ?? "", n: i + 1, count: photos.length })}
+                aria-label={t("media.photoAlt", {
+                  title: p.chapter_title ?? "",
+                  n: i + 1,
+                  count: photos.length,
+                })}
                 className="block size-24 overflow-hidden rounded-xl bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:size-28"
               >
                 <MediaThumb photo={p} alt="" eager={i < 6} />

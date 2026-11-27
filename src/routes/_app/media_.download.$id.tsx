@@ -45,7 +45,8 @@ function DownloadPage() {
     }
   }
   const expired =
-    signed?.state === "expired" || (r?.status === "approved" && (!!r.expired || !downloadWindowOpen(r.expires_at)));
+    signed?.state === "expired" ||
+    (r?.status === "approved" && (!!r.expired || !downloadWindowOpen(r.expires_at)));
   return (
     <div data-testid="media-download-page" className="mx-auto max-w-3xl space-y-6">
       <Link
@@ -79,7 +80,9 @@ function DownloadPage() {
       ) : expired ? (
         <Notice testId="media-download-expired" icon={<Clock className="size-5" aria-hidden />}>
           {t("media.downloads.expired", {
-            when: r.expires_at ? formatDate(r.expires_at, { dateStyle: "medium", timeStyle: "short" }) : "",
+            when: r.expires_at
+              ? formatDate(r.expires_at, { dateStyle: "medium", timeStyle: "short" })
+              : "",
           })}
         </Notice>
       ) : (
@@ -91,18 +94,32 @@ function DownloadPage() {
             })}
           </p>
           {!signed && (
-            <Button data-testid="media-download-prepare" className="h-11" disabled={busy} onClick={() => void prepare()}>
+            <Button
+              data-testid="media-download-prepare"
+              className="h-11"
+              disabled={busy}
+              onClick={() => void prepare()}
+            >
               <Download className="size-4" aria-hidden />
               {t("media.downloads.prepare", { count: r.items.length })}
             </Button>
           )}
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {r.items.map((item, i) => {
-              const file = signed?.state === "ready" ? signed.files.find((f) => f.item_id === item.id) : null;
+              const file =
+                signed?.state === "ready" ? signed.files.find((f) => f.item_id === item.id) : null;
               return (
-                <li key={item.id} data-testid="media-download-item" className="space-y-2 rounded-xl border bg-card p-2">
+                <li
+                  key={item.id}
+                  data-testid="media-download-item"
+                  className="space-y-2 rounded-xl border bg-card p-2"
+                >
                   {item.thumb ? (
-                    <img src={item.thumb} alt={t("media.downloads.photoN", { n: i + 1 })} className="aspect-[4/3] w-full rounded-lg object-cover" />
+                    <img
+                      src={item.thumb}
+                      alt={t("media.downloads.photoN", { n: i + 1 })}
+                      className="aspect-[4/3] w-full rounded-lg object-cover"
+                    />
                   ) : (
                     <div className="aspect-[4/3] w-full rounded-lg bg-muted" />
                   )}
@@ -127,9 +144,21 @@ function DownloadPage() {
   );
 }
 
-function Notice({ testId, icon, children }: { testId: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Notice({
+  testId,
+  icon,
+  children,
+}: {
+  testId: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <p data-testid={testId} role="status" className="flex items-start gap-3 rounded-2xl border bg-card p-5 text-base">
+    <p
+      data-testid={testId}
+      role="status"
+      className="flex items-start gap-3 rounded-2xl border bg-card p-5 text-base"
+    >
       <span className="mt-0.5 text-muted-foreground">{icon}</span>
       <span>{children}</span>
     </p>

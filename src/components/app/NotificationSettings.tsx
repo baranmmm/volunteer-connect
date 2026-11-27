@@ -33,12 +33,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type ChangeableType =
-  | "task_status"
-  | "task_note"
-  | "task_reminder"
-  | "meeting"
-  | "request_decided"
-  | "media";
+  "task_status" | "task_note" | "task_reminder" | "meeting" | "request_decided" | "media";
 type Change = { enabled?: boolean; email?: boolean; push?: boolean };
 
 /**

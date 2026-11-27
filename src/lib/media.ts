@@ -275,7 +275,12 @@ export type MediaHighlight = MediaPhoto & {
   chapter_photo_count?: number | undefined;
 };
 
-export const DOWNLOAD_REQUEST_STATUSES = ["submitted", "approved", "declined", "withdrawn"] as const;
+export const DOWNLOAD_REQUEST_STATUSES = [
+  "submitted",
+  "approved",
+  "declined",
+  "withdrawn",
+] as const;
 export const mediaDownloadRequestRow = z.object({
   id: z.string().uuid(),
   branch_id: z.string().uuid(),

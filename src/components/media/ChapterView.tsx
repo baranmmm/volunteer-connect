@@ -278,7 +278,11 @@ export function ChapterView({
         >
           {selecting ? (
             <>
-              <p data-testid="media-selected-count" className="px-2 text-sm font-medium" aria-live="polite">
+              <p
+                data-testid="media-selected-count"
+                className="px-2 text-sm font-medium"
+                aria-live="polite"
+              >
                 {t("media.selected", { count: selected.length })}
               </p>
               <span className="flex-1" />
@@ -300,7 +304,12 @@ export function ChapterView({
               </Button>
             </>
           ) : (
-            <Button data-testid="media-select" variant="ghost" className="h-11" onClick={() => setSelecting(true)}>
+            <Button
+              data-testid="media-select"
+              variant="ghost"
+              className="h-11"
+              onClick={() => setSelecting(true)}
+            >
               <Check className="size-4" aria-hidden />
               {t("media.selectToDownload")}
             </Button>

@@ -79,7 +79,10 @@ export function MediaStories({
   const years = mediaYears(home.years);
   const storyChapters = chapters.filter((c) => c.photo_count > 0);
   const highlightMeta = (p: MediaHighlight) =>
-    [p.chapter_kind === "album" ? t("media.album") : p.chapter_venue, t("media.photoCount", { count: p.chapter_photo_count ?? 0 })]
+    [
+      p.chapter_kind === "album" ? t("media.album") : p.chapter_venue,
+      t("media.photoCount", { count: p.chapter_photo_count ?? 0 }),
+    ]
       .filter(Boolean)
       .join(" · ");
   return (

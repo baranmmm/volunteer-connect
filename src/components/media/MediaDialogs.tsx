@@ -767,7 +767,12 @@ export function DownloadRequestDialog({
           <Button type="button" variant="outline" className="h-11" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button type="submit" data-testid="media-download-submit" className="h-11" disabled={busy}>
+          <Button
+            type="submit"
+            data-testid="media-download-submit"
+            className="h-11"
+            disabled={busy}
+          >
             {t("media.downloads.send")}
           </Button>
         </div>

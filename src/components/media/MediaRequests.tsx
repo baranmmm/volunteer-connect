@@ -17,7 +17,11 @@ import {
   withdrawMediaDownloadRequest,
   withdrawMediaUploadRequest,
 } from "@/lib/media.functions";
-import { downloadWindowOpen, type MediaDownloadRequest, type MediaUploadRequest } from "@/lib/media";
+import {
+  downloadWindowOpen,
+  type MediaDownloadRequest,
+  type MediaUploadRequest,
+} from "@/lib/media";
 import { formatDate, translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -412,7 +416,9 @@ function DownloadHeading({ r }: { r: MediaDownloadRequest }) {
           {t("media.downloads.requestTitle", { count: r.items.length })}
         </h3>
         <p className="text-sm text-muted-foreground">
-          {[r.requester_name, formatDate(r.created_at, { dateStyle: "medium" })].filter(Boolean).join(" · ")}
+          {[r.requester_name, formatDate(r.created_at, { dateStyle: "medium" })]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       </div>
       <RequestStatusBadge status={r.status} testId="media-download-request-status" />
@@ -448,11 +454,19 @@ export function MyDownloadRequests({ filter }: { filter: "all" | "open" | "decid
   const withdraw = useServerFn(withdrawMediaDownloadRequest);
   const refresh = useMediaRefresh();
   const list = (requests.data ?? []).filter((r) =>
-    filter === "all" ? true : filter === "open" ? r.status === "submitted" : r.status !== "submitted",
+    filter === "all"
+      ? true
+      : filter === "open"
+        ? r.status === "submitted"
+        : r.status !== "submitted",
   );
   if (!list.length) return null;
   return (
-    <section data-testid="my-download-requests" aria-labelledby="my-download-requests-h" className="space-y-3">
+    <section
+      data-testid="my-download-requests"
+      aria-labelledby="my-download-requests-h"
+      className="space-y-3"
+    >
       <h2 id="my-download-requests-h" className="text-lg font-semibold">
         {t("media.downloads.mine")}
       </h2>
@@ -485,7 +499,10 @@ export function MyDownloadRequests({ filter }: { filter: "all" | "open" | "decid
                   {t("media.downloads.open")}
                 </Link>
               ) : (
-                <p data-testid="media-download-expired-note" className="text-sm text-muted-foreground">
+                <p
+                  data-testid="media-download-expired-note"
+                  className="text-sm text-muted-foreground"
+                >
                   {t("media.downloads.expiredShort")}
                 </p>
               ))}
@@ -572,7 +589,10 @@ function DownloadReviewCard({ r }: { r: MediaDownloadRequest }) {
               className="h-11"
               disabled={busy}
               onClick={() =>
-                void act(() => decline({ data: { id: r.id, reason } }), t("media.downloads.declinedToast"))
+                void act(
+                  () => decline({ data: { id: r.id, reason } }),
+                  t("media.downloads.declinedToast"),
+                )
               }
             >
               {t("media.requests.decline")}
@@ -588,7 +608,9 @@ function DownloadReviewCard({ r }: { r: MediaDownloadRequest }) {
             data-testid="media-download-approve"
             className="h-11"
             disabled={busy}
-            onClick={() => void act(() => approve({ data: { id: r.id } }), t("media.downloads.approvedToast"))}
+            onClick={() =>
+              void act(() => approve({ data: { id: r.id } }), t("media.downloads.approvedToast"))
+            }
           >
             {t("media.downloads.approve")}
           </Button>

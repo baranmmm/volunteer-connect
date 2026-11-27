@@ -564,7 +564,10 @@ export const getMediaHighlights = createServerFn({ method: "GET" })
   .middleware([requireMember])
   .inputValidator(z.object({ branchId: z.string().uuid() }))
   .handler(async ({ data, context }) => {
-    const r = await context.supabase.rpc("get_media_highlights", { p_branch: data.branchId, p_limit: 30 });
+    const r = await context.supabase.rpc("get_media_highlights", {
+      p_branch: data.branchId,
+      p_limit: 30,
+    });
     fail(r.error);
     const rows = z.object({ photos: z.array(mediaHighlightRow) }).parse(r.data).photos;
     const signed = await signPhotos(context.supabase, rows);
@@ -577,11 +580,18 @@ export const getMediaHighlights = createServerFn({ method: "GET" })
 
 export const setMediaHighlight = createServerFn({ method: "POST" })
   .middleware([requireMember])
-  .inputValidator(z.object({ source: z.enum(["library", "event"]), id: z.string().uuid(), on: z.boolean() }))
+  .inputValidator(
+    z.object({ source: z.enum(["library", "event"]), id: z.string().uuid(), on: z.boolean() }),
+  )
   .handler(async ({ data, context }) => {
     fail(
-      (await context.supabase.rpc("set_media_highlight", { p_source: data.source, p_id: data.id, p_on: data.on }))
-        .error,
+      (
+        await context.supabase.rpc("set_media_highlight", {
+          p_source: data.source,
+          p_id: data.id,
+          p_on: data.on,
+        })
+      ).error,
     );
   });
 
@@ -600,7 +610,10 @@ export const getMediaOriginalUrl = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
-    const r = await context.supabase.rpc("get_media_chapter", { p_kind: data.chapterKind, p_id: data.chapterId });
+    const r = await context.supabase.rpc("get_media_chapter", {
+      p_kind: data.chapterKind,
+      p_id: data.chapterId,
+    });
     fail(r.error);
     const chapter = mediaChapterRow.parse(r.data);
     const manager = await context.supabase.rpc("can_manage_media", { _branch: chapter.branch_id! });
@@ -608,10 +621,14 @@ export const getMediaOriginalUrl = createServerFn({ method: "POST" })
     const photo = chapter.photos.find((p) => p.id === data.photoId);
     if (!photo?.original) throw new Error("Not allowed");
     const name = `${chapter.title.replace(/[^\p{L}\p{N} _-]+/gu, "").trim() || "photo"}-${photo.id.slice(0, 8)}.${photo.original.split(".").pop()}`;
-    const signed = await context.supabase.storage.from(photo.bucket).createSignedUrl(photo.original, 60, { download: name });
+    const signed = await context.supabase.storage
+      .from(photo.bucket)
+      .createSignedUrl(photo.original, 60, { download: name });
     if (signed.error || !signed.data) throw new Error("Not allowed");
     const raw = new URL(signed.data.signedUrl);
-    return { url: `${import.meta.env["VITE_SUPABASE_URL"] ?? process.env["SUPABASE_URL"]}${raw.pathname}${raw.search}` };
+    return {
+      url: `${import.meta.env["VITE_SUPABASE_URL"] ?? process.env["SUPABASE_URL"]}${raw.pathname}${raw.search}`,
+    };
   });
 
 async function signDownloadRequest(
@@ -717,21 +734,40 @@ export const getMediaDownloadFiles = createServerFn({ method: "POST" })
     fail(r.error);
     const result = z
       .object({
-        state: z.enum(["ready", "expired", "submitted", "approved", "declined", "withdrawn", "not_found"]),
+        state: z.enum([
+          "ready",
+          "expired",
+          "submitted",
+          "approved",
+          "declined",
+          "withdrawn",
+          "not_found",
+        ]),
         expires_at: z.string().nullable().optional(),
         files: z
-          .array(z.object({ item_id: z.string(), bucket: z.string(), path: z.string(), name: z.string().nullable() }))
+          .array(
+            z.object({
+              item_id: z.string(),
+              bucket: z.string(),
+              path: z.string(),
+              name: z.string().nullable(),
+            }),
+          )
           .optional(),
       })
       .parse(r.data);
-    if (result.state === "expired") return { state: "expired", expires_at: result.expires_at ?? null };
-    if (result.state !== "ready") return { state: result.state === "approved" ? "not_found" : result.state };
+    if (result.state === "expired")
+      return { state: "expired", expires_at: result.expires_at ?? null };
+    if (result.state !== "ready")
+      return { state: result.state === "approved" ? "not_found" : result.state };
     const origin = import.meta.env["VITE_SUPABASE_URL"] ?? process.env["SUPABASE_URL"];
     const files: { item_id: string; url: string; name: string }[] = [];
     for (const [n, f] of (result.files ?? []).entries()) {
       const ext = f.path.split(".").pop() ?? "webp";
       const name = `photo-${String(n + 1).padStart(2, "0")}.${ext}`;
-      const signed = await db.storage.from(f.bucket).createSignedUrl(f.path, 300, { download: name });
+      const signed = await db.storage
+        .from(f.bucket)
+        .createSignedUrl(f.path, 300, { download: name });
       if (signed.error || !signed.data) continue;
       const raw = new URL(signed.data.signedUrl);
       files.push({ item_id: f.item_id, url: `${origin}${raw.pathname}${raw.search}`, name });
