@@ -78,7 +78,7 @@ export function MeetingCarryOver({
         aria-expanded={open}
         aria-controls={`${testId}-carry-body`}
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-3 text-left text-sm font-medium hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-3 text-left text-sm font-medium hover:bg-muted/50 sm:min-h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="min-w-0">
           {t("meetings.carry.toggle", { count: itemCount })}
@@ -93,14 +93,18 @@ export function MeetingCarryOver({
           aria-hidden
         />
       </button>
-      <div id={`${testId}-carry-body`} hidden={!open} className="min-w-0 space-y-4 border-t p-3">
+      <div
+        id={`${testId}-carry-body`}
+        hidden={!open}
+        className="min-w-0 space-y-3 border-t px-3 py-2"
+      >
         {open && (
           <>
             <p className="text-sm text-muted-foreground">{t("meetings.carry.hint")}</p>
             {meetings.map((m) => (
               <fieldset
                 key={m.meeting_id}
-                className="min-w-0 space-y-2"
+                className="min-w-0 space-y-1"
                 data-testid={`${testId}-carry-meeting`}
                 data-meeting-id={m.meeting_id}
               >
@@ -110,12 +114,12 @@ export function MeetingCarryOver({
                     · {formatDate(m.starts_at, { dateStyle: "medium", timeZone: "Europe/London" })}
                   </span>
                 </legend>
-                <ul className="min-w-0 space-y-2">
+                <ul className="min-w-0 space-y-1">
                   {m.items.map((item) => {
                     const choice = chosen(item.id);
                     return (
-                      <li key={item.id} className="min-w-0 rounded-md border p-2">
-                        <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm font-medium">
+                      <li key={item.id} className="min-w-0 rounded-md border px-2 py-0.5">
+                        <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm font-medium sm:min-h-8">
                           <input
                             type="checkbox"
                             className={box}
@@ -128,12 +132,12 @@ export function MeetingCarryOver({
                           <span className="min-w-0 [overflow-wrap:anywhere]">{item.title}</span>
                         </label>
                         {choice && item.decisions.length > 0 && (
-                          <ul className="ml-6 mt-1 min-w-0 space-y-1">
+                          <ul className="ml-6 min-w-0 space-y-0.5 pb-1">
                             {item.decisions.map((d) => {
                               const decisionOn = choice.decision_ids.includes(d.id);
                               return (
                                 <li key={d.id} className="min-w-0">
-                                  <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm">
+                                  <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm sm:min-h-8">
                                     <input
                                       type="checkbox"
                                       className={box}
@@ -151,7 +155,7 @@ export function MeetingCarryOver({
                                   </label>
                                   {decisionOn && d.tasks.length > 0 && (
                                     <ul
-                                      className="ml-6 min-w-0 space-y-1"
+                                      className="ml-6 min-w-0 space-y-0.5"
                                       aria-label={t("meetings.carry.tasksShared")}
                                     >
                                       {linkedRows(d.tasks).map((row) => {
@@ -167,7 +171,7 @@ export function MeetingCarryOver({
                                             data-group-id={
                                               row.kind === "group" ? row.groupId : undefined
                                             }
-                                            className="flex min-h-9 min-w-0 items-center gap-2 text-sm text-muted-foreground"
+                                            className="flex min-h-9 min-w-0 items-center gap-2 text-sm text-muted-foreground sm:min-h-7"
                                           >
                                             <ListChecks className="size-4 shrink-0" aria-hidden />
                                             <span
