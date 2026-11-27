@@ -389,7 +389,7 @@ describe("from a meeting decision, and meeting carry-over", () => {
       expect(new Set(tasks.map((t) => t.group_id))).toEqual(new Set([g]));
     }));
 
-  it("lists unresolved items with decisions and open tasks, and carries them over atomically (tasks move, not copied)", () =>
+  it("lists unresolved items with decisions and open tasks, and carries them over atomically (tasks shared, never moved or copied; 20261221090000)", () =>
     tx(async () => {
       await as(ids.bm1);
       const old = await create(meeting());
@@ -448,15 +448,7 @@ describe("from a meeting decision, and meeting carry-over", () => {
           ends_at: new Date(Date.now() + 90000000).toISOString(),
         }),
       );
-      // A task of another decision cannot ride along; nothing is written.
-      await fails(
-        "SELECT public.carry_over_agenda($1,$2::jsonb)",
-        [next, JSON.stringify([{ item_id: item, decision_ids: [d2], task_ids: [open] }])],
-        "cannot be carried over",
-      );
-      expect(
-        await one("SELECT count(*)::int v FROM meeting_agenda_items WHERE meeting_id=$1", [next]),
-      ).toBe(0);
+      // task_ids (sent by earlier app versions) are ignored; nothing is written to the tasks.
       expect(
         await one<number>("SELECT public.carry_over_agenda($1,$2::jsonb) v", [
           next,
@@ -478,9 +470,14 @@ describe("from a meeting decision, and meeting carry-over", () => {
         [next],
       );
       expect(newDecisions.map((d) => d["text"])).toEqual(["Ask for quotes"]);
-      // The open task moved (same id, new meeting and decision); the done one stayed; no task was copied.
+      // The copy points to its original; the tasks stay on the original (no task moved or copied).
+      expect(
+        await one("SELECT carried_from v FROM meeting_decisions WHERE id=$1", [
+          newDecisions[0]!["id"],
+        ]),
+      ).toBe(d1);
       expect(await q<Row>("SELECT meeting_id, decision_id FROM tasks WHERE id=$1", [open])).toEqual(
-        [{ meeting_id: next, decision_id: newDecisions[0]!["id"] }],
+        [{ meeting_id: old, decision_id: d1 }],
       );
       expect(await q<Row>("SELECT meeting_id, decision_id FROM tasks WHERE id=$1", [done])).toEqual(
         [{ meeting_id: old, decision_id: d1 }],
@@ -501,7 +498,7 @@ describe("from a meeting decision, and meeting carry-over", () => {
       );
     }));
 
-  it("a grouped task moves with its whole group", () =>
+  it("a group stays on its decision and shows under the copy too", () =>
     tx(async () => {
       await as(ids.bm1);
       const old = await create(meeting());
@@ -522,12 +519,22 @@ describe("from a meeting decision, and meeting carry-over", () => {
         next,
         JSON.stringify([{ item_id: item, decision_ids: [d], task_ids: [one_task] }]),
       ]);
+      const shown = async (m: string) =>
+        (
+          await one<{ agenda: { decisions: { tasks: { group_id?: string }[] }[] }[] }>(
+            "SELECT public.get_meeting($1) v",
+            [m],
+          )
+        ).agenda[0]!.decisions[0]!.tasks.filter((t) => t.group_id === g).length;
+      expect([await shown(old), await shown(next)]).toEqual([3, 3]);
       await as(null);
-      expect(await one("SELECT meeting_id v FROM task_groups WHERE id=$1", [g])).toBe(next);
+      expect(await one("SELECT meeting_id v FROM task_groups WHERE id=$1", [g])).toBe(old);
       expect(
-        await one("SELECT count(DISTINCT meeting_id)::int v FROM tasks WHERE group_id=$1", [g]),
-      ).toBe(1);
-      expect(await one("SELECT meeting_id v FROM tasks WHERE group_id=$1 LIMIT 1", [g])).toBe(next);
+        await one("SELECT count(*)::int v FROM tasks WHERE group_id=$1 AND meeting_id=$2", [
+          g,
+          old,
+        ]),
+      ).toBe(3);
     }));
 });
 
