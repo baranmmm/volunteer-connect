@@ -1,4 +1,6 @@
 -- READ-ONLY preview of the carry-over repair (migration 20261221090000_carry_over_shared_tasks.sql).
+-- Historical: applied on production 2026-11-27. It reads meeting_agenda_items.carried_to, which
+-- 20261222090000_carry_over_anywhere.sql replaces with carried_from, so it no longer runs after that migration.
 -- Run in the Supabase SQL editor on production. It only SELECTs: no table, row or setting is changed.
 --
 -- For every agenda item that was carried over (meeting_agenda_items.carried_to):
