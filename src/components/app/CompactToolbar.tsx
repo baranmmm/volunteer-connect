@@ -46,7 +46,7 @@ export function CompactHeader({
   return (
     <header
       data-testid={testId}
-      className="sticky top-[var(--app-header-h,0px)] z-20 -mx-4 -mt-4 flex min-w-0 items-center gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur"
+      className="sticky top-[var(--app-header-h,0px)] z-20 -mx-4 -mt-4 flex min-w-0 items-center gap-2 border-b bg-background px-4 py-2"
     >
       <h1 data-testid={`${testId}-title`} className="min-w-0 flex-1 truncate text-xl font-bold">
         {title}

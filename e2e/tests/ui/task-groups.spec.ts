@@ -4,6 +4,7 @@
 // decision shows as one row there and on the meeting's calendar entry; a new meeting carries over an unresolved item
 // with its decision and open task (moved, not copied). Fresh users in a temporary branch; checks look at own ids only.
 import type { Page } from "@playwright/test";
+import { decisionAction } from "../../pages/components/DecisionActions";
 import { test, expect, runId, type TestUser } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import { MEETING_TITLE_PREFIX, TASK_TITLE_PREFIX, createMeetingAs, inDays, workRpc } from "../../api/work";
@@ -162,7 +163,7 @@ test.describe("Task groups (@all)", () => {
     await page.goto(`/meetings/${meeting}`);
     const agendaItem = page.locator(`[data-testid="meeting-agenda-item"][data-item-id="${item}"]`);
     await agendaItem.getByTestId("meeting-agenda-item-toggle").click({ timeout: APP_LOAD_TIMEOUT });
-    await agendaItem.getByTestId("meeting-decision-create-task").click();
+    await decisionAction(page, agendaItem.getByTestId("meeting-decision"), "create-task");
     const form = page.getByTestId("task-form");
     await form.getByTestId("task-form-all-members").check();
     await form.getByTestId("task-form-submit").click();

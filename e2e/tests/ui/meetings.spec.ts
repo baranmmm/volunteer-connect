@@ -3,6 +3,7 @@
 // into tasks, meeting requests approved into meetings, private files and long names at 390 px. Every meeting is created by fresh users in
 // a temporary branch (cleaned up with its files by the fixtures) and every check looks at this test's own ids only.
 import type { Locator, Page } from "@playwright/test";
+import { decisionAction } from "../../pages/components/DecisionActions";
 import { test, expect, runId, type TestUser } from "../../fixtures/roles";
 import { adminClient } from "../../api/SupabaseClient";
 import {
@@ -332,7 +333,19 @@ test.describe("Meetings", () => {
     const decision = item.getByTestId("meeting-decision");
     await expect(decision.getByTestId("meeting-decision-text-value")).toHaveText(decisionText);
 
-    await decision.getByTestId("meeting-decision-create-task").click();
+    // No "Create task" row under the decision: "+ Task" sits in the row of Edit/Delete (on phones all three are in
+    // the decision's ⋯ menu), and the phone's top bar is opaque (content scrolling under it never shows through).
+    const menu = decision.getByTestId("meeting-decision-menu");
+    if (await menu.isVisible()) {
+      await expect(decision.getByTestId("meeting-decision-create-task")).toHaveCount(0);
+      const bg = await page.getByTestId("mobile-top-bar").evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(bg).not.toMatch(/rgba\(.*,\s*0?\.\d+\)|\/\s*0?\.\d+\)/);
+    } else {
+      const task = await decision.getByTestId("meeting-decision-create-task").boundingBox();
+      const edit = await decision.getByTestId("meeting-decision-edit").boundingBox();
+      expect(Math.abs(task!.y + task!.height / 2 - (edit!.y + edit!.height / 2))).toBeLessThan(6);
+    }
+    await decisionAction(page, decision, "create-task");
     const form = page.getByTestId("task-form");
     await expect(form.getByTestId("task-form-from-decision")).toBeVisible();
     await expect(form.getByTestId("task-form-scope-fixed")).toHaveAttribute("data-scope", `branch:${branch}`);

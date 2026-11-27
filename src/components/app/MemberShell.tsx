@@ -195,9 +195,11 @@ export function MemberShell() {
         </button>
       </aside>
 
+      {/* Opaque: content scrolling under it must not show through (also the compact page toolbars). */}
       <header
         ref={mobileHeader}
-        className="sticky top-0 z-30 grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b bg-background/95 px-4 py-2 backdrop-blur lg:hidden"
+        data-testid="mobile-top-bar"
+        className="sticky top-0 z-30 grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b bg-background px-4 py-2 lg:hidden"
       >
         <LogoLink size="sm" className="min-w-0 flex-1 text-primary" />
         <NotificationBell variant="sheet" />

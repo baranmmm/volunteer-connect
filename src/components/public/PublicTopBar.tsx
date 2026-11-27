@@ -38,7 +38,7 @@ export function PublicTopBar({
     <header
       data-testid="public-topbar"
       data-current={page ?? undefined}
-      className="sticky top-0 z-40 border-b bg-card/95 text-foreground [color-scheme:light] backdrop-blur supports-[backdrop-filter]:bg-card/85"
+      className="sticky top-0 z-40 border-b bg-card text-foreground [color-scheme:light]"
     >
       <div className="mx-auto flex max-w-6xl items-center gap-1 px-4 py-2 sm:gap-3 sm:px-6">
         <LogoLink size="sm" phoneMarkOnly className="shrink-0" />
