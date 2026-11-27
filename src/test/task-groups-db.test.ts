@@ -462,9 +462,9 @@ describe("from a meeting decision, and meeting carry-over", () => {
         ])
       )[0]!;
       expect(newItem).toMatchObject({ title: "Hall booking", notes: "Call the council" });
-      expect(await one("SELECT carried_to v FROM meeting_agenda_items WHERE id=$1", [item])).toBe(
-        newItem["id"],
-      );
+      expect(
+        await one("SELECT carried_from v FROM meeting_agenda_items WHERE id=$1", [newItem["id"]]),
+      ).toBe(item);
       const newDecisions = await q<Row>(
         "SELECT id, text FROM meeting_decisions WHERE meeting_id=$1",
         [next],
@@ -483,14 +483,20 @@ describe("from a meeting decision, and meeting carry-over", () => {
         [{ meeting_id: old, decision_id: d1 }],
       );
       expect(await one("SELECT count(*)::int v FROM tasks WHERE title='Quotes'")).toBe(1);
-      // The old meeting keeps its decisions; the carried item is not offered again.
+      // The old meeting keeps its decisions; the item is offered once, as its latest copy, and not to the meeting
+      // that already has it.
       expect(
         await one("SELECT count(*)::int v FROM meeting_decisions WHERE meeting_id=$1", [old]),
       ).toBe(2);
       await as(ids.bm1);
-      expect(await one("SELECT public.list_meeting_carry_over('branch',$1) v", [ids.b1])).toEqual(
-        [],
+      const again = await one<{ meeting_id: string; items: { id: string }[] }[]>(
+        "SELECT public.list_meeting_carry_over('branch',$1) v",
+        [ids.b1],
       );
+      expect(again.map((o) => [o.meeting_id, o.items.map((i) => i.id)])).toEqual([
+        [next, [newItem["id"]]],
+      ]);
+      expect(await one("SELECT public.list_meeting_carry_in($1) v", [next])).toEqual([]);
       await fails(
         "SELECT public.carry_over_agenda($1,$2::jsonb)",
         [next, JSON.stringify([{ item_id: item, decision_ids: [], task_ids: [] }])],
@@ -724,8 +730,10 @@ describe("write RPC permissions", () => {
           ]),
         ).toBe(3);
         expect(
-          await one("SELECT carried_to v FROM meeting_agenda_items WHERE id=$1", [f.item]),
-        ).toBeNull();
+          await one("SELECT count(*)::int v FROM meeting_agenda_items WHERE carried_from=$1", [
+            f.item,
+          ]),
+        ).toBe(0);
         expect(await one("SELECT count(*)::int v FROM task_groups")).toBe(1);
       }));
   }
@@ -776,10 +784,10 @@ describe("write RPC permissions", () => {
         await as(null);
         expect(await one("SELECT count(*)::int v FROM task_groups WHERE id=$1", [f.group])).toBe(0);
         expect(
-          await one("SELECT carried_to IS NOT NULL v FROM meeting_agenda_items WHERE id=$1", [
+          await one("SELECT count(*)::int v FROM meeting_agenda_items WHERE carried_from=$1", [
             f.item,
           ]),
-        ).toBe(true);
+        ).toBe(1);
       }));
   }
 

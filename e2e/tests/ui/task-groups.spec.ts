@@ -224,7 +224,7 @@ test.describe("Task groups (@all)", () => {
     // Not copied: no task on the copy, and the new meeting owns none.
     expect((await adminClient().from("tasks").select("id").eq("decision_id", copy.id)).data).toEqual([]);
     expect((await adminClient().from("tasks").select("id").eq("meeting_id", created)).data).toEqual([]);
-    expect((await adminClient().from("meeting_agenda_items").select("carried_to").eq("id", item).single()).data!.carried_to).not.toBeNull();
+    expect((await adminClient().from("meeting_agenda_items").select("carried_from").eq("meeting_id", created).single()).data!.carried_from).toBe(item);
 
     // The task shows under the decision in both meetings, counted in both.
     for (const meetingId of [created, old]) {
