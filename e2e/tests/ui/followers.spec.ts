@@ -18,7 +18,9 @@ test.describe("Followers", () => {
     const sidebar = new Sidebar(page, !!isMobile, FOLLOWER_MOBILE_PRIMARY);
     for (const hidden of ["users", "approvals", "tasks", "meetings", "recycle-bin"] as const) expect(await sidebar.hasItem(hidden), hidden).toBe(false);
     expect(await sidebar.hasItem("donate")).toBe(true);
-    for (const path of ["/users", "/recycle-bin", "/tasks", "/media"]) {
+    // Media: the gallery of the branches they follow, read-only (ui/media.spec.ts).
+    expect(await sidebar.hasItem("media")).toBe(true);
+    for (const path of ["/users", "/recycle-bin", "/tasks"]) {
       await page.goto(path);
       await expect(page, path).toHaveURL(/\/dashboard$/, { timeout: APP_LOAD_TIMEOUT });
     }

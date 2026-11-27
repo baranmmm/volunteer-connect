@@ -48,5 +48,6 @@ shared or reloaded link opens the same view for members who can see it.
 
 ## Phone navigation
 The bottom bar is Dashboard · Calendar · Tasks · Media for members; Meetings is the first item under More (its badge
-counts towards More's). National Coordinators and followers keep their bar (`mobileNavFor` in
+counts towards More's). Followers: Dashboard · Calendar · Requests · Media (Media read-only: no add, upload request,
+download request or star). National Coordinators keep Dashboard · Calendar · Tasks · Meetings (`mobileNavFor` in
 `src/components/app/nav.ts`).

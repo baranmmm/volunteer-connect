@@ -190,13 +190,14 @@ describe("mobile bottom bar", () => {
         firstMore: "/meetings",
       });
   });
-  it("roles without Media keep their bar", () => {
+  it("National Coordinators keep their bar; followers get Media 4th", () => {
     expect(bar("national_coordinator").primary).toEqual([
       "/dashboard",
       "/calendar",
       "/tasks",
       "/meetings",
     ]);
-    expect(bar("follower").primary).toEqual(["/dashboard", "/calendar", "/requests"]);
+    // Followers see the Media of the branches they follow (read-only): Media in the 4th slot.
+    expect(bar("follower").primary).toEqual(["/dashboard", "/calendar", "/requests", "/media"]);
   });
 });
