@@ -9,12 +9,14 @@ import {
   createAlbumAs,
   gradientPhoto,
   PALETTE,
+  starAs,
   storedMediaObjects,
   uploadRequestAs,
   type TestPhoto,
 } from "../../api/media";
 import { APP_LOAD_TIMEOUT } from "../../pages/app";
 import { createEventAs, EVENT_TITLE_PREFIX } from "../../api/events";
+import { adminClient } from "../../api/SupabaseClient";
 
 let n = 0;
 const photo = (i = n++) => gradientPhoto(PALETTE[i % PALETTE.length]!, i, 900, 600);
@@ -145,8 +147,9 @@ test.describe("Media", () => {
     for (let i = 0; i < 3; i++) await addLibraryPhotoAs(bm.email, branch, { album_id: album }, await photo());
     const page = await pageAs(vol);
     await openMedia(page, `?album=${album}`);
-    // Volunteers never manage: no selection tools.
-    await expect(page.getByTestId("media-chapter-tools")).toHaveCount(0);
+    // Volunteers never manage: no move, delete, arrange or album tools (they may select photos to request downloads).
+    for (const id of ["media-move-selected", "media-delete-selected", "media-arrange", "media-album-edit", "media-album-delete"])
+      await expect(page.getByTestId(id)).toHaveCount(0);
     await page.getByTestId("media-chapter-play").click();
     const show = page.getByTestId("media-slideshow-view");
     await expect(show).toBeVisible();
@@ -264,5 +267,103 @@ test.describe("Media", () => {
     await expect(first).toHaveAttribute("data-testid", "nav-meetings");
     await first.click();
     await expect(page).toHaveURL(/\/meetings/);
+  });
+
+  test("download request: a volunteer asks, the Branch Manager approves, the 24-hour link works, then expires", async ({ freshBranch, freshUser, pageAs }) => {
+    const { branch, bm, vol } = await people(freshBranch, freshUser, "download");
+    const album = await createAlbumAs(bm.email, branch, "Peace Walk");
+    const photoId = await addLibraryPhotoAs(bm.email, branch, { album_id: album }, await photo());
+    const volunteer = await pageAs(vol);
+    await openMedia(volunteer, `?album=${album}`);
+    await volunteer.locator(`[data-testid="media-masonry-photo"][data-photo-id="${photoId}"]`).click();
+    // Volunteers see "Request download" only: never a direct download, star or delete.
+    const lightbox = volunteer.getByTestId("media-lightbox");
+    await expect(lightbox.getByTestId("media-lightbox-download")).toHaveCount(0);
+    await expect(lightbox.getByTestId("media-lightbox-star")).toHaveCount(0);
+    await lightbox.getByTestId("media-lightbox-request-download").click();
+    await volunteer.getByTestId("media-download-reason").fill("For the newsletter");
+    await volunteer.getByTestId("media-download-submit").click();
+    await expect(volunteer.getByTestId("toast-success").last()).toBeVisible();
+    const { data: rows } = await adminClient().from("media_download_requests").select("id").eq("branch_id", branch);
+    const requestId = rows![0]!.id as string;
+
+    const manager = await pageAs(bm);
+    await manager.goto("/requests?tab=review");
+    const card = manager.locator(`[data-testid="media-download-review"][data-request-id="${requestId}"]`);
+    await expect(card).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await card.getByTestId("media-download-approve").click();
+    await expect(manager.getByTestId("toast-success").last()).toBeVisible();
+
+    // The notice's link: previews, then the full-size file links on request.
+    await volunteer.goto(`/media/download/${requestId}`);
+    await expect(volunteer.getByTestId("media-download-valid")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await volunteer.getByTestId("media-download-prepare").click();
+    const link = volunteer.getByTestId("media-download-file");
+    await expect(link).toHaveCount(1);
+    const href = await link.getAttribute("href");
+    expect(href).toContain(`${branch}/${photoId}.webp`);
+    expect((await volunteer.request.get(href!)).status()).toBe(200);
+    // Someone else opening the link gets nothing.
+    const other = await pageAs(bm);
+    await other.goto(`/media/download/${requestId}`);
+    await expect(other.getByTestId("media-download-valid")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await other.getByTestId("media-download-prepare").click();
+    await expect(other.getByTestId("media-download-file")).toHaveCount(0);
+
+    // After 24 hours the page says the link has expired.
+    await adminClient().from("media_download_requests").update({ expires_at: new Date(Date.now() - 60_000).toISOString() }).eq("id", requestId);
+    await volunteer.reload();
+    await expect(volunteer.getByTestId("media-download-expired")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+  });
+
+  test("highlights: a starred photo shows in the highlights and plays as a slideshow", async ({ freshBranch, freshUser, pageAs }, testInfo) => {
+    const { branch, bm, vol } = await people(freshBranch, freshUser, "highlights");
+    const album = await createAlbumAs(bm.email, branch, "Meet-ups");
+    const ids: string[] = [];
+    for (let i = 0; i < 2; i++) ids.push(await addLibraryPhotoAs(bm.email, branch, { album_id: album }, await photo()));
+    // The Branch Manager stars one in the lightbox.
+    const manager = await pageAs(bm);
+    await openMedia(manager, `?album=${album}`);
+    await manager.locator(`[data-testid="media-masonry-photo"][data-photo-id="${ids[1]}"]`).click();
+    const star = manager.getByTestId("media-lightbox-star");
+    await expect(star).toHaveAttribute("aria-pressed", "false");
+    await star.click();
+    await expect(star).toHaveAttribute("aria-pressed", "true");
+    // The volunteer sees it in the strip (desktop) or the card (phones), and in the highlights slideshow.
+    const volunteer = await pageAs(vol);
+    await openMedia(volunteer);
+    const mobile = testInfo.project.name === "mobile-pixel7";
+    const item = volunteer.getByTestId(mobile ? "media-highlight-card-item" : "media-highlight");
+    await expect(item).toHaveCount(1);
+    await expect(item).toHaveAttribute("data-photo-id", ids[1]!);
+    await volunteer.getByTestId("media-slideshow").click();
+    await expect(volunteer.getByTestId("media-slideshow-view")).toBeVisible();
+    await expect(volunteer.getByTestId("media-slideshow-counter")).toHaveText("1 / 1");
+  });
+
+  test("dashboard: the latest photos strip opens a photo in the Media lightbox", async ({ freshBranch, freshUser, pageAs }) => {
+    const { branch, bm, vol } = await people(freshBranch, freshUser, "latest");
+    const volunteer = await pageAs(vol);
+    await volunteer.goto("/dashboard");
+    await expect(volunteer.getByTestId("dashboard-welcome")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(volunteer.getByTestId("dashboard-latest-photos")).toHaveCount(0); // hidden without photos
+    const album = await createAlbumAs(bm.email, branch, "Ramadan 2026");
+    const id = await addLibraryPhotoAs(bm.email, branch, { album_id: album }, await photo());
+    await volunteer.reload();
+    const tile = volunteer.locator(`[data-testid="dashboard-latest-photo"][data-photo-id="${id}"]`);
+    await expect(tile).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await tile.click();
+    await expect(volunteer).toHaveURL(/\/media\?.*photo=/);
+    await expect(volunteer.getByTestId("media-lightbox")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+  });
+
+  test("the post-event nudge's link opens the upload request form with the event chosen", async ({ freshBranch, freshUser, pageAs }) => {
+    const { branch, bm, vol } = await people(freshBranch, freshUser, "nudge");
+    const event = await createEventAs(bm.email, { title: `${EVENT_TITLE_PREFIX}media nudge`, branchId: branch, status: "published", startInMinutes: -30, durationMinutes: 180 });
+    const volunteer = await pageAs(vol);
+    await volunteer.goto(`/media?request=event:${event}`);
+    await expect(volunteer.getByTestId("media-upload-dialog")).toBeVisible({ timeout: APP_LOAD_TIMEOUT });
+    await expect(volunteer.getByTestId("media-upload-target")).toHaveValue(`event:${event}`);
+    await expect(volunteer).not.toHaveURL(/request=/);
   });
 });

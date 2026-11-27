@@ -58,12 +58,12 @@ function Fullscreen({
   return (
     <Dialog.Root open onOpenChange={(v) => !v && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/95" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/95" />
         <Dialog.Content
           data-testid={testId}
           aria-describedby={undefined}
           onKeyDown={onKeyDown}
-          className="fixed inset-0 z-[60] flex flex-col bg-black text-white outline-none"
+          className="fixed inset-0 z-50 flex flex-col bg-black text-white outline-none"
         >
           <Dialog.Title className="sr-only">{label}</Dialog.Title>
           {children}

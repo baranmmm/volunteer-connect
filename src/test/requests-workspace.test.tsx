@@ -98,6 +98,10 @@ vi.mock("@/lib/media.functions", () => ({
       ? { branch: { id: "b", name: "Medway" }, can_request: true, can_manage: false }
       : null,
   listMediaUploadRequests: async () => [],
+  listMediaDownloadRequests: async () => [],
+  approveMediaDownloadRequest: vi.fn(),
+  declineMediaDownloadRequest: vi.fn(),
+  withdrawMediaDownloadRequest: vi.fn(),
   approveMediaUploadRequest: vi.fn(),
   declineMediaUploadRequest: vi.fn(),
   withdrawMediaUploadRequest: vi.fn(),
