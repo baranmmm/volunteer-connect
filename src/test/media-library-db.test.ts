@@ -230,9 +230,18 @@ describe("who sees the gallery", () => {
         await fails("SELECT public.get_media_chapter('album', $1)", [other], "Chapter not found");
         await fails("SELECT public.get_media_chapter('event', $1)", [ev2], "Chapter not found");
       }
+      // A follower (follows Medway Test since sign-up) sees it read-only since 20261219090000
+      // (media-followers-db.test.ts); never the other branch they do not follow.
       await as(ids.fol);
-      await fails("SELECT public.get_media_home()", [], "Not allowed");
-      await fails("SELECT public.get_media_chapters($1)", [ids.b1], "Not allowed");
+      expect(
+        await one<{ can_manage: boolean; can_request: boolean }>(
+          "SELECT public.get_media_home() v",
+        ),
+      ).toMatchObject({
+        can_manage: false,
+        can_request: false,
+      });
+      await fails("SELECT public.get_media_chapters($1)", [ids.b2], "Not allowed");
       // Another region's RD sees only their own region's branches.
       await as(ids.rd2);
       expect(

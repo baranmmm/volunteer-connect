@@ -1,6 +1,6 @@
 # Privacy Notice: Dialogue Society Volunteer Hub
 
-Version 1.6 · 26 November 2026
+Version 1.7 · 27 November 2026
 
 This notice explains what personal information the Dialogue Society Volunteer Hub collects, why we use it, who can see it and what rights you have. You need to read it before creating an account.
 
@@ -42,7 +42,7 @@ One thing is optional and is only used with your consent, which you can withdraw
 
 ## Photos at our events
 
-We take photos at Dialogue Society events and activities. These photos may be shared in the members' Media area of the Hub (seen only by members of the branch) and on public event pages. We do this on the basis of our legitimate interests in recording and showing the work of our charity. Agreeing to be photographed is not a condition of joining.
+We take photos at Dialogue Society events and activities. These photos may be shared in the Media area of the Hub, which the signed-in members and followers of that branch can see (anyone with a Hub account who follows the branch), and on public event pages. We do this on the basis of our legitimate interests in recording and showing the work of our charity. Agreeing to be photographed is not a condition of joining.
 
 - If you do not want to be photographed, please tell the organiser at the event.
 - If you would like a photo of you to be removed, email medway@dialoguesociety.org and we will remove it.
@@ -56,7 +56,7 @@ We take photos at Dialogue Society events and activities. These photos may be sh
 | Regional Directors of your region | The same, for all branches in their region |
 | National Coordinators | Numbers only for volunteers and trustees; details of branch and regional managers |
 | Members of your branch | Branch tasks, including who they are assigned to and the notes on them |
-| Members and trustees of your branch, its Branch Managers and the Regional Directors of your region | The photos in your branch's Media area. Photos you send in an upload request are seen only by you and the managers who review it, until they are approved. |
+| Members, trustees and followers of your branch (anyone with a Hub account who follows it), its Branch Managers and the Regional Directors of your region | The photos in your branch's Media area. Photos you send in an upload request are seen only by you and the managers who review it, until they are approved. |
 | Trustees of your branch | Your branch's activity: its events, branch tasks (including who they are assigned to and the notes on them), the branch's meetings with their agenda, decisions and files, and the names of the branch members shown there. Trustees can see this but cannot change it. |
 | The people invited to a meeting, its organiser and the managers of its branch or region | That meeting (also in the calendar), its invitees, agenda, decisions and files. Nobody else sees it. |
 | National Coordinators | National tasks and meetings only; they never see volunteers' names |
