@@ -2,6 +2,18 @@
 
 Status and checklist for starting the pilot from a clean production database.
 
+**Status: the prod reset was applied on 2026-11-27** (`supabase/migrations/20261218090000_prelaunch_reset.sql`,
+`PROD DB migrate` run #60 apply; on both Local and Remote). Verified afterwards with `report.sql` (all 64 `DELETE`
+rows/storage lines 0; 1 KEEP account: the dotted NC, active, 1 MFA factor; 15 imported events; 6 highlight videos;
+`NOT COVERED` 0; every FK check as expected) and `storage-delete-list.sql` (`delete 0` in every bucket; event-media
+keep 85 / total 85). Backup taken first (step 0, `~/ds-backups`, verified). Still to do: step 6 (`BREVO_API_KEY`, the
+end-to-end checks).
+
+The three scripts in `scripts/prelaunch/` stay for reference (they describe the reset as applied) and are **no longer
+updated for new tables**: `reset.sql` would now abort on any table added later that holds rows, and the migration that
+contains it is a no-op everywhere (the production database has run it; every other database only gets the NOTICE).
+`src/test/prelaunch-reset-db.test.ts` runs them against the schema of reset day.
+
 ## Published app
 - URL: **https://ds-volunteer.lovable.app** (Lovable).
 - Supabase Auth **Site URL** is set to the published URL (sign-up and password-reset links point there).
@@ -14,7 +26,7 @@ Status and checklist for starting the pilot from a clean production database.
 | `EMAIL_FROM` | set (verified Brevo sender) |
 | `EMAIL_LINK_SECRET` | set (signs confirm/cancel/unsubscribe links) |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET` | set (bot check on the public forms) |
-| `BREVO_API_KEY` | **added only after the prod reset**, so no email goes out for test data; until then queued emails stay pending |
+| `BREVO_API_KEY` | **to add now** (step 6: the prod reset is done); until it is added, queued emails stay pending |
 | `SCHEDULED_JOBS_SECRET` | **to add** (one secret for `/api/public/outbox-flush`, `/api/public/task-reminders` and `/api/public/cleanup-deleted-events`; the same value in GitHub and Supabase Vault, `docs/push.md` "Production setup / troubleshooting") |
 | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push (`docs/push.md`) |
 
@@ -25,7 +37,7 @@ Status and checklist for starting the pilot from a clean production database.
 - Secret `SCHEDULED_JOBS_SECRET`: the same value as in Lovable (used by both manual fallback workflows; pg_cron's
   outbox tick and Recycle Bin cleanup use the same value from Supabase Vault).
 
-## Prod reset (clean start)
+## Prod reset (clean start) — applied 2026-11-27
 The reset keeps only the National Coordinator account with the dotted email (auth user, identities, sessions, MFA
 factor, profile, role, followed branches, consents, settings, privacy acceptances), the **15** imported Dialogue Society
 past events with all their media rows, the **6** highlight videos, and the reference data (regions, branches,
