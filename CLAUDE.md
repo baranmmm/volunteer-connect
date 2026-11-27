@@ -3,7 +3,8 @@
 # Dialogue Society Volunteer Hub
 
 Bilingual (EN/TR) volunteer hub for Dialogue Society branches, packaged as a PWA/native app.
-Published app: **https://ds-volunteer.lovable.app** (Lovable). Pre-launch status and settings: `docs/prelaunch.md`.
+Published app: **https://ds-volunteer.lovable.app** (Lovable). Pre-launch status and settings: `docs/prelaunch.md`
+(the pre-launch production reset was applied on 2026-11-27; `scripts/prelaunch/` is kept for reference only).
 TanStack Start + React 19 + Supabase. Public signed-out routes server-render for performance and link previews ("/",
 "/events", "/events/$id", "/sign-in", "/join", "/privacy/attendees"); everything signed-in stays client-only
 (`ssr: false`). Approved exception: the server never knows the session (localStorage), so server-rendered pages show
@@ -56,11 +57,6 @@ Put the local results (commands and pass/fail counts) in the PR description.
   a need to touch an existing migration.
 
 ### Migrations and production
-- **Until the pre-launch prod reset has been applied** (`docs/prelaunch.md`): any PR that adds a table holding user
-  data, or columns/rows the reset must handle, updates `scripts/prelaunch/report.sql` and
-  `scripts/prelaunch/reset.sql` in the same PR (delete counts, delete order, keep rules), with
-  `src/test/prelaunch-reset-db.test.ts` seeding the new data and green. The reset aborts if any public table it does
-  not know holds rows, so a missed table blocks reset day. Remove this rule once the reset is applied.
 - Production migrations run only through the `PROD DB migrate` workflow (`.github/workflows/prod-db-migrate.yml`,
   `main` only): a `dry-run` first, then `apply` with `confirm: APPLY PROD`. Never `supabase db push` or a direct
   connection to production from this machine.

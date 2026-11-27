@@ -116,7 +116,9 @@ const KEPT_TABLES = [
 ];
 
 beforeAll(async () => {
-  await initializeRecycleDatabase(db);
+  // The reset was applied in production on 2026-11-27 (20261218090000_prelaunch_reset.sql). The scripts are kept for
+  // reference and no longer follow new tables: the test runs them against the schema they were written for.
+  await initializeRecycleDatabase(db, { until: "20261218090000" });
 }, 60000);
 afterAll(async () => db.close());
 
