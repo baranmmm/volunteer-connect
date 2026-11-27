@@ -410,7 +410,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                           </p>
                         )}
                         {item.decisions.length > 0 && (
-                          <ul className="mt-2 grid min-w-0 grid-cols-1 gap-2">
+                          <ul className="mt-2 grid min-w-0 grid-cols-1 gap-1">
                             {item.decisions.map((d) => {
                               const taskCount = decisionTaskCount(d.tasks);
                               const tasksOpen = taskCount > 0 && openDecisions.has(d.id);
@@ -421,7 +421,11 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                   data-testid="meeting-decision"
                                   data-decision-id={d.id}
                                   data-expanded={tasksOpen}
-                                  className="min-w-0 rounded-lg bg-muted/50 p-3"
+                                  className={cn(
+                                    "min-w-0 rounded-lg bg-muted/50 px-3",
+                                    // Compact rows; the inline editor keeps room for its buttons.
+                                    editingDecision === d.id ? "py-3" : "py-1.5",
+                                  )}
                                 >
                                   {editingDecision === d.id ? (
                                     <DecisionForm
@@ -439,10 +443,10 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                       }}
                                     />
                                   ) : (
-                                    <div className="flex min-w-0 items-start gap-2">
+                                    <div className="flex min-w-0 items-start gap-1">
                                       <p
                                         data-testid="meeting-decision-text-value"
-                                        className="min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere]"
+                                        className="min-w-0 flex-1 whitespace-pre-wrap py-3 text-sm leading-5 [overflow-wrap:anywhere] sm:py-2"
                                       >
                                         {d.text}
                                       </p>
@@ -490,7 +494,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
                                     <ul
                                       id={tasksId}
                                       data-testid="meeting-decision-tasks"
-                                      className="mt-2 grid min-w-0 grid-cols-1 gap-1"
+                                      className="mt-0.5 grid min-w-0 grid-cols-1 gap-0.5 pb-1"
                                       aria-label={t("meetings.decisions.tasks")}
                                     >
                                       {linkedRows(d.tasks).map((row) =>
@@ -728,7 +732,7 @@ function DecisionTaskRow({
         data-testid="meeting-decision-task"
         data-task-id={task.id}
         data-status={task.status}
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm text-primary underline-offset-4 hover:underline"
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm text-primary sm:min-h-9 underline-offset-4 hover:underline"
       >
         <ListChecks className="size-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate" title={task.title}>
