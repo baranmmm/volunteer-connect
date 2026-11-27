@@ -39,9 +39,18 @@ export function CategoryIcon({ category, className }: { category: string; classN
     )[category] ?? Tag;
   return <Icon className={className} aria-hidden />;
 }
-export function EventCard({ event, now = new Date() }: { event: HubEvent; now?: Date }) {
+export function EventCard({
+  event,
+  now = new Date(),
+  coverUrl,
+}: {
+  event: HubEvent;
+  now?: Date;
+  /** The cover's signed link (useEventCovers); lists do not sign their media rows. */
+  coverUrl?: string | null | undefined;
+}) {
   const { t } = useTranslation();
-  const cover = event.media.find((m) => m.kind === "image" && m.url);
+  const cover = coverUrl ?? event.media.find((m) => m.kind === "image" && m.url)?.url ?? null;
   return (
     <Link
       to="/events/$id"
@@ -60,9 +69,9 @@ export function EventCard({ event, now = new Date() }: { event: HubEvent; now?: 
         data-testid="event-card-cover"
         className="flex aspect-[16/9] items-center justify-center overflow-hidden bg-secondary text-secondary-foreground sm:aspect-square sm:w-36 sm:shrink-0"
       >
-        {cover?.url ? (
+        {cover ? (
           <img
-            src={cover.url}
+            src={cover}
             alt={event.title}
             className="h-full w-full object-cover"
             loading="lazy"

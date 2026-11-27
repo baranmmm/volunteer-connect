@@ -18,6 +18,13 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
+// PERF_LOG=1 (local profiling only): one timing line per server function call (src/lib/perf-log.server.ts).
+const perfMiddleware = createMiddleware().server(async ({ next, request }) => {
+  if (process.env["PERF_LOG"] !== "1") return next();
+  const { withPerfLog } = await import("./lib/perf-log.server");
+  return withPerfLog(request, () => next());
+});
+
 // Start installs this automatically when src/start.ts is absent; defining the
 // file opts out, so re-add it explicitly to keep server functions protected
 // from cross-site requests.
@@ -32,6 +39,6 @@ const csrfMiddleware = createCsrfMiddleware({
 // user-managed Supabase project is connected, no middleware here sets Authorization, and the
 // project did not intentionally replace it.
 export const startInstance = createStart(() => ({
-  requestMiddleware: [errorMiddleware, csrfMiddleware],
+  requestMiddleware: [errorMiddleware, csrfMiddleware, perfMiddleware],
   functionMiddleware: [attachSupabaseAuth],
 }));

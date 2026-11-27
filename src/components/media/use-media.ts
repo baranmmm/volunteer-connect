@@ -11,7 +11,7 @@ import {
   listMediaTargets,
   listMediaUploadRequests,
 } from "@/lib/media.functions";
-import type { ChapterKind, MediaSource } from "@/lib/media";
+import { MEDIA_CHAPTERS_PAGE, type ChapterKind, type MediaSource } from "@/lib/media";
 
 // Signed links last 10 minutes: data is refreshed well before that.
 const FRESH = 4 * 60_000;
@@ -47,7 +47,9 @@ export function useMediaChapters(branchId: string | undefined, filters: MediaFil
       }),
     getNextPageParam: (last) => {
       const c = last.at(-1);
-      return last.length === 6 && c?.sort_at ? { at: c.sort_at, id: c.id } : undefined;
+      return last.length === MEDIA_CHAPTERS_PAGE && c?.sort_at
+        ? { at: c.sort_at, id: c.id }
+        : undefined;
     },
     staleTime: FRESH,
   });
