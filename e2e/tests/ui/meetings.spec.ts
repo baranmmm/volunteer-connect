@@ -47,6 +47,12 @@ async function expandItem(item: Locator) {
   if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 }
+/** Opens a decision's task list (collapsed by default) when it is closed. */
+async function expandDecision(decision: Locator) {
+  const toggle = decision.getByTestId("meeting-decision-tasks-toggle");
+  if ((await toggle.getAttribute("aria-expanded", { timeout: APP_LOAD_TIMEOUT })) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
 /** True when `first` comes before `second` in the page. */
 const comesBefore = (page: Page, first: string, second: string) =>
   page.evaluate(([a, b]) => {
@@ -285,6 +291,7 @@ test.describe("Meetings", () => {
     await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-tasks", "1");
     await expect(item.getByTestId("meeting-agenda-resolved")).toHaveCount(0);
     await expandItem(item);
+    await expandDecision(item.getByTestId("meeting-decision"));
     await expect(item.locator(`[data-testid="meeting-decision-task"][data-task-id="${task}"]`)).toHaveAttribute("data-status", "todo");
     await item.getByTestId("meeting-agenda-resolved").check();
     await expect(item).toHaveAttribute("data-resolved", "true", { timeout: APP_LOAD_TIMEOUT });
@@ -395,8 +402,9 @@ test.describe("Meetings", () => {
     await expect(page.getByTestId("task-panel")).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`/meetings/${id}$`));
 
-    // Edit and Delete icons on the task row (the manager may edit the task).
+    // Edit and Delete icons on the task row (the manager may edit the task). After the reload the decision is collapsed.
     await expandItem(item);
+    await expandDecision(decision);
     const row = item.getByTestId("meeting-decision-task-row");
     await row.getByTestId("meeting-decision-task-edit").click({ timeout: APP_LOAD_TIMEOUT });
     const editForm = page.getByTestId("task-form");
@@ -418,6 +426,7 @@ test.describe("Meetings", () => {
 
     // Delete asks first; then the task leaves the decision.
     await expandItem(item);
+    await expandDecision(decision);
     await row.getByTestId("meeting-decision-task-delete").click({ timeout: APP_LOAD_TIMEOUT });
     const dialog = page.getByTestId("meeting-decision-task-delete-dialog");
     await expect(dialog).toBeVisible();
@@ -427,6 +436,71 @@ test.describe("Meetings", () => {
     await dialog.getByTestId("meeting-decision-task-delete-confirm").click();
     await expect(page.getByTestId("toast-success")).toBeVisible();
     await expect(link).toHaveCount(0, { timeout: APP_LOAD_TIMEOUT });
+  });
+
+  test("decisions expand like agenda items: a count and chevron for linked tasks, none without; + Task opens its decision; Expand all opens decisions too", async ({ freshUser, freshBranch, pageAs }) => {
+    const { branch, manager, volunteer } = await branchTeam(freshBranch, freshUser, "meetings-decision-tasks");
+    const id = await createMeetingAs(manager, meetingAt(branch, "decision tasks", { invitee_ids: [volunteer.id] }));
+    const itemId = (await workRpc(manager, "add_agenda_item", { p_meeting: id, p_title: "Volunteer week" })).data as string;
+    const withTasks = (await workRpc(manager, "add_meeting_decision", { p_item: itemId, p_text: "Print the flyers" })).data as string;
+    const without = (await workRpc(manager, "add_meeting_decision", { p_item: itemId, p_text: "Ask the council" })).data as string;
+    for (const title of ["flyers A5", "flyers A3"])
+      expect((await workRpc(manager, "create_task", { p: { scope: "branch", branch_id: branch, title: `${TASK_TITLE_PREFIX}${runId} ${title}`, decision_id: withTasks, due_date: inDays(5).slice(0, 10), assignee_ids: [volunteer.id] } })).error).toBeNull();
+
+    const page = await pageAs(manager);
+    await openMeeting(page, id);
+    const item = page.locator(`[data-testid="meeting-agenda-item"][data-item-id="${itemId}"]`);
+    await expandItem(item);
+    const first = item.locator(`[data-testid="meeting-decision"][data-decision-id="${withTasks}"]`);
+    const second = item.locator(`[data-testid="meeting-decision"][data-decision-id="${without}"]`);
+
+    // Collapsed by default, with the count in the row; the chevron (or the count) opens and closes the list.
+    const toggle = first.getByTestId("meeting-decision-tasks-toggle");
+    await expect(toggle).toHaveAttribute("data-tasks", "2");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(first.getByTestId("meeting-decision-task")).toHaveCount(0);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(first.getByTestId("meeting-decision-task")).toHaveCount(2);
+    // Each row keeps the task's content: assignee by full name, status and due date.
+    const row = first.getByTestId("meeting-decision-task").first();
+    await expect(row.getByTestId("meeting-decision-task-assignees")).toHaveAttribute("title", volunteer.fullName, { timeout: APP_LOAD_TIMEOUT });
+    await expect(row.getByTestId("task-due")).toBeVisible();
+    await first.getByTestId("meeting-decision-tasks-count").click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(first.getByTestId("meeting-decision-tasks")).toHaveCount(0);
+    // Closing and reopening the agenda item keeps the decision's state while on the page.
+    await toggle.click();
+    await item.getByTestId("meeting-agenda-item-toggle").click();
+    await expandItem(item);
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await toggle.click();
+
+    // A decision without tasks has no chevron.
+    await expect(second.getByTestId("meeting-decision-tasks-toggle")).toHaveCount(0);
+
+    // Expand all opens the decisions' task lists too; Collapse all closes everything.
+    const expandAll = page.getByTestId("meeting-agenda-expand-all");
+    await expandAll.click();
+    await expect(expandAll).toHaveAttribute("aria-pressed", "true");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(first.getByTestId("meeting-decision-task")).toHaveCount(2);
+    await expandAll.click();
+    await expect(item.getByTestId("meeting-agenda-item-toggle")).toHaveAttribute("aria-expanded", "false");
+    await expandItem(item);
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    // "+ Task" on the decision without tasks: the new task shows under it, and its list is open.
+    await decisionAction(page, second, "create-task");
+    const form = page.getByTestId("task-form");
+    await pickPerson(page, "task-form-assignees", volunteer.id);
+    await form.getByTestId("task-form-submit").click();
+    await expect(form).toBeHidden({ timeout: APP_LOAD_TIMEOUT });
+    const secondToggle = second.getByTestId("meeting-decision-tasks-toggle");
+    await expect(secondToggle).toHaveAttribute("data-tasks", "1", { timeout: APP_LOAD_TIMEOUT });
+    await expect(secondToggle).toHaveAttribute("aria-expanded", "true");
+    await expect(second.getByTestId("meeting-decision-task")).toHaveCount(1);
+    await expect(item.getByTestId("meeting-agenda-item-counts")).toHaveAttribute("data-tasks", "3");
   });
 
   test("the meetings page is one timeline: earlier past meetings collapsed, the two latest past, the next three, later ones collapsed", async ({ freshUser, freshBranch, pageAs }) => {

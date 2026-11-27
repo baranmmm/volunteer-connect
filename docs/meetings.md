@@ -70,7 +70,12 @@ On the meeting page each agenda item is a toggle row (Notion-style), collapsed b
   nothing when both are zero) and the Standing / Resolved badges.
 - Click, Enter or Space expands it: notes, the resolved checkbox, reorder/edit/delete (editors), the decisions and the
   tasks created from them with their status badges. The toggle is a button with `aria-expanded` and `aria-controls`.
-- "Expand all / Collapse all" opens or closes every item. A just-added item opens expanded, ready for its decisions.
+- "Expand all / Collapse all" opens or closes every item and every decision's task list. A just-added item opens
+  expanded, ready for its decisions.
+- A decision with linked tasks shows a chevron and a count ("3 tasks"; an "@all" group counts once); the chevron or the
+  count opens its task list (title, assignee names, status, due date, created date on wider screens), collapsed by
+  default. Decisions without tasks have no chevron. A task or group made with "+ Task" opens its decision. Open and
+  closed states last while the page is open.
 
 **Decision editor.** Enter saves the decision and Shift+Enter adds a new line (Enter is ignored while an input
 method is composing text, so IME users can confirm characters).
