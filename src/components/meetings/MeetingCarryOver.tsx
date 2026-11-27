@@ -2,30 +2,33 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ListChecks } from "lucide-react";
+import { ChevronDown, ListChecks, Search } from "lucide-react";
 import { linkedRows } from "@/lib/tasks";
 import {
+  filterCarryOver,
   fullCarryOver,
   toggleCarryDecision,
   type CarryOverChoice,
   type CarryOverItem,
+  type CarryOverMeeting,
 } from "@/lib/meetings";
 import { listMeetingCarryOver } from "@/lib/meetings.functions";
 import { scopeKey, type WorkScopeOption } from "@/lib/work-scopes";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { TaskStatusBadge } from "@/components/tasks/TaskBadges";
 import { formatDate } from "@/lib/i18n";
 
+/** Meetings shown at first and per "Show more" (the database sends at most 100). */
+const PAGE = 10;
+
 /**
- * Creating a meeting: optional carry-over from earlier meetings of the same place (list_meeting_carry_over). Collapsed,
- * and shown only when there is something to carry. Ticking an agenda item selects all its decisions; each can then be
- * unticked. The new meeting gets copies of the items and decisions (carry_over_agenda, after the meeting is created).
- * A ticked decision lists its open tasks read-only: they are never moved or copied, and show under the copy too. An
- * "@all" group is one entry.
+ * Creating a meeting: optional carry-over from other meetings of the same place (list_meeting_carry_over), past or
+ * upcoming. Collapsed, and shown only when there is something to carry. The picker is MeetingCarryPicker; the new
+ * meeting gets the copies after it is created (carry_over_agenda).
  *
- * Test ids (prefix = testId): `-carry` (data-count), `-carry-toggle` (aria-expanded), `-carry-meeting`
- * (data-meeting-id), `-carry-item` (checkbox, data-item-id), `-carry-decision` (checkbox, data-decision-id),
- * `-carry-task` (read-only row, data-task-id or data-group-id).
+ * Test ids (prefix = testId): `-carry` (data-count), `-carry-toggle` (aria-expanded), plus the picker's.
  */
 export function MeetingCarryOver({
   scope,
@@ -37,7 +40,7 @@ export function MeetingCarryOver({
   scope: WorkScopeOption | null;
   value: CarryOverChoice[];
   onChange: (value: CarryOverChoice[]) => void;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   testId: string;
 }) {
   const { t } = useTranslation();
@@ -55,16 +58,6 @@ export function MeetingCarryOver({
   const meetings = query.data ?? [];
   const itemCount = meetings.reduce((n, m) => n + m.items.length, 0);
   if (!scope || itemCount === 0) return null;
-  const chosen = (itemId: string) => value.find((c) => c.item_id === itemId);
-  const setItem = (item: CarryOverItem, on: boolean) =>
-    onChange(
-      on
-        ? [...value.filter((c) => c.item_id !== item.id), fullCarryOver(item)]
-        : value.filter((c) => c.item_id !== item.id),
-    );
-  const update = (next: CarryOverChoice) =>
-    onChange(value.map((c) => (c.item_id === next.item_id ? next : c)));
-  const box = "mt-0.5 size-4 shrink-0";
 
   return (
     <div
@@ -93,120 +86,194 @@ export function MeetingCarryOver({
           aria-hidden
         />
       </button>
-      <div
-        id={`${testId}-carry-body`}
-        hidden={!open}
-        className="min-w-0 space-y-3 border-t px-3 py-2"
-      >
+      <div id={`${testId}-carry-body`} hidden={!open} className="min-w-0 border-t px-3 py-2">
         {open && (
-          <>
-            <p className="text-sm text-muted-foreground">{t("meetings.carry.hint")}</p>
-            {meetings.map((m) => (
-              <fieldset
-                key={m.meeting_id}
-                className="min-w-0 space-y-1"
-                data-testid={`${testId}-carry-meeting`}
-                data-meeting-id={m.meeting_id}
-              >
-                <legend className="text-sm font-semibold [overflow-wrap:anywhere]">
-                  {m.meeting_title}{" "}
-                  <span className="font-normal text-muted-foreground">
-                    · {formatDate(m.starts_at, { dateStyle: "medium", timeZone: "Europe/London" })}
-                  </span>
-                </legend>
-                <ul className="min-w-0 space-y-1">
-                  {m.items.map((item) => {
-                    const choice = chosen(item.id);
-                    return (
-                      <li key={item.id} className="min-w-0 rounded-md border px-2 py-0.5">
-                        <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm font-medium sm:min-h-8">
-                          <input
-                            type="checkbox"
-                            className={box}
-                            data-testid={`${testId}-carry-item`}
-                            data-item-id={item.id}
-                            checked={!!choice}
-                            disabled={disabled}
-                            onChange={(e) => setItem(item, e.target.checked)}
-                          />
-                          <span className="min-w-0 [overflow-wrap:anywhere]">{item.title}</span>
-                        </label>
-                        {choice && item.decisions.length > 0 && (
-                          <ul className="ml-6 min-w-0 space-y-0.5 pb-1">
-                            {item.decisions.map((d) => {
-                              const decisionOn = choice.decision_ids.includes(d.id);
-                              return (
-                                <li key={d.id} className="min-w-0">
-                                  <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm sm:min-h-8">
-                                    <input
-                                      type="checkbox"
-                                      className={box}
-                                      data-testid={`${testId}-carry-decision`}
-                                      data-decision-id={d.id}
-                                      checked={decisionOn}
-                                      disabled={disabled}
-                                      onChange={(e) =>
-                                        update(toggleCarryDecision(choice, d.id, e.target.checked))
-                                      }
-                                    />
-                                    <span className="min-w-0 [overflow-wrap:anywhere]">
-                                      {d.text}
-                                    </span>
-                                  </label>
-                                  {decisionOn && d.tasks.length > 0 && (
-                                    <ul
-                                      className="ml-6 min-w-0 space-y-0.5"
-                                      aria-label={t("meetings.carry.tasksShared")}
-                                    >
-                                      {linkedRows(d.tasks).map((row) => {
-                                        const first =
-                                          row.kind === "group" ? row.tasks[0]! : row.task;
-                                        return (
-                                          <li
-                                            key={row.kind === "group" ? row.groupId : row.task.id}
-                                            data-testid={`${testId}-carry-task`}
-                                            data-task-id={
-                                              row.kind === "task" ? row.task.id : undefined
-                                            }
-                                            data-group-id={
-                                              row.kind === "group" ? row.groupId : undefined
-                                            }
-                                            className="flex min-h-9 min-w-0 items-center gap-2 text-sm text-muted-foreground sm:min-h-7"
-                                          >
-                                            <ListChecks className="size-4 shrink-0" aria-hidden />
-                                            <span
-                                              className="min-w-0 flex-1 truncate"
-                                              title={first.title}
-                                            >
-                                              {first.title}
-                                              {row.kind === "group" &&
-                                                ` · ${t("tasks.groups.allMembers", { count: row.tasks.length })}`}
-                                            </span>
-                                            {row.kind === "task" && (
-                                              <TaskStatusBadge
-                                                status={row.task.status}
-                                                className="rounded-full"
-                                              />
-                                            )}
-                                          </li>
-                                        );
-                                      })}
-                                    </ul>
-                                  )}
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </fieldset>
-            ))}
-          </>
+          <MeetingCarryPicker
+            meetings={meetings}
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            testId={testId}
+            hint={t("meetings.carry.hint")}
+          />
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The carry-over picker, for a new meeting (above) and for an existing one (MeetingCarryIn). A search box filters by
+ * agenda item title and decision text; meetings show newest first, PAGE at a time. Ticking an agenda item selects all
+ * its decisions; each can then be unticked. A ticked decision lists its open tasks read-only: they are never moved or
+ * copied, and show under the copy too. An "@all" group is one entry.
+ *
+ * Test ids (prefix = testId): `-carry-search`, `-carry-no-match`, `-carry-more`, `-carry-meeting` (data-meeting-id),
+ * `-carry-item` (checkbox, data-item-id), `-carry-decision` (checkbox, data-decision-id), `-carry-task` (read-only
+ * row, data-task-id or data-group-id).
+ */
+export function MeetingCarryPicker({
+  meetings,
+  value,
+  onChange,
+  disabled,
+  testId,
+  hint,
+}: {
+  meetings: CarryOverMeeting[];
+  value: CarryOverChoice[];
+  onChange: (value: CarryOverChoice[]) => void;
+  disabled?: boolean | undefined;
+  testId: string;
+  hint: string;
+}) {
+  const { t } = useTranslation();
+  const [search, setSearch] = useState("");
+  const [pages, setPages] = useState(1);
+  const filtered = filterCarryOver(meetings, search);
+  const visible = filtered.slice(0, pages * PAGE);
+  const hidden = filtered.length - visible.length;
+  const chosen = (itemId: string) => value.find((c) => c.item_id === itemId);
+  const setItem = (item: CarryOverItem, on: boolean) =>
+    onChange(
+      on
+        ? [...value.filter((c) => c.item_id !== item.id), fullCarryOver(item)]
+        : value.filter((c) => c.item_id !== item.id),
+    );
+  const update = (next: CarryOverChoice) =>
+    onChange(value.map((c) => (c.item_id === next.item_id ? next : c)));
+  const box = "mt-0.5 size-4 shrink-0";
+
+  return (
+    <div className="min-w-0 space-y-3">
+      <p className="text-sm text-muted-foreground">{hint}</p>
+      <div className="relative min-w-0">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="search"
+          data-testid={`${testId}-carry-search`}
+          aria-label={t("meetings.carry.search")}
+          placeholder={t("meetings.carry.search")}
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPages(1);
+          }}
+          className="h-11 min-w-0 pl-9 sm:h-9"
+        />
+      </div>
+      {filtered.length === 0 && (
+        <p data-testid={`${testId}-carry-no-match`} className="text-sm text-muted-foreground">
+          {t("meetings.carry.noMatch")}
+        </p>
+      )}
+      {visible.map((m) => (
+        <fieldset
+          key={m.meeting_id}
+          className="min-w-0 space-y-1"
+          data-testid={`${testId}-carry-meeting`}
+          data-meeting-id={m.meeting_id}
+        >
+          <legend className="text-sm font-semibold [overflow-wrap:anywhere]">
+            {m.meeting_title}{" "}
+            <span className="font-normal text-muted-foreground">
+              · {formatDate(m.starts_at, { dateStyle: "medium", timeZone: "Europe/London" })}
+            </span>
+          </legend>
+          <ul className="min-w-0 space-y-1">
+            {m.items.map((item) => {
+              const choice = chosen(item.id);
+              return (
+                <li key={item.id} className="min-w-0 rounded-md border px-2 py-0.5">
+                  <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm font-medium sm:min-h-8">
+                    <input
+                      type="checkbox"
+                      className={box}
+                      data-testid={`${testId}-carry-item`}
+                      data-item-id={item.id}
+                      checked={!!choice}
+                      disabled={disabled}
+                      onChange={(e) => setItem(item, e.target.checked)}
+                    />
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{item.title}</span>
+                  </label>
+                  {choice && item.decisions.length > 0 && (
+                    <ul className="ml-6 min-w-0 space-y-0.5 pb-1">
+                      {item.decisions.map((d) => {
+                        const decisionOn = choice.decision_ids.includes(d.id);
+                        return (
+                          <li key={d.id} className="min-w-0">
+                            <label className="flex min-h-11 cursor-pointer items-start gap-2 py-1 text-sm sm:min-h-8">
+                              <input
+                                type="checkbox"
+                                className={box}
+                                data-testid={`${testId}-carry-decision`}
+                                data-decision-id={d.id}
+                                checked={decisionOn}
+                                disabled={disabled}
+                                onChange={(e) =>
+                                  update(toggleCarryDecision(choice, d.id, e.target.checked))
+                                }
+                              />
+                              <span className="min-w-0 [overflow-wrap:anywhere]">{d.text}</span>
+                            </label>
+                            {decisionOn && d.tasks.length > 0 && (
+                              <ul
+                                className="ml-6 min-w-0 space-y-0.5"
+                                aria-label={t("meetings.carry.tasksShared")}
+                              >
+                                {linkedRows(d.tasks).map((row) => {
+                                  const first = row.kind === "group" ? row.tasks[0]! : row.task;
+                                  return (
+                                    <li
+                                      key={row.kind === "group" ? row.groupId : row.task.id}
+                                      data-testid={`${testId}-carry-task`}
+                                      data-task-id={row.kind === "task" ? row.task.id : undefined}
+                                      data-group-id={row.kind === "group" ? row.groupId : undefined}
+                                      className="flex min-h-9 min-w-0 items-center gap-2 text-sm text-muted-foreground sm:min-h-7"
+                                    >
+                                      <ListChecks className="size-4 shrink-0" aria-hidden />
+                                      <span className="min-w-0 flex-1 truncate" title={first.title}>
+                                        {first.title}
+                                        {row.kind === "group" &&
+                                          ` · ${t("tasks.groups.allMembers", { count: row.tasks.length })}`}
+                                      </span>
+                                      {row.kind === "task" && (
+                                        <TaskStatusBadge
+                                          status={row.task.status}
+                                          className="rounded-full"
+                                        />
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
+      ))}
+      {hidden > 0 && (
+        <Button
+          type="button"
+          variant="ghost"
+          data-testid={`${testId}-carry-more`}
+          className="h-11 w-full sm:h-9"
+          onClick={() => setPages((n) => n + 1)}
+        >
+          {t("meetings.carry.more", { count: Math.min(hidden, PAGE) })}
+        </Button>
+      )}
     </div>
   );
 }

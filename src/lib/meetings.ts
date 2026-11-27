@@ -138,8 +138,10 @@ export const MEETING_SERIES_MODES = ["this", "following", "all"] as const;
 export type MeetingSeriesMode = (typeof MEETING_SERIES_MODES)[number];
 
 /**
- * Carry-over candidates (list_meeting_carry_over): the unresolved, not yet carried agenda items of earlier meetings in
- * the same scope that the caller may edit, with their decisions and the decisions' not-done tasks.
+ * Carry-over candidates (list_meeting_carry_over for a new meeting, list_meeting_carry_in for an existing one): the
+ * unresolved agenda items of other meetings of the same place (past or upcoming) that the caller may edit, newest
+ * meeting first. A chain of copies shows once, as its latest copy, and never when the meeting already has a copy. Each
+ * comes with its decisions and the decisions' not-done tasks (shared along the chain, never moved).
  */
 export const carryOverMeeting = z.object({
   meeting_id: z.string().uuid(),
@@ -185,6 +187,29 @@ export type CarryOverChoice = z.infer<typeof carryOverChoice>;
 export function fullCarryOver(item: CarryOverItem): CarryOverChoice {
   return { item_id: item.id, decision_ids: item.decisions.map((d) => d.id), task_ids: [] };
 }
+/** Folds case, accents and the Turkish dotless i, so "cikis" finds "Çıkış". */
+export function carrySearchKey(text: string): string {
+  return text.toLocaleLowerCase("tr").normalize("NFD").replace(/\p{M}/gu, "").replace(/ı/g, "i");
+}
+
+/**
+ * The picker's search: items whose title or any decision text contains every word of the query; meetings without a
+ * match drop out. An empty query keeps everything.
+ */
+export function filterCarryOver(meetings: CarryOverMeeting[], query: string): CarryOverMeeting[] {
+  const words = carrySearchKey(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return meetings;
+  return meetings
+    .map((m) => ({
+      ...m,
+      items: m.items.filter((item) => {
+        const hay = carrySearchKey([item.title, ...item.decisions.map((d) => d.text)].join("\n"));
+        return words.every((w) => hay.includes(w));
+      }),
+    }))
+    .filter((m) => m.items.length > 0);
+}
+
 /** Ticks or unticks one decision of a chosen item. */
 export function toggleCarryDecision(
   choice: CarryOverChoice,

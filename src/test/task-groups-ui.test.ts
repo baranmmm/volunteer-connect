@@ -11,7 +11,14 @@ import {
   type Task,
   type TaskGroupData,
 } from "@/lib/tasks";
-import { fullCarryOver, toggleCarryDecision, type CarryOverItem } from "@/lib/meetings";
+import {
+  carrySearchKey,
+  filterCarryOver,
+  fullCarryOver,
+  toggleCarryDecision,
+  type CarryOverItem,
+  type CarryOverMeeting,
+} from "@/lib/meetings";
 import { agendaCounts } from "@/components/meetings/meeting-ui";
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -177,6 +184,47 @@ describe("carry-over choices", () => {
   });
 });
 
+describe("carry-over search", () => {
+  const item = (n: number, title: string, decisions: string[] = []): CarryOverItem => ({
+    id: uuid(n),
+    title,
+    notes: null,
+    decisions: decisions.map((text, i) => ({ id: uuid(n * 10 + i), text, tasks: [] })),
+  });
+  const meetings: CarryOverMeeting[] = [
+    {
+      meeting_id: uuid(90),
+      meeting_title: "2 Dec",
+      starts_at: "2026-12-02T18:00:00Z",
+      items: [item(1, "Christmas Dinner", ["Book a venue"]), item(2, "Flyers")],
+    },
+    {
+      meeting_id: uuid(91),
+      meeting_title: "25 Nov",
+      starts_at: "2026-11-25T18:00:00Z",
+      items: [item(3, "Iftar", ["Çıkış saatini belirle"]), item(4, "Rota", ["Ask the venue"])],
+    },
+  ];
+  const ids = (query: string) =>
+    filterCarryOver(meetings, query).map((m) => [m.meeting_id, m.items.map((i) => i.id)]);
+  it("an empty query keeps everything", () => {
+    expect(filterCarryOver(meetings, "  ")).toBe(meetings);
+  });
+  it("matches item titles and decision texts; meetings without a match drop out", () => {
+    expect(ids("christmas")).toEqual([[uuid(90), [uuid(1)]]]);
+    expect(ids("venue")).toEqual([
+      [uuid(90), [uuid(1)]],
+      [uuid(91), [uuid(4)]],
+    ]);
+    expect(ids("nothing like this")).toEqual([]);
+  });
+  it("every word must match, in any order, ignoring case, accents and the Turkish dotless i", () => {
+    expect(ids("venue book")).toEqual([[uuid(90), [uuid(1)]]]);
+    expect(ids("CIKIS")).toEqual([[uuid(91), [uuid(3)]]]);
+    expect(carrySearchKey("İstanbul Çıkış")).toBe("istanbul cikis");
+  });
+});
+
 describe("new strings exist in both languages", () => {
   const get = (o: unknown, key: string) =>
     key.split(".").reduce<unknown>((x, k) => (x as Record<string, unknown> | undefined)?.[k], o);
@@ -187,7 +235,7 @@ describe("new strings exist in both languages", () => {
         : [`${prefix}.${k}`],
     );
   it("tasks.groups, meetings.carry and the new errors match in English and Turkish", () => {
-    for (const ns of ["tasks.groups", "meetings.carry"]) {
+    for (const ns of ["tasks.groups", "meetings.carry", "meetings.carryIn"]) {
       const enKeys = keys(get(en, ns) as Record<string, unknown>, ns).sort();
       const trKeys = keys(get(tr, ns) as Record<string, unknown>, ns).sort();
       expect(trKeys).toEqual(enKeys);

@@ -57,6 +57,7 @@ import {
   updateMeetingDecision,
 } from "@/lib/meetings.functions";
 import { agendaCounts, decisionTaskCount } from "./meeting-ui";
+import { MeetingCarryIn } from "./MeetingCarryIn";
 
 type Decision = AgendaItem["decisions"][number];
 
@@ -198,6 +199,7 @@ export function MeetingAgenda({ meeting }: { meeting: MeetingDetail }) {
               {t("meetings.agenda.add")}
             </Button>
           )}
+          {editable && <MeetingCarryIn meetingId={meeting.id} disabled={busy} />}
         </div>
       </div>
       {editable && adding && (
