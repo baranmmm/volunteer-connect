@@ -5,8 +5,10 @@ The members-only photo gallery of a branch (`/media`). Migration: `2026121609000
 
 ## What it shows
 - One gallery per branch, filtered in the database (`can_view_media`): the branch's volunteers, trustees and Branch
-  Manager, and the region's Regional Directors (they switch between the region's branches). Followers and National
-  Coordinators see nothing. Other branches' events and albums never appear, public ones included.
+  Manager, the region's Regional Directors (they switch between the region's branches), and followers of the branch
+  (`20261219090000_media_followers.sql`: read-only; a switcher when they follow several, the first followed by
+  default; like everywhere for followers, only public events, plus albums). National Coordinators see nothing. Other
+  branches' events and albums never appear, public ones included.
 - **Chapters**, newest first: the branch's own events (scope `branch`, published or cancelled, not meetings) with their
   event page photos (`event_media`, still added in the event form) and their Media-only photos, plus the branch's
   **albums** (title, optional date and description, cover: set by a manager, default the first photo).
@@ -14,13 +16,14 @@ The members-only photo gallery of a branch (`/media`). Migration: `2026121609000
   full-size original is for managers. Event page photos keep their event page visibility.
 
 ## Who does what
-| | Volunteer | Trustee | Branch Manager / Regional Director |
-|---|---|---|---|
-| See, slideshow, story viewer | Yes | Yes | Yes |
-| Upload | Upload request (≤ 20 photos, album/event or a proposed album, note) | — | Directly ("Add photos") |
-| Albums, cover, order, delete | — | — | Yes (album deletion: type its name) |
-| Move photos | — | — | Album ↔ album / event chapter; event page photo → album (not the cover; it becomes members-only) |
-| Review upload requests | — | — | In Requests: approve all / some, decline with a reason |
+| | Follower | Volunteer | Trustee | Branch Manager / Regional Director |
+|---|---|---|---|---|
+| See, slideshow, story viewer | Branches they follow | Yes | Yes | Yes |
+| Upload | — | Upload request (≤ 20 photos, album/event or a proposed album, note) | — | Directly ("Add photos") |
+| Full-size photos | — | Download request (24-hour link) | Download request | Direct download |
+| Albums, cover, order, delete, stars | — | — | — | Yes (album deletion: type its name) |
+| Move photos | — | — | — | Album ↔ album / event chapter; event page photo → album (not the cover; it becomes members-only) |
+| Review upload and download requests | — | — | — | In Requests: approve (all / some), decline with a reason |
 
 Deleted and declined photos are removed at once (hard delete: Storage first, then the rows; no Recycle Bin).
 Duplicates (same SHA-256 in the same album or event) are skipped and reported. The nightly cleanup

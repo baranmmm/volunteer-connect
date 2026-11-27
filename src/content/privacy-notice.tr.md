@@ -1,6 +1,6 @@
 # Gizlilik Bildirimi: Dialogue Society Gönüllü Merkezi
 
-Sürüm 1.6 · 26 Kasım 2026
+Sürüm 1.7 · 27 Kasım 2026
 
 Bu bildirim, Dialogue Society Gönüllü Merkezi'nin (Volunteer Hub) hangi kişisel bilgileri topladığını, bunları neden kullandığımızı, kimlerin görebildiğini ve hangi haklara sahip olduğunuzu açıklar. Hesap oluşturmadan önce okumanız gerekir. Bu metin İngilizce bildirimin çevirisidir; aralarında bir fark olursa İngilizce sürüm geçerlidir.
 
@@ -42,7 +42,7 @@ Bir şey isteğe bağlıdır ve yalnızca onayınızla kullanılır; onayınız�
 
 ## Etkinliklerimizdeki fotoğraflar
 
-Dialogue Society etkinliklerinde ve faaliyetlerinde fotoğraf çekiyoruz. Bu fotoğraflar Merkezin üyelere özel Medya alanında (yalnızca şubenin üyeleri görür) ve herkese açık etkinlik sayfalarında paylaşılabilir. Bunu, hayır kurumumuzun çalışmalarını kayıt altına alma ve gösterme konusundaki meşru menfaatimize dayanarak yaparız. Fotoğrafınızın çekilmesini kabul etmek, Merkeze üye olmanın bir koşulu değildir.
+Dialogue Society etkinliklerinde ve faaliyetlerinde fotoğraf çekiyoruz. Bu fotoğraflar, o şubenin giriş yapmış üyelerinin ve takipçilerinin (şubeyi takip eden, Merkezde hesabı olan herkes) görebildiği Merkezin Medya alanında ve herkese açık etkinlik sayfalarında paylaşılabilir. Bunu, hayır kurumumuzun çalışmalarını kayıt altına alma ve gösterme konusundaki meşru menfaatimize dayanarak yaparız. Fotoğrafınızın çekilmesini kabul etmek, Merkeze üye olmanın bir koşulu değildir.
 
 - Fotoğrafınızın çekilmesini istemiyorsanız, lütfen etkinlikte düzenleyiciye söyleyin.
 - Sizin yer aldığınız bir fotoğrafın kaldırılmasını isterseniz medway@dialoguesociety.org adresine e-posta gönderin; fotoğrafı kaldırırız.
@@ -56,7 +56,7 @@ Dialogue Society etkinliklerinde ve faaliyetlerinde fotoğraf çekiyoruz. Bu fot
 | Bölgenizin Bölge Direktörleri | Aynı bilgiler, bölgelerindeki tüm şubeler için |
 | Ulusal Koordinatörler | Gönüllüler ve mütevelliler için yalnızca sayılar; şube ve bölge yöneticilerinin bilgileri |
 | Şubenizin üyeleri | Kime atandıkları ve üzerlerindeki notlar dahil şube görevleri |
-| Şubenizin üyeleri ve mütevellileri, Şube Yöneticileri ve bölgenizin Bölge Direktörleri | Şubenizin Medya alanındaki fotoğraflar. Bir yükleme isteğiyle gönderdiğiniz fotoğrafları, onaylanana kadar yalnızca siz ve isteği inceleyen yöneticiler görür. |
+| Şubenizin üyeleri, mütevellileri ve takipçileri (şubeyi takip eden, Merkezde hesabı olan herkes), Şube Yöneticileri ve bölgenizin Bölge Direktörleri | Şubenizin Medya alanındaki fotoğraflar. Bir yükleme isteğiyle gönderdiğiniz fotoğrafları, onaylanana kadar yalnızca siz ve isteği inceleyen yöneticiler görür. |
 | Şubenizin mütevellileri | Şubenizin faaliyetleri: etkinlikleri, şube görevleri (kime atandıkları ve üzerlerindeki notlar dahil), şubenin toplantıları ile bunların gündemi, kararları ve dosyaları ve burada görünen şube üyelerinin adları. Mütevelliler bunları görebilir ancak değiştiremez. |
 | Bir toplantıya davet edilenler, düzenleyeni ve şubesinin ya da bölgesinin yöneticileri | O toplantı (takvimde de), davetlileri, gündemi, kararları ve dosyaları. Başka kimse göremez. |
 | Ulusal Koordinatörler | Yalnızca ulusal görevler ve toplantılar; gönüllülerin adlarını asla görmezler |
