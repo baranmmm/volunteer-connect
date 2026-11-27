@@ -55,7 +55,9 @@ test.describe("Notifications", () => {
     await expect(page.getByTestId("profile-notifications-advanced")).toHaveCount(0);
     await expect(typeRow(page, "task_assigned")).toHaveCount(0);
     await openAdvanced(page);
-    await expect(section.locator('[data-testid="profile-notification-row"][data-email="false"]')).toHaveCount(0);
+    // Only the photo reminders after events ('media') have their email off by default.
+    await expect(section.locator('[data-testid="profile-notification-row"][data-email="false"]')).toHaveCount(1);
+    await expect(typeRow(page, "media")).toHaveAttribute("data-email", "false");
     await expect(typeRow(page, "task_assigned")).toHaveAttribute("data-email-timing", "immediate");
     await expect(typeRow(page, "meeting")).toHaveAttribute("data-email-timing", "mixed");
     await expect(typeRow(page, "task_status")).toHaveAttribute("data-email-timing", "digest");

@@ -980,6 +980,24 @@ const DIGEST_LINES: Record<string, { en: [string, string]; tr: string }> = {
     en: ["{n} of your photo uploads was approved", "{n} of your photo uploads were approved"],
     tr: "{n} fotoğraf yükleme isteğiniz onaylandı",
   },
+  media_download_approved: {
+    en: [
+      "{n} of your download requests was approved",
+      "{n} of your download requests were approved",
+    ],
+    tr: "{n} indirme isteğiniz onaylandı",
+  },
+  media_download_declined: {
+    en: [
+      "{n} of your download requests was declined",
+      "{n} of your download requests were declined",
+    ],
+    tr: "{n} indirme isteğiniz reddedildi",
+  },
+  media_photo_nudge: {
+    en: ["{n} event to share photos from", "{n} events to share photos from"],
+    tr: "Fotoğraf paylaşabileceğiniz {n} etkinlik",
+  },
   media_upload_declined: {
     en: ["{n} of your photo uploads was declined", "{n} of your photo uploads were declined"],
     tr: "{n} fotoğraf yükleme isteğiniz reddedildi",

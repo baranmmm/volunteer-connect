@@ -54,7 +54,9 @@ describe("email mode", () => {
       { type: "task_note", on: false },
       { type: "request_decided", on: false },
     ]);
-    expect(emailModeChanges(all.types, "none")).toHaveLength(NOTIFICATION_TYPES.length);
+    // The post-event photo nudge ('media', email off by default) is outside the simple choice: never changed by it.
+    expect(emailModeChanges(all.types, "none")).toHaveLength(NOTIFICATION_TYPES.length - 1);
+    expect(emailModeChanges(all.types, "none").map((c) => c.type)).not.toContain("media");
     expect(
       emailModeChanges(settings(() => false).types, "important")
         .map((c) => c.type)

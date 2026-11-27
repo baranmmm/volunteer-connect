@@ -172,3 +172,22 @@ export async function deleteMediaData(branchId: string, albumIds: string[], even
   if (albumIds.length) await admin.from("media_albums").delete().in("id", albumIds);
   void branchId;
 }
+
+/** Stars a photo as a highlight, as a manager (set_media_highlight). */
+export async function starAs(email: string, source: "library" | "event", id: string): Promise<void> {
+  const db = await clientAs(email);
+  const { error } = await db.rpc("set_media_highlight", { p_source: source, p_id: id, p_on: true });
+  if (error) throw new Error(`set_media_highlight: ${error.message}`);
+}
+
+/** A download request for photos, as a volunteer or trustee (request_media_download). */
+export async function requestDownloadAs(
+  email: string,
+  items: { source: "library" | "event"; id: string }[],
+  reason = "",
+): Promise<string> {
+  const db = await clientAs(email);
+  const { data, error } = await db.rpc("request_media_download", { p_items: items, ...(reason ? { p_reason: reason } : {}) });
+  if (error || !data) throw new Error(`request_media_download: ${error?.message ?? "no id"}`);
+  return String(data);
+}

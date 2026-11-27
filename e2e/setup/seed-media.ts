@@ -5,10 +5,10 @@
 //     Christmas Dinner") and a third ("Peace Walk");
 //   * one Brighton event with photos (it must never appear in Medway's gallery);
 //   * two Medway albums ("Volunteer meet-ups", "Ramadan 2026");
-//   * one pending upload request from the Medway volunteer.
+//   * four highlights, one pending upload request and one pending download request from the Medway volunteer.
 // Run after local:seed:  npm run local:seed-media   (idempotent: does nothing when the sample events exist).
 import { adminClient } from "../api/SupabaseClient";
-import { addEventPagePhotoAs, addLibraryPhotoAs, createAlbumAs, createPastEventAs, gradientPhoto, PALETTE, uploadRequestAs } from "../api/media";
+import { addEventPagePhotoAs, addLibraryPhotoAs, createAlbumAs, createPastEventAs, gradientPhoto, PALETTE, requestDownloadAs, starAs, uploadRequestAs } from "../api/media";
 import { readSeedState } from "../data/users";
 import { isLocalTarget, isMain } from "./env";
 import { acquireLocalStackLock } from "./local-lock";
@@ -47,19 +47,24 @@ export async function seedMedia() {
   const other = await event(bmB, brighton, "Brighton Interfaith Picnic", daysSince("2026-09-20"), "Preston Park");
 
   for (const p of await photos(0, 3)) await addEventPagePhotoAs(bm, iftar, p);
-  for (const p of await photos(3, 9)) await addLibraryPhotoAs(bm, medway, { event_id: iftar }, p);
+  const iftarIds: string[] = [];
+  for (const p of await photos(3, 9)) iftarIds.push(await addLibraryPhotoAs(bm, medway, { event_id: iftar }, p));
   for (const p of await photos(4, 2)) await addEventPagePhotoAs(bm, xmas, p);
   for (const p of await photos(6, 6)) await addLibraryPhotoAs(bm, medway, { event_id: xmas }, p);
   for (const p of await photos(2, 4)) await addLibraryPhotoAs(bm, medway, { event_id: walk }, p);
   for (const p of await photos(5, 3)) await addEventPagePhotoAs(bmB, other, p);
 
   const meetups = await createAlbumAs(bm, medway, "Volunteer meet-ups");
-  for (const p of await photos(7, 5)) await addLibraryPhotoAs(bm, medway, { album_id: meetups }, p);
+  const meetupIds: string[] = [];
+  for (const p of await photos(7, 5)) meetupIds.push(await addLibraryPhotoAs(bm, medway, { album_id: meetups }, p));
   const ramadan = await createAlbumAs(bm, medway, "Ramadan 2026", "2026-03-01");
   for (const p of await photos(1, 4)) await addLibraryPhotoAs(bm, medway, { album_id: ramadan }, p);
 
   await uploadRequestAs(vol, { event_id: iftar }, await photos(8, 3), "From the evening at the cathedral");
-  console.log("[seed-media] Sample media created: 3 Medway events, 1 Brighton event, 2 albums, 1 pending upload request.");
+  // Highlights (the strip, the card and the highlights slideshow) and a pending download request.
+  for (const id of [iftarIds[0]!, meetupIds[1]!, iftarIds[4]!, meetupIds[3]!]) await starAs(bm, "library", id);
+  await requestDownloadAs(vol, [{ source: "library", id: iftarIds[2]! }, { source: "library", id: iftarIds[5]! }], "For the newsletter");
+  console.log("[seed-media] Sample media created: 3 Medway events, 1 Brighton event, 2 albums, 4 highlights, 1 pending upload request, 1 pending download request.");
 }
 
 if (isMain(import.meta.url)) {

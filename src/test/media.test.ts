@@ -22,9 +22,9 @@ describe("media helpers", () => {
 
   it("the collage's large photo alternates sides; the last tile carries +N for the rest", () => {
     expect([0, 1, 2, 3].map(collageLargeSide)).toEqual(["left", "right", "left", "right"]);
-    expect(collageTiles([1, 2, 3, 4], 24)).toEqual({ tiles: [1, 2, 3, 4], more: 20 });
+    expect(collageTiles([1, 2, 3, 4, 5], 24)).toEqual({ tiles: [1, 2, 3, 4, 5], more: 19 });
     expect(collageTiles([1, 2], 2)).toEqual({ tiles: [1, 2], more: 0 });
-    expect(collageTiles([1, 2, 3, 4, 5], 5)).toEqual({ tiles: [1, 2, 3, 4], more: 1 });
+    expect(collageTiles([1, 2, 3, 4, 5, 6], 6)).toEqual({ tiles: [1, 2, 3, 4, 5], more: 1 });
   });
 
   it("years newest first without duplicates", () => {

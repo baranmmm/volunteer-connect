@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useTranslation } from "react-i18next";
-import { Check, Images } from "lucide-react";
+import { Check, Download, Images } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +10,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RequestStatusBadge } from "@/components/requests/RequestStatusBadge";
 import {
+  approveMediaDownloadRequest,
   approveMediaUploadRequest,
+  declineMediaDownloadRequest,
   declineMediaUploadRequest,
+  withdrawMediaDownloadRequest,
   withdrawMediaUploadRequest,
 } from "@/lib/media.functions";
-import type { MediaUploadRequest } from "@/lib/media";
+import {
+  downloadWindowOpen,
+  type MediaDownloadRequest,
+  type MediaUploadRequest,
+} from "@/lib/media";
 import { formatDate, translateError } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { useMediaRefresh, useMediaRequests } from "./use-media";
+import { useMediaDownloadRequests, useMediaRefresh, useMediaRequests } from "./use-media";
 
 // "Media upload" requests on /requests: the volunteer's own (My requests) and, for the branch's BM and the region's
 // RD, the ones waiting for review (with photo previews: approve all, approve some, or decline with a reason).
@@ -380,6 +387,277 @@ export function ReviewMediaRequests({ filter }: { filter: "open" | "decided" }) 
                   {t("media.requests.declinedReason", { reason: r.decline_reason })}
                 </p>
               )}
+              {r.reviewer_name && (
+                <p className="text-xs text-muted-foreground">
+                  {t("media.requests.decidedBy", { name: r.reviewer_name })}
+                </p>
+              )}
+            </li>
+          ),
+        )}
+      </ul>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Download requests (volunteers and trustees → the branch's BM / the region's RD)
+
+function DownloadHeading({ r }: { r: MediaDownloadRequest }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="min-w-0">
+        <Badge variant="secondary" className="mb-1.5 gap-1">
+          <Download className="size-3.5" aria-hidden />
+          {t("requests.kinds.mediaDownload")}
+        </Badge>
+        <h3 data-testid="media-download-request-title" className="font-semibold">
+          {t("media.downloads.requestTitle", { count: r.items.length })}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {[r.requester_name, formatDate(r.created_at, { dateStyle: "medium" })]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      </div>
+      <RequestStatusBadge status={r.status} testId="media-download-request-status" />
+    </div>
+  );
+}
+
+function DownloadPreviews({ r }: { r: MediaDownloadRequest }) {
+  const { t } = useTranslation();
+  if (!r.items.length) return null;
+  return (
+    <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+      {r.items.map((i, n) => (
+        <li key={i.id}>
+          {i.thumb ? (
+            <img
+              src={i.thumb}
+              alt={t("media.downloads.photoN", { n: n + 1 })}
+              className="aspect-square w-full rounded-lg object-cover"
+            />
+          ) : (
+            <div className="aspect-square w-full rounded-lg bg-muted" />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function MyDownloadRequests({ filter }: { filter: "all" | "open" | "decided" }) {
+  const { t } = useTranslation();
+  const requests = useMediaDownloadRequests("mine");
+  const withdraw = useServerFn(withdrawMediaDownloadRequest);
+  const refresh = useMediaRefresh();
+  const list = (requests.data ?? []).filter((r) =>
+    filter === "all"
+      ? true
+      : filter === "open"
+        ? r.status === "submitted"
+        : r.status !== "submitted",
+  );
+  if (!list.length) return null;
+  return (
+    <section
+      data-testid="my-download-requests"
+      aria-labelledby="my-download-requests-h"
+      className="space-y-3"
+    >
+      <h2 id="my-download-requests-h" className="text-lg font-semibold">
+        {t("media.downloads.mine")}
+      </h2>
+      <ul className="space-y-3">
+        {list.map((r) => (
+          <li
+            key={r.id}
+            data-testid="media-download-request"
+            data-request-id={r.id}
+            data-status={r.status}
+            className="space-y-3 rounded-2xl border bg-card p-4 shadow-soft"
+          >
+            <DownloadHeading r={r} />
+            <DownloadPreviews r={r} />
+            {r.reason && (
+              <p className="text-sm">
+                <span className="font-medium">{t("media.downloads.reasonLabel")}: </span>
+                {r.reason}
+              </p>
+            )}
+            {r.status === "approved" &&
+              (downloadWindowOpen(r.expires_at) ? (
+                <Link
+                  data-testid="media-download-open"
+                  to="/media/download/$id"
+                  params={{ id: r.id }}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  <Download className="size-4" aria-hidden />
+                  {t("media.downloads.open")}
+                </Link>
+              ) : (
+                <p
+                  data-testid="media-download-expired-note"
+                  className="text-sm text-muted-foreground"
+                >
+                  {t("media.downloads.expiredShort")}
+                </p>
+              ))}
+            {r.status === "declined" && (
+              <p data-testid="media-download-reason" className="text-sm">
+                {r.decline_reason
+                  ? t("media.downloads.declinedReason", { reason: r.decline_reason })
+                  : t("media.downloads.declined")}
+              </p>
+            )}
+            {r.can_withdraw && (
+              <Button
+                data-testid="media-download-withdraw"
+                variant="outline"
+                className="h-11"
+                onClick={() =>
+                  void withdraw({ data: { id: r.id } })
+                    .then(async () => {
+                      await refresh();
+                      toast.success(t("media.requests.withdrawn"));
+                    })
+                    .catch((e) => toast.error(translateError(e)))
+                }
+              >
+                {t("media.requests.withdraw")}
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function DownloadReviewCard({ r }: { r: MediaDownloadRequest }) {
+  const { t } = useTranslation();
+  const approve = useServerFn(approveMediaDownloadRequest),
+    decline = useServerFn(declineMediaDownloadRequest);
+  const refresh = useMediaRefresh();
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const act = async (fn: () => Promise<unknown>, done: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      await refresh();
+      toast.success(done);
+    } catch (e) {
+      toast.error(translateError(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <li
+      data-testid="media-download-review"
+      data-request-id={r.id}
+      className="space-y-3 rounded-2xl border bg-card p-4 shadow-soft"
+    >
+      <DownloadHeading r={r} />
+      <DownloadPreviews r={r} />
+      {r.reason && (
+        <p className="text-sm">
+          <span className="font-medium">{t("media.downloads.reasonLabel")}: </span>
+          {r.reason}
+        </p>
+      )}
+      <p className="text-sm text-muted-foreground">{t("media.downloads.reviewHint")}</p>
+      {declining ? (
+        <div className="space-y-2">
+          <Label htmlFor={`media-download-decline-${r.id}`}>{t("media.requests.reason")}</Label>
+          <Textarea
+            id={`media-download-decline-${r.id}`}
+            data-testid="media-download-decline-reason"
+            maxLength={500}
+            rows={2}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              data-testid="media-download-decline-confirm"
+              variant="destructive"
+              className="h-11"
+              disabled={busy}
+              onClick={() =>
+                void act(
+                  () => decline({ data: { id: r.id, reason } }),
+                  t("media.downloads.declinedToast"),
+                )
+              }
+            >
+              {t("media.requests.decline")}
+            </Button>
+            <Button variant="outline" className="h-11" onClick={() => setDeclining(false)}>
+              {t("common.cancel")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            data-testid="media-download-approve"
+            className="h-11"
+            disabled={busy}
+            onClick={() =>
+              void act(() => approve({ data: { id: r.id } }), t("media.downloads.approvedToast"))
+            }
+          >
+            {t("media.downloads.approve")}
+          </Button>
+          <Button
+            data-testid="media-download-decline"
+            variant="outline"
+            className="h-11"
+            disabled={busy}
+            onClick={() => setDeclining(true)}
+          >
+            {t("media.requests.decline")}
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+export function ReviewDownloadRequests({ filter }: { filter: "open" | "decided" }) {
+  const { t } = useTranslation();
+  const requests = useMediaDownloadRequests("review");
+  const list = (requests.data ?? []).filter((r) =>
+    filter === "open" ? r.status === "submitted" : r.status !== "submitted",
+  );
+  if (!list.length) return null;
+  return (
+    <section
+      data-testid={`media-download-review-${filter}`}
+      aria-labelledby={`media-download-review-${filter}-h`}
+      className="space-y-3"
+    >
+      <h2 id={`media-download-review-${filter}-h`} className="text-lg font-semibold">
+        {t("media.downloads.review")}
+      </h2>
+      <ul className="space-y-3">
+        {list.map((r) =>
+          filter === "open" && r.can_review ? (
+            <DownloadReviewCard key={r.id} r={r} />
+          ) : (
+            <li
+              key={r.id}
+              data-testid="media-download-review"
+              data-request-id={r.id}
+              data-status={r.status}
+              className="space-y-3 rounded-2xl border bg-card p-4"
+            >
+              <DownloadHeading r={r} />
               {r.reviewer_name && (
                 <p className="text-xs text-muted-foreground">
                   {t("media.requests.decidedBy", { name: r.reviewer_name })}
